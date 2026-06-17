@@ -1,0 +1,929 @@
+@import "../../tools/mixins.scss";
+
+.driver {
+  &-tabs {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    margin-top: 96px;
+    bottom: auto;
+    margin-top: 8px;
+    padding: 0 16px;
+
+    &__tab {
+      border: none;
+      background: none;
+      font-family: Roboto;
+      font-weight: 600;
+      font-size: 13px;
+      color: rgb(0, 0, 0, 0.25);
+      background-color: #E7E7E7;
+      border-radius: 4px;
+      cursor: pointer;
+      padding: 8px 0;
+
+      &--active {
+        background-color: #FF2400;
+        color: #FFFFFF;
+      }
+    }
+
+    span {
+      font-weight: 300;
+      font-size: 17px;
+      line-height: 20px;
+      color: #5E5E5E;
+    }
+
+    label {
+      margin: 0 5px;
+    }
+  }
+
+  &-statuses {
+    width: auto;
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 0 0 8px 0;
+
+    span {
+      display: flex;
+      align-items: center;
+      cursor: pointer;
+
+      label {
+        font-weight: 300;
+        font-size: 17px;
+        line-height: 20px;
+        color: #5E5E5E;
+      }
+
+      &:not(:last-child) {
+        border-right: 1px solid #F1F1F1;
+        padding-right: 8px;
+      }
+
+      .requested,
+      .recomended,
+      .trip,
+      .waiting,
+      .rating,
+      .urgently,
+      .taken {
+        height: 24px;
+        width: 24px;
+        border-radius: 8px;
+        margin-right: 4px;
+        border: 1px solid #FF2400;
+      }
+
+      .recomended {
+        background: #00A72F;
+        border: 1px solid transparent;
+      }
+
+      .requested {
+        background: #FFD12E;
+        border: 1px solid transparent;
+      }
+    }
+  }
+
+  &-orders {
+    position: relative;
+    height: 0;
+    overflow: hidden;
+    font-weight: 400;
+    padding: 0;
+    
+    &--active {
+      height: auto;
+      padding: 10px 16px 16px 16px;
+    }
+
+    &-empty {
+      font-size: 13px;
+      font-weight: 500;
+    }
+  }
+}
+
+// Стиль для стрелки (фиксируем размер и делаем pointer-events: none, чтобы клики шли на Marker)
+.order-marker > img,
+.driver-arrow-divicon img {
+  display: block !important;
+  width: 40px !important; /* match iconSize */
+  height: auto !important;
+  pointer-events: none;
+}
+
+.driver-order-map-mode {
+  position: relative;
+  height: 100vh;
+  overflow: hidden;
+
+  .leaflet-div-icon {
+    background: none;
+    border: none;
+    padding: 0;
+    width: auto;
+    height: auto;
+  }
+
+  .leaflet-top.leaflet-left {
+    z-index: 400;
+  }
+
+  .map {
+    height: 100%;
+    width: 100%;
+    overflow: hidden;
+  }
+
+  &__locate-button {
+    position: absolute;
+    right: 18px;
+    top: auto;
+    bottom: 76px;
+    z-index: 10000;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 52px;
+    height: 52px;
+    padding: 0;
+    border: 0;
+    border-radius: 16px;
+    background: transparent;
+    box-shadow: none;
+    cursor: pointer;
+    pointer-events: auto;
+    overflow: visible;
+    touch-action: manipulation;
+
+    &:hover,
+    &:active {
+      transform: none;
+      box-shadow: none;
+    }
+
+    img {
+      display: block;
+      width: 52px;
+      height: 52px;
+      object-fit: contain;
+      pointer-events: none;
+      user-select: none;
+    }
+  }
+
+  .no-coords-orders {
+    position: absolute;
+    top: 0;
+    right: 0;
+    z-index: 400;
+    color: red;
+    background-color: white;
+    padding: 20px;
+    cursor: pointer;
+    border: none;
+  }
+
+  // inline-block чтобы сохранять элемент как единый блок размеров и не меняет центр/anchor
+  .order-marker {
+    display: inline-block;
+    width: auto;
+    height: auto;
+    position: relative;
+    cursor: pointer;
+
+    &--profit {
+      &--low {
+        .order-marker-hint {
+          background: #C19276;
+        }
+        .order-profit-estimation {
+          color: #3E0C0C;
+        }
+      }
+      &--medium {
+        .order-marker-hint {
+          background: #FFFB8E;
+        }
+        .order-profit-estimation {
+          color: #A37211;
+        }
+      }
+      &--high {
+        .order-marker-hint {
+          background: #A1FF97;
+        }
+        .order-profit-estimation {
+          color: #22A613;
+        }
+      }
+    }
+  }
+
+  .order-profit-estimation {
+    color: #636363;
+  }
+
+  .popup-list {
+    ul {
+      padding: 0;
+      list-style-type: none;
+      margin: 0;
+
+      li {
+        text-align: center;
+      }
+    }
+
+    border-radius: 10px;
+    height: 40px;
+    width: fit-content;
+    padding: 0 5px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background-color: #fff;
+    position: relative;
+    left: 50%;
+    transform: translate(-50%, -25%);
+    line-height: 1;
+    box-shadow: 3px 3px 10px -2px rgba(0, 0, 0, 0.75);
+    z-index: 3;
+  }
+
+  // Позиционируется absolute внутри иконки, для того чтобы не влиять на геометрию иконки(Leaflet позиционирует иконку корректно)
+  .order-marker-hint {
+    display: block;
+    position: absolute;
+    top: auto;
+    bottom: 48px;
+    left: 50%;
+    transform: translateX(-50%);
+    border-radius: 6px;
+    box-shadow: 0px 2px 6px 0px rgba(0, 0, 0, 0.24);
+    background: rgba(255, 255, 255, 1);
+    width: max-content;
+    min-width: 102px;
+    max-width: 168px;
+    z-index: 10;
+    margin-top: 0;
+    box-sizing: border-box;
+    pointer-events: none;
+
+    .row-info {
+      display: flex;
+      flex-direction: row;
+      justify-content: center;
+      align-items: center;
+      font-family: "Inter variant1", Tofu;
+      // font-style: italic;
+      font-weight: 400;
+      font-size: 11px;
+      line-height: 13px;
+      letter-spacing: 0px;
+      width: 100%;
+      text-align: center;
+      // text-wrap-mode: nowrap;
+
+      * {
+        font-family: "Inter variant1", Tofu;
+        // font-family: "Inter", serif;
+        // font-style: italic;
+        font-optical-sizing: auto;
+        font-weight: 400;
+        font-style: normal;
+        font-size: 11px;
+        line-height: 13px;
+        letter-spacing: 0px;
+      }
+
+      .competitors-num {
+        border-radius: 8px;
+        background-color: rgba(209, 120, 255, 1);
+        margin-left: 5px;
+        padding: 0 2px;
+      }
+
+      .price {
+        background: rgba(255, 223, 66, 1);
+        margin-right: 5px;
+        padding: 0 2px;
+      }
+
+      .tips {
+        background: rgba(202, 226, 108, 1);
+        margin-right: 5px;
+        padding: 0 2px;
+      }
+
+      &--address {
+        justify-content: flex-start;
+        min-width: 0;
+        max-width: 156px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        text-align: left;
+        padding: 0 5px;
+      }
+
+      .order-profit {}
+    }
+  }
+
+  img {
+    z-index: auto;
+  }
+
+  hr {
+    border: none;
+    background-color: #353535;
+    width: 2px;
+    position: absolute;
+    left: calc(50% - 1px);
+
+    &.top {
+      top: 25px;
+      z-index: 2;
+      height: 35px;
+    }
+
+    &.bottom {
+      top: auto;
+      bottom: 40px;
+      z-index: -1;
+      height: 10px;
+    }
+  }
+
+  .bottom-dot {
+    display: block;
+    position: absolute;
+    top: auto;
+    bottom: 37px;
+    left: calc(50% - 4px);
+    background-color: black;
+    width: 8px;
+    height: 7px;
+    border-radius: 50%;
+    z-index: -2;
+  }
+
+  .finish-drive-button {
+    position: fixed;
+    top: auto;
+    bottom: max(18px, calc(env(safe-area-inset-bottom, 0px) + 14px));
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 1000;
+    width: auto;
+    min-width: 0;
+    max-width: calc(100% - 32px);
+    margin: 0 auto;
+    padding: 9px 18px;
+    background-color: #FF2400;
+    color: white;
+    border: none;
+    border-radius: 999px;
+    font-weight: 600;
+    font-size: 14px;
+    line-height: 1.1;
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.18);
+    cursor: pointer;
+    transition: none;
+
+    &:hover {
+      background-color: darken(#FF2400, 5%);
+    }
+
+    @media (max-width: 1024px) {
+      top: auto;
+      bottom: max(18px, calc(env(safe-area-inset-bottom, 0px) + 14px));
+      width: auto;
+      max-width: calc(100% - 28px);
+      padding: 8px 16px;
+      font-size: 13px;
+    }
+
+    @media (max-width: 768px) {
+      top: auto;
+      bottom: max(18px, calc(env(safe-area-inset-bottom, 0px) + 14px));
+    }
+  }
+}
+
+@media (max-width: 560px) {
+  .driver {
+    &-tabs {
+      gap: 6px;
+      padding: 0 10px;
+
+      &__tab {
+        min-height: 36px;
+        padding: 6px 4px;
+        font-size: 12px;
+      }
+    }
+
+    &-statuses {
+      gap: 6px;
+
+      span {
+        label {
+          font-size: 13px;
+          line-height: 16px;
+        }
+
+        &:not(:last-child) {
+          padding-right: 5px;
+        }
+
+        .requested,
+        .recomended,
+        .trip,
+        .waiting,
+        .rating,
+        .urgently,
+        .taken {
+          width: 20px;
+          height: 20px;
+          border-radius: 7px;
+        }
+      }
+    }
+
+    &-orders {
+      &--active {
+        padding: 8px 10px 12px;
+      }
+    }
+  }
+
+  .driver-order-map-mode {
+    &__locate-button {
+      right: 12px;
+      bottom: 70px;
+      width: 44px;
+      height: 44px;
+
+      img {
+        width: 44px;
+        height: 44px;
+      }
+    }
+
+    .finish-drive-button {
+      top: auto;
+      bottom: max(16px, calc(env(safe-area-inset-bottom, 0px) + 12px));
+      width: auto;
+      max-width: calc(100% - 24px);
+      padding: 8px 14px;
+      font-size: 12px;
+      border-radius: 999px;
+    }
+  }
+}
+
+@media (max-width: 360px) {
+  .driver {
+    &-tabs {
+      padding: 0 8px;
+
+      &__tab {
+        font-size: 11px;
+      }
+    }
+  }
+}
+
+.errorIcon {
+  margin-top: 20px;
+  width: 250px;
+  height: 250px;
+  min-height: 250px;
+  text-align: center;
+  background: #fff;
+  box-shadow: 0px 0px 12px rgba(0, 0, 0, 0.35);
+  cursor: pointer;
+  border-radius: 100%;
+}
+
+/* Horizontal order strip: active/candidate orders should scroll by swipe, not stack. */
+.driver-orders--scroll.driver-orders--active {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: flex-start;
+  gap: 8px;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: visible;
+  padding: 8px 12px 12px;
+  scroll-snap-type: x proximity;
+  -webkit-overflow-scrolling: touch;
+}
+
+.driver-orders--scroll.driver-orders--active::-webkit-scrollbar {
+  display: none;
+}
+
+.driver-orders--scroll.driver-orders--active .mini-order {
+  flex: 0 0 136px;
+  width: 136px;
+  min-width: 136px;
+  scroll-snap-align: start;
+  margin: 0;
+}
+
+@media (max-width: 560px) {
+  .driver-orders--scroll.driver-orders--active {
+    gap: 7px;
+    padding: 7px 8px 10px;
+  }
+
+  .driver-orders--scroll.driver-orders--active .mini-order {
+    flex-basis: 118px;
+    width: 118px;
+    min-width: 118px;
+  }
+}
+
+.smooth-rotating-marker {
+  background: transparent !important;
+  border: 0 !important;
+}
+
+.driver-arrow-divicon.leaflet-marker-icon {
+  z-index: 10000 !important;
+  opacity: 1 !important;
+  display: block !important;
+  overflow: visible !important;
+}
+
+.smooth-rotating-marker__wrap {
+  position: relative;
+  display: block;
+  width: 40px;
+  height: 40px;
+  overflow: visible;
+}
+
+.smooth-rotating-marker__fallback-arrow {
+  display: none;
+}
+
+.driver-arrow-divicon .smooth-rotating-marker__fallback-arrow {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  display: block;
+  width: 0;
+  height: 0;
+  margin-left: -8px;
+  margin-top: -14px;
+  border-left: 8px solid transparent;
+  border-right: 8px solid transparent;
+  border-bottom: 27px solid #0B81E8;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, .28));
+  transform-origin: 50% 70%;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.smooth-rotating-marker__image,
+.driver-arrow-divicon .smooth-rotating-marker__image {
+  position: relative;
+  z-index: 1;
+  display: block !important;
+  width: 40px !important;
+  height: 40px !important;
+  object-fit: contain;
+  transform-origin: 50% 50%;
+  transition: transform .18s linear;
+  will-change: transform;
+  pointer-events: none;
+}
+
+.driver-order-map-mode .order-marker--profit-negative {
+  opacity: .66;
+  filter: saturate(.72);
+}
+
+.driver-order-map-mode .order-marker--profit-negative .order-marker-hint {
+  background: #f2efed !important;
+}
+
+.driver-order-map-mode .order-marker--profit-negative .order-profit-estimation {
+  color: #8B1010 !important;
+  font-weight: 700;
+}
+
+/* Driver map marker hint polish: only destination address, compact and readable. */
+.driver-order-map-mode .order-marker-hint.order-marker-hint--destination-only {
+  bottom: 50px;
+  min-width: 166px;
+  max-width: 256px;
+  width: max-content;
+  padding: 7px 9px 8px;
+  border-radius: 10px;
+  background: rgba(214, 174, 151, .96) !important;
+  color: #211915;
+  box-shadow: 0 6px 18px rgba(15, 23, 42, .18);
+  border: 1px solid rgba(255, 255, 255, .28);
+  backdrop-filter: blur(2px);
+}
+
+.driver-order-map-mode .order-marker-hint--destination-only .row-info {
+  display: none;
+}
+
+.driver-order-map-mode .order-marker-hint__destination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  max-width: 238px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: #201712;
+  font-family: "Inter variant1", Tofu;
+  font-size: 12px;
+  line-height: 15px;
+  font-weight: 800;
+}
+
+.driver-order-map-mode .order-marker-hint__destination b,
+.driver-order-map-mode .order-marker-hint__destination span {
+  min-width: 0;
+  color: #201712;
+  font-family: "Inter variant1", Tofu;
+  font-size: 12px;
+  line-height: 15px;
+  font-weight: 800;
+}
+
+.driver-order-map-mode .order-marker-hint__destination span {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.driver-order-map-mode .order-marker-hint__meta {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 4px;
+  color: #201712;
+  font-family: "Inter variant1", Tofu;
+  font-size: 11px;
+  line-height: 13px;
+  font-weight: 700;
+}
+
+.driver-order-map-mode .order-marker-hint__meta span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 14px;
+  padding: 0 4px;
+  border-radius: 4px;
+  color: #201712;
+  font-size: 11px;
+  line-height: 13px;
+  font-weight: 700;
+}
+
+.driver-order-map-mode .order-marker-hint__time {
+  padding: 0 1px !important;
+  background: transparent !important;
+}
+
+.driver-order-map-mode .order-marker-hint__meta .competitors-num {
+  background: #d7b7ff;
+}
+
+.driver-order-map-mode .order-marker-hint__meta .price {
+  background: #ffdf42;
+}
+
+.driver-order-map-mode .order-marker-hint__meta .tips {
+  background: #cbe66e;
+}
+
+.driver-order-map-mode .order-marker-hint__meta .order-profit {
+  background: rgba(255, 255, 255, .42);
+}
+
+.driver-order-map-mode .order-marker-hint__meta .order-profit-estimation {
+  padding: 0 1px;
+  background: transparent;
+  color: #201712;
+  font-weight: 800;
+}
+
+.driver-order-map-mode .order-marker--profit--low .order-marker-hint--destination-only {
+  background: rgba(211, 166, 139, .96) !important;
+}
+
+.driver-order-map-mode .order-marker--profit--medium .order-marker-hint--destination-only {
+  background: rgba(255, 248, 178, .97) !important;
+}
+
+.driver-order-map-mode .order-marker--profit--high .order-marker-hint--destination-only {
+  background: rgba(214, 248, 212, .97) !important;
+}
+
+.driver-order-map-mode .order-marker--profit-negative {
+  opacity: 1 !important;
+  filter: saturate(.78) brightness(.98) !important;
+}
+
+.driver-order-map-mode .order-marker--profit-negative .order-marker-hint--destination-only {
+  background: rgba(242, 239, 237, .97) !important;
+}
+
+
+/* Driver list pages must scroll on mobile; map tab itself remains fixed inside its own container. */
+.page-section.driver {
+  min-height: 0;
+  height: 100%;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  padding-bottom: max(16px, env(safe-area-inset-bottom, 0px));
+}
+
+.driver-order-map-mode {
+  height: 100% !important;
+  min-height: 100% !important;
+}
+
+/* Final driver orders scroll fix: keep the page/header in place and scroll only the order cards. */
+.page-section.driver {
+  flex: 1 1 auto;
+  height: auto !important;
+  min-height: 0;
+  max-height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden !important;
+  padding-bottom: 0;
+}
+
+.page-section.driver > .button,
+.page-section.driver > .separator,
+.page-section.driver .separator {
+  flex: 0 0 auto;
+}
+
+.page-section.driver .driver-orders {
+  flex: 0 0 auto;
+  min-height: 0;
+}
+
+.page-section.driver .driver-orders-empty--standalone {
+  flex: 0 0 auto;
+  min-height: 0;
+  margin: 4px 4px 10px;
+  color: #222;
+  font-size: 13px;
+  line-height: 18px;
+}
+
+.page-section.driver .driver-orders--scroll.driver-orders--active {
+  flex: 0 0 auto;
+  max-height: 148px;
+  overflow-x: auto !important;
+  overflow-y: hidden !important;
+}
+
+.page-section.driver .driver-orders--ready.driver-orders--active,
+.page-section.driver .driver-orders--history.driver-orders--active {
+  flex: 1 1 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden !important;
+  padding: 8px 8px 0;
+}
+
+.page-section.driver .driver-orders--ready:not(.driver-orders--active),
+.page-section.driver .driver-orders--history:not(.driver-orders--active) {
+  flex: 0 0 auto;
+  min-height: 0;
+  height: 0;
+  padding: 0;
+  overflow: hidden !important;
+}
+
+.page-section.driver .driver-statuses {
+  flex: 0 0 auto;
+  margin: 0 0 8px;
+  padding: 0 0 2px;
+}
+
+.page-section.driver .driver-orders__list {
+  flex: 1 1 auto;
+  min-height: 0;
+  width: 100%;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  padding: 0 2px max(20px, env(safe-area-inset-bottom, 0px));
+  box-sizing: border-box;
+}
+
+.page-section.driver .driver-orders__list .mini-order,
+.page-section.driver .driver-orders__list .status-card,
+.page-section.driver .driver-orders__list .driver-order-wide-mode-status-card {
+  margin-left: 0;
+  margin-right: 0;
+}
+
+@media (max-width: 560px) {
+  .page-section.driver .driver-orders--scroll.driver-orders--active {
+    max-height: 132px;
+  }
+
+  .page-section.driver .driver-orders--ready.driver-orders--active,
+  .page-section.driver .driver-orders--history.driver-orders--active {
+    padding: 6px 6px 0;
+  }
+
+  .page-section.driver .driver-orders__list {
+    padding-bottom: max(18px, env(safe-area-inset-bottom, 0px));
+  }
+}
+
+
+/* Recovery: the horizontal top strip must show full mini cards; only the order list below scrolls. */
+.page-section.driver .driver-orders--scroll.driver-orders--active {
+  min-height: 158px;
+  max-height: none !important;
+  overflow-x: auto !important;
+  overflow-y: visible !important;
+  padding-bottom: 14px;
+}
+
+.page-section.driver .driver-orders--scroll.driver-orders--active .mini-order {
+  box-sizing: border-box;
+  min-height: 138px;
+}
+
+@media (max-width: 560px) {
+  .page-section.driver .driver-orders--scroll.driver-orders--active {
+    min-height: 150px;
+    max-height: none !important;
+    padding-bottom: 12px;
+  }
+
+  .page-section.driver .driver-orders--scroll.driver-orders--active .mini-order {
+    min-height: 132px;
+  }
+}
+
+/* AUDIT_RECOVERY: keep the top active-order strip full-height; only the lower order list should scroll. */
+.page-section.driver .driver-orders--scroll.driver-orders--active {
+  flex: 0 0 auto;
+  min-height: 176px !important;
+  overflow-x: auto !important;
+  overflow-y: visible !important;
+  padding-top: 8px;
+  padding-bottom: 18px;
+  margin-bottom: 6px;
+}
+
+.page-section.driver .driver-orders--scroll.driver-orders--active .mini-order {
+  flex: 0 0 136px;
+  width: 136px;
+  min-width: 136px;
+  min-height: 148px !important;
+  margin-bottom: 0 !important;
+}
+
+@media (max-width: 560px) {
+  .page-section.driver .driver-orders--scroll.driver-orders--active {
+    min-height: 168px !important;
+    padding-top: 7px;
+    padding-bottom: 16px;
+  }
+
+  .page-section.driver .driver-orders--scroll.driver-orders--active .mini-order {
+    flex-basis: 128px;
+    width: 128px;
+    min-width: 128px;
+    min-height: 142px !important;
+  }
+}
