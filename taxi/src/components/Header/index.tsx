@@ -192,7 +192,7 @@ function Header({
 
   const menuItems: IMenuItem[] = []
   menuItems.push({
-    label: t('profilee'),
+    label: t('profile'),
     action: () => {
       setProfileModal({ isOpen: true })
       setMenuOpened(false)
