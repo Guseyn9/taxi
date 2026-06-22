@@ -20,7 +20,7 @@ import { withLayout } from '../../HOCs/withLayout'
 import { addHiddenOrder } from '../../tools/utils'
 import * as API from '../../API'
 import { getOfferEvent, getStoredDriverOffer, isOfferOrder, updateStoredDriverOfferStatus } from '../../tools/driverOffer'
-import { BROWSER_EMULATOR_STATE_EVENT, getVisibleBrowserEmulatorOrderIds, isAnyBrowserEmulatorModeRunning } from '../../tools/emulatorMode'
+import { BROWSER_EMULATOR_STATE_EVENT, getVisibleBrowserEmulatorOrderIds, isAnyBrowserEmulatorModeRunning, isExternalEmulatorEnabled } from '../../tools/emulatorMode'
 import { writeFlowEvent } from '../../tools/flowLog'
 import { writeRawLog } from '../../tools/rawLog'
 
@@ -88,14 +88,14 @@ const Driver: React.FC<IProps> = ({
   const shownDriverFinishedRatings = useRef<Record<string, true>>({})
   const shownDriverOfferNotifications = useRef<Record<string, string>>({})
   const shownDriverClosedNotifications = useRef<Record<string, true>>({})
-  const [emulatorOrdersEnabled, setEmulatorOrdersEnabled] = useState(() => isAnyBrowserEmulatorModeRunning())
+  const [emulatorOrdersEnabled, setEmulatorOrdersEnabled] = useState(() => isAnyBrowserEmulatorModeRunning() || isExternalEmulatorEnabled())
 
   useEffect(() => {
     if (user?.u_role !== EUserRoles.Driver)
       return undefined
 
     const syncEmulatorMode = (event?: Event) => {
-      const enabled = isAnyBrowserEmulatorModeRunning()
+      const enabled = isAnyBrowserEmulatorModeRunning() || isExternalEmulatorEnabled()
       setEmulatorOrdersEnabled(enabled)
       clearOrders()
       closeAllModals()

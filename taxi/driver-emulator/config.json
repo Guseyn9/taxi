@@ -264,8 +264,15 @@
     "defaultMode": "offer",
     "count": 1,
     "useManagerAsClient": true,
-    "clients": [],
-    "contactPhone": "+70000000000",
+    "clients": [
+      { 
+        "name": "lalami", 
+        "login": "lalami@gmail.com", 
+        "password": "88888888", 
+        "type": "e-mail" 
+      }
+    ],
+    "contactPhone": "+2333247684654",
     "customerPrice": [
       280,
       420
@@ -314,5 +321,22 @@
       }
     ]
   },
-  "gruzvillFallbackCarClassId": "1"
+  "gruzvillFallbackCarClassId": "1",
+  "clientSimulator": {
+    "testerUserId": "966",
+    "betweenOrdersSeconds": 30,
+    "loop": true,
+    "pollIntervalMs": 2000,
+    "responseTimeoutMs": 60000,
+    "scenarios": [
+      "vote-selected",
+      "vote-not-selected",
+      "vote-lost",
+      "vote-auto-select",
+      "vote-cancelled",
+      "vote-new-round",
+      "client-cancel-after-select",
+      "no-show"
+    ]
+  }
 }

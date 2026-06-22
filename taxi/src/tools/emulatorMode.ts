@@ -321,6 +321,64 @@ export function isAnyBrowserEmulatorModeRunning() {
   return isBrowserEmulatorRunning('clients') || isBrowserEmulatorRunning('drivers')
 }
 
+// Внешний (headless) эмулятор: заказы создаёт сторонний скрипт (driver-emulator/client-simulator),
+// а тестировщик работает в реальном Driver UI. Этот режим открывает emulator-only gate для водителя,
+// чтобы реальные заказы с backend были видны, не запуская браузерный эмулятор.
+// Включается флагом в localStorage или query-параметром ?driverEmulator=1 (он же extEmulator).
+export const EXTERNAL_EMULATOR_FLAG_KEY = 'gruzvill_external_emulator'
+
+export function isExternalEmulatorEnabled() {
+  try {
+    if (typeof window !== 'undefined' && window.location && typeof URLSearchParams !== 'undefined') {
+      const params = new URLSearchParams(window.location.search)
+      const raw = params.get('driverEmulator') ?? params.get('extEmulator')
+      if (raw !== null) {
+        const enabled = raw === '' || normalizeFlag(raw)
+        const storage = getStorage()
+        if (storage) storage.setItem(EXTERNAL_EMULATOR_FLAG_KEY, enabled ? '1' : '0')
+        return enabled
+      }
+    }
+  } catch {
+    // Разбор URL — best-effort, не должен ронять загрузку списка заказов.
+  }
+
+  const storage = getStorage()
+  if (!storage) return false
+  return normalizeFlag(storage.getItem(EXTERNAL_EMULATOR_FLAG_KEY))
+}
+
+export function setExternalEmulatorEnabled(enabled: boolean) {
+  const storage = getStorage()
+  if (!storage) return
+  storage.setItem(EXTERNAL_EMULATOR_FLAG_KEY, enabled ? '1' : '0')
+  try {
+    window.dispatchEvent(new CustomEvent(BROWSER_EMULATOR_STATE_EVENT, { detail: { external: enabled } }))
+  } catch {
+    // CustomEvent недоступен только в очень старых webview.
+  }
+}
+
+// Id водителя-цели (трейни) в заказе. При самообучении один тестовый клиент общий для всех
+// водителей, поэтому клиент-эмулятор помечает заказ id конкретного водителя, чтобы остальные
+// водители не видели и не "ловили" чужие тренировочные заказы. Метка читается из b_options
+// (training_driver_id) либо из комментария в виде токена [DRV:<id>]. Пусто => заказ общий.
+export function getOrderTrainingDriverId(order: Partial<IOrder> | any): string | null {
+  if (!order) return null
+
+  const options = getOrderOptions(order)
+  const fromOptions = options?.training_driver_id ?? options?.trainingDriverId ?? options?.driver_target_id
+  if (fromOptions !== undefined && fromOptions !== null && String(fromOptions).trim() !== '')
+    return String(fromOptions).trim()
+
+  const text = [
+    String(order?.b_custom_comment || ''),
+    String(order?.b_comments || ''),
+  ].join(' ')
+  const match = text.match(/\[DRV:\s*([0-9]+)\]/i)
+  return match ? match[1] : null
+}
+
 export function getRunningBrowserEmulatorModes() {
   return (['clients', 'drivers'] as TBrowserEmulatorMode[])
     .filter(mode => isBrowserEmulatorRunning(mode))

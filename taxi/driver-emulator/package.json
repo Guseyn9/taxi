@@ -15,7 +15,8 @@
     "panel": "node src/control-panel.js",
     "panel:auto": "node src/control-panel.js",
     "generate:order": "node src/order-generator.js",
-    "generate:orders": "node src/order-generator.js --count 3"
+    "generate:orders": "node src/order-generator.js --count 3",
+    "client": "node src/scenario-runner.js"
   },
   "engines": {
     "node": ">=18"

@@ -1,0 +1,3 @@
+{"scenario":"vote-selected","scenarioName":"Vote Driver Selected","orderId":7628,"testerUserId":"966","startedAt":"2026-06-19T12:15:12.762Z","createdAt":"2026-06-19T12:15:15.969Z"}
+{"scenario":"vote-not-selected","scenarioName":"Vote Other Driver Selected","orderId":7629,"testerUserId":"966","startedAt":"2026-06-19T12:15:55.768Z","createdAt":"2026-06-19T12:15:59.775Z"}
+{"scenario":"vote-lost","scenarioName":"Vote Lost","orderId":7630,"testerUserId":"966","startedAt":"2026-06-19T12:17:31.930Z","createdAt":"2026-06-19T12:17:33.623Z"}

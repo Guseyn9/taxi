@@ -5,8 +5,10 @@ import { estimateOrder } from '../../tools/order'
 import {
   filterOrdersForBrowserEmulator,
   filterOrderDriversForBrowserEmulator,
+  getOrderTrainingDriverId,
   isAnyBrowserEmulatorModeRunning,
   isBrowserEmulatorRunning,
+  isExternalEmulatorEnabled,
   isLocalBrowserEmulatorOrder,
   shouldHideOrderFromNormalMode,
 } from '../../tools/emulatorMode'
@@ -29,7 +31,7 @@ function shouldUseStrictEmulatorOnlyOrders(user: any) {
 }
 
 function shouldForceEmptyDriverOrders(user: any) {
-  return shouldUseStrictEmulatorOnlyOrders(user) && !isAnyBrowserEmulatorModeRunning()
+  return shouldUseStrictEmulatorOnlyOrders(user) && !isAnyBrowserEmulatorModeRunning() && !isExternalEmulatorEnabled()
 }
 
 function filterOrdersForStrictDriverEmulatorMode(
@@ -72,6 +74,11 @@ function filterOrdersByDriverDistance(orders: IOrder[] | null, user: any) {
   if (!orders || user?.u_role !== EUserRoles.Driver)
     return orders
 
+  // Во внешнем режиме эмулятора не прячем заказы по расстоянию: тестировщик может быть
+  // в другом городе, а тестовые заказы создаются в фиксированной точке (Ростов-на-Дону).
+  if (isExternalEmulatorEnabled())
+    return orders
+
   return orders.filter(order => {
     const emptyMileageKm = getOrderEmptyMileageKm(order)
     if (emptyMileageKm === null)
@@ -82,6 +89,40 @@ function filterOrdersByDriverDistance(orders: IOrder[] | null, user: any) {
 
     // Если водитель уже выполняет поездку, не прячем её даже при плохом GPS/тестовых координатах.
     return isCurrentDriverActiveTrip(order, user?.u_id)
+  })
+}
+
+// Разделение одного тестового клиента между водителями: в режиме внешнего эмулятора
+// водитель видит только заказы, помеченные его id ([DRV:<id>]), плюс "общие" без метки.
+// Это не даёт во время обучения ловить чужие тренировочные заказы.
+function filterReadyOrdersByTrainingDriver(orders: IOrder[] | null, user: any): IOrder[] | null {
+  if (!orders || !isExternalEmulatorEnabled())
+    return orders
+
+  const uid = String(user?.u_id ?? '')
+  if (!uid)
+    return orders
+
+  return orders.filter(order => {
+    const target = getOrderTrainingDriverId(order)
+    return !target || String(target) === uid
+  })
+}
+
+function filterActiveOrdersByTrainingDriver(orders: IOrder[] | null, user: any): IOrder[] | null {
+  if (!orders || !isExternalEmulatorEnabled())
+    return orders
+
+  const uid = String(user?.u_id ?? '')
+  if (!uid)
+    return orders
+
+  return orders.filter(order => {
+    const target = getOrderTrainingDriverId(order)
+    if (!target || String(target) === uid)
+      return true
+    // Заказ, в котором водитель уже участвует (исполнитель/кандидат), не прячем.
+    return isDriverRelatedActiveOrder(order, uid)
   })
 }
 
@@ -153,10 +194,18 @@ export function order(
   const driverEmulatorMode = isBrowserEmulatorRunning('drivers')
   const user = currentUser(state)
 
-  if (shouldUseStrictEmulatorOnlyOrders(user) && !clientEmulatorMode && !driverEmulatorMode) return undefined
+  if (shouldUseStrictEmulatorOnlyOrders(user) && !clientEmulatorMode && !driverEmulatorMode && !isExternalEmulatorEnabled()) return undefined
   if (clientEmulatorMode && !isLocalBrowserEmulatorOrder(currentOrder, 'clients')) return undefined
   if (driverEmulatorMode && !isLocalBrowserEmulatorOrder(currentOrder, 'drivers')) return undefined
   if (!clientEmulatorMode && !driverEmulatorMode && shouldHideOrderFromNormalMode(currentOrder)) return undefined
+
+  // Внешний эмулятор: чужой тренировочный заказ ([DRV:<id>] другого водителя) не отдаём,
+  // кроме случая, когда водитель уже участвует в нём.
+  if (isExternalEmulatorEnabled()) {
+    const target = getOrderTrainingDriverId(currentOrder)
+    const uid = String(user?.u_id ?? '')
+    if (target && uid && String(target) !== uid && !isDriverRelatedActiveOrder(currentOrder, uid)) return undefined
+  }
 
   const filteredOrder = filterOrderDriversForBrowserEmulator(currentOrder)
   const currentGeoPosition = geoposition(state)
@@ -268,8 +317,9 @@ export const activeOrders = createSelector(
     const filtered = filterOrdersForStrictDriverEmulatorMode(estimated, 'active', user)
     const restored = shouldUseStrictEmulatorOnlyOrders(user) ? filtered : restoreDriverRelatedOrdersAfterEmulatorFilter(estimated, filtered, user)
     const distanceFiltered = filterOrdersByDriverDistance(restored, user)
+    const trainingScoped = filterActiveOrdersByTrainingDriver(distanceFiltered, user)
 
-    return sortOrdersByProfit(distanceFiltered)
+    return sortOrdersByProfit(trainingScoped)
   },
 )
 
@@ -284,8 +334,9 @@ export const readyOrders = createSelector(
       'ready',
       user,
     )
+    const trainingScoped = filterReadyOrdersByTrainingDriver(filtered, user)
 
-    return sortOrdersByProfit(filterOrdersByDriverDistance(filtered, user))
+    return sortOrdersByProfit(filterOrdersByDriverDistance(trainingScoped, user))
   },
 )
 

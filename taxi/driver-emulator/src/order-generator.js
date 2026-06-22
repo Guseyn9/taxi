@@ -200,14 +200,18 @@ function getModeForOrder(generator, modeArg = null, index = 0) {
   return String(sequence[index % sequence.length] || generator.defaultMode || 'offer').toLowerCase();
 }
 
-function buildOrderPayload(generator, modeArg = null, index = 0) {
+function buildOrderPayload(generator, modeArg = null, index = 0, overrides = {}) {
   const mode = getModeForOrder(generator, modeArg, index);
   const points = generator.points.length ? generator.points : defaultPoints();
   const selected = pick(points, points[0]);
   const from = jitterPoint(selected.from);
   const to = jitterPoint(selected.to);
   const price = getPrice(generator.customerPrice);
-  const comment = pick(generator.comments, 'Тестовый заказ для проверки водителей');
+  // overrides.comment lets the client-simulator stamp the scenario/case name into the order,
+  // so the human driver-tester can recognize which case is running from the order card.
+  const comment = overrides.comment !== undefined && overrides.comment !== null ?
+    overrides.comment :
+    pick(generator.comments, 'Тестовый заказ для проверки водителей');
 
   const payload = {
     b_start_address: safeString(from.address, 'Адрес подачи'),
@@ -269,11 +273,11 @@ function extractOrderId(response) {
   return response?.data?.b_id || response?.b_id || response?.data?.booking_id || response?.booking_id || response?.id || null;
 }
 
-async function createOrder(config, generator, client, index, mode) {
+async function createOrder(config, generator, client, index, mode, overrides = {}) {
   const label = client.name || client.login || `client ${index + 1}`;
   console.log(`[order-generator] login client: ${label}`);
   const session = await loginSession(config.apiBase, client, label);
-  const { payload, meta } = buildOrderPayload(generator, mode, index);
+  const { payload, meta } = buildOrderPayload(generator, mode, index, overrides);
 
   const attempts = [payload];
   if (generator.retryWithoutClass && payload.b_car_class !== undefined) {
@@ -301,7 +305,7 @@ async function createOrder(config, generator, client, index, mode) {
       }
 
       console.log(`[order-generator] created order ${orderId || '(id unknown)'}; mode=${meta.mode}; price=${meta.price}; from=${meta.from.shortAddress || meta.from.address}; to=${meta.to.shortAddress || meta.to.address}`);
-      return { ok: true, orderId, response };
+      return { ok: true, orderId, response, session };
     } catch (error) {
       lastError = error;
       console.log(`[order-generator] create failed: ${stringifyError(error)}`);
@@ -335,7 +339,20 @@ async function main() {
   }
 }
 
-main().catch(error => {
-  console.error(`[order-generator] failed: ${stringifyError(error)}`);
-  process.exit(1);
-});
+if (require.main === module) {
+  main().catch(error => {
+    console.error(`[order-generator] failed: ${stringifyError(error)}`);
+    process.exit(1);
+  });
+}
+
+module.exports = {
+  getGeneratorConfig,
+  getClients,
+  loginSession,
+  buildOrderPayload,
+  createOrder,
+  postDrive,
+  confirmOrder,
+  extractOrderId,
+};

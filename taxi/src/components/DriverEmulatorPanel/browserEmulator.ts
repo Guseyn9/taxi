@@ -1747,6 +1747,25 @@ function removeClientOrderOwner(orderId: any) {
   writeClientOrderOwnerMap(map)
 }
 
+// Телефон должен быть уникальным: backend gruzvill отклоняет регистрацию с
+// «busy user data: double phone», если номер уже занят. Старая схема брала
+// несколько цифр из base36-runId в фиксированном диапазоне +1009xxxxx и почти
+// всегда давала коллизии между запусками/тестерами. Берём высокоэнтропийный
+// номер из полного таймстампа + случайности + индекса аккаунта.
+function makeUniqueClientPhone(index = 0) {
+  const ms = String(Date.now())
+  const rnd = String(Math.floor(Math.random() * 1e6)).padStart(6, '0')
+  const idx = String((Number(index) % 100) + 1).padStart(2, '0')
+  const digits = `${ms}${rnd}${idx}`.replace(/\D/g, '')
+  return `+1009${digits.slice(-10)}`
+}
+
+function makeUniqueClientEmail(index = 0) {
+  const runId = makeClientRunId()
+  const padded = String((Number(index) % 100) + 1).padStart(2, '0')
+  return `gruzvill.client.${runId}.${padded}@ibronevik.ru`
+}
+
 function createGeneratedClientAccounts(count = CLIENT_ACCOUNTS_COUNT) {
   const runId = makeClientRunId()
   return Array.from({ length: count }).map((_, index) => {
@@ -1756,7 +1775,7 @@ function createGeneratedClientAccounts(count = CLIENT_ACCOUNTS_COUNT) {
       name: `Gruzvill Client ${padded}`,
       login: `gruzvill.client.${runId}.${padded}@ibronevik.ru`,
       email: `gruzvill.client.${runId}.${padded}@ibronevik.ru`,
-      phone: `+1009${runId.replace(/\D/g, '').slice(-5).padStart(5, '0')}${padded}`.slice(0, 16),
+      phone: makeUniqueClientPhone(index),
       password: '12345678',
       type: 'e-mail',
     }
@@ -2113,7 +2132,25 @@ function isWrongLoginError(error: any) {
   return text.includes('wrong login') || text.includes('not found') || text.includes('auth failed')
 }
 
-function isDuplicateRegisterError(error: any) {
+// «double phone» / «double e-mail» означают, что телефон или почта заняты ДРУГИМ
+// пользователем, а не что наш аккаунт уже создан. Это надо отличать от настоящего
+// «аккаунт уже зарегистрирован», иначе код уходит логиниться по несуществующему
+// аккаунту и падает в «wrong login».
+function isPhoneTakenError(error: any) {
+  const text = normalizeErrorMessage(error).toLowerCase()
+  return text.includes('double phone') || (text.includes('phone') && text.includes('busy'))
+}
+
+function isEmailTakenError(error: any) {
+  const text = normalizeErrorMessage(error).toLowerCase()
+  return text.includes('double email') ||
+    text.includes('double e-mail') ||
+    text.includes('double mail') ||
+    ((text.includes('email') || text.includes('e-mail')) && text.includes('busy'))
+}
+
+function isAccountAlreadyExistsError(error: any) {
+  if (isPhoneTakenError(error) || isEmailTakenError(error)) return false
   const text = normalizeErrorMessage(error).toLowerCase()
   return text.includes('busy user data') || text.includes('duplicate') || text.includes('already') || text.includes('существ')
 }
@@ -2377,7 +2414,7 @@ export class BrowserClientOrderEmulator {
 
   private async initClient(client: ClientBotState) {
     try {
-      client.session = await this.loginOrRegisterClient(client.account, client.name)
+      client.session = await this.loginOrRegisterClient(client.account, client.name, client.index)
       const role = getSessionRole(client.session)
       if (role !== null && role !== 1) throw new Error(`wrong user role: ${role}`)
       saveEmulatedClientIdentity({
@@ -2392,18 +2429,52 @@ export class BrowserClientOrderEmulator {
     }
   }
 
-  private async loginOrRegisterClient(account: any, label: string) {
+  private persistClientAccounts() {
+    if (!this.clients.length) return
+    saveStoredClientAccounts(this.clients.map(client => client.account))
+  }
+
+  private async loginOrRegisterClient(account: any, label: string, index = 0) {
     try {
       return await loginSession(account, label)
     } catch (error) {
       if (!isWrongLoginError(error) && !normalizeErrorMessage(error).toLowerCase().includes('auth failed')) throw error
-      try {
-        await registerClientAccount(account)
-        this.log(`[${label}] клиент зарегистрирован`)
-      } catch (registerError) {
-        if (!isDuplicateRegisterError(registerError)) throw registerError
-        this.log(`[${label}] клиент уже был зарегистрирован, пробую войти`)
+
+      let registered = false
+      let lastError: any = null
+      for (let attempt = 0; attempt < 5 && !registered; attempt += 1) {
+        try {
+          await registerClientAccount(account)
+          registered = true
+          this.log(`[${label}] клиент зарегистрирован${attempt ? ` (попытка ${attempt + 1})` : ''}`)
+        } catch (registerError) {
+          lastError = registerError
+          if (isPhoneTakenError(registerError)) {
+            account.phone = makeUniqueClientPhone(index)
+            this.log(`[${label}] телефон занят, пробую другой номер: ${account.phone}`)
+            continue
+          }
+          if (isEmailTakenError(registerError)) {
+            const email = makeUniqueClientEmail(index)
+            account.login = email
+            account.email = email
+            this.log(`[${label}] e-mail занят, пробую другой адрес: ${email}`)
+            continue
+          }
+          if (isAccountAlreadyExistsError(registerError)) {
+            this.log(`[${label}] клиент уже был зарегистрирован, пробую войти`)
+            break
+          }
+          throw registerError
+        }
       }
+
+      if (!registered && lastError && !isAccountAlreadyExistsError(lastError))
+        throw lastError
+
+      // Телефон/почта могли смениться при перегенерации — сохраняем обновлённый список,
+      // чтобы при следующем запуске не повторять занятые значения.
+      this.persistClientAccounts()
       return loginSession(account, label)
     }
   }

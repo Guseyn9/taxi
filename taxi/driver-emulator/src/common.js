@@ -30,6 +30,11 @@ function writeJson(filePath, data) {
   fs.writeFileSync(filePath, `${JSON.stringify(data, null, 2)}\n`, 'utf8');
 }
 
+function appendJsonl(filePath, data) {
+  fs.mkdirSync(path.dirname(filePath), { recursive: true });
+  fs.appendFileSync(filePath, `${JSON.stringify(data)}\n`, 'utf8');
+}
+
 function readConfig() {
   if (!fs.existsSync(configPath)) {
     throw new Error(`config.json not found: ${configPath}`);
@@ -129,6 +134,7 @@ module.exports = {
   pick,
   readJson,
   writeJson,
+  appendJsonl,
   readConfig,
   resolveProjectPath,
   apiPostUrlEncoded,

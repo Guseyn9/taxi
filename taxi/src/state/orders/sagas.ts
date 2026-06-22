@@ -14,7 +14,7 @@ import { distanceBetweenEarthCoordinates } from '../../tools/utils'
 import { getApiErrorMessage } from '../../tools/apiMessages'
 import { getStableRemainingLifetimeSeconds } from '../../tools/reliableTime'
 import { getPassengerConfirmedChoice } from '../../tools/driverOffer'
-import { getVisibleBrowserEmulatorOrderIds, isAnyBrowserEmulatorModeRunning } from '../../tools/emulatorMode'
+import { getVisibleBrowserEmulatorOrderIds, isAnyBrowserEmulatorModeRunning, isExternalEmulatorEnabled } from '../../tools/emulatorMode'
 import { writeFlowEvent } from '../../tools/flowLog'
 import { writeRawLog } from '../../tools/rawLog'
 import { t, TRANSLATION } from '../../localization'
@@ -43,7 +43,7 @@ let lastAreasBetweenPointsKey = ''
 const shownClientVotingTimeoutNotifications: Record<string, true> = {}
 
 function isDriverEmulatorOnlyUiForcedEmpty(user: any) {
-  return user?.u_role === EUserRoles.Driver && !isAnyBrowserEmulatorModeRunning()
+  return user?.u_role === EUserRoles.Driver && !isAnyBrowserEmulatorModeRunning() && !isExternalEmulatorEnabled()
 }
 
 function writeOrdersUiForcedEmpty(reason: string, type: 'activeOrders' | 'readyOrders' | 'historyOrders', previousOrders: IOrder[] = []) {
