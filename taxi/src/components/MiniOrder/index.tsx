@@ -8,10 +8,10 @@ import {
   IUser,
 } from '../../types/types'
 import images from '../../constants/images'
-import statusNewIcon from './status-icons/new.png'
+import statusNewIcon from './status-icons/new-icon.svg'
 import statusSearchIcon from './status-icons/search.png'
-import statusVotingIcon from './status-icons/voting.png'
-import statusOfferIcon from './status-icons/offer.png'
+import statusVotingIcon from './status-icons/voting.svg'
+import statusOfferIcon from './status-icons/offer-icon.svg'
 import statusDriverIcon from './status-icons/driver.png'
 import statusDriverGoingIcon from './status-icons/driver-going.png'
 import statusArrivedIcon from './status-icons/arrived.png'
@@ -425,12 +425,6 @@ function MiniOrder({
     >
       <span className="colored">№{order.b_id}</span>
 
-      {offerOrder && (
-        <span className="mini-order__offer-badge">
-          {t(TRANSLATION.CLIENT_OFFER_ORDER_MODE)}
-        </span>
-      )}
-
       {!isHistory && driver && driver.u_id === user.u_id && driver.c_state !== EBookingDriverState.Started && (
         <span
           className="mini-order__chat-btn"
@@ -463,7 +457,6 @@ function MiniOrder({
       </span>
 
       <div className={cn('mini-order__amount', { '_blue': payment.type === EPaymentType.Customer })}>
-        <div className="amount__value">{CURRENCY.SIGN}</div>
         <div className="amount__value">
           {payment.value + (order?.b_options?.pricingModel?.calculationType === 'incomplete' ? '+?' : '')}
         </div>

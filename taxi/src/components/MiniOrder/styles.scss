@@ -34,7 +34,7 @@
   }
 
   @include sm {
-    width: 120px;
+    width: 130px;
     margin: 0 10px 18px 0;
   }
 
@@ -80,7 +80,7 @@
   .mini-order__amount {
     font-size: 16px;
     display: flex;
-    flex-direction: row;
+    flex-direction: column-reverse;
     align-items: center;
     font-weight: 600;
     margin-top: 4px;

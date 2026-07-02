@@ -617,6 +617,7 @@ function ProfileModalContent({
               defaultValues={defaultValues}
               fields={fields}
               onSubmit={handleSubmitForm}
+              onClose={() => setProfileModal({ ...defaultProfileModal })}
               onChange={handleChange}
               state={formState}
               errors={errors}

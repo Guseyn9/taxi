@@ -1,3 +1,191 @@
 {"scenario":"vote-selected","scenarioName":"Vote Driver Selected","orderId":7628,"testerUserId":"966","startedAt":"2026-06-19T12:15:12.762Z","createdAt":"2026-06-19T12:15:15.969Z"}
 {"scenario":"vote-not-selected","scenarioName":"Vote Other Driver Selected","orderId":7629,"testerUserId":"966","startedAt":"2026-06-19T12:15:55.768Z","createdAt":"2026-06-19T12:15:59.775Z"}
 {"scenario":"vote-lost","scenarioName":"Vote Lost","orderId":7630,"testerUserId":"966","startedAt":"2026-06-19T12:17:31.930Z","createdAt":"2026-06-19T12:17:33.623Z"}
+{"scenario":"vote-selected","scenarioName":"Vote Driver Selected","orderId":7691,"testerUserId":"966","startedAt":"2026-06-22T11:39:48.441Z","createdAt":"2026-06-22T11:39:52.472Z"}
+{"scenario":"vote-lost","scenarioName":"Vote Lost","orderId":7692,"testerUserId":"966","startedAt":"2026-06-22T11:41:43.457Z","createdAt":"2026-06-22T11:41:49.289Z"}
+{"scenario":"vote-auto-select","scenarioName":"Vote Auto Select","orderId":7693,"testerUserId":"966","startedAt":"2026-06-22T11:43:24.740Z","createdAt":"2026-06-22T11:43:27.506Z"}
+{"scenario":"vote-cancelled","scenarioName":"Vote Cancel During Voting","orderId":7694,"testerUserId":"966","startedAt":"2026-06-22T11:44:58.072Z","createdAt":"2026-06-22T11:45:00.669Z"}
+{"scenario":"vote-new-round","scenarioName":"Vote New Round","orderId":7695,"testerUserId":"966","startedAt":"2026-06-22T11:46:38.409Z","createdAt":"2026-06-22T11:46:41.015Z"}
+{"scenario":"client-cancel-after-select","scenarioName":"Client Cancel After Selection","orderId":7696,"testerUserId":"966","startedAt":"2026-06-22T11:48:12.779Z","createdAt":"2026-06-22T11:48:16.964Z"}
+{"scenario":"vote-lost","scenarioName":"Vote Lost","orderId":7697,"testerUserId":"966","startedAt":"2026-06-22T11:55:54.975Z","createdAt":"2026-06-22T11:56:02.753Z"}
+{"scenario":"vote-auto-select","scenarioName":"Vote Auto Select","orderId":7698,"testerUserId":"966","startedAt":"2026-06-22T11:57:47.057Z","createdAt":"2026-06-22T11:57:49.966Z"}
+{"scenario":"vote-selected","scenarioName":"Vote Driver Selected","orderId":7810,"testerUserId":"966","startedAt":"2026-06-23T11:27:50.699Z","createdAt":"2026-06-23T11:27:53.444Z"}
+{"scenario":"vote-not-selected","scenarioName":"Vote Other Driver Selected","orderId":7811,"testerUserId":"966","startedAt":"2026-06-23T11:29:24.222Z","createdAt":"2026-06-23T11:29:25.899Z"}
+{"scenario":"vote-lost","scenarioName":"Vote Lost","orderId":7812,"testerUserId":"966","startedAt":"2026-06-23T11:30:57.130Z","createdAt":"2026-06-23T11:31:01.870Z"}
+{"scenario":"vote-auto-select","scenarioName":"Vote Auto Select","orderId":7813,"testerUserId":"966","startedAt":"2026-06-23T11:32:36.427Z","createdAt":"2026-06-23T11:32:38.034Z"}
+{"scenario":"vote-cancelled","scenarioName":"Vote Cancel During Voting","orderId":7814,"testerUserId":"966","startedAt":"2026-06-23T11:34:09.093Z","createdAt":"2026-06-23T11:34:14.007Z"}
+{"scenario":"vote-new-round","scenarioName":"Vote New Round","orderId":7822,"testerUserId":"966","startedAt":"2026-06-23T11:35:50.551Z","createdAt":"2026-06-23T11:36:00.013Z"}
+{"scenario":"no-show","scenarioName":"No Show","orderId":7828,"testerUserId":"966","startedAt":"2026-06-23T11:38:12.689Z","createdAt":"2026-06-23T11:38:21.367Z"}
+{"scenario":"vote-selected","scenarioName":"Vote Driver Selected","orderId":7834,"testerUserId":"966","startedAt":"2026-06-23T11:39:54.162Z","createdAt":"2026-06-23T11:39:58.581Z"}
+{"scenario":"vote-not-selected","scenarioName":"Vote Other Driver Selected","orderId":7842,"testerUserId":"966","startedAt":"2026-06-23T11:41:30.488Z","createdAt":"2026-06-23T11:41:32.177Z"}
+{"scenario":"vote-lost","scenarioName":"Vote Lost","orderId":7850,"testerUserId":"966","startedAt":"2026-06-23T11:43:03.953Z","createdAt":"2026-06-23T11:43:10.750Z"}
+{"scenario":"vote-cancelled","scenarioName":"Vote Cancel During Voting","orderId":7859,"testerUserId":"966","startedAt":"2026-06-23T11:45:23.941Z","createdAt":"2026-06-23T11:45:29.113Z"}
+{"scenario":"vote-new-round","scenarioName":"Vote New Round","orderId":7862,"testerUserId":"966","startedAt":"2026-06-23T11:47:04.472Z","createdAt":"2026-06-23T11:47:10.611Z"}
+{"scenario":"no-show","scenarioName":"No Show","orderId":7869,"testerUserId":"966","startedAt":"2026-06-23T11:49:22.175Z","createdAt":"2026-06-23T11:49:26.282Z"}
+{"scenario":"vote-selected","scenarioName":"Vote Driver Selected","orderId":7875,"testerUserId":"966","startedAt":"2026-06-23T11:50:57.219Z","createdAt":"2026-06-23T11:51:02.747Z"}
+{"scenario":"vote-not-selected","scenarioName":"Vote Other Driver Selected","orderId":7878,"testerUserId":"966","startedAt":"2026-06-23T11:52:34.713Z","createdAt":"2026-06-23T11:52:42.987Z"}
+{"scenario":"vote-lost","scenarioName":"Vote Lost","orderId":7880,"testerUserId":"966","startedAt":"2026-06-23T11:54:14.330Z","createdAt":"2026-06-23T11:54:16.547Z"}
+{"scenario":"vote-auto-select","scenarioName":"Vote Auto Select","orderId":7882,"testerUserId":"966","startedAt":"2026-06-23T11:55:50.426Z","createdAt":"2026-06-23T11:55:58.334Z"}
+{"scenario":"vote-cancelled","scenarioName":"Vote Cancel During Voting","orderId":7884,"testerUserId":"966","startedAt":"2026-06-23T11:57:29.610Z","createdAt":"2026-06-23T11:57:31.645Z"}
+{"scenario":"vote-selected","scenarioName":"Vote Driver Selected","orderId":7888,"testerUserId":"966","startedAt":"2026-06-23T12:01:05.191Z","createdAt":"2026-06-23T12:01:15.466Z"}
+{"scenario":"vote-not-selected","scenarioName":"Vote Other Driver Selected","orderId":7889,"testerUserId":"966","startedAt":"2026-06-23T12:02:47.681Z","createdAt":"2026-06-23T12:02:54.255Z"}
+{"scenario":"vote-lost","scenarioName":"Vote Lost","orderId":7890,"testerUserId":"966","startedAt":"2026-06-23T12:04:26.261Z","createdAt":"2026-06-23T12:04:30.139Z"}
+{"scenario":"vote-auto-select","scenarioName":"Vote Auto Select","orderId":7896,"testerUserId":"966","startedAt":"2026-06-23T12:06:02.733Z","createdAt":"2026-06-23T12:06:05.808Z"}
+{"scenario":"vote-cancelled","scenarioName":"Vote Cancel During Voting","orderId":7898,"testerUserId":"966","startedAt":"2026-06-23T12:07:36.787Z","createdAt":"2026-06-23T12:07:43.911Z"}
+{"scenario":"vote-new-round","scenarioName":"Vote New Round","orderId":7899,"testerUserId":"966","startedAt":"2026-06-23T12:09:15.474Z","createdAt":"2026-06-23T12:09:18.197Z"}
+{"scenario":"client-cancel-after-select","scenarioName":"Client Cancel After Selection","orderId":7900,"testerUserId":"966","startedAt":"2026-06-23T12:10:49.527Z","createdAt":"2026-06-23T12:10:51.132Z"}
+{"scenario":"vote-selected","scenarioName":"Vote Driver Selected","orderId":7901,"testerUserId":"966","startedAt":"2026-06-23T12:13:03.046Z","createdAt":"2026-06-23T12:13:16.188Z"}
+{"scenario":"vote-not-selected","scenarioName":"Vote Other Driver Selected","orderId":7902,"testerUserId":"966","startedAt":"2026-06-23T12:14:46.893Z","createdAt":"2026-06-23T12:14:49.837Z"}
+{"scenario":"vote-lost","scenarioName":"Vote Lost","orderId":7910,"testerUserId":"966","startedAt":"2026-06-23T12:16:21.136Z","createdAt":"2026-06-23T12:16:23.261Z"}
+{"scenario":"vote-auto-select","scenarioName":"Vote Auto Select","orderId":7913,"testerUserId":"966","startedAt":"2026-06-23T12:17:58.094Z","createdAt":"2026-06-23T12:17:59.889Z"}
+{"scenario":"vote-cancelled","scenarioName":"Vote Cancel During Voting","orderId":7917,"testerUserId":"966","startedAt":"2026-06-23T12:19:32.279Z","createdAt":"2026-06-23T12:19:33.779Z"}
+{"scenario":"vote-new-round","scenarioName":"Vote New Round","orderId":7918,"testerUserId":"966","startedAt":"2026-06-23T12:21:07.968Z","createdAt":"2026-06-23T12:21:19.518Z"}
+{"scenario":"client-cancel-after-select","scenarioName":"Client Cancel After Selection","orderId":7920,"testerUserId":"966","startedAt":"2026-06-23T12:22:51.268Z","createdAt":"2026-06-23T12:22:52.746Z"}
+{"scenario":"no-show","scenarioName":"No Show","orderId":7923,"testerUserId":"966","startedAt":"2026-06-23T12:24:24.765Z","createdAt":"2026-06-23T12:24:26.594Z"}
+{"scenario":"vote-selected","scenarioName":"Vote Driver Selected","orderId":7925,"testerUserId":"966","startedAt":"2026-06-23T12:25:59.848Z","createdAt":"2026-06-23T12:26:01.221Z"}
+{"scenario":"vote-not-selected","scenarioName":"Vote Other Driver Selected","orderId":7928,"testerUserId":"966","startedAt":"2026-06-23T12:27:31.892Z","createdAt":"2026-06-23T12:27:38.652Z"}
+{"scenario":"vote-lost","scenarioName":"Vote Lost","orderId":7930,"testerUserId":"966","startedAt":"2026-06-23T12:29:11.047Z","createdAt":"2026-06-23T12:29:19.134Z"}
+{"scenario":"vote-auto-select","scenarioName":"Vote Auto Select","orderId":7933,"testerUserId":"966","startedAt":"2026-06-23T12:30:52.843Z","createdAt":"2026-06-23T12:30:54.680Z"}
+{"scenario":"vote-cancelled","scenarioName":"Vote Cancel During Voting","orderId":7935,"testerUserId":"966","startedAt":"2026-06-23T12:32:27.015Z","createdAt":"2026-06-23T12:32:31.729Z"}
+{"scenario":"vote-new-round","scenarioName":"Vote New Round","orderId":7937,"testerUserId":"966","startedAt":"2026-06-23T12:34:03.367Z","createdAt":"2026-06-23T12:34:05.333Z"}
+{"scenario":"client-cancel-after-select","scenarioName":"Client Cancel After Selection","orderId":7942,"testerUserId":"966","startedAt":"2026-06-23T12:35:37.466Z","createdAt":"2026-06-23T12:35:40.282Z"}
+{"scenario":"no-show","scenarioName":"No Show","orderId":7946,"testerUserId":"966","startedAt":"2026-06-23T12:37:11.439Z","createdAt":"2026-06-23T12:37:16.404Z"}
+{"scenario":"vote-selected","scenarioName":"Vote Driver Selected","orderId":7949,"testerUserId":"966","startedAt":"2026-06-23T12:38:47.024Z","createdAt":"2026-06-23T12:38:55.908Z"}
+{"scenario":"vote-not-selected","scenarioName":"Vote Other Driver Selected","orderId":7951,"testerUserId":"966","startedAt":"2026-06-23T12:40:27.880Z","createdAt":"2026-06-23T12:40:30.695Z"}
+{"scenario":"vote-lost","scenarioName":"Vote Lost","orderId":7954,"testerUserId":"966","startedAt":"2026-06-23T12:42:03.214Z","createdAt":"2026-06-23T12:42:04.733Z"}
+{"scenario":"vote-auto-select","scenarioName":"Vote Auto Select","orderId":7956,"testerUserId":"966","startedAt":"2026-06-23T12:43:37.650Z","createdAt":"2026-06-23T12:43:40.124Z"}
+{"scenario":"vote-cancelled","scenarioName":"Vote Cancel During Voting","orderId":7961,"testerUserId":"966","startedAt":"2026-06-23T12:45:12.794Z","createdAt":"2026-06-23T12:45:22.024Z"}
+{"scenario":"vote-new-round","scenarioName":"Vote New Round","orderId":7965,"testerUserId":"966","startedAt":"2026-06-23T12:46:57.142Z","createdAt":"2026-06-23T12:47:01.918Z"}
+{"scenario":"client-cancel-after-select","scenarioName":"Client Cancel After Selection","orderId":7967,"testerUserId":"966","startedAt":"2026-06-23T12:48:34.163Z","createdAt":"2026-06-23T12:48:35.708Z"}
+{"scenario":"no-show","scenarioName":"No Show","orderId":7969,"testerUserId":"966","startedAt":"2026-06-23T12:50:07.638Z","createdAt":"2026-06-23T12:50:13.053Z"}
+{"scenario":"vote-selected","scenarioName":"Vote Driver Selected","orderId":7971,"testerUserId":"966","startedAt":"2026-06-23T12:51:44.870Z","createdAt":"2026-06-23T12:51:46.515Z"}
+{"scenario":"vote-not-selected","scenarioName":"Vote Other Driver Selected","orderId":7974,"testerUserId":"966","startedAt":"2026-06-23T12:53:19.310Z","createdAt":"2026-06-23T12:53:21.432Z"}
+{"scenario":"vote-lost","scenarioName":"Vote Lost","orderId":7978,"testerUserId":"966","startedAt":"2026-06-23T12:54:53.910Z","createdAt":"2026-06-23T12:54:56.270Z"}
+{"scenario":"vote-auto-select","scenarioName":"Vote Auto Select","orderId":7981,"testerUserId":"966","startedAt":"2026-06-23T12:56:29.022Z","createdAt":"2026-06-23T12:56:31.748Z"}
+{"scenario":"vote-cancelled","scenarioName":"Vote Cancel During Voting","orderId":7983,"testerUserId":"966","startedAt":"2026-06-23T12:58:03.167Z","createdAt":"2026-06-23T12:58:04.911Z"}
+{"scenario":"vote-new-round","scenarioName":"Vote New Round","orderId":7986,"testerUserId":"966","startedAt":"2026-06-23T12:59:37.323Z","createdAt":"2026-06-23T12:59:41.871Z"}
+{"scenario":"no-show","scenarioName":"No Show","orderId":7989,"testerUserId":"966","startedAt":"2026-06-23T13:01:57.684Z","createdAt":"2026-06-23T13:02:00.501Z"}
+{"scenario":"vote-selected","scenarioName":"Vote Driver Selected","orderId":7992,"testerUserId":"966","startedAt":"2026-06-23T13:03:31.448Z","createdAt":"2026-06-23T13:03:35.354Z"}
+{"scenario":"vote-not-selected","scenarioName":"Vote Other Driver Selected","orderId":7997,"testerUserId":"966","startedAt":"2026-06-23T13:05:06.327Z","createdAt":"2026-06-23T13:05:08.333Z"}
+{"scenario":"vote-lost","scenarioName":"Vote Lost","orderId":8005,"testerUserId":"966","startedAt":"2026-06-23T13:06:40.980Z","createdAt":"2026-06-23T13:06:42.467Z"}
+{"scenario":"vote-auto-select","scenarioName":"Vote Auto Select","orderId":8009,"testerUserId":"966","startedAt":"2026-06-23T13:08:14.789Z","createdAt":"2026-06-23T13:08:19.709Z"}
+{"scenario":"vote-cancelled","scenarioName":"Vote Cancel During Voting","orderId":8012,"testerUserId":"966","startedAt":"2026-06-23T13:09:51.399Z","createdAt":"2026-06-23T13:09:54.579Z"}
+{"scenario":"vote-new-round","scenarioName":"Vote New Round","orderId":8017,"testerUserId":"966","startedAt":"2026-06-23T13:11:28.105Z","createdAt":"2026-06-23T13:11:31.657Z"}
+{"scenario":"client-cancel-after-select","scenarioName":"Client Cancel After Selection","orderId":8018,"testerUserId":"966","startedAt":"2026-06-23T13:13:02.830Z","createdAt":"2026-06-23T13:13:04.387Z"}
+{"scenario":"no-show","scenarioName":"No Show","orderId":8027,"testerUserId":"966","startedAt":"2026-06-23T13:14:36.974Z","createdAt":"2026-06-23T13:14:42.719Z"}
+{"scenario":"vote-selected","scenarioName":"Vote Driver Selected","orderId":8036,"testerUserId":"966","startedAt":"2026-06-23T13:16:14.244Z","createdAt":"2026-06-23T13:16:17.304Z"}
+{"scenario":"vote-not-selected","scenarioName":"Vote Other Driver Selected","orderId":8045,"testerUserId":"966","startedAt":"2026-06-23T13:17:48.998Z","createdAt":"2026-06-23T13:17:51.344Z"}
+{"scenario":"vote-lost","scenarioName":"Vote Lost","orderId":8051,"testerUserId":"966","startedAt":"2026-06-23T13:19:22.105Z","createdAt":"2026-06-23T13:19:26.217Z"}
+{"scenario":"vote-auto-select","scenarioName":"Vote Auto Select","orderId":8055,"testerUserId":"966","startedAt":"2026-06-23T13:21:08.866Z","createdAt":"2026-06-23T13:21:12.114Z"}
+{"scenario":"vote-cancelled","scenarioName":"Vote Cancel During Voting","orderId":8060,"testerUserId":"966","startedAt":"2026-06-23T13:22:45.015Z","createdAt":"2026-06-23T13:22:46.997Z"}
+{"scenario":"vote-new-round","scenarioName":"Vote New Round","orderId":8064,"testerUserId":"966","startedAt":"2026-06-23T13:24:21.258Z","createdAt":"2026-06-23T13:24:25.641Z"}
+{"scenario":"client-cancel-after-select","scenarioName":"Client Cancel After Selection","orderId":8066,"testerUserId":"966","startedAt":"2026-06-23T13:25:57.710Z","createdAt":"2026-06-23T13:26:05.307Z"}
+{"scenario":"no-show","scenarioName":"No Show","orderId":8070,"testerUserId":"966","startedAt":"2026-06-23T13:27:37.471Z","createdAt":"2026-06-23T13:27:39.259Z"}
+{"scenario":"vote-selected","scenarioName":"Vote Driver Selected","orderId":8081,"testerUserId":"966","startedAt":"2026-06-23T13:29:11.002Z","createdAt":"2026-06-23T13:29:20.766Z"}
+{"scenario":"vote-not-selected","scenarioName":"Vote Other Driver Selected","orderId":8092,"testerUserId":"966","startedAt":"2026-06-23T13:30:51.998Z","createdAt":"2026-06-23T13:30:53.733Z"}
+{"scenario":"vote-lost","scenarioName":"Vote Lost","orderId":8098,"testerUserId":"966","startedAt":"2026-06-23T13:32:25.385Z","createdAt":"2026-06-23T13:32:28.409Z"}
+{"scenario":"vote-auto-select","scenarioName":"Vote Auto Select","orderId":8105,"testerUserId":"966","startedAt":"2026-06-23T13:34:00.262Z","createdAt":"2026-06-23T13:34:04.217Z"}
+{"scenario":"vote-cancelled","scenarioName":"Vote Cancel During Voting","orderId":8111,"testerUserId":"966","startedAt":"2026-06-23T13:35:35.353Z","createdAt":"2026-06-23T13:35:44.323Z"}
+{"scenario":"vote-new-round","scenarioName":"Vote New Round","orderId":8118,"testerUserId":"966","startedAt":"2026-06-23T13:37:17.428Z","createdAt":"2026-06-23T13:37:19.806Z"}
+{"scenario":"client-cancel-after-select","scenarioName":"Client Cancel After Selection","orderId":8122,"testerUserId":"966","startedAt":"2026-06-23T13:38:51.440Z","createdAt":"2026-06-23T13:38:54.351Z"}
+{"scenario":"no-show","scenarioName":"No Show","orderId":8128,"testerUserId":"966","startedAt":"2026-06-23T13:40:25.671Z","createdAt":"2026-06-23T13:40:28.287Z"}
+{"scenario":"vote-selected","scenarioName":"Vote Driver Selected","orderId":8135,"testerUserId":"966","startedAt":"2026-06-23T13:42:01.153Z","createdAt":"2026-06-23T13:42:02.971Z"}
+{"scenario":"vote-not-selected","scenarioName":"Vote Other Driver Selected","orderId":8140,"testerUserId":"966","startedAt":"2026-06-23T13:43:33.909Z","createdAt":"2026-06-23T13:43:35.673Z"}
+{"scenario":"vote-lost","scenarioName":"Vote Lost","orderId":8144,"testerUserId":"966","startedAt":"2026-06-23T13:45:06.333Z","createdAt":"2026-06-23T13:45:14.626Z"}
+{"scenario":"vote-auto-select","scenarioName":"Vote Auto Select","orderId":8148,"testerUserId":"966","startedAt":"2026-06-23T13:46:46.970Z","createdAt":"2026-06-23T13:46:48.582Z"}
+{"scenario":"vote-cancelled","scenarioName":"Vote Cancel During Voting","orderId":8153,"testerUserId":"966","startedAt":"2026-06-23T13:48:21.221Z","createdAt":"2026-06-23T13:48:24.577Z"}
+{"scenario":"vote-new-round","scenarioName":"Vote New Round","orderId":8158,"testerUserId":"966","startedAt":"2026-06-23T13:49:57.442Z","createdAt":"2026-06-23T13:50:01.146Z"}
+{"scenario":"client-cancel-after-select","scenarioName":"Client Cancel After Selection","orderId":8163,"testerUserId":"966","startedAt":"2026-06-23T13:51:34.054Z","createdAt":"2026-06-23T13:51:39.378Z"}
+{"scenario":"no-show","scenarioName":"No Show","orderId":8169,"testerUserId":"966","startedAt":"2026-06-23T13:53:11.631Z","createdAt":"2026-06-23T13:53:13.605Z"}
+{"scenario":"vote-selected","scenarioName":"Vote Driver Selected","orderId":8173,"testerUserId":"966","startedAt":"2026-06-23T13:54:45.806Z","createdAt":"2026-06-23T13:54:51.345Z"}
+{"scenario":"vote-not-selected","scenarioName":"Vote Other Driver Selected","orderId":8175,"testerUserId":"966","startedAt":"2026-06-23T13:56:22.561Z","createdAt":"2026-06-23T13:56:27.291Z"}
+{"scenario":"vote-lost","scenarioName":"Vote Lost","orderId":8178,"testerUserId":"966","startedAt":"2026-06-23T13:57:58.582Z","createdAt":"2026-06-23T13:58:02.493Z"}
+{"scenario":"vote-auto-select","scenarioName":"Vote Auto Select","orderId":8183,"testerUserId":"966","startedAt":"2026-06-23T13:59:38.567Z","createdAt":"2026-06-23T13:59:41.938Z"}
+{"scenario":"vote-cancelled","scenarioName":"Vote Cancel During Voting","orderId":8185,"testerUserId":"966","startedAt":"2026-06-23T14:01:14.594Z","createdAt":"2026-06-23T14:01:19.460Z"}
+{"scenario":"vote-new-round","scenarioName":"Vote New Round","orderId":8189,"testerUserId":"966","startedAt":"2026-06-23T14:02:52.126Z","createdAt":"2026-06-23T14:02:55.259Z"}
+{"scenario":"client-cancel-after-select","scenarioName":"Client Cancel After Selection","orderId":8194,"testerUserId":"966","startedAt":"2026-06-23T14:04:26.081Z","createdAt":"2026-06-23T14:04:28.722Z"}
+{"scenario":"no-show","scenarioName":"No Show","orderId":8196,"testerUserId":"966","startedAt":"2026-06-23T14:05:59.611Z","createdAt":"2026-06-23T14:06:07.437Z"}
+{"scenario":"vote-selected","scenarioName":"Vote Driver Selected","orderId":8201,"testerUserId":"966","startedAt":"2026-06-23T14:07:38.365Z","createdAt":"2026-06-23T14:07:49.380Z"}
+{"scenario":"vote-not-selected","scenarioName":"Vote Other Driver Selected","orderId":8206,"testerUserId":"966","startedAt":"2026-06-23T14:09:22.657Z","createdAt":"2026-06-23T14:09:24.494Z"}
+{"scenario":"vote-lost","scenarioName":"Vote Lost","orderId":8209,"testerUserId":"966","startedAt":"2026-06-23T14:15:07.072Z","createdAt":"2026-06-23T14:15:07.834Z"}
+{"scenario":"vote-auto-select","scenarioName":"Vote Auto Select","orderId":8212,"testerUserId":"966","startedAt":"2026-06-23T14:16:39.422Z","createdAt":"2026-06-23T14:16:40.846Z"}
+{"scenario":"vote-cancelled","scenarioName":"Vote Cancel During Voting","orderId":8215,"testerUserId":"966","startedAt":"2026-06-23T14:18:12.957Z","createdAt":"2026-06-23T14:18:14.369Z"}
+{"scenario":"vote-new-round","scenarioName":"Vote New Round","orderId":8217,"testerUserId":"966","startedAt":"2026-06-23T14:19:45.665Z","createdAt":"2026-06-23T14:19:49.238Z"}
+{"scenario":"client-cancel-after-select","scenarioName":"Client Cancel After Selection","orderId":8220,"testerUserId":"966","startedAt":"2026-06-23T14:21:21.562Z","createdAt":"2026-06-23T14:21:24.316Z"}
+{"scenario":"no-show","scenarioName":"No Show","orderId":8224,"testerUserId":"966","startedAt":"2026-06-23T14:22:56.943Z","createdAt":"2026-06-23T14:22:58.651Z"}
+{"scenario":"vote-selected","scenarioName":"Vote Driver Selected","orderId":8228,"testerUserId":"966","startedAt":"2026-06-23T14:24:31.173Z","createdAt":"2026-06-23T14:24:41.966Z"}
+{"scenario":"vote-not-selected","scenarioName":"Vote Other Driver Selected","orderId":8232,"testerUserId":"966","startedAt":"2026-06-23T14:26:12.823Z","createdAt":"2026-06-23T14:26:14.421Z"}
+{"scenario":"vote-lost","scenarioName":"Vote Lost","orderId":8236,"testerUserId":"966","startedAt":"2026-06-23T14:27:47.842Z","createdAt":"2026-06-23T14:27:49.159Z"}
+{"scenario":"vote-auto-select","scenarioName":"Vote Auto Select","orderId":8240,"testerUserId":"966","startedAt":"2026-06-23T14:29:21.495Z","createdAt":"2026-06-23T14:29:29.428Z"}
+{"scenario":"vote-cancelled","scenarioName":"Vote Cancel During Voting","orderId":8244,"testerUserId":"966","startedAt":"2026-06-23T14:31:02.093Z","createdAt":"2026-06-23T14:31:06.849Z"}
+{"scenario":"client-cancel-after-select","scenarioName":"Client Cancel After Selection","orderId":8252,"testerUserId":"966","startedAt":"2026-06-23T14:34:37.110Z","createdAt":"2026-06-23T14:34:42.590Z"}
+{"scenario":"no-show","scenarioName":"No Show","orderId":8256,"testerUserId":"966","startedAt":"2026-06-23T14:36:14.862Z","createdAt":"2026-06-23T14:36:30.876Z"}
+{"scenario":"vote-not-selected","scenarioName":"Vote Other Driver Selected","orderId":8261,"testerUserId":"966","startedAt":"2026-06-23T14:38:43.871Z","createdAt":"2026-06-23T14:38:52.076Z"}
+{"scenario":"vote-lost","scenarioName":"Vote Lost","orderId":8265,"testerUserId":"966","startedAt":"2026-06-23T14:40:23.041Z","createdAt":"2026-06-23T14:40:24.307Z"}
+{"scenario":"vote-auto-select","scenarioName":"Vote Auto Select","orderId":8269,"testerUserId":"966","startedAt":"2026-06-23T14:41:56.262Z","createdAt":"2026-06-23T14:41:57.917Z"}
+{"scenario":"vote-cancelled","scenarioName":"Vote Cancel During Voting","orderId":8273,"testerUserId":"966","startedAt":"2026-06-23T14:43:28.506Z","createdAt":"2026-06-23T14:43:30.231Z"}
+{"scenario":"vote-new-round","scenarioName":"Vote New Round","orderId":8277,"testerUserId":"966","startedAt":"2026-06-23T14:45:01.963Z","createdAt":"2026-06-23T14:45:04.339Z"}
+{"scenario":"client-cancel-after-select","scenarioName":"Client Cancel After Selection","orderId":8280,"testerUserId":"966","startedAt":"2026-06-23T14:46:36.952Z","createdAt":"2026-06-23T14:46:39.146Z"}
+{"scenario":"no-show","scenarioName":"No Show","orderId":8283,"testerUserId":"966","startedAt":"2026-06-23T14:48:11.151Z","createdAt":"2026-06-23T14:48:19.927Z"}
+{"scenario":"vote-selected","scenarioName":"Vote Driver Selected","orderId":8285,"testerUserId":"966","startedAt":"2026-06-23T14:49:52.837Z","createdAt":"2026-06-23T14:49:57.334Z"}
+{"scenario":"vote-not-selected","scenarioName":"Vote Other Driver Selected","orderId":8288,"testerUserId":"966","startedAt":"2026-06-23T14:51:32.505Z","createdAt":"2026-06-23T14:51:37.675Z"}
+{"scenario":"vote-lost","scenarioName":"Vote Lost","orderId":8289,"testerUserId":"966","startedAt":"2026-06-23T19:43:23.728Z","createdAt":"2026-06-23T19:43:24.676Z"}
+{"scenario":"vote-selected","scenarioName":"Vote Driver Selected","orderId":8437,"testerUserId":"966","startedAt":"2026-06-24T10:24:36.126Z","createdAt":"2026-06-24T10:24:37.271Z"}
+{"scenario":"vote-not-selected","scenarioName":"Vote Other Driver Selected","orderId":8438,"testerUserId":"966","startedAt":"2026-06-24T10:25:16.340Z","createdAt":"2026-06-24T10:25:17.603Z"}
+{"scenario":"vote-lost","scenarioName":"Vote Lost","orderId":8439,"testerUserId":"966","startedAt":"2026-06-24T10:26:49.334Z","createdAt":"2026-06-24T10:26:50.112Z"}
+{"scenario":"vote-auto-select","scenarioName":"Vote Auto Select","orderId":8440,"testerUserId":"966","startedAt":"2026-06-24T10:28:21.888Z","createdAt":"2026-06-24T10:28:23.019Z"}
+{"scenario":"vote-cancelled","scenarioName":"Vote Cancel During Voting","orderId":8441,"testerUserId":"966","startedAt":"2026-06-24T10:29:54.460Z","createdAt":"2026-06-24T10:29:55.318Z"}
+{"scenario":"vote-new-round","scenarioName":"Vote New Round","orderId":8442,"testerUserId":"966","startedAt":"2026-06-24T10:31:27.751Z","createdAt":"2026-06-24T10:31:28.607Z"}
+{"scenario":"client-cancel-after-select","scenarioName":"Client Cancel After Selection","orderId":8443,"testerUserId":"966","startedAt":"2026-06-24T10:33:00.002Z","createdAt":"2026-06-24T10:33:00.786Z"}
+{"scenario":"no-show","scenarioName":"No Show","orderId":8444,"testerUserId":"966","startedAt":"2026-06-24T10:34:33.398Z","createdAt":"2026-06-24T10:34:34.278Z"}
+{"scenario":"vote-selected","scenarioName":"Vote Driver Selected","orderId":8445,"testerUserId":"966","startedAt":"2026-06-24T10:36:06.434Z","createdAt":"2026-06-24T10:36:07.252Z"}
+{"scenario":"vote-not-selected","scenarioName":"Vote Other Driver Selected","orderId":8446,"testerUserId":"966","startedAt":"2026-06-24T10:37:39.386Z","createdAt":"2026-06-24T10:37:40.108Z"}
+{"scenario":"vote-lost","scenarioName":"Vote Lost","orderId":8447,"testerUserId":"966","startedAt":"2026-06-24T10:39:12.093Z","createdAt":"2026-06-24T10:39:12.829Z"}
+{"scenario":"vote-selected","scenarioName":"Vote Driver Selected","orderId":8448,"testerUserId":"966","startedAt":"2026-06-24T10:41:28.428Z","createdAt":"2026-06-24T10:41:29.778Z"}
+{"scenario":"vote-not-selected","scenarioName":"Vote Other Driver Selected","orderId":8449,"testerUserId":"966","startedAt":"2026-06-24T10:43:02.600Z","createdAt":"2026-06-24T10:43:05.476Z"}
+{"scenario":"vote-lost","scenarioName":"Vote Lost","orderId":8450,"testerUserId":"966","startedAt":"2026-06-24T10:44:37.276Z","createdAt":"2026-06-24T10:44:38.042Z"}
+{"scenario":"vote-auto-select","scenarioName":"Vote Auto Select","orderId":8451,"testerUserId":"966","startedAt":"2026-06-24T10:46:08.989Z","createdAt":"2026-06-24T10:46:10.157Z"}
+{"scenario":"vote-cancelled","scenarioName":"Vote Cancel During Voting","orderId":8452,"testerUserId":"966","startedAt":"2026-06-24T10:47:40.685Z","createdAt":"2026-06-24T10:47:41.615Z"}
+{"scenario":"vote-new-round","scenarioName":"Vote New Round","orderId":8453,"testerUserId":"966","startedAt":"2026-06-24T10:49:12.462Z","createdAt":"2026-06-24T10:49:15.722Z"}
+{"scenario":"client-cancel-after-select","scenarioName":"Client Cancel After Selection","orderId":8454,"testerUserId":"966","startedAt":"2026-06-24T10:50:46.738Z","createdAt":"2026-06-24T10:50:48.106Z"}
+{"scenario":"no-show","scenarioName":"No Show","orderId":8455,"testerUserId":"966","startedAt":"2026-06-24T10:52:19.342Z","createdAt":"2026-06-24T10:52:20.035Z"}
+{"scenario":"vote-selected","scenarioName":"Vote Driver Selected","orderId":8456,"testerUserId":"966","startedAt":"2026-06-24T10:53:51.115Z","createdAt":"2026-06-24T10:53:51.832Z"}
+{"scenario":"vote-not-selected","scenarioName":"Vote Other Driver Selected","orderId":8457,"testerUserId":"966","startedAt":"2026-06-24T10:55:22.396Z","createdAt":"2026-06-24T10:55:24.645Z"}
+{"scenario":"vote-lost","scenarioName":"Vote Lost","orderId":8458,"testerUserId":"966","startedAt":"2026-06-24T10:56:56.888Z","createdAt":"2026-06-24T10:56:57.863Z"}
+{"scenario":"vote-auto-select","scenarioName":"Vote Auto Select","orderId":8459,"testerUserId":"966","startedAt":"2026-06-24T10:58:30.357Z","createdAt":"2026-06-24T10:58:31.285Z"}
+{"scenario":"vote-cancelled","scenarioName":"Vote Cancel During Voting","orderId":8460,"testerUserId":"966","startedAt":"2026-06-24T11:00:03.598Z","createdAt":"2026-06-24T11:00:04.381Z"}
+{"scenario":"vote-new-round","scenarioName":"Vote New Round","orderId":8461,"testerUserId":"966","startedAt":"2026-06-24T11:01:35.735Z","createdAt":"2026-06-24T11:01:36.527Z"}
+{"scenario":"client-cancel-after-select","scenarioName":"Client Cancel After Selection","orderId":8462,"testerUserId":"966","startedAt":"2026-06-24T11:03:08.078Z","createdAt":"2026-06-24T11:03:08.850Z"}
+{"scenario":"no-show","scenarioName":"No Show","orderId":8463,"testerUserId":"966","startedAt":"2026-06-24T11:04:40.937Z","createdAt":"2026-06-24T11:04:41.839Z"}
+{"scenario":"vote-selected","scenarioName":"Vote Driver Selected","orderId":8464,"testerUserId":"966","startedAt":"2026-06-24T11:06:12.772Z","createdAt":"2026-06-24T11:06:13.358Z"}
+{"scenario":"vote-not-selected","scenarioName":"Vote Other Driver Selected","orderId":8465,"testerUserId":"966","startedAt":"2026-06-24T11:07:44.039Z","createdAt":"2026-06-24T11:07:44.814Z"}
+{"scenario":"vote-lost","scenarioName":"Vote Lost","orderId":8466,"testerUserId":"966","startedAt":"2026-06-24T11:09:16.380Z","createdAt":"2026-06-24T11:09:17.115Z"}
+{"scenario":"vote-auto-select","scenarioName":"Vote Auto Select","orderId":8467,"testerUserId":"966","startedAt":"2026-06-24T11:10:48.439Z","createdAt":"2026-06-24T11:10:49.186Z"}
+{"scenario":"vote-cancelled","scenarioName":"Vote Cancel During Voting","orderId":8468,"testerUserId":"966","startedAt":"2026-06-24T11:12:21.722Z","createdAt":"2026-06-24T11:12:22.646Z"}
+{"scenario":"vote-new-round","scenarioName":"Vote New Round","orderId":8469,"testerUserId":"966","startedAt":"2026-06-24T11:13:53.600Z","createdAt":"2026-06-24T11:13:54.371Z"}
+{"scenario":"client-cancel-after-select","scenarioName":"Client Cancel After Selection","orderId":8470,"testerUserId":"966","startedAt":"2026-06-24T11:15:25.968Z","createdAt":"2026-06-24T11:15:26.785Z"}
+{"scenario":"no-show","scenarioName":"No Show","orderId":8471,"testerUserId":"966","startedAt":"2026-06-24T11:16:58.266Z","createdAt":"2026-06-24T11:16:59.033Z"}
+{"scenario":"vote-selected","scenarioName":"Vote Driver Selected","orderId":8472,"testerUserId":"966","startedAt":"2026-06-24T11:18:31.063Z","createdAt":"2026-06-24T11:18:31.717Z"}
+{"scenario":"vote-not-selected","scenarioName":"Vote Other Driver Selected","orderId":8473,"testerUserId":"966","startedAt":"2026-06-24T11:20:02.929Z","createdAt":"2026-06-24T11:20:04.056Z"}
+{"scenario":"vote-lost","scenarioName":"Vote Lost","orderId":8474,"testerUserId":"966","startedAt":"2026-06-24T11:21:34.996Z","createdAt":"2026-06-24T11:21:35.699Z"}
+{"scenario":"vote-auto-select","scenarioName":"Vote Auto Select","orderId":8475,"testerUserId":"966","startedAt":"2026-06-24T11:23:08.267Z","createdAt":"2026-06-24T11:23:09.446Z"}
+{"scenario":"vote-cancelled","scenarioName":"Vote Cancel During Voting","orderId":8476,"testerUserId":"966","startedAt":"2026-06-24T11:24:39.911Z","createdAt":"2026-06-24T11:24:40.696Z"}
+{"scenario":"vote-new-round","scenarioName":"Vote New Round","orderId":8477,"testerUserId":"966","startedAt":"2026-06-24T11:26:12.188Z","createdAt":"2026-06-24T11:26:13.121Z"}
+{"scenario":"client-cancel-after-select","scenarioName":"Client Cancel After Selection","orderId":8478,"testerUserId":"966","startedAt":"2026-06-24T11:27:44.907Z","createdAt":"2026-06-24T11:27:45.536Z"}
+{"scenario":"no-show","scenarioName":"No Show","orderId":8479,"testerUserId":"966","startedAt":"2026-06-24T11:29:17.093Z","createdAt":"2026-06-24T11:29:17.857Z"}
+{"scenario":"vote-selected","scenarioName":"Vote Driver Selected","orderId":8480,"testerUserId":"966","startedAt":"2026-06-24T11:30:49.796Z","createdAt":"2026-06-24T11:30:50.430Z"}
+{"scenario":"vote-not-selected","scenarioName":"Vote Other Driver Selected","orderId":8481,"testerUserId":"966","startedAt":"2026-06-24T11:32:21.740Z","createdAt":"2026-06-24T11:32:22.716Z"}
+{"scenario":"vote-lost","scenarioName":"Vote Lost","orderId":8482,"testerUserId":"966","startedAt":"2026-06-24T11:33:53.549Z","createdAt":"2026-06-24T11:33:54.213Z"}
+{"scenario":"vote-auto-select","scenarioName":"Vote Auto Select","orderId":8483,"testerUserId":"966","startedAt":"2026-06-24T11:35:25.911Z","createdAt":"2026-06-24T11:35:26.677Z"}
+{"scenario":"vote-cancelled","scenarioName":"Vote Cancel During Voting","orderId":8484,"testerUserId":"966","startedAt":"2026-06-24T11:36:57.665Z","createdAt":"2026-06-24T11:36:58.325Z"}
+{"scenario":"vote-new-round","scenarioName":"Vote New Round","orderId":8485,"testerUserId":"966","startedAt":"2026-06-24T11:38:29.868Z","createdAt":"2026-06-24T11:38:30.620Z"}
+{"scenario":"client-cancel-after-select","scenarioName":"Client Cancel After Selection","orderId":8486,"testerUserId":"966","startedAt":"2026-06-24T11:40:02.331Z","createdAt":"2026-06-24T11:40:03.137Z"}
+{"scenario":"no-show","scenarioName":"No Show","orderId":8487,"testerUserId":"966","startedAt":"2026-06-24T11:41:35.454Z","createdAt":"2026-06-24T11:41:36.171Z"}
+{"scenario":"vote-selected","scenarioName":"Vote Driver Selected","orderId":8488,"testerUserId":"966","startedAt":"2026-06-24T11:43:06.643Z","createdAt":"2026-06-24T11:43:07.414Z"}
+{"scenario":"vote-not-selected","scenarioName":"Vote Other Driver Selected","orderId":8489,"testerUserId":"966","startedAt":"2026-06-24T11:44:38.999Z","createdAt":"2026-06-24T11:44:39.858Z"}
+{"scenario":"vote-lost","scenarioName":"Vote Lost","orderId":8490,"testerUserId":"966","startedAt":"2026-06-24T11:46:11.379Z","createdAt":"2026-06-24T11:46:12.396Z"}
+{"scenario":"vote-auto-select","scenarioName":"Vote Auto Select","orderId":8491,"testerUserId":"966","startedAt":"2026-06-24T11:47:44.535Z","createdAt":"2026-06-24T11:47:45.444Z"}
+{"scenario":"vote-cancelled","scenarioName":"Vote Cancel During Voting","orderId":8492,"testerUserId":"966","startedAt":"2026-06-24T11:49:17.261Z","createdAt":"2026-06-24T11:49:18.584Z"}
+{"scenario":"vote-new-round","scenarioName":"Vote New Round","orderId":8493,"testerUserId":"966","startedAt":"2026-06-24T11:50:49.506Z","createdAt":"2026-06-24T11:50:50.409Z"}
+{"scenario":"client-cancel-after-select","scenarioName":"Client Cancel After Selection","orderId":8494,"testerUserId":"966","startedAt":"2026-06-24T11:52:22.601Z","createdAt":"2026-06-24T11:52:24.203Z"}
+{"scenario":"vote-selected","scenarioName":"Vote Driver Selected","orderId":8696,"testerUserId":"966","startedAt":"2026-06-25T15:57:31.294Z","createdAt":"2026-06-25T15:57:35.101Z"}

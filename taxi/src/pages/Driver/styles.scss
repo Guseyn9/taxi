@@ -5,9 +5,9 @@
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     gap: 8px;
-    margin-top: 96px;
     bottom: auto;
     margin-top: 8px;
+    margin-bottom: 8px;
     padding: 0 16px;
 
     &__tab {
@@ -384,6 +384,7 @@
     transform: translateX(-50%);
     z-index: 1000;
     width: auto;
+    height: unset;
     min-width: 0;
     max-width: calc(100% - 32px);
     margin: 0 auto;
@@ -764,9 +765,11 @@
   padding-bottom: max(16px, env(safe-area-inset-bottom, 0px));
 }
 
-.driver-order-map-mode {
-  height: 100% !important;
-  min-height: 100% !important;
+.page-section.driver .driver-order-map-mode {
+  flex: 1 1 auto;
+  height: auto !important;
+  min-height: 0 !important;
+  overflow: hidden;
 }
 
 /* Final driver orders scroll fix: keep the page/header in place and scroll only the order cards. */
@@ -810,7 +813,6 @@
 
 .page-section.driver .driver-orders--ready.driver-orders--active,
 .page-section.driver .driver-orders--history.driver-orders--active {
-  flex: 1 1 0;
   min-height: 0;
   display: flex;
   flex-direction: column;
@@ -845,11 +847,26 @@
   box-sizing: border-box;
 }
 
+/* Tab-specific layout: "Кратко" (lite) stretches the list as a flex column;
+   "Все" (detailed) lets the .driver-orders block grow instead. */
+.page-section.driver--lite .driver-orders__list {
+  display: flex;
+}
+
+.page-section.driver--detailed .driver-orders {
+  flex: 1;
+}
+
 .page-section.driver .driver-orders__list .mini-order,
 .page-section.driver .driver-orders__list .status-card,
 .page-section.driver .driver-orders__list .driver-order-wide-mode-status-card {
   margin-left: 0;
   margin-right: 0;
+}
+
+.page-section.driver .driver-orders__list .mini-order {
+  margin-right: 15px;
+  justify-content: space-between;
 }
 
 @media (max-width: 560px) {

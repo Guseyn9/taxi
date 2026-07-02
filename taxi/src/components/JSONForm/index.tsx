@@ -8,6 +8,7 @@ import { configSelectors } from '../../state/config'
 import { t, TRANSLATION } from '../../localization'
 import JSONFormElement from './JSONFormElement'
 import CustomComponent from './components'
+import Button, { EButtonStyles } from '../Button'
 import { TForm, TFormElement } from './types'
 import { getCalculation, isRequired, getOptions, parseVariable } from './utils'
 import './styles.scss'
@@ -24,6 +25,7 @@ interface IProps extends ConnectedProps<typeof connector> {
   configStatus: EStatuses,
   fields: TForm,
   onSubmit?: (values: any) => any,
+  onClose?: () => any,
   onChange?: (fieldName: string, value: any) => any,
   defaultValues?: Record<string, any>,
   errors?: Record<string, any>,
@@ -39,6 +41,7 @@ function JSONForm({
   configStatus,
   language,
   onSubmit,
+  onClose,
   onChange,
   state = {},
   defaultValues = {},
@@ -95,6 +98,10 @@ function JSONForm({
     return initialValues
   })
   const [formErrors, setFormErrors] = useState(errors)
+  // Признак того, что пользователь вручную менял поля формы — нужен, чтобы
+  // при закрытии решать, показывать ли окно подтверждения сохранения.
+  const [isDirty, setIsDirty] = useState(false)
+  const [closeConfirmOpen, setCloseConfirmOpen] = useState(false)
 
   useEffect(() => {
     setFormErrors(errors)
@@ -287,6 +294,7 @@ function JSONForm({
       ...values,
       [name]: value,
     })
+    setIsDirty(true)
     onChange && onChange(name, value)
 
     // Добавляем дополнительную валидацию для номера телефона
@@ -329,10 +337,9 @@ function JSONForm({
     },
   }), [isValid, state])
 
-  function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
+  function submitForm(): boolean {
     if (!onSubmit)
-      return
+      return false
 
     try {
       yupSchema.validateSync(values, { abortEarly: false })
@@ -349,7 +356,7 @@ function JSONForm({
       })
 
       setFormErrors(validationErrors)
-      return
+      return false
     }
 
     const submitValues = { ...values }
@@ -364,6 +371,40 @@ function JSONForm({
         delete submitValues[key]
       }
     onSubmit(makeNested(submitValues))
+    return true
+  }
+
+  function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    submitForm()
+  }
+
+  // Клик по кнопке «Закрыть»: если были изменения — спрашиваем подтверждение,
+  // иначе сразу закрываем окно.
+  const handleCloseClick = () => {
+    if (!onClose) return
+    if (isDirty)
+      setCloseConfirmOpen(true)
+    else
+      onClose()
+  }
+
+  // «Да» — сохраняем изменения и закрываем (только если форма прошла валидацию).
+  const handleConfirmSave = () => {
+    setCloseConfirmOpen(false)
+    if (submitForm())
+      onClose?.()
+  }
+
+  // «Нет» — закрываем без сохранения.
+  const handleConfirmDiscard = () => {
+    setCloseConfirmOpen(false)
+    onClose?.()
+  }
+
+  // Клик мимо окна подтверждения — отмена закрытия, остаёмся в форме.
+  const handleConfirmCancel = () => {
+    setCloseConfirmOpen(false)
   }
 
   return configStatus === EStatuses.Success && (
@@ -388,6 +429,46 @@ function JSONForm({
           />,
         )}
       </form>
+
+      {onClose && (
+        <div className="jsonform__close">
+          <Button
+            style={{ background: 'linear-gradient(90deg, rgb(15, 44, 118) 0%, rgb(30, 88, 235) 100%)' }}
+            type="button"
+            text={t(TRANSLATION.PROFILE_CLOSE)}
+            onClick={handleCloseClick}
+            buttonStyle={EButtonStyles.RedDesign}
+            skipHandler
+          />
+        </div>
+      )}
+
+      {closeConfirmOpen && (
+        <div className="jsonform-confirm" role="dialog" aria-modal="true">
+          <div className="jsonform-confirm__backdrop" onClick={handleConfirmCancel} />
+          <div className="jsonform-confirm__card">
+            <div className="jsonform-confirm__title">
+              {t(TRANSLATION.PROFILE_CLOSE_CONFIRM)}
+            </div>
+            <div className="jsonform-confirm__actions">
+              <Button
+                type="button"
+                text={t(TRANSLATION.YES)}
+                onClick={handleConfirmSave}
+                skipHandler
+              />
+              <Button
+                style={{ background: 'linear-gradient(90deg, rgb(15, 44, 118) 0%, rgb(30, 88, 235) 100%)' }}
+                type="button"
+                text={t(TRANSLATION.NO)}
+                onClick={handleConfirmDiscard}
+                buttonStyle={EButtonStyles.RedDesign}
+                skipHandler
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

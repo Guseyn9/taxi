@@ -106,6 +106,7 @@ function Header({
   const [seconds, setSeconds] = useState(0)
   const [menuOpened, setMenuOpened] = useState(false)
   const [statusMenuOpen, setStatusMenuOpen] = useState(false)
+  const [statusMenuClosing, setStatusMenuClosing] = useState(false)
   const [statusChanging, setStatusChanging] = useState(false)
   const [emulatorPanelOpened, setEmulatorPanelOpened] = useState(false)
   const defaultEmulatorMode = user?.u_role === EUserRoles.Driver ? 'clients' : 'drivers'
@@ -192,7 +193,7 @@ function Header({
 
   const menuItems: IMenuItem[] = []
   menuItems.push({
-    label: t('profilee'),
+    label: t('profile'),
     action: () => {
       setProfileModal({ isOpen: true })
       setMenuOpened(false)
@@ -209,17 +210,20 @@ function Header({
 
 
   const isAuthorizedDriver = user?.u_role === EUserRoles.Driver
+  // Страницу /driver-order трактуем как водительскую даже до авторизации
+  // (так же, как форма входа/регистрации выбирает роль водителя по этому маршруту).
+  const isDriverArea = isAuthorizedDriver || location.pathname.includes('/driver-order')
 
-  // Показываем клиентский тестовый режим ещё до авторизации: заказ можно начать
-  // оформлять гостем, поэтому пользователь должен заранее выбрать тестовый/реальный сценарий.
-  if (!user || user?.u_role === EUserRoles.Client) {
+  // На клиентских страницах гость/клиент заранее выбирает тестовый сценарий
+  // с виртуальными водителями. На странице водителя показываем меню водителя.
+  if (!isDriverArea) {
     menuItems.push({
       label: t('emulator_drivers'),
       action: () => startDriverEmulator('drivers'),
     })
   }
 
-  if (isAuthorizedDriver) {
+  if (isDriverArea) {
     menuItems.push({
       label: t('emulator_clients'),
       action: () => startDriverEmulator('clients'),
@@ -246,6 +250,14 @@ function Header({
   const closeSideMenu = React.useCallback(() => {
     setMenuOpened(false)
     setLanguagesOpened(false)
+  }, [])
+
+  const closeStatusMenu = React.useCallback(() => {
+    setStatusMenuClosing(true)
+    window.setTimeout(() => {
+      setStatusMenuOpen(false)
+      setStatusMenuClosing(false)
+    }, 180)
   }, [])
 
   React.useEffect(() => {
@@ -308,7 +320,7 @@ function Header({
     isApprovedCar
 
   const changeDriverAvailability = async(active: boolean) => {
-    setStatusMenuOpen(false)
+    closeStatusMenu()
 
     if (statusChanging || isDriverOnline(user) === active) return
 
@@ -553,7 +565,8 @@ function Header({
                 onClick={(e) => {
                   e.preventDefault()
                   e.stopPropagation()
-                  setStatusMenuOpen(prev => !prev)
+                  if (statusMenuOpen) closeStatusMenu()
+                  else setStatusMenuOpen(true)
                 }}
                 disabled={statusChanging}
               >
@@ -566,8 +579,20 @@ function Header({
                 />
               </button>
 
-              {statusMenuOpen && (
-                <div className="header-driver-status-menu header-driver-status-menu--profile">
+              {statusMenuOpen && !statusMenuClosing && (
+                <button
+                  type="button"
+                  className="header-driver-status-backdrop"
+                  aria-label={t(TRANSLATION.CLOSE)}
+                  onClick={closeStatusMenu}
+                />
+              )}
+                <div
+                  className={cn('header-driver-status-menu header-driver-status-menu--profile', {
+                    'header-driver-status-menu--closing': statusMenuClosing,
+                    'header-driver-status-menu--active': statusMenuOpen,
+                  })}
+                >
                   <div className="header-driver-status-menu__profile">
                     <div className="header-driver-status-menu__profile-title">
                       Текущая учётка
@@ -615,7 +640,7 @@ function Header({
                       type="button"
                       className="header-driver-status-menu__item header-driver-status-menu__item--logout"
                       onClick={() => {
-                        setStatusMenuOpen(false)
+                        closeStatusMenu()
                         logout()
                       }}
                     >
@@ -629,7 +654,6 @@ function Header({
                     </span>
                   )}
                 </div>
-              )}
             </>
           ) : (
             <div

@@ -1641,7 +1641,7 @@ function getProfitRankClass(order: IOrder) {
 function getOrderModeIcon(order: IOrder, performing: boolean) {
   if (performing) return images.mapOrderPerforming
   if (isVotingOrder(order)) return images.mapOrderVoting
-  if (isOfferOrder(order)) return images.mapOrderWating
+  if (isOfferOrder(order)) return images.mapOrderOffer
   return images.mapOrderWating
 }
 

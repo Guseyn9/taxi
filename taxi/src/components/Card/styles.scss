@@ -745,6 +745,35 @@ $high-profit-fg: #22A613;
           grid-column: 1/3;
         }
 
+        .status-card__emulator-case {
+          grid-column: 1/3;
+          display: flex;
+          align-items: center;
+          flex-wrap: wrap;
+          gap: 6px;
+          margin-top: 12px;
+          padding: 8px 12px;
+          border: 1px solid #FFC9BD;
+          border-radius: 12px;
+          background: #FFF2EF;
+          font-size: 12px;
+          line-height: 1.25;
+
+          &-label {
+            color: #B91C1C;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: .02em;
+            font-size: 10px;
+          }
+
+          &-name {
+            color: #17212B;
+            font-weight: 700;
+            word-break: break-word;
+          }
+        }
+
         .btns {
           margin-top: 16px;
           display: flex;

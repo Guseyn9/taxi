@@ -372,6 +372,8 @@ export default {
   PORCH: 'porch',
   PRICE_P: 'price_p',
   PROFILE: 'profile',
+  PROFILE_CLOSE: 'profile_close',
+  PROFILE_CLOSE_CONFIRM: 'profile_close_confirm',
   PROMO_CODE: 'promo_code',
   PROVE: 'prove',
   QUEEN_BED: 'queen_bed',
