@@ -259,3 +259,51 @@
     align-items: center;
   }
 }
+
+.jsonform {
+  &__close {
+    margin-top: 16px;
+  }
+}
+
+.jsonform-confirm {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+
+  &__backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(17, 24, 39, .5);
+  }
+
+  &__card {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    max-width: 340px;
+    background: #fff;
+    border-radius: 16px;
+    box-shadow: 0 20px 48px rgba(17, 24, 39, .25);
+    padding: 24px 20px 20px;
+    text-align: center;
+  }
+
+  &__title {
+    font-size: 17px;
+    line-height: 1.35;
+    font-weight: 600;
+    color: #111827;
+    margin-bottom: 20px;
+  }
+
+  &__actions {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+  }
+}

@@ -76,7 +76,7 @@ import Input, { EInputTypes } from '../Input'
 import { Loader } from '../loader/Loader'
 import { getStableRemainingLifetimeSeconds } from '../../tools/reliableTime'
 import { DRIVER_DOOR_NUMBER_PATTERN, getDriverDoorNumber, normalizeDriverDoorNumber } from '../../tools/driverDoorNumber'
-import { isAnyBrowserEmulatorOrder } from '../../tools/emulatorMode'
+import { getEmulatorCaseName, isAnyBrowserEmulatorOrder } from '../../tools/emulatorMode'
 import '../Card/styles.scss'
 
 const bookingStates: Record<number, keyof typeof EBookingStates> = {
@@ -1838,6 +1838,17 @@ function CardModalContent({
   const offerCalculatedPrice = getOfferCalculatedPrice(order, paymentAmount)
   const offerPriceDifferenceText = formatOfferPriceDifference(offerCustomerDesiredPrice, offerCalculatedPrice)
   const votingInfo = getVotingInfo(order, user?.u_id, now)
+  // Имя тест-кейса. Внешний клиент-симулятор кладёт его явной меткой `[CASE] ...`
+  // в комментарий. Классический браузерный эмулятор метку не ставит — у его заказов
+  // есть только режим (voting/offer/order), поэтому для них показываем режим как кейс.
+  const emulatorCaseName = getEmulatorCaseName(order) ||
+    (order && isAnyBrowserEmulatorOrder(order) ?
+      (isVotingMode ?
+        t(TRANSLATION.CLIENT_VOTING_TITLE) :
+        isOfferMode ?
+          t(TRANSLATION.CLIENT_OFFER_ORDER_MODE) :
+          t(TRANSLATION.CLIENT_CITY_ORDER_MODE)) :
+      null)
   const showVotingCompetitors = userAsDriver?.c_state === EBookingDriverState.Considering
   const orderMapFromPoint = address?.latitude && address.longitude ? address : (
     order?.b_start_latitude && order.b_start_longitude ? {
@@ -2173,6 +2184,13 @@ function CardModalContent({
               <Icon src="people" width="16" height="16" stroke="#FF2400" />
               <label>{getOrderCount(order)}</label>
             </span>
+          }
+
+          {emulatorCaseName &&
+            <div className="status-card__emulator-case">
+              <span className="status-card__emulator-case-label">{t('driver_emulator_case')}:</span>
+              <span className="status-card__emulator-case-name">{emulatorCaseName}</span>
+            </div>
           }
 
           <form onSubmit={formHandleSubmit(handleSubmit)} >

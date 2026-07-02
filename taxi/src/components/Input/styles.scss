@@ -58,11 +58,16 @@ textarea {
   height: auto;
 }
 
+.input__field-wrapper {
+  margin-bottom: 20px;
+}
+
 .input {
   $b: &;
   height: var(#{Input.$height}, 52px);
   border: none;
   padding-right: 10px;
+  outline: none;
   flex: 1;
   padding-left: 15px;
   width: calc(100% - 25px);

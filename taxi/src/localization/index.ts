@@ -67,6 +67,18 @@ const FALLBACK_TRANSLATIONS: Record<string, Record<string, string>> = {
     fr: 'Non',
     ar: 'لا',
   },
+  profile_close: {
+    ru: 'Закрыть',
+    en: 'Close',
+    fr: 'Fermer',
+    ar: 'إغلاق',
+  },
+  profile_close_confirm: {
+    ru: 'Сохранить внесённые изменения?',
+    en: 'Save the changes you made?',
+    fr: 'Enregistrer les modifications apportées ?',
+    ar: 'هل تريد حفظ التغييرات التي أجريتها؟',
+  },
   hide_order: {
     ru: 'Скрыть заказ',
     en: 'Hide order',
@@ -223,6 +235,12 @@ const FALLBACK_TRANSLATIONS: Record<string, Record<string, string>> = {
     en: 'Could not perform the action',
     fr: 'Impossible d’effectuer l’action',
     ar: 'تعذر تنفيذ الإجراء',
+  },
+  driver_emulator_case: {
+    ru: 'Кейс эмулятора',
+    en: 'Emulator case',
+    fr: 'Cas de l’émulateur',
+    ar: 'حالة المحاكي',
   },
   select: {
     ru: 'Выбрать',

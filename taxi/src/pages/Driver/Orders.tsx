@@ -437,7 +437,13 @@ const DriverOrders: React.FC<IProps> = ({
   }, [activeOrders, user?.u_id, setMessageModal, closeAllModals])
 
   return (
-    <PageSection className="driver" scrollable={false}>
+    <PageSection
+      className={cn('driver', {
+        'driver--lite': type === EDriverTabs.Lite,
+        'driver--detailed': type === EDriverTabs.Detailed,
+      })}
+      scrollable={false}
+    >
       {
         (
           SITE_CONSTANTS.LIST_OF_MODES_USED[TABS.WAITING.id] ||

@@ -379,6 +379,25 @@ export function getOrderTrainingDriverId(order: Partial<IOrder> | any): string |
   return match ? match[1] : null
 }
 
+// Имя тест-кейса эмулятора. Клиент-симулятор помечает заказ комментарием
+// `[CASE] <имя> [DRV:<id>]` (см. driver-emulator/src/client-simulator.js), чтобы тестер
+// в Driver UI видел, какой сценарий сейчас проверяется. Возвращаем только имя кейса,
+// без служебного токена [DRV:...]; пусто => в заказе нет метки кейса.
+export function getEmulatorCaseName(order: Partial<IOrder> | any): string | null {
+  if (!order) return null
+
+  const text = [
+    String(order?.b_custom_comment || ''),
+    String(order?.b_comments || ''),
+  ].join(' ')
+
+  const match = text.match(/\[CASE\]\s*([^[]+)/i)
+  if (!match) return null
+
+  const name = match[1].replace(/\s+/g, ' ').trim()
+  return name || null
+}
+
 export function getRunningBrowserEmulatorModes() {
   return (['clients', 'drivers'] as TBrowserEmulatorMode[])
     .filter(mode => isBrowserEmulatorRunning(mode))

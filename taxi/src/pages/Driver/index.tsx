@@ -351,13 +351,9 @@ const Driver: React.FC<IProps> = ({
     navigate(`/driver-order?tab=${EDriverTabs.Detailed}`)
   }
 
-  const hideDriverTabsOnActiveMap = tab === EDriverTabs.Map && Boolean(
-    activeOrders?.some(order => isDriverMapEngagedOrder(order, user.u_id)),
-  )
-
   return (
     <>
-      {!hideDriverTabsOnActiveMap && <div className="driver-tabs">
+      <div className="driver-tabs">
         <button
           onClick={onFirstTabClick}
           className={cn('driver-tabs__tab', { 'driver-tabs__tab--active': tab === EDriverTabs.Lite })}
@@ -376,7 +372,7 @@ const Driver: React.FC<IProps> = ({
         >
           {t(TRANSLATION.MAP)}
         </button>
-      </div>}
+      </div>
       {(tab === EDriverTabs.Lite || tab === EDriverTabs.Detailed) &&
         <OrderAddressContext.Provider value={{ ordersAddressRef }}>
           <DriverOrders
