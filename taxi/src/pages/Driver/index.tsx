@@ -19,7 +19,7 @@ import images from '../../constants/images'
 import { withLayout } from '../../HOCs/withLayout'
 import { addHiddenOrder } from '../../tools/utils'
 import * as API from '../../API'
-import { getOfferEvent, getStoredDriverOffer, isOfferOrder, updateStoredDriverOfferStatus } from '../../tools/driverOffer'
+import { clearEmulatorClientChoseOtherDriver, getOfferEvent, getStoredDriverOffer, hasEmulatorClientChoseOtherDriver, isOfferOrder, subscribeEmulatorClientChoseOtherDriver, updateStoredDriverOfferStatus } from '../../tools/driverOffer'
 import { BROWSER_EMULATOR_STATE_EVENT, getVisibleBrowserEmulatorOrderIds, isAnyBrowserEmulatorModeRunning, isExternalEmulatorEnabled } from '../../tools/emulatorMode'
 import { writeFlowEvent } from '../../tools/flowLog'
 import { writeRawLog } from '../../tools/rawLog'
@@ -88,6 +88,7 @@ const Driver: React.FC<IProps> = ({
   const shownDriverFinishedRatings = useRef<Record<string, true>>({})
   const shownDriverOfferNotifications = useRef<Record<string, string>>({})
   const shownDriverClosedNotifications = useRef<Record<string, true>>({})
+  const shownEmulatorOtherChoiceNotifications = useRef<Record<string, true>>({})
   const [emulatorOrdersEnabled, setEmulatorOrdersEnabled] = useState(() => isAnyBrowserEmulatorModeRunning() || isExternalEmulatorEnabled())
 
   useEffect(() => {
@@ -328,6 +329,46 @@ const Driver: React.FC<IProps> = ({
         })
       }
     }
+  }, [activeOrders, user?.u_id, user?.u_role, setMessageModal, closeAllModals])
+
+  // Реакция "клиент выбрал другого водителя", которую клиентский эмулятор симулирует
+  // локально (голосование/предложение без реального второго водителя).
+  useEffect(() => {
+    if (user?.u_role !== EUserRoles.Driver || !user.u_id)
+      return
+
+    const userId = user.u_id
+
+    const notifyOtherChosen = (orderId: string) => {
+      if (!orderId || !hasEmulatorClientChoseOtherDriver(orderId))
+        return
+      if (shownEmulatorOtherChoiceNotifications.current[orderId])
+        return
+
+      shownEmulatorOtherChoiceNotifications.current[orderId] = true
+      clearEmulatorClientChoseOtherDriver(orderId)
+
+      const relatedOrder = (activeOrders || []).find(order => String(order.b_id) === String(orderId))
+      addHiddenOrder(orderId, userId)
+      closeAllModals()
+      setMessageModal({
+        isOpen: true,
+        status: EStatuses.Warning,
+        message: relatedOrder?.b_voting ?
+          t(TRANSLATION.DRIVER_VOTING_CLOSED_BY_OTHER) :
+          t('driver_offer_client_selected_other'),
+      })
+    }
+
+    const candidateIds = new Set<string>([
+      ...getStoredDriverVotingParticipationIds(),
+      ...(activeOrders || [])
+        .filter(order => isDriverRelatedToOrder(order, userId))
+        .map(order => String(order.b_id)),
+    ])
+    candidateIds.forEach(orderId => notifyOtherChosen(orderId))
+
+    return subscribeEmulatorClientChoseOtherDriver(notifyOtherChosen)
   }, [activeOrders, user?.u_id, user?.u_role, setMessageModal, closeAllModals])
 
   if (user?.u_role !== EUserRoles.Driver) {

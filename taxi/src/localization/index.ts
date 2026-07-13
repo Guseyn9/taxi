@@ -236,6 +236,42 @@ const FALLBACK_TRANSLATIONS: Record<string, Record<string, string>> = {
     fr: 'Impossible d’effectuer l’action',
     ar: 'تعذر تنفيذ الإجراء',
   },
+  emulator_route_tools_title: {
+    ru: 'Маршрут эмулятора (тест)',
+    en: 'Emulator route (test)',
+    fr: 'Itinéraire de l’émulateur (test)',
+    ar: 'مسار المحاكي (اختبار)',
+  },
+  emulator_route_replace: {
+    ru: 'Заменить маршрут',
+    en: 'Replace route',
+    fr: 'Remplacer l’itinéraire',
+    ar: 'استبدال المسار',
+  },
+  emulator_route_append: {
+    ru: 'Добавить точку',
+    en: 'Append point',
+    fr: 'Ajouter un point',
+    ar: 'إضافة نقطة',
+  },
+  emulator_route_remove_last: {
+    ru: 'Удалить последнюю',
+    en: 'Remove last point',
+    fr: 'Supprimer le dernier point',
+    ar: 'حذف آخر نقطة',
+  },
+  emulator_route_clear: {
+    ru: 'Очистить маршрут',
+    en: 'Clear route',
+    fr: 'Effacer l’itinéraire',
+    ar: 'مسح المسار',
+  },
+  emulator_route_last_event: {
+    ru: 'Последнее событие',
+    en: 'Last event',
+    fr: 'Dernier événement',
+    ar: 'آخر حدث',
+  },
   driver_emulator_case: {
     ru: 'Кейс эмулятора',
     en: 'Emulator case',

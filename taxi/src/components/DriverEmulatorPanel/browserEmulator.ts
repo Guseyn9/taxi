@@ -15,9 +15,20 @@ import {
   saveEmulatedDriverLocation,
   clearEmulatedDriverLocations,
 } from '../../tools/emulatorMode'
-import { getDefaultCityLocationClassId, getDefaultIntercityLocationClassId, getOfferResponseBookingCommentIds, getPassengerConfirmedChoice, getStoredChoiceOrderMode, setStoredChoiceOrderMode } from '../../tools/driverOffer'
+import { getDefaultCityLocationClassId, getDefaultIntercityLocationClassId, getOfferResponseBookingCommentIds, getPassengerConfirmedChoice, getStoredChoiceOrderMode, markEmulatorClientChoseOtherDriver, setPassengerConfirmedChoice, setStoredChoiceOrderMode } from '../../tools/driverOffer'
 import { writeRawLog } from '../../tools/rawLog'
 import * as API from '../../API'
+import store from '../../state'
+import { userSelectors } from '../../state/user'
+
+function getCurrentAppUserId(): string | null {
+  try {
+    const id = userSelectors.user(store.getState())?.u_id
+    return id !== undefined && id !== null && id !== '' ? String(id) : null
+  } catch {
+    return null
+  }
+}
 
 export type BrowserEmulatorSnapshot = {
   running: boolean
@@ -1561,6 +1572,7 @@ type ClientBotState = {
 const CLIENT_EMULATOR_STORAGE_KEY = 'gruzvill_client_order_emulator_accounts_v2'
 const CLIENT_ORDER_OWNER_STORAGE_KEY = 'gruzvill_client_order_emulator_owner_map_v2'
 const CLIENT_ORDER_INTERVAL_MS = 32000
+const CLIENT_VOTING_SELECT_INTERVAL_MS = 4000
 const CLIENT_START_STAGGER_MIN_MS = 900
 const CLIENT_START_STAGGER_MAX_MS = 2600
 const CLIENT_ACCOUNTS_COUNT = 4
@@ -2194,11 +2206,21 @@ export class BrowserClientOrderEmulator {
   private emitTimer: number | null = null
   private nextClientIndex = 0
   private createdOrders = new Map<string, ClientBotState>()
+  private selectionTimer: number | null = null
+  private selectionBusy = false
+  private selectedVotingOrders = new Set<string>()
+  // Заранее запланированный исход для каждого заказа с выбором: 'me' — клиент выберет
+  // тестера, 'other' — сымитируем «выбор другого». Планируем при создании и строго
+  // чередуем отдельно для голосования и предложения, чтобы оба флоу были гарантированы
+  // (а не выпадали случайно).
+  private plannedChoiceOutcomes = new Map<string, 'me' | 'other'>()
+  private choiceOutcomeCounters = new Map<string, number>()
   private localOrigin: Point | null = null
   private lastWakeTickAt = 0
   private wakeListener = (() => {
     if (!this.running) return
     this.ensureTimer()
+    window.setTimeout(() => { this.pollChoiceSelections() }, 80)
     const now = Date.now()
     if (now - this.lastWakeTickAt < 3500) return
     this.lastWakeTickAt = now
@@ -2244,8 +2266,10 @@ export class BrowserClientOrderEmulator {
   }
 
   private ensureTimer() {
-    if (this.timer !== null) return
-    this.timer = window.setInterval(() => { this.tick() }, CLIENT_ORDER_INTERVAL_MS)
+    if (this.timer === null)
+      this.timer = window.setInterval(() => { this.tick() }, CLIENT_ORDER_INTERVAL_MS)
+    if (this.selectionTimer === null)
+      this.selectionTimer = window.setInterval(() => { this.pollChoiceSelections() }, CLIENT_VOTING_SELECT_INTERVAL_MS)
   }
 
   private attachWakeListeners() {
@@ -2291,6 +2315,9 @@ export class BrowserClientOrderEmulator {
     clearBrowserEmulatorOrderIds('clients')
     clearClientOrderOwnerMap()
     this.createdOrders.clear()
+    this.selectedVotingOrders.clear()
+    this.plannedChoiceOutcomes.clear()
+    this.choiceOutcomeCounters.clear()
     this.log('Старые активные заказы эмулятора очищены из локального режима.')
 
     const origin = await this.resolveLocalOrigin()
@@ -2319,6 +2346,9 @@ export class BrowserClientOrderEmulator {
     this.running = false
     if (this.timer !== null) window.clearInterval(this.timer)
     this.timer = null
+    if (this.selectionTimer !== null) window.clearInterval(this.selectionTimer)
+    this.selectionTimer = null
+    this.selectedVotingOrders.clear()
     this.detachWakeListeners()
     setBrowserEmulatorRunning('clients', false)
     this.log('Эмулятор клиентов остановлен, закрываю тестовые заказы')
@@ -2522,6 +2552,7 @@ export class BrowserClientOrderEmulator {
           saveClientOrderOwner(orderId, client)
           setStoredChoiceOrderMode(orderId, meta.mode)
           this.createdOrders.set(String(orderId), client)
+          this.planChoiceOutcome(String(orderId), meta.mode)
         }
         await confirmPassengerOrder(client.session, orderId)
         this.log(`[${client.name}] создал заказ ${orderId || '(id unknown)'}; режим=${meta.mode}; около ${formatEmulatorPoint(meta.origin)}; ${meta.from.shortAddress || meta.from.address} → ${meta.to.shortAddress || meta.to.address}; адрес=${meta.from.geocodeSource || 'unknown'}/${meta.to.geocodeSource || 'unknown'}; ${meta.price}; пассажиров=${meta.passengers}`)
@@ -2550,6 +2581,107 @@ export class BrowserClientOrderEmulator {
       if (!this.running) break
       await sleep(randInt(CLIENT_START_STAGGER_MIN_MS, CLIENT_START_STAGGER_MAX_MS))
       await this.createOneOrder(client)
+    }
+  }
+
+  private async fetchOrderAsClient(client: ClientBotState, orderId: string) {
+    if (!client.session) return null
+    const response = await apiPost(`/drive/get/${orderId}?fields=00000000u1`, {
+      token: client.session.token,
+      u_hash: client.session.u_hash,
+      array_type: 'list',
+    })
+    if (isBackendError(response)) return null
+    const booking = response?.data?.booking ?? response?.booking
+    if (Array.isArray(booking))
+      return booking.find((item: any) => String(getOrderId(item)) === String(orderId)) || booking[0] || null
+    if (booking && typeof booking === 'object')
+      return (booking as any)[orderId] || Object.values(booking)[0] || null
+    return response?.data || null
+  }
+
+  // Планируем исход заказа с выбором при его создании: строгое чередование
+  // «выбор меня» → «выбор другого», отдельно для голосования и предложения. Начинаем
+  // с «меня», чтобы флоу победы был доступен сразу. Так оба исхода гарантированы, а не
+  // выпадают случайно (жалоба тестера: «3 раза подряд не выбран»).
+  private planChoiceOutcome(orderId: string, mode: GeneratedOrderMode) {
+    if (mode !== 'voting' && mode !== 'offer')
+      return
+
+    const index = this.choiceOutcomeCounters.get(mode) || 0
+    this.choiceOutcomeCounters.set(mode, index + 1)
+    this.plannedChoiceOutcomes.set(orderId, index % 2 === 0 ? 'me' : 'other')
+  }
+
+  // Клиентский эмулятор сам выступает пассажиром, поэтому для своих заказов
+  // с выбором (голосование и предложение) он обязан отреагировать на откликнувшегося
+  // водителя. Без этого реальный водитель-тестер откликается, но никто его не выбирает,
+  // и заказ висит/закрывается по таймауту. Исход («выбор меня»/«выбор другого») заранее
+  // запланирован в planChoiceOutcome, поэтому оба флоу гарантированно проверяемы.
+  private async pollChoiceSelections() {
+    if (!this.running || this.selectionBusy) return
+
+    const realDriverId = getCurrentAppUserId()
+    if (!realDriverId) return
+
+    const entries = Array.from(this.createdOrders.entries())
+    if (!entries.length) return
+
+    this.selectionBusy = true
+    try {
+      for (const [orderId, client] of entries) {
+        if (!this.running) break
+        if (this.selectedVotingOrders.has(orderId) || !client?.session) continue
+
+        const mode = getStoredChoiceOrderMode(orderId)
+        if (mode !== 'voting' && mode !== 'offer') continue
+
+        const order = await this.fetchOrderAsClient(client, orderId).catch(() => null)
+        if (!order) continue
+
+        const drivers = Array.isArray(order.drivers) ? order.drivers : []
+
+        // Кто-то уже назначен исполнителем — реагировать больше не нужно.
+        if (drivers.some((driver: any) => isAssignedState(getRawDriverState(driver, order)))) {
+          this.selectedVotingOrders.add(orderId)
+          continue
+        }
+
+        const candidate = drivers.find((driver: any) =>
+          String(driver?.u_id ?? driver?.user_id ?? '') === String(realDriverId) &&
+          Number(getRawDriverState(driver, order)) === DRIVER_STATES.CONSIDERING,
+        )
+        if (!candidate) continue
+
+        // Исход заранее запланирован при создании заказа (строгое чередование), поэтому
+        // тестер гарантированно встречает и «выбор меня», и «выбор другого». Если плана
+        // нет (заказ из прошлой сессии) — по умолчанию отдаём заказ тестеру.
+        if (this.plannedChoiceOutcomes.get(orderId) === 'other') {
+          this.selectedVotingOrders.add(orderId)
+          markEmulatorClientChoseOtherDriver(orderId)
+          this.log(`заказ ${orderId}: клиент выбрал другого водителя (${mode}, симуляция)`)
+          continue
+        }
+
+        const response = await apiPost(`/drive/get/${orderId}`, {
+          token: client.session.token,
+          u_hash: client.session.u_hash,
+          action: ACTIONS.SET_PERFORMER,
+          performer: '1',
+          u_id: realDriverId,
+        }).catch(error => error)
+
+        if (isBackendError(response)) {
+          this.log(`заказ ${orderId}: не удалось выбрать водителя ${realDriverId}: ${normalizeErrorMessage(response)}`)
+          continue
+        }
+
+        this.selectedVotingOrders.add(orderId)
+        setPassengerConfirmedChoice(orderId, realDriverId)
+        this.log(`заказ ${orderId}: клиент выбрал откликнувшегося водителя ${realDriverId} (${mode})`)
+      }
+    } finally {
+      this.selectionBusy = false
     }
   }
 

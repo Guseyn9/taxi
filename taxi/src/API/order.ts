@@ -479,20 +479,45 @@ const _takeOrder = (
       const driverDoorNumber = normalizeDriverDoorNumber(options.votingNumber) ||
         getDriverDoorNumber({ c_id: car.c_id }, car)
 
-      addToFormData(formData, {
-        action: EBookingActions.SetPerformer,
-        performer: candidate ? '0' : '1',
-        b_driver_code: driverDoorNumber,
-        data: JSON.stringify({
-          c_id: car.c_id,
-          c_payment_way: EPaymentWays.Cash,
-          c_options: { performers_price: options.performers_price },
-        }),
-      })
+      const postTake = (safeOnly = false) => {
+        const requestFormData = cloneFormData(formData)
+        const fields: Record<string, any> = {
+          action: EBookingActions.SetPerformer,
+          performer: candidate ? '0' : '1',
+          data: JSON.stringify(cleanDriverOfferOptions({
+            c_id: car.c_id,
+            c_payment_way: EPaymentWays.Cash,
+            c_options: buildSafePerformerOptions(options.performers_price),
+          })),
+        }
 
-      return axios.post(`${Config.API_URL}/drive/get/${id}`, formData)
-        .then(res => res.data)
-        .then(res => res.status === 'error' ? Promise.reject(res) : res)
+        // b_driver_code — это код посадки для старта поездки (set_start_state), а не для
+        // взятия заказа. На gruzvill его передача в set_performer отклоняется ("Не удалось
+        // выполнить действие"). Рабочие эмуляторы берут обычный заказ без него, поэтому в
+        // безопасном ретрае повторяем взятие без b_driver_code.
+        if (!safeOnly && driverDoorNumber)
+          fields.b_driver_code = driverDoorNumber
+
+        addToFormData(requestFormData, fields)
+
+        return axios.post(`${Config.API_URL}/drive/get/${id}`, requestFormData)
+          .then(res => res.data)
+          .then(res => res.status === 'error' ? Promise.reject(res) : res)
+      }
+
+      return postTake(false).catch(firstError => {
+        // Заказ уже взят этим водителем — повторять не нужно.
+        if (!driverDoorNumber || isAlreadyTakenPerformerError(firstError))
+          return Promise.reject(firstError)
+
+        return postTake(true).catch(retryError => {
+          // Редкий случай: первый POST успел назначить исполнителя и упал уже на
+          // b_driver_code — тогда ретрай вернёт "already performer", а заказ фактически взят.
+          if (isAlreadyTakenPerformerError(retryError))
+            return { c_index: '', current_cars_count: '', b_cars_count: '' }
+          return Promise.reject(retryError)
+        })
+      })
     })
 }
 export const takeOrder = apiMethod<typeof _takeOrder>(_takeOrder)
@@ -509,6 +534,20 @@ const DRIVER_OFFER_MODE = 'OFFER'
 
 function cleanDriverOfferComment(comment?: string) {
   return typeof comment === 'string' ? comment.trim() : ''
+}
+
+// Если первый POST уже назначил водителя исполнителем, безопасный ретрай не нужен —
+// иначе backend вернёт "already performer". В этом случае взятие фактически прошло.
+function isAlreadyTakenPerformerError(error: any) {
+  const text = [
+    error?.message,
+    error?.error,
+    error?.reason,
+    error?.data?.message,
+    error?.response?.data?.message,
+  ].filter(Boolean).join(' ').toLowerCase()
+
+  return text.includes('already performer') || text.includes('booking driver state')
 }
 
 function cleanDriverOfferOptions(options: Record<string, unknown>) {
