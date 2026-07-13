@@ -850,7 +850,20 @@
 /* Tab-specific layout: "Кратко" (lite) stretches the list as a flex column;
    "Все" (detailed) lets the .driver-orders block grow instead. */
 .page-section.driver--lite .driver-orders__list {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  align-content: start;
+  gap: 15px;
+}
+
+/* Grid controls the sizing: cards stretch to fill their track (no dead space
+   when a card wraps) and never shrink below the 120px minimum. Override the
+   percentage/fixed widths from MiniOrder so the grid track drives the width. */
+.page-section.driver--lite .driver-orders__list .mini-order {
+  width: auto;
+  min-width: 0;
+  margin: 0;
+  box-sizing: border-box;
 }
 
 .page-section.driver--detailed .driver-orders {
@@ -865,7 +878,6 @@
 }
 
 .page-section.driver .driver-orders__list .mini-order {
-  margin-right: 15px;
   justify-content: space-between;
 }
 

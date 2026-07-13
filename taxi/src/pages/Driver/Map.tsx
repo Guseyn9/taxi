@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react'
+import React, { useCallback, useState, useEffect, useMemo, useRef } from 'react'
 import { connect, ConnectedProps } from 'react-redux'
 import { useNavigate } from 'react-router-dom'
 import L from 'leaflet'
@@ -13,9 +13,15 @@ import {
   IOrder,
   IRouteInfo,
   IUser,
-  EStatuses,
 } from '../../types/types'
 import { IWayGraph } from '../../tools/maps'
+import { makeRoutePointsSafe } from '../../tools/route'
+import { DriverRouteEmulator, ERouteWaypointType } from '../../tools/driverRouteEmulator'
+import { DriverOrderEventAdapter } from '../../tools/driverOrderEventAdapter'
+import {
+  subscribeDriverRouteEmulatorCommand,
+  emitDriverRouteEmulatorNotification,
+} from '../../tools/driverRouteEmulatorCommandBus'
 import { useCachedState } from '../../tools/hooks'
 import images from '../../constants/images'
 import {
@@ -30,6 +36,7 @@ import { useInterval } from '../../tools/hooks'
 import SITE_CONSTANTS from '../../siteConstants'
 import * as API from '../../API'
 import { orderActionCreators } from '../../state/order'
+import { ordersActionCreators } from '../../state/orders'
 import { modalsActionCreators } from '../../state/modals'
 import { areasActionCreators, areasSelectors } from '../../state/areas'
 import { IRootState } from '../../state'
@@ -39,7 +46,7 @@ import Button from '../../components/Button'
 import SmoothRotatingMarker from '../../components/SmoothRotatingMarker'
 import { EDriverTabs } from '.'
 import { isOfferOrder, isVotingOrder } from '../../tools/driverOffer'
-import { BROWSER_EMULATOR_STATE_EVENT, isBrowserEmulatorRunning, isDriverEmulatorTargetOrder, isEmulatedClientOrder } from '../../tools/emulatorMode'
+import { BROWSER_EMULATOR_STATE_EVENT, isBrowserEmulatorRunning } from '../../tools/emulatorMode'
 import { writeFlowEvent } from '../../tools/flowLog'
 import { writeRawLog } from '../../tools/rawLog'
 import { summarizeOrder } from '../../tools/frontendLog'
@@ -295,67 +302,17 @@ function trimRoutePointsToPosition(points: Array<[number, number]> | undefined |
 }
 
 const DEMO_DRIVER_ROUTE_SPEED_MPS = 24
+// Degrees offset used to place the temporary test/manual waypoints (~1.3 km).
+const MANUAL_TEST_OFFSET = 0.012
 
-function findNearestRouteIndex(points: Array<[number, number]>, position: [number, number]) {
-  let nearestIndex = 0
-  let nearestDistance = Number.POSITIVE_INFINITY
-
-  points.forEach((point, index) => {
-    const distance = distanceBetweenEarthCoordinates(position[0], position[1], point[0], point[1])
-    if (distance < nearestDistance) {
-      nearestDistance = distance
-      nearestIndex = index
-    }
-  })
-
-  return nearestIndex
-}
-
-function interpolateRoutePoint(from: [number, number], to: [number, number], ratio: number): [number, number] {
-  return [
-    from[0] + (to[0] - from[0]) * ratio,
-    from[1] + (to[1] - from[1]) * ratio,
-  ]
-}
-
-function moveAlongRoutePoints(
-  current: [number, number],
-  points: Array<[number, number]>,
-  stepMeters: number,
-  startIndex?: number,
-) {
-  if (points.length < 2)
-    return { point: current, index: 0, done: true }
-
-  let point = current
-  let targetIndex = Math.max(1, startIndex || findNearestRouteIndex(points, current) + 1)
-  let remaining = stepMeters
-
-  while (targetIndex < points.length) {
-    const target = points[targetIndex]
-    const segmentMeters = distanceBetweenEarthCoordinates(point[0], point[1], target[0], target[1]) * 1000
-
-    if (segmentMeters <= 0.01) {
-      point = target
-      targetIndex += 1
-      continue
-    }
-
-    if (segmentMeters > remaining) {
-      return {
-        point: interpolateRoutePoint(point, target, remaining / segmentMeters),
-        index: targetIndex,
-        done: false,
-      }
-    }
-
-    remaining -= segmentMeters
-    point = target
-    targetIndex += 1
-  }
-
-  return { point: points[points.length - 1], index: points.length - 1, done: true }
-}
+// The map view unmounts whenever another driver tab is shown, which would reset
+// the demo progression (the optimistically-advanced order state and how far the
+// marker has driven). We stash both in module scope so they survive remounts
+// within the session and can be restored when the map tab comes back.
+const persistedDriverDemo: {
+  optimistic: { orderId: string; state: EBookingDriverState } | null
+  progress: { orderId: string; toDestination: boolean; traveledMeters: number } | null
+} = { optimistic: null, progress: null }
 
 function getStoredStartedVotingOrderIds(): string[] {
   try {
@@ -374,8 +331,7 @@ function removeStoredStartedVotingOrderId(orderId: IOrder['b_id']) {
 
 const mapDispatchToProps = {
   getOrder: orderActionCreators.getOrder,
-  setRatingModal: modalsActionCreators.setRatingModal,
-  setMessageModal: modalsActionCreators.setMessageModal,
+  refreshActiveOrders: ordersActionCreators.refreshActiveOrders,
   setOrderCardModal: modalsActionCreators.setOrderCardModal,
   getAreasBetweenPoints: areasActionCreators.getAreasBetweenPoints,
 }
@@ -475,10 +431,9 @@ function DriverOrderMapModeContent({
   setPosition,
   setZoom,
   getOrder,
-  setRatingModal,
-  setMessageModal,
   setOrderCardModal,
   getAreasBetweenPoints,
+  refreshActiveOrders,
   wayGraph,
 }: IContentProps) {
 
@@ -492,6 +447,22 @@ function DriverOrderMapModeContent({
   )
   const [hiddenOrderIds, setHiddenOrderIds] = useState<string[]>(() => getHiddenOrderIds(user?.u_id))
   const [mapActionPending, setMapActionPending] = useState(false)
+  // Optimistically remember the state the driver just advanced to. The active-orders
+  // list the map reads can lag several seconds behind the backend, which made the
+  // map buttons/marker look unresponsive after a tap. We honour this override until
+  // the polled list catches up (see effectiveDriverState below).
+  const [optimisticDriverState, setOptimisticDriverState] = useState<{
+    orderId: IOrder['b_id']
+    state: EBookingDriverState
+  } | null>(() => persistedDriverDemo.optimistic)
+
+  // Mirror the optimistic override into module scope so a tab switch (which
+  // unmounts this view) does not lose it and revert the button to "Поехал".
+  useEffect(() => {
+    persistedDriverDemo.optimistic = optimisticDriverState ?
+      { orderId: String(optimisticDriverState.orderId), state: optimisticDriverState.state } :
+      null
+  }, [optimisticDriverState])
   const lastDriverMapOrdersRenderLogKeyRef = useRef('')
   const lastDriverMapOrderCardLogKeyRef = useRef('')
   const lastDriverMapVisibleOrderIdsRef = useRef<string[]>([])
@@ -502,9 +473,36 @@ function DriverOrderMapModeContent({
   const lastRouteTargetRef = useRef<IAddressPoint | null>(null)
   const lastRouteGraphRef = useRef<IWayGraph | null>(null)
   const [demoDriverPosition, setDemoDriverPosition] = useState<[number, number] | null>(null)
-  const demoRouteIndexRef = useRef(0)
+  // Route emulator model drives the current driver's marker along the taken
+  // order's route. It is framework-agnostic; here we only feed it the built
+  // route geometry, subscribe to its position, and render it.
+  const routeEmulatorRef = useRef<DriverRouteEmulator | null>(null)
+  // Order-event adapter (task 6): diffs activeOrders/readyOrders snapshots into
+  // world events and feeds them into the model via dispatch. The model only
+  // re-transmits them; reacting to them (route mutations) is a later task/FSM.
+  const orderEventAdapterRef = useRef<DriverOrderEventAdapter | null>(null)
+  const wayGraphRef = useRef<IWayGraph | undefined>(undefined)
+  const activeRoutePointsRef = useRef<Array<[number, number]> | null>(null)
+  // Current route phase, read by the (long-lived) tick handler when it stashes the
+  // marker's travelled distance for cross-remount restore.
+  const routePhaseRef = useRef<{ orderId: string | null; toDestination: boolean }>({
+    orderId: null,
+    toDestination: false,
+  })
   const demoRouteKeyRef = useRef('')
-  const demoRouteMoveAtRef = useRef(0)
+  // Manual route override: once the temporary test controls (Replace/Append/
+  // Remove Last/Clear from DriverEmulatorPanel) touch the model, the automatic
+  // order → setRoute pipeline stops feeding it, so the manually edited route is
+  // not immediately overwritten. `manualRouteOverrideRef` is the synchronous
+  // guard read inside effects; `manualRouteActive` drives rendering.
+  const manualRouteOverrideRef = useRef(false)
+  const [manualRouteActive, setManualRouteActive] = useState(false)
+  const [manualRoutePolyline, setManualRoutePolyline] = useState<[number, number][] | null>(null)
+  // Freshest map context for the (long-lived) command handler to read.
+  const mapContextRef = useRef<{ position: [number, number] | null; orderStart: [number, number] | null }>({
+    position: null,
+    orderStart: null,
+  })
   const browserGeoRequestPendingRef = useRef(false)
   const lastBrowserGeoRequestAtRef = useRef(0)
   const [browserEmulatorModes, setBrowserEmulatorModes] = useState(() => ({
@@ -874,9 +872,43 @@ function DriverOrderMapModeContent({
     startedVotingOrderIds.includes(activeDriverOrder.order.b_id),
   )
 
+  const backendDriverState = activeDriverOrder?.driver?.c_state
+  const activeOrderId = activeDriverOrder?.order?.b_id
+
+  // The button/marker follow the freshest known state: the optimistic override the
+  // moment the driver taps, then the polled backend state once it catches up.
+  const effectiveDriverState = (
+    optimisticDriverState &&
+    activeOrderId !== undefined &&
+    String(optimisticDriverState.orderId) === String(activeOrderId) &&
+    (backendDriverState === undefined || optimisticDriverState.state > backendDriverState)
+  ) ? optimisticDriverState.state : backendDriverState
+
+  // Drop the override once the backend order is gone or has reached the override.
+  useEffect(() => {
+    if (!optimisticDriverState)
+      return
+    if (
+      activeOrderId === undefined ||
+      String(activeOrderId) !== String(optimisticDriverState.orderId) ||
+      (backendDriverState !== undefined && backendDriverState >= optimisticDriverState.state)
+    )
+      setOptimisticDriverState(null)
+  }, [optimisticDriverState, activeOrderId, backendDriverState])
+
+  // After the driver taps "Поехал" (departed) the car drives to the destination.
+  // Arrived and Started are both "en route to destination" for the demo movement.
   const isRouteToDestination = Boolean(
-    activeDriverOrder?.driver?.c_state === EBookingDriverState.Started ||
+    effectiveDriverState === EBookingDriverState.Arrived ||
+    effectiveDriverState === EBookingDriverState.Started ||
     isStartedVotingOrder,
+  )
+
+  // The marker stays parked right after the order is accepted (Performer state)
+  // and only starts moving once the driver taps "Поехал" (state ≥ Arrived).
+  const hasDeparted = Boolean(
+    effectiveDriverState !== undefined &&
+    effectiveDriverState >= EBookingDriverState.Arrived,
   )
 
   const performingOrder = !isRouteToDestination ? activeDriverOrder?.order : undefined
@@ -934,31 +966,49 @@ function DriverOrderMapModeContent({
     routeOrderResolvedDestination,
   ])
 
-  const runMapOrderAction = (mutation: () => Promise<void>) => {
+  // The map button state is derived from the active-orders list, so after a
+  // transition we must refresh THAT list (getOrder only updates the single-order
+  // slice the order-details screen reads). Refresh immediately and once more
+  // shortly after, to cover any backend lag before the 5s watch poll catches up.
+  const refreshMapOrderState = (orderId: IOrder['b_id']) => {
+    getOrder(orderId)
+    refreshActiveOrders()
+    window.setTimeout(() => refreshActiveOrders(), 1500)
+  }
+
+  // Drive a forward order-state transition from the map. The emulator/demo backend
+  // may answer a valid forward transition with a noisy error while still applying
+  // it, so we never block the flow with an error modal (the order-details screen
+  // tolerates it the same way). We always refresh afterwards so the active-orders
+  // list reflects the real driver state and advances the button.
+  const runMapOrderTransition = (orderId: IOrder['b_id'], run: () => Promise<void>) => {
     if (mapActionPending)
       return
 
     setMapActionPending(true)
-    mutation()
-      .catch(error => {
-        console.error(error)
-        setMessageModal({ isOpen: true, status: EStatuses.Fail, message: t(TRANSLATION.ERROR) })
+    run()
+      .catch(error => console.error(error))
+      .finally(() => {
+        refreshMapOrderState(orderId)
+        setMapActionPending(false)
       })
-      .finally(() => setMapActionPending(false))
   }
 
+  // "Поехал": order accepted (Performer) → depart (Arrived). The marker starts moving.
   const onMapArrivedClick = () => {
     const order = activeDriverOrder?.order
     if (!order) return
 
-    runMapOrderAction(async() => {
+    setOptimisticDriverState({ orderId: order.b_id, state: EBookingDriverState.Arrived })
+    runMapOrderTransition(order.b_id, async() => {
       await API.setOrderState(order.b_id, EBookingDriverState.Arrived)
       if (order.b_voting)
         await API.arrivedVotingOrder(order.b_id)
-      getOrder(order.b_id)
     })
   }
 
+  // "Приехал": en route (Arrived) → started. Voting orders confirm the boarding
+  // code in the order-details card, so open it instead of transitioning directly.
   const onMapStartedClick = () => {
     const order = activeDriverOrder?.order
     if (!order) return
@@ -968,44 +1018,58 @@ function DriverOrderMapModeContent({
       return
     }
 
-    runMapOrderAction(async() => {
+    setOptimisticDriverState({ orderId: order.b_id, state: EBookingDriverState.Started })
+    runMapOrderTransition(order.b_id, async() => {
       await API.setOrderState(order.b_id, EBookingDriverState.Started)
-      getOrder(order.b_id)
     })
   }
 
+  // "Завершить поездку": started → finished, then close the order view.
   const onCompleteOrderClick = () => {
-    if (!currentOrder) return
+    const order = currentOrder ?? activeDriverOrder?.order
+    if (!order || mapActionPending) return
 
-    runMapOrderAction(async() => {
-      await API.setOrderState(currentOrder.b_id, EBookingDriverState.Finished)
-      setStartedVotingOrderIds(removeStoredStartedVotingOrderId(currentOrder.b_id))
-      getOrder(currentOrder.b_id)
-      navigate(`/driver-order?tab=${EDriverTabs.Lite}`)
-      setRatingModal({ isOpen: true, orderID: currentOrder.b_id })
-    })
+    // The trip is over, so drop the persisted demo state — otherwise coming back
+    // to the map would try to restore a finished order's marker/button.
+    persistedDriverDemo.optimistic = null
+    persistedDriverDemo.progress = null
+    setOptimisticDriverState(null)
+    setMapActionPending(true)
+    API.setOrderState(order.b_id, EBookingDriverState.Finished)
+      .catch(error => console.error(error))
+      .finally(() => {
+        setStartedVotingOrderIds(removeStoredStartedVotingOrderId(order.b_id))
+        refreshMapOrderState(order.b_id)
+        setMapActionPending(false)
+        // The rating modal is opened by the finished-order effect in Driver/index;
+        // opening it here too would pop it twice.
+        navigate(`/driver-order?tab=${EDriverTabs.Lite}`)
+      })
   }
 
   const mapPrimaryAction = useMemo(() => {
-    const driverState = activeDriverOrder?.driver?.c_state
+    const driverState = effectiveDriverState
     const order = activeDriverOrder?.order
     if (!order || !driverState)
       return null
 
+    // Accepted order: the car is parked, prompt the driver to depart.
     if (driverState === EBookingDriverState.Performer)
       return {
-        text: t(TRANSLATION.ARRIVED),
-        className: 'finish-drive-button--arrived',
+        text: t(TRANSLATION.WENT),
+        className: 'finish-drive-button--started',
         onClick: onMapArrivedClick,
       }
 
+    // En route to the destination: prompt arrival (voting confirms via the card).
     if (driverState === EBookingDriverState.Arrived)
       return {
-        text: order.b_voting ? t(TRANSLATION.DRIVER_VOTING_CONFIRM_CODE) : t(TRANSLATION.WENT),
-        className: 'finish-drive-button--started',
+        text: order.b_voting ? t(TRANSLATION.DRIVER_VOTING_CONFIRM_CODE) : t(TRANSLATION.ARRIVED),
+        className: 'finish-drive-button--arrived',
         onClick: onMapStartedClick,
       }
 
+    // Trip in progress: prompt completion, which closes the order.
     if (driverState === EBookingDriverState.Started)
       return {
         text: t(TRANSLATION.CLOSE_DRIVE),
@@ -1015,7 +1079,7 @@ function DriverOrderMapModeContent({
 
     return null
   }, [
-    activeDriverOrder?.driver?.c_state,
+    effectiveDriverState,
     activeDriverOrder?.order?.b_id,
     activeDriverOrder?.order?.b_voting,
     mapActionPending,
@@ -1078,56 +1142,179 @@ function DriverOrderMapModeContent({
     )
   }, 1000)
 
+  // The current driver is "me". While any emulator session is running and I
+  // have a taken order with a built route, the emulator model drives my marker
+  // along that route instead of showing my real GPS.
   const isDemoMapMovementEnabled = Boolean(
     routeOrder &&
     activeDriveRouteInfo?.points?.length &&
-    isDriverEmulatorMode &&
-    (
-      isDriverEmulatorTargetOrder(routeOrder) ||
-      isEmulatedClientOrder(routeOrder)
-    ),
+    emulatorOrdersEnabled,
   )
 
+  // Keep the values the (long-lived) route provider reads up to date.
+  wayGraphRef.current = wayGraph ?? undefined
+  activeRoutePointsRef.current = activeDriveRouteInfo?.points ?? null
+  routePhaseRef.current = {
+    orderId: routeOrder?.b_id ? String(routeOrder.b_id) : null,
+    toDestination: isRouteToDestination,
+  }
+
+  // Create the route emulator once. Its provider reuses the already-built
+  // route geometry when available, and falls back to makeRoutePointsSafe.
   useEffect(() => {
-    if (!isDemoMapMovementEnabled || !activeDriveRouteInfo?.points?.length) {
-      setDemoDriverPosition(null)
-      demoRouteIndexRef.current = 0
+    const model = new DriverRouteEmulator({
+      speedMps: DEMO_DRIVER_ROUTE_SPEED_MPS,
+      routeProvider: async(from, to) => {
+        // For the automatic single-order case the model's only segment IS the
+        // order route, so reuse the already-built geometry. But under the manual
+        // test controls the route has arbitrary multi-point waypoints, so each
+        // segment must be routed for real between its own from/to — otherwise
+        // every segment would collapse onto the order's polyline.
+        const prebuilt = activeRoutePointsRef.current
+        if (!manualRouteOverrideRef.current && prebuilt && prebuilt.length > 1)
+          return prebuilt.map(([lat, lng]) => ({ lat, lng }))
+
+        const info = await makeRoutePointsSafe(
+          { latitude: from.lat, longitude: from.lng },
+          { latitude: to.lat, longitude: to.lng },
+          wayGraphRef.current,
+        )
+        return info.points.map(([lat, lng]) => ({ lat, lng }))
+      },
+    })
+    routeEmulatorRef.current = model
+
+    const unsubscribe = model.subscribe(event => {
+      if (event.type === 'tick') {
+        setDemoDriverPosition([event.position.lat, event.position.lng])
+        // Stash how far we have driven so a tab switch can restore the marker.
+        const phase = routePhaseRef.current
+        if (phase.orderId)
+          persistedDriverDemo.progress = {
+            orderId: phase.orderId,
+            toDestination: phase.toDestination,
+            traveledMeters: model.getState().traveledMeters,
+          }
+      } else if (event.type === 'route-loaded') {
+        const state = model.getState()
+        if (state.position)
+          setDemoDriverPosition([state.position.lat, state.position.lng])
+        // Kept in sync so the manual test controls can draw the model's own
+        // geometry (it may diverge from the order's drawn route).
+        setManualRoutePolyline(
+          state.polyline.length > 1 ? state.polyline.map(point => [point.lat, point.lng]) : null,
+        )
+      } else if (event.type === 'route-cleared')
+        setManualRoutePolyline(null)
+      else if (event.type === 'external-event') {
+        // The model only re-transmits the event; log it so the pipeline is
+        // observable. Deciding what to do with it (route mutation) is task 9/10.
+        writeRawLog('DRIVER_ROUTE_EMULATOR_EVENT', {
+          source: 'driver-route-emulator',
+          screen: 'DriverMap',
+          uiState: 'MapTab',
+          eventType: event.event.type,
+          orderId: event.event.orderId ?? null,
+          hasPickup: Boolean(event.event.pickup),
+          hasDropoff: Boolean(event.event.dropoff),
+          pickup: event.event.pickup ?? null,
+          dropoff: event.event.dropoff ?? null,
+        })
+        // Debug-only surface (task 9/10): let the dev panel show the last event.
+        emitDriverRouteEmulatorNotification({
+          eventType: event.event.type,
+          orderId: event.event.orderId,
+        })
+      }
+    })
+
+    return () => {
+      unsubscribe()
+      model.destroy()
+      routeEmulatorRef.current = null
+    }
+  }, [])
+
+  // Task 6: diff the latest order snapshots into world events and hand them to
+  // the model via dispatch. The adapter is stateful (remembers the previous
+  // snapshot); the first run only establishes a silent baseline.
+  useEffect(() => {
+    if (!orderEventAdapterRef.current)
+      orderEventAdapterRef.current = new DriverOrderEventAdapter({ userId: user?.u_id })
+
+    const adapter = orderEventAdapterRef.current
+    const model = routeEmulatorRef.current
+    if (!model)
+      return
+
+    adapter.setContext({ userId: user?.u_id })
+    adapter.ingest({ activeOrders, readyOrders }).forEach(event => model.dispatch(event))
+  }, [activeOrders, readyOrders, user?.u_id])
+
+  // Feed the taken order's route into the model and start/stop movement.
+  useEffect(() => {
+    const model = routeEmulatorRef.current
+    if (!model)
+      return
+
+    // The temporary test controls took the model over — leave its route alone.
+    if (manualRouteOverrideRef.current)
+      return
+
+    const points = activeDriveRouteInfo?.points
+    if (!isDemoMapMovementEnabled || !points?.length) {
       demoRouteKeyRef.current = ''
-      demoRouteMoveAtRef.current = 0
+      model.clearRoute()
+      setDemoDriverPosition(null)
       return
     }
 
+    const start = points[0]
+    const end = points[points.length - 1]
     const routeKey = [
       routeOrder?.b_id || '',
       isRouteToDestination ? 'destination' : 'pickup',
-      activeDriveRouteInfo.points.length,
-      activeDriveRouteInfo.points[0]?.join(','),
-      activeDriveRouteInfo.points[activeDriveRouteInfo.points.length - 1]?.join(','),
+      points.length,
+      start?.join(','),
+      end?.join(','),
     ].join(':')
 
-    if (demoRouteKeyRef.current === routeKey) return
-
+    if (demoRouteKeyRef.current === routeKey)
+      return
     demoRouteKeyRef.current = routeKey
-    demoRouteIndexRef.current = 1
-    demoRouteMoveAtRef.current = Date.now()
-    setDemoDriverPosition(activeDriveRouteInfo.points[0] as [number, number])
-  }, [isDemoMapMovementEnabled, activeDriveRouteInfo, routeOrder?.b_id, isRouteToDestination])
 
-  useInterval(() => {
-    if (!isDemoMapMovementEnabled || !activeDriveRouteInfo?.points?.length) return
+    model.setRoute([
+      {
+        lat: start[0],
+        lng: start[1],
+        type: isRouteToDestination ? ERouteWaypointType.Boarding : ERouteWaypointType.Pickup,
+        orderId: routeOrder?.b_id,
+      },
+      {
+        lat: end[0],
+        lng: end[1],
+        type: isRouteToDestination ? ERouteWaypointType.Dropoff : ERouteWaypointType.Pickup,
+        orderId: routeOrder?.b_id,
+      },
+    ]).then(() => {
+      // Restore how far the marker had driven before a tab switch rebuilt the
+      // route, so it does not snap back to the start (same order + same phase).
+      const saved = persistedDriverDemo.progress
+      if (
+        saved &&
+        String(saved.orderId) === String(routeOrder?.b_id ?? '') &&
+        saved.toDestination === isRouteToDestination &&
+        saved.traveledMeters > 0
+      )
+        model.seek(saved.traveledMeters)
 
-    const now = Date.now()
-    const elapsedSeconds = demoRouteMoveAtRef.current ? Math.max(.5, (now - demoRouteMoveAtRef.current) / 1000) : 1
-    demoRouteMoveAtRef.current = now
-
-    setDemoDriverPosition((previous) => {
-      const startPoint = previous || (activeDriveRouteInfo.points[0] as [number, number])
-      const stepMeters = Math.min(80, Math.max(10, elapsedSeconds * DEMO_DRIVER_ROUTE_SPEED_MPS))
-      const moved = moveAlongRoutePoints(startPoint, activeDriveRouteInfo.points, stepMeters, demoRouteIndexRef.current)
-      demoRouteIndexRef.current = moved.index
-      return moved.point
+      // Stay parked at the start until the driver taps "Поехал"; only then move.
+      if (hasDeparted)
+        model.resume()
+      else
+        model.pause()
     })
-  }, 1000)
+  }, [isDemoMapMovementEnabled, activeDriveRouteInfo, routeOrder?.b_id, isRouteToDestination, hasDeparted])
 
   const browserDriverPosition = useMemo((): [number, number] | null => {
     if (!lastPositions || !lastPositions.length) return null
@@ -1137,7 +1324,9 @@ function DriverOrderMapModeContent({
 
   // Мемоизируем текущую позицию маркера (чтобы React не пересоздавал <Marker> из-за новой ссылки на массив)
   const currentPosition = useMemo((): [number, number] | null => {
-    if (isDemoMapMovementEnabled && demoDriverPosition) return demoDriverPosition
+    // Demo movement OR the manual test controls both drive the marker via the
+    // route emulator model, so honour its position first.
+    if ((isDemoMapMovementEnabled || manualRouteActive) && demoDriverPosition) return demoDriverPosition
 
     // Client emulator создаёт пассажирские заказы, но водитель остаётся реальным.
     // Поэтому сначала берём GPS этого браузера, а серверную координату используем
@@ -1150,6 +1339,7 @@ function DriverOrderMapModeContent({
     return null
   }, [
     isDemoMapMovementEnabled,
+    manualRouteActive,
     demoDriverPosition,
     isClientEmulatorMode,
     isDriverEmulatorMode,
@@ -1178,6 +1368,92 @@ function DriverOrderMapModeContent({
       routeOrder.b_start_longitude,
     ]
   }, [routeOrder?.b_start_latitude, routeOrder?.b_start_longitude])
+
+  // Keep the values the (long-lived) command/manual handlers read up to date.
+  mapContextRef.current = { position: currentPosition, orderStart: currentOrderStart }
+
+  // Base point for the temporary manual/test waypoints: the model's current
+  // position if it has a route, else the driver/order position, else the map
+  // default.
+  const manualBasePoint = useCallback((): { lat: number; lng: number } => {
+    const modelPosition = routeEmulatorRef.current?.getState().position
+    if (modelPosition)
+      return { lat: modelPosition.lat, lng: modelPosition.lng }
+
+    const context = mapContextRef.current
+    const fallback = context.position ?? context.orderStart
+    if (fallback)
+      return { lat: fallback[0], lng: fallback[1] }
+
+    const [lat, lng] = SITE_CONSTANTS.DEFAULT_POSITION as [number, number]
+    return { lat, lng }
+  }, [])
+
+  // Once the manual/test controls take over, stop the automatic order pipeline
+  // from feeding the model so the manual route is not overwritten.
+  const engageManualRoute = useCallback(() => {
+    manualRouteOverrideRef.current = true
+    setManualRouteActive(true)
+  }, [])
+
+  // A fresh arbitrary test waypoint offset from the current base position.
+  const manualTestWaypoint = useCallback((type: ERouteWaypointType = ERouteWaypointType.Custom) => {
+    const base = manualBasePoint()
+    return {
+      lat: base.lat + MANUAL_TEST_OFFSET,
+      lng: base.lng + MANUAL_TEST_OFFSET * 0.8,
+      type,
+    }
+  }, [manualBasePoint])
+
+  // Temporary test controls (DriverEmulatorPanel → command bus): drive the route
+  // emulator's PUBLIC API directly so its mutation methods can be exercised on a
+  // real map. The model never decides anything here — the button says what to do,
+  // the model just does it, and the marker/polyline reflect the new state. This
+  // is the same shape a future FSM/event handler will use to call the model.
+  useEffect(() => subscribeDriverRouteEmulatorCommand(command => {
+    const model = routeEmulatorRef.current
+    if (!model)
+      return
+
+    const base = manualBasePoint()
+
+    if (command.type === 'clear') {
+      engageManualRoute()
+      model.clearRoute()
+      setDemoDriverPosition(null)
+      setManualRoutePolyline(null)
+      return
+    }
+
+    if (command.type === 'removeLast') {
+      const lastIndex = model.getState().waypoints.length - 1
+      if (lastIndex < 0)
+        return
+      engageManualRoute()
+      model.removeWaypoint(lastIndex)
+      model.resume()
+      return
+    }
+
+    if (command.type === 'append') {
+      engageManualRoute()
+      model.appendWaypoint(manualTestWaypoint())
+      model.resume()
+      return
+    }
+
+    if (command.type === 'replace') {
+      engageManualRoute()
+      const o = MANUAL_TEST_OFFSET
+      model.replaceRoute([
+        { lat: base.lat, lng: base.lng, type: ERouteWaypointType.Pickup },
+        { lat: base.lat + o * 0.8, lng: base.lng + o * 0.5, type: ERouteWaypointType.Custom },
+        { lat: base.lat + o * 0.4, lng: base.lng + o * 1.6, type: ERouteWaypointType.Dropoff },
+      ])
+      model.resume()
+    }
+  }), [engageManualRoute, manualBasePoint, manualTestWaypoint])
 
   const currentRouteTarget = useMemo((): [number, number] | null => {
     if (isRouteToDestination)
@@ -1355,7 +1631,7 @@ function DriverOrderMapModeContent({
         )
       }
       {
-        !!lastPositions.length && !isDriverEmulatorMode &&
+        !!lastPositions.length && !isDriverEmulatorMode && !isDemoMapMovementEnabled &&
         <Polyline positions={lastPositions} />
       }
       {
@@ -1366,6 +1642,23 @@ function DriverOrderMapModeContent({
               color: '#FF3B30',
               weight: 4,
               opacity: .9,
+              lineCap: 'round',
+              lineJoin: 'round',
+            }}
+          />
+        )
+      }
+      {
+        // Route emulator's own geometry while the manual test controls are active.
+        // Drawn separately (blue, dashed) because it can diverge from the order route.
+        manualRouteActive && manualRoutePolyline && manualRoutePolyline.length > 1 && (
+          <Polyline
+            positions={manualRoutePolyline}
+            pathOptions={{
+              color: '#007AFF',
+              weight: 4,
+              opacity: .9,
+              dashArray: '6 8',
               lineCap: 'round',
               lineJoin: 'round',
             }}
@@ -1694,109 +1987,3 @@ function getHiddenOrderIds(userID?: IUser['u_id']): string[] {
 }
 
 export default connector(DriverOrderMapMode)
-
-async function makeRoutePointsSafe(
-  from: IAddressPoint,
-  to: IAddressPoint,
-  wayGraph?: IWayGraph,
-): Promise<IRouteInfo> {
-  try {
-    const apiRoute = await API.makeRoutePoints(from, to)
-    if (isUsableRouteInfo(apiRoute))
-      return apiRoute
-  } catch (error) {
-    }
-
-  const localRoute = makeLocalRoutePoints(from, to, wayGraph)
-  if (isUsableRouteInfo(localRoute))
-    return localRoute
-
-  try {
-    const osrmRoute = await makeOsrmRoutePoints(from, to)
-    if (isUsableRouteInfo(osrmRoute))
-      return osrmRoute
-  } catch (error) {
-    console.error(error)
-  }
-
-  throw new Error('Route by roads is not available')
-}
-
-async function makeOsrmRoutePoints(
-  from: IAddressPoint,
-  to: IAddressPoint,
-): Promise<IRouteInfo | null> {
-  if (!from.latitude || !from.longitude || !to.latitude || !to.longitude)
-    return null
-
-  const url = [
-    'https://router.project-osrm.org/route/v1/driving/',
-    `${from.longitude},${from.latitude};${to.longitude},${to.latitude}`,
-    '?overview=full&geometries=geojson',
-  ].join('')
-  const response = await fetch(url)
-  if (!response.ok)
-    return null
-
-  const data = await response.json()
-  const route = data?.routes?.[0]
-  const coordinates = route?.geometry?.coordinates
-  if (!Array.isArray(coordinates) || coordinates.length < 2)
-    return null
-
-  const durationSeconds = Number(route.duration) || 0
-  const hours = Math.floor(durationSeconds / 3600)
-  const minutes = Math.max(1, Math.round((durationSeconds - hours * 3600) / 60))
-
-  return {
-    distance: parseFloat(((Number(route.distance) || 0) / 1000).toFixed(2)),
-    time: { hours, minutes },
-    points: coordinates.map((item: [number, number]) => [item[1], item[0]]),
-  }
-}
-
-function isUsableRouteInfo(route: IRouteInfo | null | undefined): route is IRouteInfo {
-  return Boolean(
-    route &&
-    Array.isArray(route.points) &&
-    route.points.length > 2 &&
-    route.points.every(point =>
-      Array.isArray(point) &&
-      point.length >= 2 &&
-      Number.isFinite(point[0]) &&
-      Number.isFinite(point[1]),
-    ),
-  )
-}
-
-function makeLocalRoutePoints(
-  from: IAddressPoint,
-  to: IAddressPoint,
-  wayGraph?: IWayGraph,
-): IRouteInfo | null {
-  if (!wayGraph || !from.latitude || !from.longitude || !to.latitude || !to.longitude)
-    return null
-
-  const [startNode] = wayGraph.findClosestNode(from.latitude, from.longitude)
-  const [endNode] = wayGraph.findClosestNode(to.latitude, to.longitude)
-  if (!startNode || !endNode)
-    return null
-
-  const [path, distanceMeters] = wayGraph.findShortestPath(startNode.id, endNode.id)
-  if (path.length < 2 || !Number.isFinite(distanceMeters))
-    return null
-
-  const minutes = Math.max(1, Math.round(distanceMeters / 1000 / 35 * 60))
-  return {
-    distance: parseFloat((distanceMeters / 1000).toFixed(2)),
-    time: {
-      hours: Math.floor(minutes / 60),
-      minutes: minutes % 60,
-    },
-    points: [
-      [from.latitude, from.longitude],
-      ...path.map(node => [node.latitude, node.longitude] as [number, number]),
-      [to.latitude, to.longitude],
-    ],
-  }
-}

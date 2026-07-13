@@ -4,6 +4,11 @@ import { BrowserDriverEmulator, BrowserClientOrderEmulator, BrowserEmulatorSnaps
 import emulationModeExactIcon from '../../assets/images/emulationModeExactIcon.png'
 import { t } from '../../localization'
 import { isBrowserEmulatorRunning } from '../../tools/emulatorMode'
+import {
+  emitDriverRouteEmulatorCommand,
+  subscribeDriverRouteEmulatorNotification,
+  IDriverRouteEmulatorNotification,
+} from '../../tools/driverRouteEmulatorCommandBus'
 import './styles.scss'
 
 type EmulatorStatus = {
@@ -32,6 +37,8 @@ function DriverEmulatorPanel({ isOpen, autoStart, mode = 'drivers', onStatusChan
     logs: [],
   }))
   const [loading, setLoading] = React.useState(false)
+  const [lastRouteEmulatorEvent, setLastRouteEmulatorEvent] =
+    React.useState<IDriverRouteEmulatorNotification | null>(null)
   const logsRef = React.useRef<HTMLPreElement | null>(null)
   const emulatorRef = React.useRef<BrowserDriverEmulator | BrowserClientOrderEmulator | null>(null)
   const emulatorModeRef = React.useRef<EmulatorPanelMode | null>(null)
@@ -146,6 +153,12 @@ function DriverEmulatorPanel({ isOpen, autoStart, mode = 'drivers', onStatusChan
     logsRef.current.scrollTop = logsRef.current.scrollHeight
   }, [status.logs])
 
+  // Debug-only (task 9/10): surface the last external event the route emulator
+  // received (e.g. NEW_VOTING_ORDER, VOTING_WON, NEW_ALONG_THE_WAY_ORDER).
+  React.useEffect(() =>
+    subscribeDriverRouteEmulatorNotification(setLastRouteEmulatorEvent),
+  [])
+
   if (!isOpen) return null
 
   const running = Boolean(status.running)
@@ -192,6 +205,34 @@ function DriverEmulatorPanel({ isOpen, autoStart, mode = 'drivers', onStatusChan
           <button type="button" onClick={() => runAction('start')} disabled={loading || running}>{t('emulator_start')}</button>
           <button type="button" onClick={() => runAction('stop')} disabled={loading || !running} className="driver-emulator-panel__actions-gray">{t('emulator_stop')}</button>
           <button type="button" onClick={() => runAction('check')} disabled={loading} className="driver-emulator-panel__actions-muted">{t('emulator_check')}</button>
+        </div>
+
+        <div className="driver-emulator-panel__route-tools">
+          <div className="driver-emulator-panel__route-tools-title">{t('emulator_route_tools_title')}</div>
+          <div className="driver-emulator-panel__route-tools-actions">
+            <button type="button" onClick={() => emitDriverRouteEmulatorCommand({ type: 'replace' })}>
+              {t('emulator_route_replace')}
+            </button>
+            <button type="button" onClick={() => emitDriverRouteEmulatorCommand({ type: 'append' })}>
+              {t('emulator_route_append')}
+            </button>
+            <button type="button" onClick={() => emitDriverRouteEmulatorCommand({ type: 'removeLast' })}>
+              {t('emulator_route_remove_last')}
+            </button>
+            <button
+              type="button"
+              className="driver-emulator-panel__actions-gray"
+              onClick={() => emitDriverRouteEmulatorCommand({ type: 'clear' })}
+            >
+              {t('emulator_route_clear')}
+            </button>
+          </div>
+          {lastRouteEmulatorEvent && (
+            <div className="driver-emulator-panel__route-tools-event">
+              {t('emulator_route_last_event')}: {lastRouteEmulatorEvent.eventType}
+              {lastRouteEmulatorEvent.orderId ? ` #${lastRouteEmulatorEvent.orderId}` : ''}
+            </div>
+          )}
         </div>
 
         <div className="driver-emulator-panel__logs-title">{t('emulator_logs_title')}</div>

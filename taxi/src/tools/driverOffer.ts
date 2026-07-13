@@ -667,6 +667,84 @@ export function getPassengerRejectedChoices(orderId?: IOrder['b_id'] | null) {
   return Array.isArray(list) ? list.filter(Boolean).map(String) : []
 }
 
+// Клиентский эмулятор не имеет второго реального водителя, поэтому исход
+// «клиент выбрал другого» он симулирует локально: помечает заказ этим флагом и
+// шлёт событие, а экраны водителя показывают реакцию и убирают заказ из ожидания.
+const EMULATOR_OTHER_CHOICE_STORAGE_KEY = 'emulatorClientChoseOtherDriver'
+const EMULATOR_OTHER_CHOICE_EVENT = 'emulatorClientChoseOtherDriver'
+
+function readEmulatorOtherChoiceMap(): Record<string, number> {
+  try {
+    if (!canUseLocalStorage())
+      return {}
+
+    const raw = window.localStorage.getItem(EMULATOR_OTHER_CHOICE_STORAGE_KEY)
+    const parsed = raw ? JSON.parse(raw) : {}
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {}
+  } catch {
+    return {}
+  }
+}
+
+function writeEmulatorOtherChoiceMap(map: Record<string, number>) {
+  try {
+    if (!canUseLocalStorage())
+      return
+
+    window.localStorage.setItem(EMULATOR_OTHER_CHOICE_STORAGE_KEY, JSON.stringify(map))
+  } catch {
+    // storage is optional
+  }
+}
+
+export function markEmulatorClientChoseOtherDriver(orderId?: IOrder['b_id'] | null) {
+  if (!orderId)
+    return
+
+  const map = readEmulatorOtherChoiceMap()
+  map[String(orderId)] = Date.now()
+  writeEmulatorOtherChoiceMap(map)
+
+  try {
+    window.dispatchEvent(new CustomEvent(EMULATOR_OTHER_CHOICE_EVENT, {
+      detail: { orderId: String(orderId) },
+    }))
+  } catch {
+    // UI-only refresh event.
+  }
+}
+
+export function hasEmulatorClientChoseOtherDriver(orderId?: IOrder['b_id'] | null) {
+  if (!orderId)
+    return false
+
+  return Boolean(readEmulatorOtherChoiceMap()[String(orderId)])
+}
+
+export function clearEmulatorClientChoseOtherDriver(orderId?: IOrder['b_id'] | null) {
+  if (!orderId)
+    return
+
+  const map = readEmulatorOtherChoiceMap()
+  if (map[String(orderId)] === undefined)
+    return
+
+  delete map[String(orderId)]
+  writeEmulatorOtherChoiceMap(map)
+}
+
+export function subscribeEmulatorClientChoseOtherDriver(listener: (orderId: string) => void) {
+  if (typeof window === 'undefined')
+    return () => {}
+
+  const handler = (event: Event) => {
+    const orderId = String((event as CustomEvent)?.detail?.orderId || '')
+    listener(orderId)
+  }
+  window.addEventListener(EMULATOR_OTHER_CHOICE_EVENT, handler)
+  return () => window.removeEventListener(EMULATOR_OTHER_CHOICE_EVENT, handler)
+}
+
 export function addPassengerRejectedChoice(orderId?: IOrder['b_id'] | null, userId?: IUser['u_id'] | null) {
   if (!orderId || !userId)
     return

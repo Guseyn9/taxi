@@ -33,12 +33,14 @@ import { withLayout } from '../../HOCs/withLayout'
 import { isAnyBrowserEmulatorOrder } from '../../tools/emulatorMode'
 import {
   clearDriverOfferClientResponse,
+  clearEmulatorClientChoseOtherDriver,
   ensureDriverOfferClientResponse,
   getBackendDriverOffer,
   getDriverOfferClientResponse,
   getOfferCount,
   getOfferEvent,
   getStoredDriverOffer,
+  hasEmulatorClientChoseOtherDriver,
   IDriverOfferPayload,
   isDriverOfferExpired,
   isOfferAcceptedForDriver,
@@ -47,6 +49,7 @@ import {
   removeStoredDriverOffer,
   saveStoredDriverOffer,
   subscribeDriverOfferClientResponse,
+  subscribeEmulatorClientChoseOtherDriver,
   updateDriverOfferClientResponseStatus,
   updateStoredDriverOfferStatus,
 } from '../../tools/driverOffer'
@@ -739,6 +742,43 @@ const Order: React.FC<IProps> = ({
     navigate('/driver-order')
   }, [order, isVotingParticipant, votingCloseHandled, user?.u_id])
 
+  // Клиентский эмулятор симулирует исход "клиент выбрал другого водителя" локально
+  // (без реального второго водителя). Показываем реакцию и убираем заказ из ожидания.
+  useEffect(() => {
+    const handleEmulatedOtherChoice = (targetId?: string) => {
+      if (targetId && targetId !== id)
+        return
+      if (!hasEmulatorClientChoseOtherDriver(id))
+        return
+
+      const participated =
+        isVotingParticipant ||
+        votingParticipationIds.includes(id) ||
+        Boolean(currentDriverOffer) ||
+        Boolean(userAsDriver)
+      if (!participated)
+        return
+
+      clearEmulatorClientChoseOtherDriver(id)
+      setVotingParticipationIds(removeVotingParticipationId(id))
+      setVotingArrivedIds(removeVotingArrivedId(id))
+      removeStoredDriverOffer(id, user?.u_id)
+      setLocalDriverOffer(null)
+      addHiddenOrder(id, user?.u_id)
+      setMessageModal({
+        isOpen: true,
+        status: EStatuses.Warning,
+        message: order?.b_voting ?
+          t(TRANSLATION.DRIVER_VOTING_CLOSED_BY_OTHER) :
+          t('driver_offer_client_selected_other'),
+      })
+      navigate('/driver-order')
+    }
+
+    handleEmulatedOtherChoice()
+    return subscribeEmulatorClientChoseOtherDriver(handleEmulatedOtherChoice)
+  }, [id, order?.b_voting, isVotingParticipant, currentDriverOffer, userAsDriver, user?.u_id])
+
   useEffect(() => {
     if (
       !order?.b_voting ||
@@ -961,7 +1001,7 @@ const Order: React.FC<IProps> = ({
         console.error(error)
         setMessageModal({
           isOpen: true,
-          message: error.toString() || t(TRANSLATION.ERROR),
+          message: getReadableApiError(error),
           status: EStatuses.Fail,
         })
       })
@@ -2153,6 +2193,24 @@ function getApiErrorText(error: any) {
     error?.data?.info,
     JSON.stringify(error),
   ].filter(Boolean).join(' ').toLowerCase()
+}
+
+// error.toString() у бэкенд-объекта даёт "[object Object]"; достаём читаемый текст ошибки.
+function getReadableApiError(error: any) {
+  const readable = [
+    error?.message,
+    error?.error,
+    error?.info,
+    error?.data?.message,
+    error?.data?.error,
+    error?.response?.data?.message,
+  ].map(item => (typeof item === 'string' ? item.trim() : '')).find(Boolean)
+
+  if (readable)
+    return readable
+
+  const asString = typeof error === 'string' ? error : String(error ?? '')
+  return asString && asString !== '[object Object]' ? asString : t(TRANSLATION.ERROR)
 }
 
 function isAlreadyVotingParticipantError(error: any) {
