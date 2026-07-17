@@ -605,6 +605,8 @@ export default {
   CLIENT_CHOOSE_DRIVER: 'client_choose_driver',
   CLIENT_CANDIDATE_HOLD_HINT: 'client_candidate_hold_hint',
   CLIENT_VOTING_TITLE: 'client_voting_title',
+  CLIENT_EMULATOR_CHOICE_ME: 'client_emulator_choice_me',
+  CLIENT_EMULATOR_CHOICE_OTHER: 'client_emulator_choice_other',
   CLIENT_DRIVERS_COUNT_LABEL: 'client_drivers_count_label',
   CLIENT_FROM_DRIVER: 'client_from_driver',
   CLIENT_VOTING_EYEBROW: 'client_voting_eyebrow',

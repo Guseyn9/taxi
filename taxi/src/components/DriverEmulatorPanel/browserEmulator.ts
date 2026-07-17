@@ -15,7 +15,7 @@ import {
   saveEmulatedDriverLocation,
   clearEmulatedDriverLocations,
 } from '../../tools/emulatorMode'
-import { getDefaultCityLocationClassId, getDefaultIntercityLocationClassId, getOfferResponseBookingCommentIds, getPassengerConfirmedChoice, getStoredChoiceOrderMode, markEmulatorClientChoseOtherDriver, setPassengerConfirmedChoice, setStoredChoiceOrderMode } from '../../tools/driverOffer'
+import { getDefaultCityLocationClassId, getDefaultIntercityLocationClassId, getOfferResponseBookingCommentIds, getPassengerConfirmedChoice, getStoredChoiceOrderMode, markEmulatorClientChoseOtherDriver, setPassengerConfirmedChoice, setStoredChoiceOrderMode, setStoredChoiceOutcome } from '../../tools/driverOffer'
 import { writeRawLog } from '../../tools/rawLog'
 import * as API from '../../API'
 import store from '../../state'
@@ -2610,7 +2610,11 @@ export class BrowserClientOrderEmulator {
 
     const index = this.choiceOutcomeCounters.get(mode) || 0
     this.choiceOutcomeCounters.set(mode, index + 1)
-    this.plannedChoiceOutcomes.set(orderId, index % 2 === 0 ? 'me' : 'other')
+    const outcome = index % 2 === 0 ? 'me' : 'other'
+    this.plannedChoiceOutcomes.set(orderId, outcome)
+    // Persist so the driver's order-details card can show which scenario this is
+    // ("Выбор меня"/"Выбор другого") before the tester responds.
+    setStoredChoiceOutcome(orderId, outcome)
   }
 
   // Клиентский эмулятор сам выступает пассажиром, поэтому для своих заказов

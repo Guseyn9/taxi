@@ -330,6 +330,7 @@ function isSafePassengerPickupEta(value: unknown) {
 
 const PASSENGER_REJECTED_CHOICES_STORAGE_KEY = 'passengerRejectedDriverChoices'
 const PASSENGER_CHOICE_ORDER_MODE_STORAGE_KEY = 'passengerChoiceOrderModes'
+const PASSENGER_CHOICE_OUTCOME_STORAGE_KEY = 'passengerChoiceOutcomes'
 const PASSENGER_CONFIRMED_CHOICE_STARTED_AT_STORAGE_KEY = 'passengerConfirmedDriverChoiceStartedAt'
 const PASSENGER_CHOICE_SEARCH_RESTART_STORAGE_KEY = 'passengerChoiceSearchRestartedAt'
 const PASSENGER_CHOICE_WAITING_EXTENSION_STORAGE_KEY = 'passengerChoiceWaitingExtensionSeconds'
@@ -341,6 +342,8 @@ type TPassengerChoiceWaitingExtensionMap = Record<string, number>
 type TPassengerRejectedChoiceMap = Record<string, string[]>
 type TStoredChoiceOrderMode = 'voting' | 'offer' | 'order'
 type TPassengerChoiceOrderModeMap = Record<string, TStoredChoiceOrderMode>
+export type TStoredChoiceOutcome = 'me' | 'other'
+type TPassengerChoiceOutcomeMap = Record<string, TStoredChoiceOutcome>
 
 function canUseLocalStorage() {
   return typeof window !== 'undefined' && !!window.localStorage
@@ -570,6 +573,63 @@ export function clearStoredChoiceOrderMode(orderId?: IOrder['b_id'] | null) {
   const map = readStoredChoiceOrderModes()
   delete map[String(orderId)]
   writeStoredChoiceOrderModes(map)
+}
+
+// Planned outcome of a choice order (voting/offer): whether the emulated
+// passenger will pick this tester ('me') or someone else ('other'). Persisted by
+// the browser client emulator so the driver's order-details card can label which
+// scenario is being tested before the driver even responds.
+function readStoredChoiceOutcomes(): TPassengerChoiceOutcomeMap {
+  try {
+    if (!canUseLocalStorage())
+      return {}
+
+    const raw = window.localStorage.getItem(PASSENGER_CHOICE_OUTCOME_STORAGE_KEY)
+    if (!raw)
+      return {}
+
+    const parsed = JSON.parse(raw)
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {}
+  } catch {
+    return {}
+  }
+}
+
+function writeStoredChoiceOutcomes(map: TPassengerChoiceOutcomeMap) {
+  try {
+    if (!canUseLocalStorage())
+      return
+
+    window.localStorage.setItem(PASSENGER_CHOICE_OUTCOME_STORAGE_KEY, JSON.stringify(map))
+  } catch {
+    // localStorage may be blocked in private/tracking-prevention modes.
+  }
+}
+
+export function getStoredChoiceOutcome(orderId?: IOrder['b_id'] | null): TStoredChoiceOutcome | null {
+  if (!orderId)
+    return null
+
+  const outcome = readStoredChoiceOutcomes()[String(orderId)]
+  return outcome || null
+}
+
+export function setStoredChoiceOutcome(orderId?: IOrder['b_id'] | null, outcome?: TStoredChoiceOutcome | null) {
+  if (!orderId || !outcome)
+    return
+
+  const map = readStoredChoiceOutcomes()
+  map[String(orderId)] = outcome
+  writeStoredChoiceOutcomes(map)
+}
+
+export function clearStoredChoiceOutcome(orderId?: IOrder['b_id'] | null) {
+  if (!orderId)
+    return
+
+  const map = readStoredChoiceOutcomes()
+  delete map[String(orderId)]
+  writeStoredChoiceOutcomes(map)
 }
 
 export function getPassengerConfirmedChoice(orderId?: IOrder['b_id'] | null) {

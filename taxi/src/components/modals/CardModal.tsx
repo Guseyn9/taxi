@@ -57,6 +57,7 @@ import {
   getDriverOfferClientResponse,
   getOfferCount,
   getOfferEvent,
+  getStoredChoiceOutcome,
   getStoredDriverOffer,
   IDriverOfferPayload,
   isDriverOfferExpired,
@@ -145,6 +146,10 @@ function saveStartedVotingOrderId(orderId: IOrder['b_id']) {
   } catch {
     localStorage.setItem(DRIVER_STARTED_VOTING_ORDERS_STORAGE_KEY, JSON.stringify([orderId]))
   }
+  // Let the (still-mounted) driver map switch the route to the passenger's
+  // destination immediately, instead of only after it is re-opened.
+  if (typeof window !== 'undefined')
+    window.dispatchEvent(new CustomEvent('driver-started-voting-order', { detail: { orderId } }))
 }
 
 function hasAnotherVotingDriverReached(order: IOrder | null, userId?: string) {
@@ -1654,7 +1659,7 @@ function CardModalContent({
               autoComplete: 'off',
             }}
             error={errors?.votingNumber?.message}
-            label={t(TRANSLATION.DRIVE_NUMBER)}
+            label={t(TRANSLATION.CLIENT_BOARDING_CODE)}
           />
         )}
         {!isVotingArrived && (
@@ -1841,7 +1846,17 @@ function CardModalContent({
   // Имя тест-кейса. Внешний клиент-симулятор кладёт его явной меткой `[CASE] ...`
   // в комментарий. Классический браузерный эмулятор метку не ставит — у его заказов
   // есть только режим (voting/offer/order), поэтому для них показываем режим как кейс.
-  const emulatorCaseName = getEmulatorCaseName(order) ||
+  // Choice orders (voting/offer) carry a planned emulator outcome: the emulated
+  // passenger will either pick this tester ("Выбор меня") or someone else
+  // ("Выбор другого"). Surface it in the case label so the tester knows the
+  // scenario up front instead of discovering it only after responding.
+  const emulatorChoiceOutcome = getStoredChoiceOutcome(order?.b_id)
+  const emulatorChoiceOutcomeLabel = emulatorChoiceOutcome === 'me' ?
+    t(TRANSLATION.CLIENT_EMULATOR_CHOICE_ME) :
+    emulatorChoiceOutcome === 'other' ?
+      t(TRANSLATION.CLIENT_EMULATOR_CHOICE_OTHER) :
+      null
+  const emulatorCaseBaseName = getEmulatorCaseName(order) ||
     (order && isAnyBrowserEmulatorOrder(order) ?
       (isVotingMode ?
         t(TRANSLATION.CLIENT_VOTING_TITLE) :
@@ -1849,6 +1864,9 @@ function CardModalContent({
           t(TRANSLATION.CLIENT_OFFER_ORDER_MODE) :
           t(TRANSLATION.CLIENT_CITY_ORDER_MODE)) :
       null)
+  const emulatorCaseName = [emulatorCaseBaseName, emulatorChoiceOutcomeLabel]
+    .filter(Boolean)
+    .join('. ') || null
   const showVotingCompetitors = userAsDriver?.c_state === EBookingDriverState.Considering
   const orderMapFromPoint = address?.latitude && address.longitude ? address : (
     order?.b_start_latitude && order.b_start_longitude ? {
