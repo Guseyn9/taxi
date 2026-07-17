@@ -909,9 +909,16 @@ function DriverOrderMapModeContent({
 
   // The marker stays parked right after the order is accepted (Performer state)
   // and only starts moving once the driver taps "Поехал" (state ≥ Arrived).
+  // Routing to the destination always implies the driver has departed — keep this
+  // independent of effectiveDriverState so the marker keeps moving on the
+  // destination leg even if that state momentarily regresses. On a live backend a
+  // voting performer stays at Performer (Arrived/Started are no-ops), so the
+  // optimistic "Arrived" is the only thing lifting effectiveDriverState; a refresh
+  // that briefly empties the active-orders list can drop it, which would otherwise
+  // freeze the marker right after the boarding code is confirmed.
   const hasDeparted = Boolean(
-    effectiveDriverState !== undefined &&
-    effectiveDriverState >= EBookingDriverState.Arrived,
+    (effectiveDriverState !== undefined && effectiveDriverState >= EBookingDriverState.Arrived) ||
+    isRouteToDestination,
   )
 
   const performingOrder = !isRouteToDestination ? activeDriverOrder?.order : undefined
