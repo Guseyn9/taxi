@@ -1138,6 +1138,18 @@ const FALLBACK_TRANSLATIONS: Record<string, Record<string, string>> = {
     fr: 'Vote',
     ar: 'التصويت',
   },
+  client_emulator_choice_me: {
+    ru: 'Выбор меня',
+    en: 'Chooses me',
+    fr: 'Me choisit',
+    ar: 'يختارني',
+  },
+  client_emulator_choice_other: {
+    ru: 'Выбор другого',
+    en: 'Chooses another',
+    fr: 'Choisit un autre',
+    ar: 'يختار آخر',
+  },
   client_drivers_count_label: {
     ru: 'Водителей',
     en: 'Drivers',

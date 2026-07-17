@@ -435,6 +435,10 @@ function saveStartedVotingOrderId(orderId: string) {
   } catch {
     localStorage.setItem(DRIVER_STARTED_VOTING_ORDERS_STORAGE_KEY, JSON.stringify([orderId]))
   }
+  // Let the (still-mounted) driver map switch the route to the passenger's
+  // destination immediately, instead of only after it is re-opened.
+  if (typeof window !== 'undefined')
+    window.dispatchEvent(new CustomEvent('driver-started-voting-order', { detail: { orderId } }))
 }
 
 const Order: React.FC<IProps> = ({

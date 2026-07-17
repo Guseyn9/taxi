@@ -896,10 +896,13 @@ function DriverOrderMapModeContent({
       setOptimisticDriverState(null)
   }, [optimisticDriverState, activeOrderId, backendDriverState])
 
-  // After the driver taps "Поехал" (departed) the car drives to the destination.
-  // Arrived and Started are both "en route to destination" for the demo movement.
+  const routeOrderIsVoting = isVotingOrder(activeDriverOrder?.order ?? null)
+
+  // Every order is a two-leg trip: first drive to the passenger (pickup leg),
+  // then to their destination. "Поехал" (→ Arrived) starts the pickup leg; the
+  // destination leg only starts with "Приехал" (→ Started) for normal orders, or
+  // once the boarding code is confirmed (isStartedVotingOrder) for voting orders.
   const isRouteToDestination = Boolean(
-    effectiveDriverState === EBookingDriverState.Arrived ||
     effectiveDriverState === EBookingDriverState.Started ||
     isStartedVotingOrder,
   )
@@ -966,6 +969,21 @@ function DriverOrderMapModeContent({
     routeOrderResolvedDestination,
   ])
 
+  // A voting order's boarding code is confirmed inside the order-details card,
+  // which is overlaid on this still-mounted map. Without a live signal the map
+  // would only notice the confirmation (and flip the route to the passenger's
+  // destination) after being unmounted and re-opened, because the "started
+  // voting" marker is read from storage once on mount. React to the confirm
+  // event: re-read the marker and refresh the order so the route switches at once.
+  useEffect(() => {
+    const handleStartedVotingOrder = () => {
+      setStartedVotingOrderIds(getStoredStartedVotingOrderIds())
+      refreshActiveOrders()
+    }
+    window.addEventListener('driver-started-voting-order', handleStartedVotingOrder)
+    return () => window.removeEventListener('driver-started-voting-order', handleStartedVotingOrder)
+  }, [refreshActiveOrders])
+
   // The map button state is derived from the active-orders list, so after a
   // transition we must refresh THAT list (getOrder only updates the single-order
   // slice the order-details screen reads). Refresh immediately and once more
@@ -1002,7 +1020,7 @@ function DriverOrderMapModeContent({
     setOptimisticDriverState({ orderId: order.b_id, state: EBookingDriverState.Arrived })
     runMapOrderTransition(order.b_id, async() => {
       await API.setOrderState(order.b_id, EBookingDriverState.Arrived)
-      if (order.b_voting)
+      if (isVotingOrder(order))
         await API.arrivedVotingOrder(order.b_id)
     })
   }
@@ -1013,7 +1031,7 @@ function DriverOrderMapModeContent({
     const order = activeDriverOrder?.order
     if (!order) return
 
-    if (order.b_voting) {
+    if (isVotingOrder(order)) {
       setOrderCardModal({ isOpen: true, orderId: order.b_id })
       return
     }
@@ -1061,12 +1079,16 @@ function DriverOrderMapModeContent({
         onClick: onMapArrivedClick,
       }
 
-    // En route to the destination: prompt arrival (voting confirms via the card).
+    // Pickup leg: prompt arrival at the passenger (voting confirms the boarding
+    // code via the card instead).
     if (driverState === EBookingDriverState.Arrived)
       return {
-        text: order.b_voting ? t(TRANSLATION.DRIVER_VOTING_CONFIRM_CODE) : t(TRANSLATION.ARRIVED),
+        text: isVotingOrder(order) ? t(TRANSLATION.DRIVER_VOTING_CONFIRM_CODE) : t(TRANSLATION.ARRIVED),
         className: 'finish-drive-button--arrived',
         onClick: onMapStartedClick,
+        // Both actions mean "I am at the passenger": confirming the boarding
+        // code and tapping "Приехал" require actually reaching the pickup point.
+        requiresPickupArrival: true,
       }
 
     // Trip in progress: prompt completion, which closes the order.
@@ -1081,7 +1103,7 @@ function DriverOrderMapModeContent({
   }, [
     effectiveDriverState,
     activeDriverOrder?.order?.b_id,
-    activeDriverOrder?.order?.b_voting,
+    routeOrderIsVoting,
     mapActionPending,
   ])
 
@@ -1271,6 +1293,25 @@ function DriverOrderMapModeContent({
 
     const start = points[0]
     const end = points[points.length - 1]
+
+    // The drawn route is rebuilt asynchronously when the phase flips (pickup →
+    // destination), so for a render or two `activeDriveRouteInfo` can still end at
+    // the previous phase's target. Feeding that stale geometry to the emulator
+    // would snap the marker back to the old route's start and drive pickup again.
+    // Wait until the geometry actually ends at the current phase target.
+    const phaseTargetOrderPoint = isRouteToDestination ?
+      { lat: routeOrder?.b_destination_latitude, lng: routeOrder?.b_destination_longitude } :
+      { lat: routeOrder?.b_start_latitude, lng: routeOrder?.b_start_longitude }
+    const phaseTarget: [number, number] | null =
+      phaseTargetOrderPoint.lat && phaseTargetOrderPoint.lng ?
+        [phaseTargetOrderPoint.lat, phaseTargetOrderPoint.lng] :
+        null
+    if (
+      phaseTarget &&
+      distanceBetweenEarthCoordinates(end[0], end[1], phaseTarget[0], phaseTarget[1]) > 0.15
+    )
+      return
+
     const routeKey = [
       routeOrder?.b_id || '',
       isRouteToDestination ? 'destination' : 'pickup',
@@ -1279,8 +1320,16 @@ function DriverOrderMapModeContent({
       end?.join(','),
     ].join(':')
 
-    if (demoRouteKeyRef.current === routeKey)
+    if (demoRouteKeyRef.current === routeKey) {
+      // The route geometry is unchanged, but the "departed" flag may have just
+      // toggled (e.g. right after "Поехал" while still routing to the pickup).
+      // Keep the marker moving/parked in step with it instead of returning early.
+      if (hasDeparted)
+        model.resume()
+      else
+        model.pause()
       return
+    }
     demoRouteKeyRef.current = routeKey
 
     model.setRoute([
@@ -1368,6 +1417,18 @@ function DriverOrderMapModeContent({
       routeOrder.b_start_longitude,
     ]
   }, [routeOrder?.b_start_latitude, routeOrder?.b_start_longitude])
+
+  // The driver has "reached the pickup" once they are within ~100 m of it — the
+  // same threshold the order-details card uses to allow marking arrival. Gates the
+  // boarding-code confirmation so it cannot happen before reaching the passenger.
+  const hasReachedPickup = useMemo(() => {
+    if (!currentPosition || !currentOrderStart) return false
+    const distanceMeters = distanceBetweenEarthCoordinates(
+      currentPosition[0], currentPosition[1],
+      currentOrderStart[0], currentOrderStart[1],
+    ) * 1000
+    return distanceMeters <= 100
+  }, [currentPosition, currentOrderStart])
 
   // Keep the values the (long-lived) command/manual handlers read up to date.
   mapContextRef.current = { position: currentPosition, orderStart: currentOrderStart }
@@ -1750,7 +1811,7 @@ function DriverOrderMapModeContent({
             text={mapPrimaryAction.text}
             className={`finish-drive-button ${mapPrimaryAction.className}`}
             onClick={mapPrimaryAction.onClick}
-            disabled={mapActionPending}
+            disabled={mapActionPending || (mapPrimaryAction.requiresPickupArrival && !hasReachedPickup)}
             fixedSize={false}
           />
         )
