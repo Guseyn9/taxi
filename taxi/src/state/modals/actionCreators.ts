@@ -85,3 +85,6 @@ export const setIsShowSwitchersMenu = (payload: IModalsState['isShowSwitchersMen
 export const setOrderCardModal = (
   payload: IModalsState['orderCardModal'],
 ): TAction => ({ type: ActionTypes.SET_ORDER_CARD_MODAL, payload })
+export const setDriverTripCancelModal = (
+  payload: IModalsState['driverTripCancelModal'],
+): TAction => ({ type: ActionTypes.SET_DRIVER_TRIP_CANCEL_MODAL, payload })

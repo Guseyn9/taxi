@@ -57,6 +57,7 @@ const defaultValues = {
   WAITING_INTERVAL: 180,
   CANCEL_ORDER_REASONS: '0-mistakenly_ordered;1-waiting_for_long;2-conflict_with_rider;3-very_expensive',
   DRIVER_CHOICE_CANCEL_REASONS: '0-driver_choice_cancel_reason_long_wait;1-driver_choice_cancel_reason_another_driver;2-driver_choice_cancel_reason_wrong_choice;3-driver_choice_cancel_reason_car_not_suitable;4-driver_choice_cancel_reason_other',
+  DRIVER_TRIP_CANCEL_REASONS: '0-driver_trip_cancel_reason_passenger_request;1-driver_trip_cancel_reason_passenger_behaviour;2-driver_trip_cancel_reason_car_breakdown;3-driver_trip_cancel_reason_wrong_destination;4-driver_trip_cancel_reason_accident;5-driver_trip_cancel_reason_other',
   DRIVER_OFFER_ETA_OPTIONS: '5-driver_offer_eta_5;10-driver_offer_eta_10;15-driver_offer_eta_15;20-driver_offer_eta_20;30-driver_offer_eta_30;45-driver_offer_eta_45;60-driver_offer_eta_60;90-driver_offer_eta_90;120-driver_offer_eta_120;180-driver_offer_eta_180',
   DRIVER_OFFER_COMMENT_OPTIONS: '0-driver_offer_comment_direct;1-driver_offer_comment_fast;2-driver_offer_comment_ac;3-driver_offer_comment_big_trunk;4-driver_offer_comment_nearby;5-driver_offer_comment_careful',
   DRIVER_OFFER_SEAT_OPTIONS: '1-1;2-2;3-3;4-4;5-5;6-6;7-7;8-8',
@@ -112,6 +113,7 @@ class Constants {
   WAITING_INTERVAL: number
   CANCEL_ORDER_REASONS: TReasonEntry[]
   DRIVER_CHOICE_CANCEL_REASONS: TReasonEntry[]
+  DRIVER_TRIP_CANCEL_REASONS: TReasonEntry[]
   DRIVER_OFFER_ETA_OPTIONS: TReasonEntry[]
   DRIVER_OFFER_COMMENT_OPTIONS: TReasonEntry[]
   DRIVER_OFFER_SEAT_OPTIONS: TReasonEntry[]
@@ -173,6 +175,11 @@ class Constants {
     this.DRIVER_CHOICE_CANCEL_REASONS = getConstantValue(
       'driver_choice_cancel_reasons',
       defaultValues.DRIVER_CHOICE_CANCEL_REASONS,
+      parseReasonEntries,
+    )
+    this.DRIVER_TRIP_CANCEL_REASONS = getConstantValue(
+      'driver_trip_cancel_reasons',
+      defaultValues.DRIVER_TRIP_CANCEL_REASONS,
       parseReasonEntries,
     )
     this.DRIVER_OFFER_ETA_OPTIONS = getConstantValue(

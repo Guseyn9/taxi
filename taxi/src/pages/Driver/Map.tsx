@@ -22,8 +22,10 @@ import {
   subscribeDriverRouteEmulatorCommand,
   emitDriverRouteEmulatorNotification,
 } from '../../tools/driverRouteEmulatorCommandBus'
+import { isAtDestinationPoint, isAtPickupPoint, publishDriverPosition } from '../../tools/driverPosition'
 import { useCachedState } from '../../tools/hooks'
 import images from '../../constants/images'
+import OrderModeButton from '../../components/OrderModeButton'
 import {
   dateFormatTimeShort,
   distanceBetweenEarthCoordinates,
@@ -32,7 +34,17 @@ import {
   formatCurrency,
   HIGH_ACCURACY_GEOLOCATION_OPTIONS,
 } from '../../tools/utils'
-import { useInterval } from '../../tools/hooks'
+import { useInterval, useSelector } from '../../tools/hooks'
+import { orderControlModeSelectors } from '../../state/orderControlMode'
+import { EOrderControlMode } from '../../state/orderControlMode/constants'
+import { requestOrderModeDecision } from '../../tools/orderModeDecision'
+import { showOrderModeToast } from '../../tools/orderModeToast'
+import { getOrderIdParts } from '../../tools/orderId'
+
+/** Задержка перед каждым шагом поездки в Строгом режиме (показываем тост, затем действие). */
+const STRICT_STEP_DELAY_MS = 2000
+/** Сколько держать тост шага. */
+const STRICT_STEP_TOAST_MS = 3500
 import SITE_CONSTANTS from '../../siteConstants'
 import * as API from '../../API'
 import { orderActionCreators } from '../../state/order'
@@ -333,6 +345,7 @@ const mapDispatchToProps = {
   getOrder: orderActionCreators.getOrder,
   refreshActiveOrders: ordersActionCreators.refreshActiveOrders,
   setOrderCardModal: modalsActionCreators.setOrderCardModal,
+  setDriverTripCancelModal: modalsActionCreators.setDriverTripCancelModal,
   getAreasBetweenPoints: areasActionCreators.getAreasBetweenPoints,
 }
 
@@ -432,6 +445,7 @@ function DriverOrderMapModeContent({
   setZoom,
   getOrder,
   setOrderCardModal,
+  setDriverTripCancelModal,
   getAreasBetweenPoints,
   refreshActiveOrders,
   wayGraph,
@@ -447,6 +461,17 @@ function DriverOrderMapModeContent({
   )
   const [hiddenOrderIds, setHiddenOrderIds] = useState<string[]>(() => getHiddenOrderIds(user?.u_id))
   const [mapActionPending, setMapActionPending] = useState(false)
+  const orderControlMode = useSelector(orderControlModeSelectors.orderControlMode)
+  const autoProgressStepRef = useRef<string>('')
+  const scheduledAutoStepRef = useRef<string>('')
+  const toastShownStepRef = useRef<string>('')
+  const autoProgressTimers = useRef<Array<ReturnType<typeof setTimeout>>>([])
+  const latestPrimaryActionRef = useRef<{ onClick: () => void } | null>(null)
+
+  useEffect(() => () => {
+    autoProgressTimers.current.forEach(clearTimeout)
+    autoProgressTimers.current = []
+  }, [])
   // Optimistically remember the state the driver just advanced to. The active-orders
   // list the map reads can lag several seconds behind the backend, which made the
   // map buttons/marker look unresponsive after a tap. We honour this override until
@@ -1072,6 +1097,17 @@ function DriverOrderMapModeContent({
       })
   }
 
+  // "Прервать поездку": the trip is under way but the driver is not at the
+  // dropoff, so ending it now is a cancellation and must carry a reason.
+  const onInterruptTripClick = () => {
+    const order = currentOrder ?? activeDriverOrder?.order
+    if (!order || mapActionPending) return
+
+    // Deliberately no persistedDriverDemo reset here: the driver can still back
+    // out of the reason modal, and clearing it would restart the marker.
+    setDriverTripCancelModal({ isOpen: true, orderId: order.b_id })
+  }
+
   const mapPrimaryAction = useMemo(() => {
     const driverState = effectiveDriverState
     const order = activeDriverOrder?.order
@@ -1098,12 +1134,15 @@ function DriverOrderMapModeContent({
         requiresPickupArrival: true,
       }
 
-    // Trip in progress: prompt completion, which closes the order.
+    // Trip in progress: prompt completion, which closes the order. Until the
+    // driver actually reaches the dropoff the render site swaps this for an
+    // attributed interruption (same idiom as requiresPickupArrival above).
     if (driverState === EBookingDriverState.Started)
       return {
         text: t(TRANSLATION.CLOSE_DRIVE),
         className: 'finish-drive-button--finished',
         onClick: onCompleteOrderClick,
+        requiresDestinationArrival: true,
       }
 
     return null
@@ -1425,20 +1464,139 @@ function DriverOrderMapModeContent({
     ]
   }, [routeOrder?.b_start_latitude, routeOrder?.b_start_longitude])
 
+  // Publish the resolved position so the order-details surfaces judge arrival by
+  // the same marker the driver sees, instead of raw device GPS (which stands
+  // still while the route emulator drives the marker).
+  useEffect(() => {
+    publishDriverPosition(currentPosition)
+  }, [currentPosition])
+
   // The driver has "reached the pickup" once they are within ~100 m of it — the
   // same threshold the order-details card uses to allow marking arrival. Gates the
   // boarding-code confirmation so it cannot happen before reaching the passenger.
-  const hasReachedPickup = useMemo(() => {
-    if (!currentPosition || !currentOrderStart) return false
-    const distanceMeters = distanceBetweenEarthCoordinates(
-      currentPosition[0], currentPosition[1],
-      currentOrderStart[0], currentOrderStart[1],
-    ) * 1000
-    return distanceMeters <= 100
-  }, [currentPosition, currentOrderStart])
+  const hasReachedPickup = useMemo(
+    () => isAtPickupPoint(currentPosition, currentOrderStart?.[0], currentOrderStart?.[1]),
+    [currentPosition, currentOrderStart],
+  )
+
+  // Same idea for the dropoff: it decides whether ending the trip means
+  // "completed" or "interrupted".
+  const hasReachedDestination = useMemo(
+    () => isAtDestinationPoint(currentPosition, currentOrderDestination?.[0], currentOrderDestination?.[1]),
+    [currentPosition, currentOrderDestination],
+  )
 
   // Keep the values the (long-lived) command/manual handlers read up to date.
   mapContextRef.current = { position: currentPosition, orderStart: currentOrderStart }
+  // Всегда держим ссылку на актуальное действие шага, чтобы отложенный вызов не
+  // сработал по устаревшему замыканию (иначе действие могло «не сработать» и маркер
+  // застревал на точке посадки).
+  latestPrimaryActionRef.current = mapPrimaryAction
+
+  // Авто-режимы (Строгий/Реалистичный): ведём поездку по шагам автоматически.
+  // Действие берём из mapPrimaryAction, а гейт — из достижения точки демо-маркером
+  // (те же hasReachedPickup/hasReachedDestination, что у ручных кнопок).
+  // Строгий — выполняем шаг сам (с задержкой и тостом); Реалистичный — показываем
+  // окно с выбором (по таймеру шаг выполняется автоматически, вторая — отмена поездки).
+  useEffect(() => {
+    if (orderControlMode === EOrderControlMode.Manual)
+      return
+    const order = activeDriverOrder?.order
+    if (!order || isVotingOrder(order))
+      return
+    if (mapActionPending || !mapPrimaryAction)
+      return
+
+    const state = effectiveDriverState
+    if (state === undefined)
+      return
+
+    if (mapPrimaryAction.requiresPickupArrival && !hasReachedPickup)
+      return
+    if (mapPrimaryAction.requiresDestinationArrival && !hasReachedDestination)
+      return
+
+    const stepKey = `${order.b_id}:${state}`
+
+    const meta = (() => {
+      switch (state) {
+        case EBookingDriverState.Performer:
+          return {
+            title: t(TRANSLATION.ORDER_MODE_DECISION_DEPART_TITLE),
+            description: t(TRANSLATION.ORDER_MODE_DECISION_DEPART_DESC),
+            toast: t(TRANSLATION.ORDER_MODE_TOAST_DEPART),
+          }
+        case EBookingDriverState.Arrived:
+          return {
+            title: t(TRANSLATION.ORDER_MODE_DECISION_ARRIVED_TITLE),
+            description: t(TRANSLATION.ORDER_MODE_DECISION_ARRIVED_DESC),
+            toast: t(TRANSLATION.ORDER_MODE_TOAST_BOARDING),
+          }
+        case EBookingDriverState.Started:
+          return {
+            title: t(TRANSLATION.ORDER_MODE_DECISION_COMPLETE_TITLE),
+            description: t(TRANSLATION.ORDER_MODE_DECISION_COMPLETE_DESC),
+            toast: t(TRANSLATION.ORDER_MODE_TOAST_DELIVERED),
+          }
+        default:
+          return { title: '', description: '', toast: '' }
+      }
+    })()
+
+    if (orderControlMode === EOrderControlMode.Strict) {
+      // Уже запланировали этот шаг — ждём срабатывания, не планируем повторно.
+      if (scheduledAutoStepRef.current === stepKey)
+        return
+      scheduledAutoStepRef.current = stepKey
+
+      const { suffix } = getOrderIdParts(order.b_id, (activeOrders || []).map(item => item.b_id))
+      const orderLabel = `${t(TRANSLATION.ORDER_MODE_ORDER_WORD)} №${suffix}`
+
+      const timer = setTimeout(() => {
+        // Сообщение о шаге — тоже с задержкой (один раз на шаг).
+        if (toastShownStepRef.current !== stepKey) {
+          toastShownStepRef.current = stepKey
+          showOrderModeToast({
+            id: stepKey,
+            orderLabel,
+            message: meta.toast,
+            duration: STRICT_STEP_TOAST_MS,
+          })
+        }
+        // Снимаем «замок» шага: если состояние не сдвинулось (действие не прошло),
+        // эффект перепланирует и повторит — маркер не должен застревать на точке.
+        scheduledAutoStepRef.current = ''
+        latestPrimaryActionRef.current?.onClick()
+      }, STRICT_STEP_DELAY_MS)
+      autoProgressTimers.current.push(timer)
+      return
+    }
+
+    // Realistic — окно подтверждения (один раз на шаг).
+    if (autoProgressStepRef.current === stepKey)
+      return
+    autoProgressStepRef.current = stepKey
+
+    requestOrderModeDecision({
+      id: stepKey,
+      title: meta.title,
+      description: meta.description,
+      actionText: mapPrimaryAction.text,
+      cancelText: t(TRANSLATION.ORDER_MODE_CANCEL_TRIP),
+      seconds: 5,
+      onConfirm: () => mapPrimaryAction.onClick(),
+      onCancel: () => onInterruptTripClick(),
+    })
+  }, [
+    orderControlMode,
+    activeDriverOrder?.order,
+    activeOrders,
+    effectiveDriverState,
+    mapPrimaryAction,
+    mapActionPending,
+    hasReachedPickup,
+    hasReachedDestination,
+  ])
 
   // Base point for the temporary manual/test waypoints: the model's current
   // position if it has a route, else the driver/order position, else the map
@@ -1666,6 +1824,7 @@ function DriverOrderMapModeContent({
         attribution={getAttribution()}
         url={getTileServerUrl()}
       />
+      <OrderModeButton />
       {currentPosition && (
         <button
           type="button"
@@ -1813,15 +1972,22 @@ function DriverOrderMapModeContent({
         }
       </button>
       {
-        mapPrimaryAction && (
-          <Button
-            text={mapPrimaryAction.text}
-            className={`finish-drive-button ${mapPrimaryAction.className}`}
-            onClick={mapPrimaryAction.onClick}
-            disabled={mapActionPending || (mapPrimaryAction.requiresPickupArrival && !hasReachedPickup)}
-            fixedSize={false}
-          />
-        )
+        mapPrimaryAction && (() => {
+          // Ending the trip short of the dropoff is a cancellation, so it asks
+          // for a reason instead of completing the order.
+          const interrupting = Boolean(mapPrimaryAction.requiresDestinationArrival && !hasReachedDestination)
+          return (
+            <Button
+              text={interrupting ? t(TRANSLATION.INTERRUPT_TRIP) : mapPrimaryAction.text}
+              className={`finish-drive-button ${
+                interrupting ? 'finish-drive-button--interrupted' : mapPrimaryAction.className
+              }`}
+              onClick={interrupting ? onInterruptTripClick : mapPrimaryAction.onClick}
+              disabled={mapActionPending || (mapPrimaryAction.requiresPickupArrival && !hasReachedPickup)}
+              fixedSize={false}
+            />
+          )
+        })()
       }
       {/* {
         !!activeOrders?.length && (

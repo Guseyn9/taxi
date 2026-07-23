@@ -1,6 +1,7 @@
 import React from 'react'
 import { ConnectedProps, connect } from 'react-redux'
 import cn from 'classnames'
+import OrderId from '../OrderId'
 import { EBookingDriverState, EStatuses, IOrder, IDriver } from '../../types/types'
 import {
   getOrderIcon,
@@ -619,7 +620,7 @@ function MiniOrders({
 
               <div className="mini-orders__main">
                 <div className="mini-orders__header">
-                  <span className="mini-orders__id">№ {order.b_id}</span>
+                  <span className="mini-orders__id"><OrderId orderId={order.b_id} variant="short" /></span>
                   <span className="mini-orders__status">{getMiniOrderTitleText(order, statusText, orderDriver)}</span>
                 </div>
 

@@ -12,6 +12,12 @@ import OrderInfo from '../../components/order/orderInfo/index'
 import LoadFrame from '../../components/LoadFrame'
 import { IRootState } from '../../state'
 import { useInterval, useReliableNow } from '../../tools/hooks'
+import {
+  isAtDestinationPoint,
+  isAtPickupPoint,
+  TDriverPosition,
+  useDriverPosition,
+} from '../../tools/driverPosition'
 import { EBookingDriverState, EBookingStates, EColorTypes, EStatuses } from '../../types/types'
 import images from '../../constants/images'
 import { useForm } from 'react-hook-form'
@@ -69,6 +75,7 @@ const mapDispatchToProps = {
   getOrder: orderActionCreators.getOrder,
   setOrder: orderActionCreators.setOrder,
   setCancelDriverOrderModal: modalsActionCreators.setDriverCancelModal,
+  setDriverTripCancelModal: modalsActionCreators.setDriverTripCancelModal,
   setRatingModal: modalsActionCreators.setRatingModal,
   setAlarmModal: modalsActionCreators.setAlarmModal,
   setLoginModal: modalsActionCreators.setLoginModal,
@@ -455,6 +462,7 @@ const Order: React.FC<IProps> = ({
   setMapModal,
   setRatingModal,
   setCancelDriverOrderModal,
+  setDriverTripCancelModal,
   setMessageModal,
   setAlarmModal,
   watchGeolocation,
@@ -495,9 +503,24 @@ const Order: React.FC<IProps> = ({
       isVotingDriverParticipating(userAsDriver)
     ),
   )
-  const isVotingArrived = Boolean(
-    order?.b_voting &&
-    (userAsDriver?.c_state === EBookingDriverState.Arrived || votingArrivedIds.includes(id)),
+  // Boarding stage: the driver has tapped "На месте". Deliberately NOT keyed on
+  // c_state === Arrived — "Поехал" sets that state, and here it means "en route to
+  // the passenger", so it would flip the card into boarding mode the moment the
+  // driver departs. Reaching the pickup only enables "На месте"; pressing it is
+  // what starts boarding.
+  const isVotingArrived = Boolean(order?.b_voting && votingArrivedIds.includes(id))
+  const driverPosition = useDriverPosition()
+  // The route emulator moves the map marker without touching device GPS, so trust
+  // the map's published position first and fall back to the Redux geoposition.
+  const effectiveDriverPosition = driverPosition ?? (geoposition ?
+    [geoposition.coords.latitude, geoposition.coords.longitude] as TDriverPosition :
+    null
+  )
+  // Ending a trip before the dropoff is a cancellation, not a completion.
+  const hasReachedDestination = isAtDestinationPoint(
+    effectiveDriverPosition,
+    order?.b_destination_latitude,
+    order?.b_destination_longitude,
   )
   const votingInfo = getVotingInfo(order, user?.u_id, now)
   const storedRouteDurationMinutes = getStoredRouteDurationMinutes(order)
@@ -1143,6 +1166,9 @@ const Order: React.FC<IProps> = ({
       })
   }
 
+  const onInterruptTripClick = () =>
+    setDriverTripCancelModal({ isOpen: true, orderId: id })
+
   const onAlarmClick = () =>
     setAlarmModal({ isOpen: true })
 
@@ -1152,19 +1178,19 @@ const Order: React.FC<IProps> = ({
   const onExit = () =>
     navigate('/driver-order')
 
-  const onVotingCancelDeparture = () => {
+  const onVotingRefuseOrder = () => {
     API.cancelVotingParticipation(id)
       .then(() => {
         const nextIds = removeVotingParticipationId(id)
         const nextArrivedIds = removeVotingArrivedId(id)
         setVotingParticipationIds(nextIds)
         setVotingArrivedIds(nextArrivedIds)
-        getOrder(id)
         setMessageModal({
           isOpen: true,
           status: EStatuses.Success,
-          message: t(TRANSLATION.DRIVER_VOTING_CANCELLED),
+          message: t(TRANSLATION.DRIVER_VOTING_REFUSED),
         })
+        navigate('/driver-order')
       })
       .catch(error => {
         console.error(error)
@@ -1618,15 +1644,18 @@ const Order: React.FC<IProps> = ({
           text={t(TRANSLATION.DRIVER_VOTING_ARRIVED)}
           className="order_take-order-btn"
           onClick={onVotingArrived}
-          disabled={!canMarkVotingArrived(order, geoposition, user?.u_id)}
+          disabled={!canMarkVotingArrived(order, effectiveDriverPosition, user?.u_id)}
           label={message}
           status={status}
         />
       )}
       <Button
-        text={t(TRANSLATION.DRIVER_VOTING_CANCEL_DEPARTURE)}
+        text={t(isVotingArrived ?
+          TRANSLATION.DRIVER_VOTING_REFUSE_BOARDING :
+          TRANSLATION.DRIVER_VOTING_REFUSE_ORDER,
+        )}
         className="order_hide-order-btn"
-        onClick={onVotingCancelDeparture}
+        onClick={onVotingRefuseOrder}
         label={message}
         status={status}
       />
@@ -1692,9 +1721,9 @@ const Order: React.FC<IProps> = ({
     </>
     if (driver?.c_state === EBookingDriverState.Started) return <>
       <Button
-        text={t(TRANSLATION.CLOSE_DRIVE)}
+        text={t(hasReachedDestination ? TRANSLATION.CLOSE_DRIVE : TRANSLATION.INTERRUPT_TRIP)}
         className="order_take-order-btn"
-        onClick={onCompleteOrderClick}
+        onClick={hasReachedDestination ? onCompleteOrderClick : onInterruptTripClick}
         label={message}
         status={status}
       />
@@ -2024,20 +2053,11 @@ function hasAnotherVotingDriverReached(order?: any, userId?: string) {
   ) ?? false
 }
 
-function canMarkVotingArrived(order?: any, geoposition?: GeolocationPosition, userId?: string) {
-  if (!order?.b_start_latitude || !order.b_start_longitude || !geoposition)
-    return false
+function canMarkVotingArrived(order?: any, position?: TDriverPosition | null, userId?: string) {
   if (hasAnotherVotingDriverReached(order, userId))
     return false
 
-  const distanceMeters = distanceBetweenEarthCoordinates(
-    geoposition.coords.latitude,
-    geoposition.coords.longitude,
-    order.b_start_latitude,
-    order.b_start_longitude,
-  ) * 1000
-
-  return distanceMeters <= 100
+  return isAtPickupPoint(position, order?.b_start_latitude, order?.b_start_longitude)
 }
 
 function canOpenVotingNavigation(order?: any, geoposition?: GeolocationPosition) {

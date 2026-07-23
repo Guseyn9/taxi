@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { connect, ConnectedProps } from 'react-redux'
 import { useNavigate } from 'react-router-dom'
+import OrderId from '../OrderId'
 import { useForm } from 'react-hook-form'
 import cn from 'classnames'
 import * as API from '../../API'
@@ -33,6 +34,12 @@ import {
 } from '../../tools/order'
 import { getApiErrorMessage } from '../../tools/apiMessages'
 import { useCachedState, useReliableNow, useSelector } from '../../tools/hooks'
+import {
+  isAtDestinationPoint,
+  isAtPickupPoint,
+  TDriverPosition,
+  useDriverPosition,
+} from '../../tools/driverPosition'
 import { t, TRANSLATION } from '../../localization'
 import { IRootState } from '../../state'
 import { modalsActionCreators, modalsSelectors } from '../../state/modals'
@@ -165,22 +172,13 @@ function hasAnotherVotingDriverReached(order: IOrder | null, userId?: string) {
 
 function canMarkVotingArrived(
   order: IOrder | null,
-  geoposition?: GeolocationPosition,
+  position: TDriverPosition | null,
   userId?: string,
 ) {
-  if (!order?.b_start_latitude || !order.b_start_longitude || !geoposition)
-    return false
   if (hasAnotherVotingDriverReached(order, userId))
     return false
 
-  const distanceMeters = distanceBetweenEarthCoordinates(
-    geoposition.coords.latitude,
-    geoposition.coords.longitude,
-    order.b_start_latitude,
-    order.b_start_longitude,
-  ) * 1000
-
-  return distanceMeters <= 100
+  return isAtPickupPoint(position, order?.b_start_latitude, order?.b_start_longitude)
 }
 
 function canOpenVotingNavigation(order: IOrder | null, geoposition?: GeolocationPosition) {
@@ -666,6 +664,7 @@ const mapDispatchToProps = {
   setSelectedOrderId: orderActionCreators.setSelectedOrderId,
   setModal: modalsActionCreators.setOrderCardModal,
   setCancelDriverOrderModal: modalsActionCreators.setDriverCancelModal,
+  setDriverTripCancelModal: modalsActionCreators.setDriverTripCancelModal,
   setRatingModal: modalsActionCreators.setRatingModal,
   setAlarmModal: modalsActionCreators.setAlarmModal,
   setLoginModal: modalsActionCreators.setLoginModal,
@@ -716,6 +715,7 @@ function CardModalContent({
   setMapModal,
   setRatingModal,
   setCancelDriverOrderModal,
+  setDriverTripCancelModal,
   setMessageModal,
   setAlarmModal,
   setActiveChat,
@@ -888,9 +888,24 @@ function CardModalContent({
     isVotingMode &&
     (votingParticipationByState || votingParticipationIds.includes(orderId)),
   )
-  const isVotingArrived = Boolean(
-    isVotingMode &&
-    (userAsDriver?.c_state === EBookingDriverState.Arrived || votingArrivedIds.includes(orderId)),
+  // Boarding stage: the driver has tapped "На месте". Deliberately NOT keyed on
+  // c_state === Arrived — "Поехал" sets that state, and here it means "en route to
+  // the passenger", so it would flip the card into boarding mode the moment the
+  // driver departs. Reaching the pickup only enables "На месте"; pressing it is
+  // what starts boarding.
+  const isVotingArrived = Boolean(isVotingMode && votingArrivedIds.includes(orderId))
+  const driverPosition = useDriverPosition()
+  // The route emulator moves the map marker without touching device GPS, so trust
+  // the map's published position first and fall back to the Redux geoposition.
+  const effectiveDriverPosition = driverPosition ?? (geoposition ?
+    [geoposition.coords.latitude, geoposition.coords.longitude] as TDriverPosition :
+    null
+  )
+  // Ending a trip before the dropoff is a cancellation, not a completion.
+  const hasReachedDestination = isAtDestinationPoint(
+    effectiveDriverPosition,
+    order?.b_destination_latitude,
+    order?.b_destination_longitude,
   )
   const isOfferMode = Boolean(order && isOfferOrder(order))
   const backendDriverOffer = getBackendDriverOffer(order, user?.u_id)
@@ -1230,12 +1245,17 @@ function CardModalContent({
     closeModal()
   })
 
+  const onInterruptTripClick = () => {
+    setDriverTripCancelModal({ isOpen: true, orderId })
+    closeModal()
+  }
+
   const cancelAndClose = () => orderMutation(async() => {
     await cancelOrder(orderId)
     closeModal()
   })
 
-  const cancelVotingDeparture = () => orderMutation(async() => {
+  const refuseVotingOrder = () => orderMutation(async() => {
     await API.cancelVotingParticipation(orderId)
     const nextIds = removeVotingParticipationId(orderId)
     const nextArrivedIds = removeVotingArrivedId(orderId)
@@ -1244,8 +1264,10 @@ function CardModalContent({
     setMessageModal({
       isOpen: true,
       status: EStatuses.Success,
-      message: t(TRANSLATION.DRIVER_VOTING_CANCELLED),
+      message: t(TRANSLATION.DRIVER_VOTING_REFUSED),
     })
+    navigate('/driver-order')
+    closeModal()
   })
 
   const arrivedVotingOrder = () => orderMutation(async() => {
@@ -1667,7 +1689,7 @@ function CardModalContent({
             {...actionButtonProps}
             text={t(TRANSLATION.DRIVER_VOTING_ARRIVED)}
             onClick={arrivedVotingOrder}
-            disabled={orderMutates || !canMarkVotingArrived(order, geoposition, user?.u_id)}
+            disabled={orderMutates || !canMarkVotingArrived(order, effectiveDriverPosition, user?.u_id)}
           />
         )}
         {isVotingArrived && (
@@ -1685,8 +1707,11 @@ function CardModalContent({
         />
         <Button
           {...actionButtonProps}
-          text={t(TRANSLATION.DRIVER_VOTING_CANCEL_DEPARTURE)}
-          onClick={cancelVotingDeparture}
+          text={t(isVotingArrived ?
+            TRANSLATION.DRIVER_VOTING_REFUSE_BOARDING :
+            TRANSLATION.DRIVER_VOTING_REFUSE_ORDER,
+          )}
+          onClick={refuseVotingOrder}
         />
       </>
 
@@ -1734,8 +1759,8 @@ function CardModalContent({
       return <>
         <Button
           {...actionButtonProps}
-          text={t(TRANSLATION.CLOSE_DRIVE)}
-          onClick={onCompleteOrderClick}
+          text={t(hasReachedDestination ? TRANSLATION.CLOSE_DRIVE : TRANSLATION.INTERRUPT_TRIP)}
+          onClick={hasReachedDestination ? onCompleteOrderClick : onInterruptTripClick}
         />
         <Button
           {...actionButtonProps}
@@ -2016,7 +2041,7 @@ function CardModalContent({
             )}
             <span>24/20</span>
           </div>
-          <b style={{ color: getStatusTextColor() }}>№{order?.b_id} {getStatusText()}</b>
+          <b style={{ color: getStatusTextColor() }}><OrderId orderId={order?.b_id} variant="full" /> {getStatusText()}</b>
         </div>
 
         <div className='address' >

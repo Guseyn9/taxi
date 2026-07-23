@@ -19,7 +19,15 @@ import images from '../../constants/images'
 import { withLayout } from '../../HOCs/withLayout'
 import { addHiddenOrder } from '../../tools/utils'
 import * as API from '../../API'
-import { clearEmulatorClientChoseOtherDriver, getOfferEvent, getStoredDriverOffer, hasEmulatorClientChoseOtherDriver, isOfferOrder, subscribeEmulatorClientChoseOtherDriver, updateStoredDriverOfferStatus } from '../../tools/driverOffer'
+import { clearEmulatorClientChoseOtherDriver, getOfferEvent, getStoredDriverOffer, hasEmulatorClientChoseOtherDriver, isOfferOrder, isVotingOrder, subscribeEmulatorClientChoseOtherDriver, updateStoredDriverOfferStatus } from '../../tools/driverOffer'
+import { orderControlModeSelectors } from '../../state/orderControlMode'
+import { EOrderControlMode } from '../../state/orderControlMode/constants'
+import OrderModeDecisionModal from '../../components/OrderModeDecisionModal'
+import OrderModeToast from '../../components/OrderModeToast'
+import { requestOrderModeDecision } from '../../tools/orderModeDecision'
+
+/** Задержка перед авто-взятием заказа в Строгом режиме (сглаживает цепочку действий). */
+const STRICT_TAKE_DELAY_MS = 5000
 import { BROWSER_EMULATOR_STATE_EVENT, getVisibleBrowserEmulatorOrderIds, isAnyBrowserEmulatorModeRunning, isExternalEmulatorEnabled } from '../../tools/emulatorMode'
 import { writeFlowEvent } from '../../tools/flowLog'
 import { writeRawLog } from '../../tools/rawLog'
@@ -29,6 +37,7 @@ const mapStateToProps = (state: IRootState) => ({
   readyOrders: ordersSelectors.readyOrders(state),
   historyOrders: ordersSelectors.historyOrders(state),
   user: userSelectors.user(state),
+  orderControlMode: orderControlModeSelectors.orderControlMode(state),
 })
 
 const mapDispatchToProps = {
@@ -65,6 +74,7 @@ const Driver: React.FC<IProps> = ({
   readyOrders,
   historyOrders,
   user,
+  orderControlMode,
   watchActiveOrders,
   watchHistoryOrders,
   watchReadyOrders,
@@ -89,6 +99,15 @@ const Driver: React.FC<IProps> = ({
   const shownDriverOfferNotifications = useRef<Record<string, string>>({})
   const shownDriverClosedNotifications = useRef<Record<string, true>>({})
   const shownEmulatorOtherChoiceNotifications = useRef<Record<string, true>>({})
+  const autoAcceptedOrderIds = useRef<Record<string, true>>({})
+  const autoAcceptInFlight = useRef(false)
+  const realisticDeclinedOrderIds = useRef<Record<string, true>>({})
+  const strictTakeTimers = useRef<Array<ReturnType<typeof setTimeout>>>([])
+
+  useEffect(() => () => {
+    strictTakeTimers.current.forEach(clearTimeout)
+    strictTakeTimers.current = []
+  }, [])
   const [emulatorOrdersEnabled, setEmulatorOrdersEnabled] = useState(() => isAnyBrowserEmulatorModeRunning() || isExternalEmulatorEnabled())
 
   useEffect(() => {
@@ -371,6 +390,98 @@ const Driver: React.FC<IProps> = ({
     return subscribeEmulatorClientChoseOtherDriver(notifyOtherChosen)
   }, [activeOrders, user?.u_id, user?.u_role, setMessageModal, closeAllModals])
 
+  // Взятие заказа в авто-режимах. Кандидат — первый подходящий обычный заказ
+  // (не голосование, не оффер, где водитель ещё не участник). Голосование/офферы
+  // не трогаем; второй заказ во время активной поездки не берём.
+  // Строгий — берём сразу + уведомление. Реалистичный — показываем окно с выбором
+  // (по таймеру берётся автоматически). После взятия уводим водителя на «Карту»,
+  // чтобы поехал маркер и продолжился авто-прогресс поездки.
+  useEffect(() => {
+    if (user?.u_role !== EUserRoles.Driver || !user.u_id)
+      return
+    if (orderControlMode === EOrderControlMode.Manual)
+      return
+    if (!readyOrders || readyOrders.length === 0)
+      return
+    if (autoAcceptInFlight.current)
+      return
+
+    const userId = user.u_id
+
+    const busy = (activeOrders || []).some(order =>
+      order.drivers?.some(driver =>
+        driver.u_id === userId &&
+        [
+          EBookingDriverState.Performer,
+          EBookingDriverState.Arrived,
+          EBookingDriverState.Started,
+        ].includes(driver.c_state),
+      ),
+    )
+    if (busy)
+      return
+
+    const candidate = readyOrders.find(order =>
+      !isVotingOrder(order) &&
+      !isOfferOrder(order) &&
+      !order.drivers?.some(driver => driver.u_id === userId) &&
+      !autoAcceptedOrderIds.current[order.b_id] &&
+      !realisticDeclinedOrderIds.current[order.b_id],
+    )
+    if (!candidate)
+      return
+
+    const orderId = candidate.b_id
+
+    const performTake = (notify: boolean) => {
+      autoAcceptedOrderIds.current[orderId] = true
+      autoAcceptInFlight.current = true
+
+      API.takeOrder(orderId, { performers_price: 0 }, false)
+        .then(() => {
+          if (notify)
+            setMessageModal({
+              isOpen: true,
+              status: EStatuses.Success,
+              message: t(TRANSLATION.ORDER_AUTO_ACCEPTED),
+            })
+          navigate(`/driver-order?tab=${EDriverTabs.Map}`)
+        })
+        .catch(error => {
+          // Не удалось взять (например, заказ уже разобрали) — разрешаем повтор.
+          delete autoAcceptedOrderIds.current[orderId]
+          console.error(error)
+        })
+        .finally(() => {
+          autoAcceptInFlight.current = false
+        })
+    }
+
+    if (orderControlMode === EOrderControlMode.Strict) {
+      // Задержка перед взятием: резервируем кандидата и держим эффект «занятым»,
+      // чтобы не перезапускать взятие и не подвешивать UI мгновенной цепочкой.
+      autoAcceptedOrderIds.current[orderId] = true
+      autoAcceptInFlight.current = true
+      const timer = setTimeout(() => performTake(true), STRICT_TAKE_DELAY_MS)
+      strictTakeTimers.current.push(timer)
+      return
+    }
+
+    // Realistic: окно с выбором и таймером.
+    requestOrderModeDecision({
+      id: `${orderId}:take`,
+      title: t(TRANSLATION.ORDER_MODE_DECISION_TAKE_TITLE),
+      description: t(TRANSLATION.ORDER_MODE_DECISION_TAKE_DESC),
+      actionText: t(TRANSLATION.TAKE_ORDER),
+      cancelText: t(TRANSLATION.DONT_GO),
+      seconds: 5,
+      onConfirm: () => performTake(false),
+      onCancel: () => {
+        realisticDeclinedOrderIds.current[orderId] = true
+      },
+    })
+  }, [orderControlMode, readyOrders, activeOrders, user?.u_id, user?.u_role, navigate, setMessageModal])
+
   if (user?.u_role !== EUserRoles.Driver) {
     return (
       <ErrorFrame
@@ -394,6 +505,8 @@ const Driver: React.FC<IProps> = ({
 
   return (
     <>
+      <OrderModeDecisionModal />
+      <OrderModeToast />
       <div className="driver-tabs">
         <button
           onClick={onFirstTabClick}

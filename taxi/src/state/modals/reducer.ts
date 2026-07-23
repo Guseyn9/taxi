@@ -52,6 +52,9 @@ export const defaultDeleteFilesModal = {
 const defaultOrderCardModal = {
   isOpen: false,
 } as const
+const defaultDriverTripCancelModal = {
+  isOpen: false,
+} as const
 
 export const record = Record<IModalsState>({
   isCancelModalOpen: false,
@@ -78,6 +81,7 @@ export const record = Record<IModalsState>({
   activeChat: null,
   deleteFilesModal: { ...defaultDeleteFilesModal },
   orderCardModal: defaultOrderCardModal,
+  driverTripCancelModal: defaultDriverTripCancelModal,
 })
 
 export default function reducer(state = new record(), action: TAction) {
@@ -162,6 +166,9 @@ export default function reducer(state = new record(), action: TAction) {
     case ActionTypes.SET_ORDER_CARD_MODAL:
       return state
         .set('orderCardModal', payload)
+    case ActionTypes.SET_DRIVER_TRIP_CANCEL_MODAL:
+      return state
+        .set('driverTripCancelModal', payload)
     case ActionTypes.CLOSE_ALL_MODALS:
       return state
         .set('isCancelModalOpen', false)
@@ -184,6 +191,7 @@ export default function reducer(state = new record(), action: TAction) {
         .set('profileModal', { ...defaultProfileModal })
         .set('deleteFilesModal', { ...defaultDeleteFilesModal })
         .set('orderCardModal', defaultOrderCardModal)
+        .set('driverTripCancelModal', defaultDriverTripCancelModal)
     case ActionTypes.SET_SHOW_SWITCHERS_MENU:
       return state.set('isShowSwitchersMenu', payload)
     default:

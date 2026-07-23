@@ -4,25 +4,9 @@ import SITE_CONSTANTS from '../../siteConstants'
 import { t, TRANSLATION } from '../../localization'
 import Button from '../Button'
 import Overlay from './Overlay'
+import { getLocalizedCancelReasons } from '../../tools/cancelReasons'
 import './styles.scss'
 
-
-function getLocalizedCancelReasons(reasons: Array<{ id: string, label: string }>) {
-  return reasons
-    .map(item => ({
-      ...item,
-      label: getLocalizedReasonLabel(item.label),
-    }))
-    .filter(item => Boolean(item.label))
-}
-
-function getLocalizedReasonLabel(label: string) {
-  const value = String(label ?? '').trim()
-  if (!value)
-    return ''
-
-  return /^[a-z0-9_.-]+$/i.test(value) ? t(value) : value
-}
 
 interface IProps {
   isOpen: boolean
