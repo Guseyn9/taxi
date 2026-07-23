@@ -20,6 +20,8 @@ import { moduleName as modalsModule } from './modals/constants'
 import modalsReducer from './modals/reducer'
 import { moduleName as areasModule } from './areas/constants'
 import areasReducer from './areas/reducer'
+import { moduleName as orderControlModeModule } from './orderControlMode/constants'
+import orderControlModeReducer from './orderControlMode/reducer'
 
 const rootReducer = combineReducers({
   [geolocationModule]: geolocationReducer,
@@ -32,6 +34,7 @@ const rootReducer = combineReducers({
   [configModule]: configReducer,
   [modalsModule]: modalsReducer,
   [areasModule]: areasReducer,
+  [orderControlModeModule]: orderControlModeReducer,
 })
 
 export default rootReducer

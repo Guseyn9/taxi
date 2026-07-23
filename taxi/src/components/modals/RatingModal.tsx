@@ -20,6 +20,7 @@ import { t, TRANSLATION } from '../../localization'
 import { writeFlowEvent } from '../../tools/flowLog'
 import Button from '../Button'
 import Input from '../Input'
+import OrderId from '../OrderId'
 import Overlay from './Overlay'
 import './styles.scss'
 
@@ -188,6 +189,11 @@ function RatingModal({
               </div>
             )}
             <legend>{t(TRANSLATION.RATING_HEADER)}!</legend>
+            {!!_orderID && (
+              <div className="rating-modal__order-id">
+                <OrderId orderId={_orderID} variant="full" />
+              </div>
+            )}
             <h3>{t(TRANSLATION.YOUR_RATING)}</h3>
             <div className="rating">
               {/* TODO make rating wrapper component */}

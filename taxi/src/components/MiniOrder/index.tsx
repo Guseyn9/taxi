@@ -1,6 +1,7 @@
 import React from 'react'
 import { connect, ConnectedProps } from 'react-redux'
 import cn from 'classnames'
+import OrderId from '../OrderId'
 import {
   EBookingDriverState,
   EOrderProfitRank,
@@ -423,7 +424,7 @@ function MiniOrder({
         setOrderCardModal({ isOpen: true, orderId: order.b_id })
       }}
     >
-      <span className="colored">№{order.b_id}</span>
+      <OrderId orderId={order.b_id} variant="short" className="colored" />
 
       {!isHistory && driver && driver.u_id === user.u_id && driver.c_state !== EBookingDriverState.Started && (
         <span

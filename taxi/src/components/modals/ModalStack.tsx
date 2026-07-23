@@ -25,6 +25,7 @@ import MessageModal from './MessageModal'
 import WACodeModal from './LoginModal/WACodeModal'
 import RefCodeModal from './LoginModal/RefCodeModal'
 import CardModal from './CardModal'
+import DriverTripCancelModal from './DriverTripCancelModal'
 
 const COMPONENTS = [
   [Chat, modalsSelectors.activeChat],
@@ -49,6 +50,7 @@ const COMPONENTS = [
   [WACodeModal, modalsSelectors.isWACodeModalOpen],
   [RefCodeModal, modalsSelectors.isRefCodeModalOpen],
   [CardModal, modalsSelectors.isOrderCardModalOpen],
+  [DriverTripCancelModal, modalsSelectors.isDriverTripCancelModalOpen],
 ] as const
 
 const modalsSelector = createSelector(

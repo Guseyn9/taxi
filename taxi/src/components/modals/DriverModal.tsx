@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { connect, ConnectedProps } from 'react-redux'
 import Button from '../Button'
+import OrderId from '../OrderId'
 import { t, TRANSLATION } from '../../localization'
 import images from '../../constants/images'
 import * as API from '../../API'
@@ -94,7 +95,7 @@ const DriverModal: React.FC<IProps> = ({
         <form>
           <fieldset>
             <legend>
-              {!!driver?.c_state && t(TRANSLATION.BOOKING_DRIVER_STATES[driver?.c_state])} №{selectedOrder}
+              {!!driver?.c_state && t(TRANSLATION.BOOKING_DRIVER_STATES[driver?.c_state])} <OrderId orderId={selectedOrder} variant="full" />
             </legend>
             <div className="driver-info">
               <div className="colored">

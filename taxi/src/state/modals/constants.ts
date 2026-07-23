@@ -37,6 +37,7 @@ export const ActionTypes = {
   SET_DELETE_FILES_MODAL: `${prefix}/SET_DELETE_FILES_MODAL`,
   SET_SHOW_SWITCHERS_MENU: `${prefix}/SET_SHOW_SWITCHERS_MENU`,
   SET_ORDER_CARD_MODAL: `${prefix}/SET_ORDER_CARD_MODAL`,
+  SET_DRIVER_TRIP_CANCEL_MODAL: `${prefix}/SET_DRIVER_TRIP_CANCEL_MODAL`,
 } as const
 
 export enum EMapModalTypes {
@@ -110,6 +111,13 @@ export interface IModalsState {
     handleDeleteFiles?: () => any
   }
   orderCardModal: {
+    isOpen: boolean
+    orderId: IOrder['b_id']
+  } | {
+    isOpen: false
+    orderId?: undefined
+  }
+  driverTripCancelModal: {
     isOpen: boolean
     orderId: IOrder['b_id']
   } | {

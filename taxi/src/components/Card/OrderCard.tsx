@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react'
 import { connect, ConnectedProps } from 'react-redux'
 import cn from 'classnames'
+import OrderId from '../OrderId'
 import {
   EBookingDriverState,
   EOrderProfitRank,
@@ -318,7 +319,7 @@ function OrderCard({
             }
           </label>
         </span>
-        <span className="status-card__number" style={{ color: getStatusTextColor() }}>№{order.b_id} {getStatusText()}</span>
+        <span className="status-card__number" style={{ color: getStatusTextColor() }}><OrderId orderId={order.b_id} variant="short" /> {getStatusText()}</span>
       </div>
       <div>
         <span className="status-card__points">

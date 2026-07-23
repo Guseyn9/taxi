@@ -48,3 +48,7 @@ export const orderCardModal = (state: IRootState) =>
   moduleSelector(state).orderCardModal
 export const isOrderCardModalOpen = (state: IRootState) =>
   orderCardModal(state).isOpen
+export const driverTripCancelModal = (state: IRootState) =>
+  moduleSelector(state).driverTripCancelModal
+export const isDriverTripCancelModalOpen = (state: IRootState) =>
+  driverTripCancelModal(state).isOpen
