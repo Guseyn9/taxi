@@ -792,10 +792,20 @@ export class DriverRouteEmulator {
 
     if (typeof setInterval === 'function') {
       this.timer = setInterval(() => {
-        const now = this.now()
-        const deltaMs = this.lastTickAt === null ? this.tickIntervalMs : now - this.lastTickAt
-        this.lastTickAt = now
-        this.step(deltaMs)
+        this.lastTickAt = this.now()
+        // A fixed nominal step, not the measured wall-clock gap. setInterval does
+        // not fire on a steady cadence — a busy main thread (leaflet redraws,
+        // order polling, GPS requests) or a backgrounded tab delays/batches
+        // timers, so `now - lastTickAt` can spike to several seconds. Feeding
+        // that whole gap to the movement math in one step made the marker
+        // visibly stall and then leap forward — near the end it would snap
+        // straight onto the dropoff while the "finish trip" button flipped
+        // early (it reads the model's logical position, which the visual
+        // marker had not caught up to). A late tick should mean the marker
+        // paused during the stall, not that it teleports to compensate: every
+        // auto-tick advances by the same nominal per-tick distance regardless
+        // of how late it fired.
+        this.step(this.tickIntervalMs)
       }, this.tickIntervalMs)
     }
 

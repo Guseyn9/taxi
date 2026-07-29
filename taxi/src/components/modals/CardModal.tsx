@@ -85,6 +85,7 @@ import { Loader } from '../loader/Loader'
 import { getStableRemainingLifetimeSeconds } from '../../tools/reliableTime'
 import { DRIVER_DOOR_NUMBER_PATTERN, getDriverDoorNumber, normalizeDriverDoorNumber } from '../../tools/driverDoorNumber'
 import { getEmulatorCaseName, isAnyBrowserEmulatorOrder } from '../../tools/emulatorMode'
+import { getOrderIdText } from '../../tools/orderId'
 import '../Card/styles.scss'
 
 const bookingStates: Record<number, keyof typeof EBookingStates> = {
@@ -731,6 +732,10 @@ function CardModalContent({
   useEffect(() => active ? watchOrder(orderId) : undefined, [orderId, active])
   const order = useSelector(ordersSelectors.order, orderId) ?? null
   const orderMutates = useSelector(ordersSelectors.orderMutates, orderId)
+  const activeOrders = useSelector(ordersSelectors.activeOrders)
+  const activeOrderIds = useMemo(() =>
+    (activeOrders ?? []).map(item => item.b_id)
+  , [activeOrders])
   const inCandidateMode = useMemo(() =>
     candidateMode(order ?? undefined)
   , [order])
@@ -894,6 +899,14 @@ function CardModalContent({
   // driver departs. Reaching the pickup only enables "На месте"; pressing it is
   // what starts boarding.
   const isVotingArrived = Boolean(isVotingMode && votingArrivedIds.includes(orderId))
+  // Departure stage: the driver has tapped "Поехал" (mirrors the map's own
+  // Performer -> Arrived transition). Until then, the pickup-leg actions
+  // ("На месте", navigation, refuse) don't apply yet — only "Поехал" does.
+  const hasVotingDeparted = Boolean(
+    isVotingMode &&
+    userAsDriver &&
+    userAsDriver.c_state >= EBookingDriverState.Arrived,
+  )
   const driverPosition = useDriverPosition()
   // The route emulator moves the map marker without touching device GPS, so trust
   // the map's published position first and fall back to the Redux geoposition.
@@ -1149,7 +1162,8 @@ function CardModalContent({
       setMessageModal({
         isOpen: true,
         status: EStatuses.Success,
-        message: t(TRANSLATION.DRIVER_VOTING_READY_SENT),
+        message: [t(TRANSLATION.DRIVER_VOTING_READY_SENT), getOrderIdText(orderId, activeOrderIds)]
+          .filter(Boolean).join(' '),
       })
       navigate('/driver-order?tab=map')
       closeModal()
@@ -1264,7 +1278,8 @@ function CardModalContent({
     setMessageModal({
       isOpen: true,
       status: EStatuses.Success,
-      message: t(TRANSLATION.DRIVER_VOTING_REFUSED),
+      message: [t(TRANSLATION.DRIVER_VOTING_REFUSED), getOrderIdText(orderId, activeOrderIds)]
+        .filter(Boolean).join(' '),
     })
     navigate('/driver-order')
     closeModal()
@@ -1291,6 +1306,16 @@ function CardModalContent({
     }
     const nextIds = saveVotingArrivedId(orderId)
     setVotingArrivedIds(nextIds)
+  })
+
+  const onVotingWentClick = () => orderMutation(async() => {
+    await setOrderState(orderId, EBookingDriverState.Arrived)
+    try {
+      await API.arrivedVotingOrder(orderId)
+    } catch (error) {
+      if (!isNotAppointedPerformerError(error))
+        throw error
+    }
   })
 
   const openVotingNavigation = () => {
@@ -1661,58 +1686,67 @@ function CardModalContent({
 
     if (isVotingMode && isVotingParticipant)
       return <>
-        {isVotingArrived && (
-          <Input
-            inputProps={{
-              ...register('votingNumber', {
-                required: t(TRANSLATION.REQUIRED_FIELD),
-                pattern: {
-                  value: DRIVER_DOOR_NUMBER_PATTERN,
-                  message: t(TRANSLATION.DRIVE_NUMBER_HINT),
-                },
-                onChange: event => {
-                  event.target.value = normalizeDriverDoorNumber(event.target.value)
-                },
-              }),
-              type: 'text',
-              inputMode: 'numeric',
-              pattern: '[0-9]*',
-              maxLength: 4,
-              autoComplete: 'off',
-            }}
-            error={errors?.votingNumber?.message}
-            label={t(TRANSLATION.CLIENT_BOARDING_CODE)}
-          />
-        )}
-        {!isVotingArrived && (
+        {!hasVotingDeparted && (
           <Button
             {...actionButtonProps}
-            text={t(TRANSLATION.DRIVER_VOTING_ARRIVED)}
-            onClick={arrivedVotingOrder}
-            disabled={orderMutates || !canMarkVotingArrived(order, effectiveDriverPosition, user?.u_id)}
+            text={t(TRANSLATION.WENT)}
+            onClick={onVotingWentClick}
           />
         )}
-        {isVotingArrived && (
-          <Button
-            {...actionButtonProps}
-            text={t(TRANSLATION.DRIVER_VOTING_CONFIRM_CODE)}
-            onClick={confirmVotingCode}
-          />
-        )}
-        <Button
-          {...actionButtonProps}
-          text={t(TRANSLATION.DRIVER_VOTING_NAVIGATION)}
-          onClick={openVotingNavigation}
-          disabled={orderMutates || !canOpenVotingNavigation(order, geoposition)}
-        />
-        <Button
-          {...actionButtonProps}
-          text={t(isVotingArrived ?
-            TRANSLATION.DRIVER_VOTING_REFUSE_BOARDING :
-            TRANSLATION.DRIVER_VOTING_REFUSE_ORDER,
+        {hasVotingDeparted && <>
+          {isVotingArrived && (
+            <Input
+              inputProps={{
+                ...register('votingNumber', {
+                  required: t(TRANSLATION.REQUIRED_FIELD),
+                  pattern: {
+                    value: DRIVER_DOOR_NUMBER_PATTERN,
+                    message: t(TRANSLATION.DRIVE_NUMBER_HINT),
+                  },
+                  onChange: event => {
+                    event.target.value = normalizeDriverDoorNumber(event.target.value)
+                  },
+                }),
+                type: 'text',
+                inputMode: 'numeric',
+                pattern: '[0-9]*',
+                maxLength: 4,
+                autoComplete: 'off',
+              }}
+              error={errors?.votingNumber?.message}
+              label={t(TRANSLATION.CLIENT_BOARDING_CODE)}
+            />
           )}
-          onClick={refuseVotingOrder}
-        />
+          {!isVotingArrived && (
+            <Button
+              {...actionButtonProps}
+              text={t(TRANSLATION.DRIVER_VOTING_ARRIVED)}
+              onClick={arrivedVotingOrder}
+              disabled={orderMutates || !canMarkVotingArrived(order, effectiveDriverPosition, user?.u_id)}
+            />
+          )}
+          {isVotingArrived && (
+            <Button
+              {...actionButtonProps}
+              text={t(TRANSLATION.DRIVER_VOTING_CONFIRM_CODE)}
+              onClick={confirmVotingCode}
+            />
+          )}
+          <Button
+            {...actionButtonProps}
+            text={t(TRANSLATION.DRIVER_VOTING_NAVIGATION)}
+            onClick={openVotingNavigation}
+            disabled={orderMutates || !canOpenVotingNavigation(order, geoposition)}
+          />
+          <Button
+            {...actionButtonProps}
+            text={t(isVotingArrived ?
+              TRANSLATION.DRIVER_VOTING_REFUSE_BOARDING :
+              TRANSLATION.DRIVER_VOTING_REFUSE_ORDER,
+            )}
+            onClick={refuseVotingOrder}
+          />
+        </>}
       </>
 
     if (userAsDriver?.c_state === EBookingDriverState.Performer)

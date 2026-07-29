@@ -725,3 +725,48 @@ describe('DriverRouteEmulator voting and along-the-way orders (tasks 9-10)', () 
     emulator.destroy()
   })
 })
+
+describe('DriverRouteEmulator auto-tick nominal step (stall immunity)', () => {
+  afterEach(() => {
+    jest.useRealTimers()
+  })
+
+  it('advances by a fixed nominal step per auto-tick, ignoring how late the tick fired', async() => {
+    // A long, dense route so a single nominal step cannot reach the end (no finish).
+    let clock = 0
+    const emulator = new DriverRouteEmulator({
+      routeProvider: straightLineProvider(400),
+      speedMps: 10,
+      tickIntervalMs: 1000,
+      now: () => clock,
+    })
+
+    await emulator.setRoute([
+      waypoint(47.20, 39.60, ERouteWaypointType.Pickup),
+      waypoint(47.40, 39.80, ERouteWaypointType.Dropoff),
+    ])
+
+    jest.useFakeTimers()
+    emulator.resume() // lastTickAt = now() = 0
+
+    // Simulate a multi-second main-thread stall: wall-clock jumps 10 s but the
+    // interval still only fires once. A wall-clock-driven implementation would
+    // convert the whole 10 s gap to 100 m in one step (a visible teleport); the
+    // nominal-step implementation always advances by exactly
+    // speedMps × tickIntervalMs, i.e. 10 m, regardless of the real gap.
+    clock = 10000
+    jest.advanceTimersByTime(1000)
+
+    expect(emulator.getState().traveledMeters).toBeCloseTo(10, 3)
+
+    // A second, on-time tick advances by the same nominal amount again — no
+    // compensation is ever applied for the earlier stall.
+    clock = 11000
+    jest.advanceTimersByTime(1000)
+
+    expect(emulator.getState().traveledMeters).toBeCloseTo(20, 3)
+
+    emulator.pause()
+    emulator.destroy()
+  })
+})
