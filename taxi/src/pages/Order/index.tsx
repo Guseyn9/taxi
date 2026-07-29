@@ -28,6 +28,7 @@ import './styles.scss'
 import { CURRENCY } from '../../siteConstants'
 import ChatToggler from '../../components/Chat/Toggler'
 import { orderSelectors, orderActionCreators } from '../../state/order'
+import { ordersSelectors } from '../../state/orders'
 import { modalsActionCreators } from '../../state/modals'
 import { userSelectors } from '../../state/user'
 import {
@@ -37,6 +38,7 @@ import {
 import { EMapModalTypes } from '../../state/modals/constants'
 import { withLayout } from '../../HOCs/withLayout'
 import { isAnyBrowserEmulatorOrder } from '../../tools/emulatorMode'
+import { getOrderIdText } from '../../tools/orderId'
 import {
   clearDriverOfferClientResponse,
   clearEmulatorClientChoseOtherDriver,
@@ -69,6 +71,7 @@ const mapStateToProps = (state: IRootState) => ({
   message: orderSelectors.message(state),
   user: userSelectors.user(state),
   geoposition: geolocationSelectors.geoposition(state),
+  activeOrders: ordersSelectors.activeOrders(state),
 })
 
 const mapDispatchToProps = {
@@ -457,6 +460,7 @@ const Order: React.FC<IProps> = ({
   message,
   user,
   geoposition,
+  activeOrders,
   getOrder,
   setOrder,
   setMapModal,
@@ -492,6 +496,7 @@ const Order: React.FC<IProps> = ({
   const id = useParams().id as string
   const navigate = useNavigate()
 
+  const activeOrderIds = (activeOrders ?? []).map(item => item.b_id)
   const driver = order?.drivers?.find(item => order.b_voting ?
     isVotingDriverParticipating(item) :
     item.c_state > EBookingDriverState.Canceled)
@@ -509,6 +514,14 @@ const Order: React.FC<IProps> = ({
   // driver departs. Reaching the pickup only enables "На месте"; pressing it is
   // what starts boarding.
   const isVotingArrived = Boolean(order?.b_voting && votingArrivedIds.includes(id))
+  // Departure stage: the driver has tapped "Поехал" (mirrors the map's own
+  // Performer -> Arrived transition). Until then, the pickup-leg actions
+  // ("На месте", navigation, refuse) don't apply yet — only "Поехал" does.
+  const hasVotingDeparted = Boolean(
+    order?.b_voting &&
+    userAsDriver &&
+    userAsDriver.c_state >= EBookingDriverState.Arrived,
+  )
   const driverPosition = useDriverPosition()
   // The route emulator moves the map marker without touching device GPS, so trust
   // the map's published position first and fall back to the Redux geoposition.
@@ -987,7 +1000,8 @@ const Order: React.FC<IProps> = ({
           setMessageModal({
             isOpen: true,
             status: EStatuses.Success,
-            message: t(TRANSLATION.DRIVER_VOTING_READY_SENT),
+            message: [t(TRANSLATION.DRIVER_VOTING_READY_SENT), getOrderIdText(id, activeOrderIds)]
+              .filter(Boolean).join(' '),
           })
           navigate('/driver-order?tab=map')
         })
@@ -999,7 +1013,8 @@ const Order: React.FC<IProps> = ({
             setMessageModal({
               isOpen: true,
               status: EStatuses.Success,
-              message: t(TRANSLATION.DRIVER_VOTING_READY_SENT),
+              message: [t(TRANSLATION.DRIVER_VOTING_READY_SENT), getOrderIdText(id, activeOrderIds)]
+                .filter(Boolean).join(' '),
             })
             navigate('/driver-order?tab=map')
             return
@@ -1188,7 +1203,8 @@ const Order: React.FC<IProps> = ({
         setMessageModal({
           isOpen: true,
           status: EStatuses.Success,
-          message: t(TRANSLATION.DRIVER_VOTING_REFUSED),
+          message: [t(TRANSLATION.DRIVER_VOTING_REFUSED), getOrderIdText(id, activeOrderIds)]
+            .filter(Boolean).join(' '),
         })
         navigate('/driver-order')
       })
@@ -1225,6 +1241,28 @@ const Order: React.FC<IProps> = ({
         setVotingArrivedIds(nextIds)
         getOrder(id)
       })
+      .catch(error => {
+        console.error(error)
+        setMessageModal({
+          isOpen: true,
+          status: EStatuses.Fail,
+          message: t(TRANSLATION.ERROR),
+        })
+      })
+  }
+
+  const onVotingWentClick = () => {
+    API.setOrderState(id, EBookingDriverState.Arrived)
+      .catch(error => {
+        if (!isNotAppointedPerformerError(error))
+          throw error
+      })
+      .then(() => API.arrivedVotingOrder(id))
+      .catch(error => {
+        if (!isNotAppointedPerformerError(error))
+          throw error
+      })
+      .then(() => getOrder(id))
       .catch(error => {
         console.error(error)
         setMessageModal({
@@ -1599,66 +1637,77 @@ const Order: React.FC<IProps> = ({
           </div>
         }
       </div>
-      <Button
-        text={t(TRANSLATION.DRIVER_VOTING_NAVIGATION)}
-        className="order_take-order-btn"
-        onClick={onVotingNavigation}
-        disabled={!canOpenVotingNavigation(order, geoposition)}
-        label={message}
-        status={status}
-      />
-      {isVotingArrived && (
-        <Input
-          inputProps={{
-            ...register('votingNumber', {
-              required: t(TRANSLATION.REQUIRED_FIELD),
-              pattern: {
-                value: DRIVER_DOOR_NUMBER_PATTERN,
-                message: t(TRANSLATION.DRIVE_NUMBER_HINT),
-              },
-              onChange: event => {
-                event.target.value = normalizeDriverDoorNumber(event.target.value)
-              },
-            }),
-            type: 'text',
-            inputMode: 'numeric',
-            pattern: '[0-9]*',
-            maxLength: 4,
-            autoComplete: 'off',
-          }}
-          error={errors?.votingNumber?.message}
-          label={t(TRANSLATION.DRIVE_NUMBER)}
-        />
-      )}
-      {isVotingArrived && (
+      {!hasVotingDeparted && (
         <Button
-          text={t(TRANSLATION.DRIVER_VOTING_CONFIRM_CODE)}
+          text={t(TRANSLATION.WENT)}
           className="order_take-order-btn"
-          onClick={onVotingConfirmCode}
+          onClick={onVotingWentClick}
           label={message}
           status={status}
         />
       )}
-      {!isVotingArrived && (
+      {hasVotingDeparted && <>
         <Button
-          text={t(TRANSLATION.DRIVER_VOTING_ARRIVED)}
+          text={t(TRANSLATION.DRIVER_VOTING_NAVIGATION)}
           className="order_take-order-btn"
-          onClick={onVotingArrived}
-          disabled={!canMarkVotingArrived(order, effectiveDriverPosition, user?.u_id)}
+          onClick={onVotingNavigation}
+          disabled={!canOpenVotingNavigation(order, geoposition)}
           label={message}
           status={status}
         />
-      )}
-      <Button
-        text={t(isVotingArrived ?
-          TRANSLATION.DRIVER_VOTING_REFUSE_BOARDING :
-          TRANSLATION.DRIVER_VOTING_REFUSE_ORDER,
+        {isVotingArrived && (
+          <Input
+            inputProps={{
+              ...register('votingNumber', {
+                required: t(TRANSLATION.REQUIRED_FIELD),
+                pattern: {
+                  value: DRIVER_DOOR_NUMBER_PATTERN,
+                  message: t(TRANSLATION.DRIVE_NUMBER_HINT),
+                },
+                onChange: event => {
+                  event.target.value = normalizeDriverDoorNumber(event.target.value)
+                },
+              }),
+              type: 'text',
+              inputMode: 'numeric',
+              pattern: '[0-9]*',
+              maxLength: 4,
+              autoComplete: 'off',
+            }}
+            error={errors?.votingNumber?.message}
+            label={t(TRANSLATION.DRIVE_NUMBER)}
+          />
         )}
-        className="order_hide-order-btn"
-        onClick={onVotingRefuseOrder}
-        label={message}
-        status={status}
-      />
+        {isVotingArrived && (
+          <Button
+            text={t(TRANSLATION.DRIVER_VOTING_CONFIRM_CODE)}
+            className="order_take-order-btn"
+            onClick={onVotingConfirmCode}
+            label={message}
+            status={status}
+          />
+        )}
+        {!isVotingArrived && (
+          <Button
+            text={t(TRANSLATION.DRIVER_VOTING_ARRIVED)}
+            className="order_take-order-btn"
+            onClick={onVotingArrived}
+            disabled={!canMarkVotingArrived(order, effectiveDriverPosition, user?.u_id)}
+            label={message}
+            status={status}
+          />
+        )}
+        <Button
+          text={t(isVotingArrived ?
+            TRANSLATION.DRIVER_VOTING_REFUSE_BOARDING :
+            TRANSLATION.DRIVER_VOTING_REFUSE_ORDER,
+          )}
+          className="order_hide-order-btn"
+          onClick={onVotingRefuseOrder}
+          label={message}
+          status={status}
+        />
+      </>}
     </>
 
     if (userAsDriver?.c_state === EBookingDriverState.Considering) return renderHideOrderButton()

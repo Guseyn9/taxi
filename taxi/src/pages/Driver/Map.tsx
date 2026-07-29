@@ -1358,12 +1358,24 @@ function DriverOrderMapModeContent({
     )
       return
 
+    // Deliberately keyed on the order+phase only, NOT on points.length/start/end.
+    // `activeDriveRouteInfo` is rebuilt live from `currentRouteStart`, which is the
+    // driver's current position — and while the demo mover drives, that position IS
+    // the model's own emitted position (see currentPosition/currentRouteStart
+    // above). So as the model advances, the drawn route keeps being re-fetched from
+    // a point closer and closer to the target, producing a shorter polyline every
+    // ~800 m of travel (see the lastRoutePoint distance gate). Keying on that
+    // geometry made every such redraw look like "a new route" and called
+    // model.setRoute() again mid-trip, wiping traveledMeters back to 0 for the new
+    // (shorter) polyline; the progress-restore below would then seek() the OLD,
+    // larger absolute distance onto it, which seek() clamps to the new polyline's
+    // (smaller) total length — snapping the marker straight to the phase target.
+    // The model only needs to be (re)fed once per order+phase; from then on it
+    // owns its own polyline and advances it via step()/tick, so later redraws of
+    // the display route must not touch it.
     const routeKey = [
       routeOrder?.b_id || '',
       isRouteToDestination ? 'destination' : 'pickup',
-      points.length,
-      start?.join(','),
-      end?.join(','),
     ].join(':')
 
     if (demoRouteKeyRef.current === routeKey) {
@@ -1915,6 +1927,10 @@ function DriverOrderMapModeContent({
       }
       {
         currentOrderStart && (
+          // This pin sits exactly on top of the taken order's own marker (both
+          // are placed at b_start_latitude/b_start_longitude), so it must not
+          // bind its own click popup — that would swallow the click and show
+          // the pickup address instead of opening the order details.
           <Marker
             position={currentOrderStart}
             icon={new L.Icon({
@@ -1923,12 +1939,18 @@ function DriverOrderMapModeContent({
               iconAnchor: [18, 41],
               popupAnchor: [0, -35],
             })}
-          >
-            <Popup>
-              {t(TRANSLATION.FROM)}
-              {!!routeOrder?.b_start_address && `: ${routeOrder.b_start_address}`}
-            </Popup>
-          </Marker>
+            eventHandlers={{
+              click: (event) => {
+                try {
+                  event.originalEvent?.preventDefault?.()
+                  event.originalEvent?.stopPropagation?.()
+                  L.DomEvent.stopPropagation(event.originalEvent)
+                } catch (_) {}
+                if (routeOrder?.b_id)
+                  setOrderCardModal({ isOpen: true, orderId: routeOrder.b_id })
+              },
+            }}
+          />
         )
       }
       {
@@ -1943,7 +1965,12 @@ function DriverOrderMapModeContent({
                 iconSize: [50, 50],
                 shadowSize: [29, 40],
                 shadowAnchor: [7, 40],
-                html: getOrderMarkerHtml(item, item === performingOrder, resolvedDestinationAddresses[String(item.b_id)]),
+                html: getOrderMarkerHtml(
+                  item,
+                  item === performingOrder,
+                  resolvedDestinationAddresses[String(item.b_id)],
+                  visibleMapOrders.map(mapOrder => mapOrder.b_id),
+                ),
               })}
               eventHandlers={{
                 click: (event) => {
@@ -2172,7 +2199,12 @@ function getOrderModeIcon(order: IOrder, performing: boolean) {
   return images.mapOrderWating
 }
 
-function getOrderMarkerHtml(order: IOrder, performing: boolean, resolvedDestinationAddress?: string) {
+function getOrderMarkerHtml(
+  order: IOrder,
+  performing: boolean,
+  resolvedDestinationAddress?: string,
+  poolIds: Array<IOrder['b_id']> = [],
+) {
   const rankClass = getProfitRankClass(order)
   const profit = getEstimatedProfit(order)
   const profitText = profit !== undefined ? formatCurrency(profit, {
@@ -2186,11 +2218,13 @@ function getOrderMarkerHtml(order: IOrder, performing: boolean, resolvedDestinat
   const tipsValue = order.b_tips || 0
   const passengersCount = order.b_passengers_count || 0
   const modeIcon = getOrderModeIcon(order, performing)
+  const { suffix: shortOrderId } = getOrderIdParts(order.b_id, poolIds)
 
   const negativeClass = profit !== undefined && profit < 0 ? ' order-marker--profit-negative' : ''
 
   return `<div class='order-marker${rankClass ? ` order-marker--profit--${rankClass}` : ''}${negativeClass}'>
     <div class='order-marker-hint order-marker-hint--destination-only'>
+      ${shortOrderId ? `<div class='order-marker-hint__id'>№${escapeHtml(shortOrderId)}</div>` : ''}
       <div class='order-marker-hint__destination'>
         <b>${escapeHtml(t(TRANSLATION.TO))}:</b>
         <span>${escapeHtml(toText)}</span>

@@ -645,6 +645,15 @@
   display: none;
 }
 
+.driver-order-map-mode .order-marker-hint__id {
+  margin-bottom: 3px;
+  color: #971704;
+  font-size: 10px;
+  line-height: 12px;
+  font-weight: 800;
+  text-align: center;
+}
+
 .driver-order-map-mode .order-marker-hint__destination {
   display: flex;
   align-items: center;

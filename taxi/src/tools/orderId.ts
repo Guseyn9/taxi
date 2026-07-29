@@ -62,3 +62,19 @@ export function getOrderIdParts(
     suffix: target.slice(-len),
   }
 }
+
+/**
+ * Полный id как plain-текст в том же виде, что и `<OrderId variant="full" />`
+ * (`№12345-67`) — для мест вроде текста в модалках, где нельзя вставить JSX.
+ */
+export function getOrderIdText(
+  targetId: IOrder['b_id'] | number | null | undefined,
+  poolIds: Array<IOrder['b_id'] | number>,
+  withSign = true,
+): string {
+  const { prefix, suffix } = getOrderIdParts(targetId, poolIds)
+  if (!suffix) return ''
+
+  const sign = withSign ? '№' : ''
+  return prefix ? `${sign}${prefix}-${suffix}` : `${sign}${suffix}`
+}
