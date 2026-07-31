@@ -14,6 +14,7 @@ import { distanceBetweenEarthCoordinates } from '../../tools/utils'
 import { getApiErrorMessage } from '../../tools/apiMessages'
 import { getStableRemainingLifetimeSeconds } from '../../tools/reliableTime'
 import { getPassengerConfirmedChoice } from '../../tools/driverOffer'
+import { getOrderIdText } from '../../tools/orderId'
 import { getVisibleBrowserEmulatorOrderIds, isAnyBrowserEmulatorModeRunning, isExternalEmulatorEnabled } from '../../tools/emulatorMode'
 import { writeFlowEvent } from '../../tools/flowLog'
 import { writeRawLog } from '../../tools/rawLog'
@@ -920,10 +921,12 @@ function* showClientVotingTimeoutMessageSaga(order: IOrder) {
   shownClientVotingTimeoutNotifications[order.b_id] = true
   yield put(closeAllModals())
   yield put(setSelectedOrder(null))
+  const poolOrders: IOrder[] = (yield* select(activeOrders)) ?? []
   yield put(setMessageModal({
     isOpen: true,
     status: EStatuses.Warning,
-    message: t(TRANSLATION.DRIVER_VOTING_CLOSED_TIMEOUT),
+    message: [t(TRANSLATION.DRIVER_VOTING_CLOSED_TIMEOUT), getOrderIdText(order.b_id, poolOrders.map(item => item.b_id))]
+      .filter(Boolean).join(' '),
   }))
 }
 

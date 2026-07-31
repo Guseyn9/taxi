@@ -727,7 +727,7 @@ const Order: React.FC<IProps> = ({
     setMessageModal({
       isOpen: true,
       status: EStatuses.Warning,
-      message,
+      message: [message, getOrderIdText(id, activeOrderIds)].filter(Boolean).join(' '),
     })
     navigate('/driver-order')
   }, [order, id, votingParticipationIds])
@@ -758,7 +758,8 @@ const Order: React.FC<IProps> = ({
     setMessageModal({
       isOpen: true,
       status: EStatuses.Warning,
-      message: t(TRANSLATION.DRIVER_ORDER_CANCELLED_BY_CLIENT),
+      message: [t(TRANSLATION.DRIVER_ORDER_CANCELLED_BY_CLIENT), getOrderIdText(id, activeOrderIds)]
+        .filter(Boolean).join(' '),
     })
     navigate('/driver-order')
   }, [order, userAsDriver, id, user?.u_id, navigate])
@@ -777,7 +778,7 @@ const Order: React.FC<IProps> = ({
     setMessageModal({
       isOpen: true,
       status: EStatuses.Warning,
-      message: closeReason,
+      message: [closeReason, getOrderIdText(id, activeOrderIds)].filter(Boolean).join(' '),
     })
     navigate('/driver-order')
   }, [order, isVotingParticipant, votingCloseHandled, user?.u_id])
@@ -808,9 +809,12 @@ const Order: React.FC<IProps> = ({
       setMessageModal({
         isOpen: true,
         status: EStatuses.Warning,
-        message: order?.b_voting ?
-          t(TRANSLATION.DRIVER_VOTING_CLOSED_BY_OTHER) :
-          t('driver_offer_client_selected_other'),
+        message: [
+          order?.b_voting ?
+            t(TRANSLATION.DRIVER_VOTING_CLOSED_BY_OTHER) :
+            t('driver_offer_client_selected_other'),
+          getOrderIdText(id, activeOrderIds),
+        ].filter(Boolean).join(' '),
       })
       navigate('/driver-order')
     }
@@ -832,7 +836,10 @@ const Order: React.FC<IProps> = ({
     setMessageModal({
       isOpen: true,
       status: EStatuses.Success,
-      message: 'Клиент выбрал вас. Подъезжайте к клиенту, после посадки клиент назовёт код посадки.',
+      message: [
+        'Клиент выбрал вас. Подъезжайте к клиенту, после посадки клиент назовёт код посадки.',
+        getOrderIdText(id, activeOrderIds),
+      ].filter(Boolean).join(' '),
     })
   }, [order?.b_voting, userAsDriver?.c_state])
 
@@ -888,7 +895,8 @@ const Order: React.FC<IProps> = ({
         setMessageModal({
           isOpen: true,
           status: EStatuses.Warning,
-          message: t(TRANSLATION.DRIVER_OFFER_EXPIRED),
+          message: [t(TRANSLATION.DRIVER_OFFER_EXPIRED), getOrderIdText(id, activeOrderIds)]
+            .filter(Boolean).join(' '),
         })
       }
     }
@@ -909,7 +917,8 @@ const Order: React.FC<IProps> = ({
       setMessageModal({
         isOpen: true,
         status: EStatuses.Warning,
-        message: t(TRANSLATION.DRIVER_OFFER_REJECTED),
+        message: [t(TRANSLATION.DRIVER_OFFER_REJECTED), getOrderIdText(id, activeOrderIds)]
+          .filter(Boolean).join(' '),
       })
       navigate('/driver-order')
       return
@@ -921,7 +930,8 @@ const Order: React.FC<IProps> = ({
       setMessageModal({
         isOpen: true,
         status: EStatuses.Success,
-        message: t(TRANSLATION.DRIVER_OFFER_ACCEPTED),
+        message: [t(TRANSLATION.DRIVER_OFFER_ACCEPTED), getOrderIdText(id, activeOrderIds)]
+          .filter(Boolean).join(' '),
       })
       navigate('/driver-order?tab=map')
       return
@@ -1035,7 +1045,10 @@ const Order: React.FC<IProps> = ({
         setMessageModal({
           isOpen: true,
           status: EStatuses.Success,
-          message: isCandidate ? t(TRANSLATION.YOUR_OFFER_SENT) : t(TRANSLATION.YOUR_ORDER_DESCRIPTION),
+          message: [
+            isCandidate ? t(TRANSLATION.YOUR_OFFER_SENT) : t(TRANSLATION.YOUR_ORDER_DESCRIPTION),
+            getOrderIdText(id, activeOrderIds),
+          ].filter(Boolean).join(' '),
         })
         navigate('/driver-order?tab=map')
       })
@@ -1076,7 +1089,8 @@ const Order: React.FC<IProps> = ({
         setMessageModal({
           isOpen: true,
           status: EStatuses.Success,
-          message: t('driver_offer_cancelled_hidden'),
+          message: [t('driver_offer_cancelled_hidden'), getOrderIdText(id, activeOrderIds)]
+            .filter(Boolean).join(' '),
         })
         navigate('/driver-order')
         window.requestAnimationFrame(() => {
@@ -1167,7 +1181,8 @@ const Order: React.FC<IProps> = ({
         setMessageModal({
           isOpen: true,
           status: EStatuses.Success,
-          message: t(TRANSLATION.TRIP, { })
+          message: [t(TRANSLATION.TRIP, { }), getOrderIdText(id, activeOrderIds)]
+            .filter(Boolean).join(' ')
         })
         setRatingModal({ isOpen: true })
       })

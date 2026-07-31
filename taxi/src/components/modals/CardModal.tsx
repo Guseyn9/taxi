@@ -972,7 +972,8 @@ function CardModalContent({
     setMessageModal({
       isOpen: true,
       status: EStatuses.Warning,
-      message: t(TRANSLATION.DRIVER_VOTING_CLOSED_BY_CLIENT),
+      message: [t(TRANSLATION.DRIVER_VOTING_CLOSED_BY_CLIENT), getOrderIdText(orderId, activeOrderIds)]
+        .filter(Boolean).join(' '),
     })
     closeModal()
   }, [active, order, orderId, votingParticipationIds])
@@ -1029,7 +1030,8 @@ function CardModalContent({
         setMessageModal({
           isOpen: true,
           status: EStatuses.Warning,
-          message: t(TRANSLATION.DRIVER_OFFER_EXPIRED),
+          message: [t(TRANSLATION.DRIVER_OFFER_EXPIRED), getOrderIdText(orderId, activeOrderIds)]
+            .filter(Boolean).join(' '),
         })
       }
     }
@@ -1050,7 +1052,8 @@ function CardModalContent({
       setMessageModal({
         isOpen: true,
         status: EStatuses.Warning,
-        message: t(TRANSLATION.DRIVER_OFFER_REJECTED),
+        message: [t(TRANSLATION.DRIVER_OFFER_REJECTED), getOrderIdText(orderId, activeOrderIds)]
+          .filter(Boolean).join(' '),
       })
       closeModal()
       return
@@ -1062,7 +1065,8 @@ function CardModalContent({
       setMessageModal({
         isOpen: true,
         status: EStatuses.Success,
-        message: t(TRANSLATION.DRIVER_OFFER_ACCEPTED),
+        message: [t(TRANSLATION.DRIVER_OFFER_ACCEPTED), getOrderIdText(orderId, activeOrderIds)]
+          .filter(Boolean).join(' '),
       })
       return
     }
@@ -1109,7 +1113,7 @@ function CardModalContent({
     setMessageModal({
       isOpen: true,
       status: EStatuses.Warning,
-      message: closeReason,
+      message: [closeReason, getOrderIdText(orderId, activeOrderIds)].filter(Boolean).join(' '),
     })
     closeModal()
   }, [active, order, isVotingParticipant, votingCloseHandled, user?.u_id])
@@ -1205,7 +1209,8 @@ function CardModalContent({
     setMessageModal({
       isOpen: true,
       status: EStatuses.Success,
-      message: t('driver_offer_cancelled_hidden'),
+      message: [t('driver_offer_cancelled_hidden'), getOrderIdText(orderId, activeOrderIds)]
+        .filter(Boolean).join(' '),
     })
     closeModal()
     window.requestAnimationFrame(() => {

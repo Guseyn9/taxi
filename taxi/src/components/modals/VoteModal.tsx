@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { connect, ConnectedProps } from 'react-redux'
 import Button from '../Button'
+import OrderId from '../OrderId'
 import './styles.scss'
 import * as API from '../../API'
 import { t, TRANSLATION } from '../../localization'
@@ -189,7 +190,9 @@ const VoteModal: React.FC<IProps> = ({
       >
         <div className="vote-modal__topline">
           <div>
-            <div className="vote-modal__eyebrow">{t(TRANSLATION.CLIENT_VOTING_EYEBROW)}</div>
+            <div className="vote-modal__eyebrow">
+              {t(TRANSLATION.CLIENT_VOTING_EYEBROW)} <OrderId orderId={selectedOrder} variant="full" />
+            </div>
             <div className="vote-modal__counter">
               {t(TRANSLATION.CLIENT_RESPONDED_DRIVERS)}: <b>{candidates.length}</b>
             </div>

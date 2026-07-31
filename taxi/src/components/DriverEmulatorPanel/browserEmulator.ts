@@ -17,6 +17,7 @@ import {
 } from '../../tools/emulatorMode'
 import { getDefaultCityLocationClassId, getDefaultIntercityLocationClassId, getOfferResponseBookingCommentIds, getPassengerConfirmedChoice, getStoredChoiceOrderMode, markEmulatorClientChoseOtherDriver, setPassengerConfirmedChoice, setStoredChoiceOrderMode, setStoredChoiceOutcome } from '../../tools/driverOffer'
 import { writeRawLog } from '../../tools/rawLog'
+import { ensureReachablePoint } from '../../tools/mapReachability'
 import * as API from '../../API'
 import store from '../../state'
 import { userSelectors } from '../../state/user'
@@ -2053,9 +2054,24 @@ function pickGeneratedOrderMode(): GeneratedOrderMode {
   return mode
 }
 
-function buildGeneratedPassengerOrder(origin: Point) {
-  const from = makeLocalEmulatorPointAround(origin, 'Точка подачи рядом с вами', 650, 120)
-  const to = makeLocalEmulatorPointAround(origin, 'Точка назначения рядом с вами', 2200, 900)
+// Order Generator (слой 1): точка подачи/назначения обязана быть у дороги, иначе
+// маркер водителя не может подъехать (заказ «в парке»). Политика — регенерация, затем
+// снап к ближайшей дороге (см. ensureReachablePoint). Доступность спрашиваем у Map
+// Adapter; при недоступном OSRM генерация не блокируется (fallback на исходную точку).
+async function buildReachableOrderPoint(origin: Point, label: string, maxMeters: number, minMeters: number) {
+  const result = await ensureReachablePoint(
+    () => makeLocalEmulatorPointAround(origin, label, maxMeters, minMeters),
+  )
+  return { point: result.point, reachability: result }
+}
+
+async function buildGeneratedPassengerOrder(origin: Point) {
+  const [fromResult, toResult] = await Promise.all([
+    buildReachableOrderPoint(origin, 'Точка подачи рядом с вами', 650, 120),
+    buildReachableOrderPoint(origin, 'Точка назначения рядом с вами', 2200, 900),
+  ])
+  const from = fromResult.point
+  const to = toResult.point
   const price = randInt(260, 460)
   const comment = pick(CLIENT_COMMENTS, 'Тестовый клиентский заказ')
   const passengers = randInt(1, 3)
@@ -2101,7 +2117,7 @@ function buildGeneratedPassengerOrder(origin: Point) {
 
   return {
     payload,
-    meta: { price, from, to, comment, passengers, mode, origin },
+    meta: { price, from, to, comment, passengers, mode, origin, reachability: { from: fromResult.reachability, to: toResult.reachability } },
   }
 }
 
@@ -2530,7 +2546,7 @@ export class BrowserClientOrderEmulator {
       return null
     }
 
-    const { payload, meta } = buildGeneratedPassengerOrder(emulatorOrigin)
+    const { payload, meta } = await buildGeneratedPassengerOrder(emulatorOrigin)
     const resolvedAddresses = await resolveGeneratedOrderAddresses(meta)
     payload.b_start_address = resolvedAddresses.from.address
     payload.b_destination_address = resolvedAddresses.to.address
@@ -2555,7 +2571,7 @@ export class BrowserClientOrderEmulator {
           this.planChoiceOutcome(String(orderId), meta.mode)
         }
         await confirmPassengerOrder(client.session, orderId)
-        this.log(`[${client.name}] создал заказ ${orderId || '(id unknown)'}; режим=${meta.mode}; около ${formatEmulatorPoint(meta.origin)}; ${meta.from.shortAddress || meta.from.address} → ${meta.to.shortAddress || meta.to.address}; адрес=${meta.from.geocodeSource || 'unknown'}/${meta.to.geocodeSource || 'unknown'}; ${meta.price}; пассажиров=${meta.passengers}`)
+        this.log(`[${client.name}] создал заказ ${orderId || '(id unknown)'}; режим=${meta.mode}; около ${formatEmulatorPoint(meta.origin)}; ${meta.from.shortAddress || meta.from.address} → ${meta.to.shortAddress || meta.to.address}; адрес=${meta.from.geocodeSource || 'unknown'}/${meta.to.geocodeSource || 'unknown'}; дорога=${meta.reachability?.from?.source || 'unknown'}/${meta.reachability?.to?.source || 'unknown'}; ${meta.price}; пассажиров=${meta.passengers}`)
         return response
       }
       lastMessage = normalizeErrorMessage(response) || stringifyError(response)

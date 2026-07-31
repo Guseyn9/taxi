@@ -29,6 +29,7 @@ import { writeFlowEvent } from '../../tools/flowLog'
 import { writeRawLog } from '../../tools/rawLog'
 import { summarizeOrder } from '../../tools/frontendLog'
 import { isVotingOrder } from '../../tools/driverOffer'
+import { getOrderIdText } from '../../tools/orderId'
 import './styles.scss'
 
 const mapDispatchToProps = {
@@ -369,9 +370,12 @@ const DriverOrders: React.FC<IProps> = ({
         setMessageModal({
           isOpen: true,
           status: EStatuses.Warning,
-          message: t(isTimeout ?
-            TRANSLATION.DRIVER_VOTING_CLOSED_TIMEOUT :
-            TRANSLATION.DRIVER_VOTING_CLOSED_BY_OTHER),
+          message: [
+            t(isTimeout ?
+              TRANSLATION.DRIVER_VOTING_CLOSED_TIMEOUT :
+              TRANSLATION.DRIVER_VOTING_CLOSED_BY_OTHER),
+            getOrderIdText(previousOrder.b_id, activeOrders.map(item => item.b_id)),
+          ].filter(Boolean).join(' '),
         })
       }
     }
@@ -400,7 +404,10 @@ const DriverOrders: React.FC<IProps> = ({
           setMessageModal({
             isOpen: true,
             status: EStatuses.Warning,
-            message: t(TRANSLATION.DRIVER_VOTING_CLOSED_TIMEOUT),
+            message: [
+              t(TRANSLATION.DRIVER_VOTING_CLOSED_TIMEOUT),
+              getOrderIdText(order.b_id, activeOrders.map(item => item.b_id)),
+            ].filter(Boolean).join(' '),
           })
         }
         continue
@@ -422,14 +429,20 @@ const DriverOrders: React.FC<IProps> = ({
         setMessageModal({
           isOpen: true,
           status: EStatuses.Success,
-          message: 'Клиент выбрал вас. Подъезжайте к клиенту, после посадки клиент назовёт код посадки.',
+          message: [
+            'Клиент выбрал вас. Подъезжайте к клиенту, после посадки клиент назовёт код посадки.',
+            getOrderIdText(order.b_id, activeOrders.map(item => item.b_id)),
+          ].filter(Boolean).join(' '),
         })
       } else if (currentDriver.c_state === EBookingDriverState.Considering) {
         closeAllModals()
         setMessageModal({
           isOpen: true,
           status: EStatuses.Warning,
-          message: t(TRANSLATION.DRIVER_VOTING_CLOSED_BY_OTHER),
+          message: [
+            t(TRANSLATION.DRIVER_VOTING_CLOSED_BY_OTHER),
+            getOrderIdText(order.b_id, activeOrders.map(item => item.b_id)),
+          ].filter(Boolean).join(' '),
         })
       }
     }

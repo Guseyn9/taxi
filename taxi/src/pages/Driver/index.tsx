@@ -25,6 +25,7 @@ import { EOrderControlMode } from '../../state/orderControlMode/constants'
 import OrderModeDecisionModal from '../../components/OrderModeDecisionModal'
 import OrderModeToast from '../../components/OrderModeToast'
 import { requestOrderModeDecision } from '../../tools/orderModeDecision'
+import { getOrderIdText } from '../../tools/orderId'
 
 /** Задержка перед авто-взятием заказа в Строгом режиме (сглаживает цепочку действий). */
 const STRICT_TAKE_DELAY_MS = 5000
@@ -169,7 +170,10 @@ const Driver: React.FC<IProps> = ({
       setMessageModal({
         isOpen: true,
         status: EStatuses.Warning,
-        message: t(TRANSLATION.DRIVER_VOTING_CLOSED_TIMEOUT),
+        message: [
+          t(TRANSLATION.DRIVER_VOTING_CLOSED_TIMEOUT),
+          getOrderIdText(order.b_id, activeOrders.map(item => item.b_id)),
+        ].filter(Boolean).join(' '),
       })
     }
 
@@ -260,7 +264,10 @@ const Driver: React.FC<IProps> = ({
       setMessageModal({
         isOpen: true,
         status: EStatuses.Warning,
-        message: t(TRANSLATION.DRIVER_ORDER_CANCELLED_BY_CLIENT),
+        message: [
+          t(TRANSLATION.DRIVER_ORDER_CANCELLED_BY_CLIENT),
+          getOrderIdText(orderID, activeOrders.map(item => item.b_id)),
+        ].filter(Boolean).join(' '),
       })
     }
 
@@ -322,7 +329,8 @@ const Driver: React.FC<IProps> = ({
         setMessageModal({
           isOpen: true,
           status: EStatuses.Success,
-          message: t(TRANSLATION.DRIVER_OFFER_ACCEPTED),
+          message: [t(TRANSLATION.DRIVER_OFFER_ACCEPTED), getOrderIdText(order.b_id, activeOrders.map(item => item.b_id))]
+            .filter(Boolean).join(' '),
         })
         continue
       }
@@ -334,7 +342,8 @@ const Driver: React.FC<IProps> = ({
         setMessageModal({
           isOpen: true,
           status: EStatuses.Warning,
-          message: t(TRANSLATION.DRIVER_OFFER_REJECTED),
+          message: [t(TRANSLATION.DRIVER_OFFER_REJECTED), getOrderIdText(order.b_id, activeOrders.map(item => item.b_id))]
+            .filter(Boolean).join(' '),
         })
         continue
       }
@@ -344,7 +353,8 @@ const Driver: React.FC<IProps> = ({
         setMessageModal({
           isOpen: true,
           status: EStatuses.Warning,
-          message: t(TRANSLATION.DRIVER_OFFER_EXPIRED),
+          message: [t(TRANSLATION.DRIVER_OFFER_EXPIRED), getOrderIdText(order.b_id, activeOrders.map(item => item.b_id))]
+            .filter(Boolean).join(' '),
         })
       }
     }
@@ -373,9 +383,12 @@ const Driver: React.FC<IProps> = ({
       setMessageModal({
         isOpen: true,
         status: EStatuses.Warning,
-        message: relatedOrder?.b_voting ?
-          t(TRANSLATION.DRIVER_VOTING_CLOSED_BY_OTHER) :
-          t('driver_offer_client_selected_other'),
+        message: [
+          relatedOrder?.b_voting ?
+            t(TRANSLATION.DRIVER_VOTING_CLOSED_BY_OTHER) :
+            t('driver_offer_client_selected_other'),
+          getOrderIdText(orderId, (activeOrders || []).map(item => item.b_id)),
+        ].filter(Boolean).join(' '),
       })
     }
 
@@ -443,7 +456,8 @@ const Driver: React.FC<IProps> = ({
             setMessageModal({
               isOpen: true,
               status: EStatuses.Success,
-              message: t(TRANSLATION.ORDER_AUTO_ACCEPTED),
+              message: [t(TRANSLATION.ORDER_AUTO_ACCEPTED), getOrderIdText(orderId, (activeOrders || []).map(item => item.b_id))]
+                .filter(Boolean).join(' '),
             })
           navigate(`/driver-order?tab=${EDriverTabs.Map}`)
         })
