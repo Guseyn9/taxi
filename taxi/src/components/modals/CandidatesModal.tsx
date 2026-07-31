@@ -15,6 +15,7 @@ import { t, TRANSLATION } from '../../localization'
 import { getPassengerPickupEta } from '../../tools/driverOffer'
 import Button from '../Button'
 import ChatToggler from '../Chat/Toggler'
+import OrderId from '../OrderId'
 import './styles.scss'
 import Overlay from './Overlay'
 
@@ -344,7 +345,7 @@ function CandidatesModal({
       >
         <form>
           <fieldset>
-            <legend>{t(TRANSLATION.RESPONDING_PERFORMERS)}</legend>
+            <legend>{t(TRANSLATION.RESPONDING_PERFORMERS)} <OrderId orderId={selectedOrder} variant="full" /></legend>
             {sortCandidateDriversByEta(order?.drivers ?? [], order).map(item => {
               const user = users.find(i => i.u_id === item.u_id)
               const car = cars.find(i => i.c_id === item.c_id)

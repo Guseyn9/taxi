@@ -6,16 +6,19 @@ import SITE_CONSTANTS from '../../siteConstants'
 import { t, TRANSLATION } from '../../localization'
 import { getLocalizedCancelReasons } from '../../tools/cancelReasons'
 import { modalsActionCreators, modalsSelectors } from '../../state/modals'
+import { ordersSelectors } from '../../state/orders'
 import { IRootState } from '../../state'
 import { EStatuses } from '../../types/types'
 import * as API from '../../API'
 import Button from '../Button'
 import OrderId from '../OrderId'
 import Overlay from './Overlay'
+import { getOrderIdText } from '../../tools/orderId'
 import './styles.scss'
 
 const mapStateToProps = (state: IRootState) => ({
   modal: modalsSelectors.driverTripCancelModal(state),
+  activeOrders: ordersSelectors.activeOrders(state),
 })
 
 const mapDispatchToProps = {
@@ -35,11 +38,13 @@ interface IProps extends ConnectedProps<typeof connector> {
  */
 const DriverTripCancelModal: React.FC<IProps> = ({
   modal,
+  activeOrders,
   setDriverTripCancelModal,
   setMessageModal,
 }) => {
   const navigate = useNavigate()
   const { isOpen, orderId } = modal
+  const activeOrderIds = (activeOrders ?? []).map(item => item.b_id)
   const reasons = useMemo(() => getLocalizedCancelReasons(SITE_CONSTANTS.DRIVER_TRIP_CANCEL_REASONS), [isOpen])
 
   const [reason, setReason] = useState(reasons[0]?.id ?? '0')
@@ -68,7 +73,8 @@ const DriverTripCancelModal: React.FC<IProps> = ({
         setMessageModal({
           isOpen: true,
           status: EStatuses.Success,
-          message: t(TRANSLATION.DRIVER_TRIP_CANCELLED),
+          message: [t(TRANSLATION.DRIVER_TRIP_CANCELLED), getOrderIdText(orderId, activeOrderIds)]
+            .filter(Boolean).join(' '),
         })
         navigate('/driver-order')
       })

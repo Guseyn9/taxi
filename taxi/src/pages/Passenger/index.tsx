@@ -23,6 +23,7 @@ import PassengerLiveOrder from '../../components/PassengerLiveOrder'
 import VotingForm, { IRequestOrderDraft } from './VotingForm'
 import './styles.scss'
 import { t, TRANSLATION } from '../../localization'
+import { getOrderIdText } from '../../tools/orderId'
 import { configSelectors } from '../../state/config'
 import { writeFlowEvent } from '../../tools/flowLog'
 import { resolvePassengerUiConfig } from './uiFsm'
@@ -715,7 +716,10 @@ function Passenger({
             status: EStatuses.Success,
             kind: 'passenger-driver-arrived',
             orderID: order.b_id,
-            message: t(TRANSLATION.CLIENT_DRIVER_ARRIVED),
+            message: [
+              t(TRANSLATION.CLIENT_DRIVER_ARRIVED),
+              getOrderIdText(order.b_id, (activeOrders ?? []).map(item => item.b_id)),
+            ].filter(Boolean).join(' '),
           })
         }
 

@@ -9,6 +9,7 @@ import { modalsActionCreators, modalsSelectors } from '../../state/modals'
 import { clientOrderActionCreators, clientOrderSelectors } from '../../state/clientOrder'
 import { ordersActionCreators } from '../../state/orders'
 import Button from '../Button'
+import OrderId from '../OrderId'
 import Overlay from './Overlay'
 import './styles.scss'
 
@@ -113,6 +114,11 @@ const CancelOrderModal: React.FC<IProps> = ({
       onClick={() => setCancelModal(false)}
     >
       <div className="modal cancel-order-modal message-window">
+        {!!selectedOrder && (
+          <div className="cancel-order-modal__order-id">
+            <OrderId orderId={selectedOrder} variant="full" />
+          </div>
+        )}
         {
           REASONS.map(item => {
             const active = reason === item.id ? ' active' : ''

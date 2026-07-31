@@ -2,6 +2,7 @@ import React from 'react'
 import { connect, ConnectedProps } from 'react-redux'
 import { useNavigate } from 'react-router-dom'
 import Button from '../Button'
+import OrderId from '../OrderId'
 import './styles.scss'
 import * as API from '../../API'
 import { t, TRANSLATION } from '../../localization'
@@ -51,7 +52,7 @@ const CancelDriverOrderModal: React.FC<IProps> = ({
         <form>
           <fieldset>
             <legend>
-              {t(TRANSLATION.CANCEL_ORDER)}
+              {t(TRANSLATION.CANCEL_ORDER)} <OrderId orderId={selectedOrderId} variant="full" />
             </legend>
             <div className="status">
               <span>{t(TRANSLATION.CANCEL_ORDER_CONFIRMATION)}</span>

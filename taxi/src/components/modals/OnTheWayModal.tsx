@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { connect, ConnectedProps } from 'react-redux'
 import Button from '../Button'
+import OrderId from '../OrderId'
 import { t, TRANSLATION } from '../../localization'
 import moment from 'moment'
 import { useInterval } from '../../tools/hooks'
@@ -78,7 +79,7 @@ const OnTheWayModal: React.FC<IProps> = ({
       >
         <form>
           <fieldset>
-            <legend>{t(TRANSLATION.DRIVING_HEADER)}</legend>
+            <legend>{t(TRANSLATION.DRIVING_HEADER)} <OrderId orderId={selectedOrder} variant="full" /></legend>
             <h3>{t(TRANSLATION.DRIVING_TIME)}</h3>
             <div className="ontheway-modal__time">{formattedDuration}</div>
             <Button

@@ -753,6 +753,39 @@
   background: rgba(214, 248, 212, .97) !important;
 }
 
+/* Перцентильная раскраска: цвет по относительной прибыльности среди видимых заказов.
+   p0 — нижние 20% (🔴 плохие) … p4 — верхние 20% (💚 лучшие). Объявлены ПОСЛЕ
+   абсолютных low/medium/high, поэтому перекрывают их; блок «убыточный» ниже — сильнее. */
+.driver-order-map-mode .order-marker--profit-p0 .order-marker-hint--destination-only {
+  background: rgba(248, 196, 190, .97) !important;
+}
+
+.driver-order-map-mode .order-marker--profit-p1 .order-marker-hint--destination-only {
+  background: rgba(255, 210, 158, .97) !important;
+}
+
+.driver-order-map-mode .order-marker--profit-p2 .order-marker-hint--destination-only {
+  background: rgba(255, 244, 165, .97) !important;
+}
+
+.driver-order-map-mode .order-marker--profit-p3 .order-marker-hint--destination-only {
+  background: rgba(206, 240, 190, .97) !important;
+}
+
+.driver-order-map-mode .order-marker--profit-p4 .order-marker-hint--destination-only {
+  background: rgba(170, 238, 176, .98) !important;
+}
+
+.driver-order-map-mode .order-marker--profit-p4 .order-profit-estimation {
+  color: #0a7a2f !important;
+  font-weight: 800;
+}
+
+.driver-order-map-mode .order-marker--profit-p0 .order-profit-estimation {
+  color: #a12318 !important;
+  font-weight: 800;
+}
+
 .driver-order-map-mode .order-marker--profit-negative {
   opacity: 1 !important;
   filter: saturate(.78) brightness(.98) !important;

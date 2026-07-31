@@ -23,6 +23,7 @@ import {
   emitDriverRouteEmulatorNotification,
 } from '../../tools/driverRouteEmulatorCommandBus'
 import { isAtDestinationPoint, isAtPickupPoint, publishDriverPosition } from '../../tools/driverPosition'
+import { snapToRoad, REACHABLE_ROAD_METERS } from '../../tools/mapReachability'
 import { useCachedState } from '../../tools/hooks'
 import images from '../../constants/images'
 import OrderModeButton from '../../components/OrderModeButton'
@@ -652,6 +653,13 @@ function DriverOrderMapModeContent({
     activeOrders?.map(order => `${order.b_id}:${order.b_state}:${order.b_start_latitude}:${order.b_start_longitude}:${order.drivers?.length ?? 0}`).join('|'),
     visibleReadyOrders?.map(order => `${order.b_id}:${order.b_state}:${order.b_start_latitude}:${order.b_start_longitude}:${order.drivers?.length ?? 0}`).join('|'),
   ])
+
+  // Перцентильные группы прибыльности пересчитываются на каждое обновление набора
+  // видимых заказов — карта хинтов { b_id -> группа 0..4 } для их раскраски.
+  const orderProfitPercentiles = useMemo(
+    () => computeProfitPercentiles(visibleMapOrders),
+    [visibleMapOrders],
+  )
 
   useEffect(() => {
     const activeMapOrders = activeOrders ?? []
@@ -1345,13 +1353,12 @@ function DriverOrderMapModeContent({
     // the previous phase's target. Feeding that stale geometry to the emulator
     // would snap the marker back to the old route's start and drive pickup again.
     // Wait until the geometry actually ends at the current phase target.
-    const phaseTargetOrderPoint = isRouteToDestination ?
-      { lat: routeOrder?.b_destination_latitude, lng: routeOrder?.b_destination_longitude } :
-      { lat: routeOrder?.b_start_latitude, lng: routeOrder?.b_start_longitude }
-    const phaseTarget: [number, number] | null =
-      phaseTargetOrderPoint.lat && phaseTargetOrderPoint.lng ?
-        [phaseTargetOrderPoint.lat, phaseTargetOrderPoint.lng] :
-        null
+    // Use the SAME (possibly road-snapped) точки, что и построение маршрута/проверка
+    // прибытия — иначе при снапе оторванной точки конец полилинии не совпал бы с
+    // сырой координатой заказа, проверка всегда возвращала бы return, и маркер не ехал.
+    const phaseTarget: [number, number] | null = isRouteToDestination ?
+      currentOrderDestination :
+      currentOrderStart
     if (
       phaseTarget &&
       distanceBetweenEarthCoordinates(end[0], end[1], phaseTarget[0], phaseTarget[1]) > 0.15
@@ -1421,6 +1428,10 @@ function DriverOrderMapModeContent({
       else
         model.pause()
     })
+    // NB: currentOrderStart/currentOrderDestination (возможно снапнутые) объявлены
+    // ниже и используются в колбэке через замыкание. В deps их не добавляем (это был
+    // бы TDZ-краш при рендере); эффект и так перезапускается транзитивно — при снапе
+    // меняется currentRouteTarget → перестраивается activeDriveRouteInfo → сюда.
   }, [isDemoMapMovementEnabled, activeDriveRouteInfo, routeOrder?.b_id, isRouteToDestination, hasDeparted])
 
   const browserDriverPosition = useMemo((): [number, number] | null => {
@@ -1460,21 +1471,99 @@ function DriverOrderMapModeContent({
       safeLeafletAction(() => map.setView(currentPosition, Math.max(map.getZoom(), 16)))
   }
 
+  // Защитный слой (суррогат «FSM-проверки» из архитектуры генерации заказов):
+  // ТОЛЬКО в режиме эмулятора точки заказа могут оказаться в стороне от дорог
+  // (заказ «в парке») — тогда маркер физически не доезжает до точки посадки и
+  // приезд не подтвердить. Здесь мы страхуемся: спрашиваем Map Adapter о ближайшей
+  // дороге и, если точка заметно оторвана от неё, используем привязанную к дороге
+  // координату И для маршрута, И для проверки прибытия (обе должны совпадать).
+  // Реальные (не эмуляторные) заказы НЕ трогаем — там точка пассажира точна.
+  const [snappedDemoOrderPoints, setSnappedDemoOrderPoints] = useState<{
+    orderId: string
+    start: [number, number] | null
+    destination: [number, number] | null
+  } | null>(null)
+
+  useEffect(() => {
+    if (!emulatorOrdersEnabled || !routeOrder?.b_id) {
+      setSnappedDemoOrderPoints(null)
+      return
+    }
+
+    const orderId = String(routeOrder.b_id)
+    const rawStart = routeOrder.b_start_latitude && routeOrder.b_start_longitude ?
+      { latitude: Number(routeOrder.b_start_latitude), longitude: Number(routeOrder.b_start_longitude) } :
+      null
+    const rawDestination = routeOrder.b_destination_latitude && routeOrder.b_destination_longitude ?
+      { latitude: Number(routeOrder.b_destination_latitude), longitude: Number(routeOrder.b_destination_longitude) } :
+      null
+
+    let cancelled = false
+    ;(async() => {
+      const [startSnap, destinationSnap] = await Promise.all([
+        rawStart ? snapToRoad(rawStart) : Promise.resolve(null),
+        rawDestination ? snapToRoad(rawDestination) : Promise.resolve(null),
+      ])
+      if (cancelled) return
+
+      // Привязываем только заметно оторванные от дороги точки, чтобы не дёргать
+      // уже нормальные (снап на генерации оставляет дорогу в пределах REACHABLE).
+      const startFixed = startSnap && startSnap.roadDistanceMeters > REACHABLE_ROAD_METERS ?
+        [startSnap.latitude, startSnap.longitude] as [number, number] :
+        null
+      const destinationFixed = destinationSnap && destinationSnap.roadDistanceMeters > REACHABLE_ROAD_METERS ?
+        [destinationSnap.latitude, destinationSnap.longitude] as [number, number] :
+        null
+
+      if (startFixed || destinationFixed) {
+        writeRawLog('DRIVER_DEMO_ORDER_OFFROAD', {
+          source: 'driver-map',
+          screen: 'Driver/Map',
+          orderId,
+          startRoadDistanceMeters: startSnap?.roadDistanceMeters ?? null,
+          destinationRoadDistanceMeters: destinationSnap?.roadDistanceMeters ?? null,
+          snappedStart: Boolean(startFixed),
+          snappedDestination: Boolean(destinationFixed),
+        })
+      }
+
+      setSnappedDemoOrderPoints({ orderId, start: startFixed, destination: destinationFixed })
+    })()
+
+    return () => { cancelled = true }
+  }, [
+    emulatorOrdersEnabled,
+    routeOrder?.b_id,
+    routeOrder?.b_start_latitude,
+    routeOrder?.b_start_longitude,
+    routeOrder?.b_destination_latitude,
+    routeOrder?.b_destination_longitude,
+  ])
+
   const currentOrderDestination = useMemo((): [number, number] | null => {
     if (!routeOrder?.b_destination_latitude || !routeOrder?.b_destination_longitude) return null
+    if (snappedDemoOrderPoints?.orderId === String(routeOrder.b_id) && snappedDemoOrderPoints.destination)
+      return snappedDemoOrderPoints.destination
     return [
       routeOrder.b_destination_latitude,
       routeOrder.b_destination_longitude,
     ]
-  }, [routeOrder?.b_destination_latitude, routeOrder?.b_destination_longitude])
+  }, [
+    routeOrder?.b_destination_latitude,
+    routeOrder?.b_destination_longitude,
+    routeOrder?.b_id,
+    snappedDemoOrderPoints,
+  ])
 
   const currentOrderStart = useMemo((): [number, number] | null => {
     if (!routeOrder?.b_start_latitude || !routeOrder?.b_start_longitude) return null
+    if (snappedDemoOrderPoints?.orderId === String(routeOrder.b_id) && snappedDemoOrderPoints.start)
+      return snappedDemoOrderPoints.start
     return [
       routeOrder.b_start_latitude,
       routeOrder.b_start_longitude,
     ]
-  }, [routeOrder?.b_start_latitude, routeOrder?.b_start_longitude])
+  }, [routeOrder?.b_start_latitude, routeOrder?.b_start_longitude, routeOrder?.b_id, snappedDemoOrderPoints])
 
   // Publish the resolved position so the order-details surfaces judge arrival by
   // the same marker the driver sees, instead of raw device GPS (which stands
@@ -1969,7 +2058,11 @@ function DriverOrderMapModeContent({
                   item,
                   item === performingOrder,
                   resolvedDestinationAddresses[String(item.b_id)],
-                  visibleMapOrders.map(mapOrder => mapOrder.b_id),
+                  // Same pool as <OrderId>/order details (active orders only) so
+                  // the short id shown on the map matches the one in the order
+                  // details for the same order.
+                  (activeOrders || []).map(activeOrder => activeOrder.b_id),
+                  orderProfitPercentiles[String(item.b_id)],
                 ),
               })}
               eventHandlers={{
@@ -2192,6 +2285,39 @@ function getProfitRankClass(order: IOrder) {
   return 'low'
 }
 
+// Перцентильная раскраска хинтов: цвет зависит не от абсолютной суммы, а от того,
+// насколько заказ выгоднее ОСТАЛЬНЫХ видимых заказов. При каждом обновлении списка
+// собираем прибыли всех видимых заказов, ранжируем и делим на 5 групп по 20%:
+// p0 — нижние 20% (🔴), p1 20–40% (🟠), p2 40–60% (🟡), p3 60–80% (🟢), p4 — верхние 20% (💚).
+// Так даже при близких прибылях (10–12 €) сразу видно, какие заказы лучше других.
+const PROFIT_PERCENTILE_BUCKETS = 5
+
+function computeProfitPercentiles(orders: IOrder[]): Record<string, number> {
+  const entries: Array<{ id: string, profit: number }> = []
+  orders.forEach(order => {
+    if (!order?.b_id) return
+    const profit = getEstimatedProfit(order)
+    if (profit === undefined) return
+    entries.push({ id: String(order.b_id), profit })
+  })
+
+  const result: Record<string, number> = {}
+  const count = entries.length
+  if (!count) return result
+
+  const values = entries.map(entry => entry.profit)
+  entries.forEach(({ id, profit }) => {
+    // Мидранк-перцентиль: одинаковые прибыли получают одну группу (один цвет),
+    // а различающиеся — раскладываются по группам по относительному рангу.
+    const below = values.reduce((sum, value) => sum + (value < profit ? 1 : 0), 0)
+    const atOrBelow = values.reduce((sum, value) => sum + (value <= profit ? 1 : 0), 0)
+    const percentile = (below + atOrBelow) / (2 * count)
+    result[id] = Math.min(PROFIT_PERCENTILE_BUCKETS - 1, Math.floor(percentile * PROFIT_PERCENTILE_BUCKETS))
+  })
+
+  return result
+}
+
 function getOrderModeIcon(order: IOrder, performing: boolean) {
   if (performing) return images.mapOrderPerforming
   if (isVotingOrder(order)) return images.mapOrderVoting
@@ -2204,8 +2330,12 @@ function getOrderMarkerHtml(
   performing: boolean,
   resolvedDestinationAddress?: string,
   poolIds: Array<IOrder['b_id']> = [],
+  profitBucket?: number,
 ) {
   const rankClass = getProfitRankClass(order)
+  // Перцентильный класс (p0..p4) раскрашивает хинт относительно других видимых
+  // заказов и визуально перекрывает абсолютный low/medium/high (правила ниже в scss).
+  const percentileClass = profitBucket !== undefined ? ` order-marker--profit-p${profitBucket}` : ''
   const profit = getEstimatedProfit(order)
   const profitText = profit !== undefined ? formatCurrency(profit, {
     signDisplay: 'always',
@@ -2222,7 +2352,7 @@ function getOrderMarkerHtml(
 
   const negativeClass = profit !== undefined && profit < 0 ? ' order-marker--profit-negative' : ''
 
-  return `<div class='order-marker${rankClass ? ` order-marker--profit--${rankClass}` : ''}${negativeClass}'>
+  return `<div class='order-marker${rankClass ? ` order-marker--profit--${rankClass}` : ''}${percentileClass}${negativeClass}'>
     <div class='order-marker-hint order-marker-hint--destination-only'>
       ${shortOrderId ? `<div class='order-marker-hint__id'>№${escapeHtml(shortOrderId)}</div>` : ''}
       <div class='order-marker-hint__destination'>
