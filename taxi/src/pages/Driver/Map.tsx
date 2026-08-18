@@ -10,19 +10,43 @@ import {
   EBookingDriverState,
   EOrderProfitRank,
   IAddressPoint,
+  IDriver,
   IOrder,
   IRouteInfo,
   IUser,
 } from '../../types/types'
 import { IWayGraph } from '../../tools/maps'
 import { makeRoutePointsSafe } from '../../tools/route'
-import { DriverRouteEmulator, ERouteWaypointType } from '../../tools/driverRouteEmulator'
+import {
+  DriverRouteEmulator,
+  EDriverExternalEventType,
+  ERouteWaypointType,
+  IGeoPoint,
+} from '../../tools/driverRouteEmulator'
+import {
+  ETripStopKind,
+  ITripStop,
+  buildDriverTripPlan,
+  getTripActionStop,
+  getTripPlanOrderIds,
+  getTripStopKey,
+  isFinalTripStop,
+} from '../../tools/driverTripPlan'
+import { isAlongTheWayCandidate } from '../../tools/alongTheWayCandidate'
 import { DriverOrderEventAdapter } from '../../tools/driverOrderEventAdapter'
 import {
   subscribeDriverRouteEmulatorCommand,
   emitDriverRouteEmulatorNotification,
 } from '../../tools/driverRouteEmulatorCommandBus'
-import { isAtDestinationPoint, isAtPickupPoint, publishDriverPosition } from '../../tools/driverPosition'
+import {
+  isAtDestinationPoint,
+  isAtPickupPoint,
+  publishDriverPosition,
+  getDriverParkedPosition,
+  rememberDriverParkedPosition,
+} from '../../tools/driverPosition'
+import { TDriverPositionSource } from '../../tools/driverLocationLog'
+import { TDriverTripPhase, publishDriverTrip } from '../../tools/driverTripPhase'
 import { snapToRoad, REACHABLE_ROAD_METERS } from '../../tools/mapReachability'
 import { useCachedState } from '../../tools/hooks'
 import images from '../../constants/images'
@@ -38,14 +62,12 @@ import {
 import { useInterval, useSelector } from '../../tools/hooks'
 import { orderControlModeSelectors } from '../../state/orderControlMode'
 import { EOrderControlMode } from '../../state/orderControlMode/constants'
-import { requestOrderModeDecision } from '../../tools/orderModeDecision'
+import { dismissOrderModeDecision, requestOrderModeDecision } from '../../tools/orderModeDecision'
 import { showOrderModeToast } from '../../tools/orderModeToast'
-import { getOrderIdParts } from '../../tools/orderId'
+import { getOrderIdParts, getOrderIdText } from '../../tools/orderId'
+import { computeProfitPercentiles, getEstimatedProfit } from '../../tools/order'
+import { formatShortAddress } from '../../tools/address'
 
-/** Задержка перед каждым шагом поездки в Строгом режиме (показываем тост, затем действие). */
-const STRICT_STEP_DELAY_MS = 2000
-/** Сколько держать тост шага. */
-const STRICT_STEP_TOAST_MS = 3500
 import SITE_CONSTANTS from '../../siteConstants'
 import * as API from '../../API'
 import { orderActionCreators } from '../../state/order'
@@ -59,11 +81,29 @@ import Button from '../../components/Button'
 import SmoothRotatingMarker from '../../components/SmoothRotatingMarker'
 import { EDriverTabs } from '.'
 import { isOfferOrder, isVotingOrder } from '../../tools/driverOffer'
+import { canDriverTakeOrderBySeats, getDriverFreeSeats } from '../../tools/driverCapacity'
+import {
+  buildOrderDecisionContext,
+  mergeDecisionStageOrders,
+} from '../../tools/orderDecisionContext'
+import { trackOrderDecisions } from '../../tools/orderDecisionTracker'
+import { carsSelectors } from '../../state/cars'
 import { BROWSER_EMULATOR_STATE_EVENT, isBrowserEmulatorRunning } from '../../tools/emulatorMode'
 import { writeFlowEvent } from '../../tools/flowLog'
 import { writeRawLog } from '../../tools/rawLog'
 import { summarizeOrder } from '../../tools/frontendLog'
 import './styles.scss'
+
+/** Задержка перед каждым шагом поездки в Строгом режиме (показываем тост, затем действие). */
+const STRICT_STEP_DELAY_MS = 2000
+/** Сколько держать тост шага. */
+const STRICT_STEP_TOAST_MS = 3500
+/**
+ * Сколько ждём, что взятый попутный заказ появится в активных. Дольше держать
+ * точку «на пробу» смысла нет: взятие где-то потерялось, и водитель должен
+ * поехать дальше, а не стоять у точки, о которой его уже не спрашивают.
+ */
+const ALONG_THE_WAY_TAKE_TIMEOUT_MS = 15000
 
 const cachedDriverMapStateKey = 'cachedDriverMapState'
 const DRIVER_STARTED_VOTING_ORDERS_STORAGE_KEY = 'driverStartedVotingOrderIds'
@@ -315,17 +355,83 @@ function trimRoutePointsToPosition(points: Array<[number, number]> | undefined |
 }
 
 const DEMO_DRIVER_ROUTE_SPEED_MPS = 24
+/** Сколько построенных ног маршрута держим в кэше провайдера геометрии. */
+const ROUTE_SEGMENT_CACHE_LIMIT = 60
 // Degrees offset used to place the temporary test/manual waypoints (~1.3 km).
 const MANUAL_TEST_OFFSET = 0.012
 
 // The map view unmounts whenever another driver tab is shown, which would reset
-// the demo progression (the optimistically-advanced order state and how far the
-// marker has driven). We stash both in module scope so they survive remounts
+// the demo progression (the optimistically-advanced order state and where the
+// marker has driven to). We stash both in module scope so they survive remounts
 // within the session and can be restored when the map tab comes back.
 const persistedDriverDemo: {
-  optimistic: { orderId: string; state: EBookingDriverState } | null
-  progress: { orderId: string; toDestination: boolean; traveledMeters: number } | null
-} = { optimistic: null, progress: null }
+  // Ключ — id заказа: водитель может вести несколько заказов сразу (попутные),
+  // и оптимистичное состояние одного не должно затирать состояние другого.
+  optimistic: Record<string, EBookingDriverState> | null
+  // Где физически стоял маркер, когда карта ушла с экрана.
+  //
+  // Раньше здесь лежала пройденная дистанция, но она осмысленна только для той
+  // геометрии, на которой была измерена: после возвращения маршрут строится
+  // заново и — пока позиция маркера потеряна — от последней координаты с
+  // бэкенда, то есть от места, где водитель стоял ДО поездки. Дистанцию по
+  // такому маршруту отматывали не туда: маркер откатывался к «классической»
+  // геопозиции, а если новый маршрут оказывался короче пройденного — модель
+  // считала поездку завершённой и маркер вставал насовсем.
+  //
+  // Координата верна при любом перестроении: с неё и начинается новый маршрут,
+  // поэтому поездка продолжается ровно с того места, где её прервали.
+  position: { orderIds: string[]; lat: number; lng: number } | null
+  /**
+   * Попутчик, к которому водитель едет (или о котором его уже спросили).
+   *
+   * Кандидата находит диффер снимков заказов — и только в МОМЕНТ появления
+   * заказа. После возвращения на карту диффер начинает с чистого листа и того же
+   * заказа «новым» уже не увидит, а состояние карты к тому времени сброшено —
+   * поэтому точка попутчика просто исчезала из маршрута вместе с решением по
+   * ней. Помним её сами.
+   */
+  alongTheWay: {
+    orderIds: string[]
+    /** Последний снимок заказа: между «взял» и активными он не числится нигде. */
+    orders: Record<string, IOrder>
+    declinedOrderIds: string[]
+    takingOrderIds: string[]
+    boardedOrderIds: string[]
+  } | null
+} = { optimistic: null, position: null, alongTheWay: null }
+
+function toIdMap(ids: string[] | undefined): Record<string, true> {
+  return (ids ?? []).reduce<Record<string, true>>((map, id) => {
+    map[id] = true
+    return map
+  }, {})
+}
+
+/**
+ * Сохранённая позиция маркера, если она относится к ТЕКУЩЕЙ поездке. Достаточно
+ * пересечения по заказам: состав плана за время отсутствия на карте мог
+ * измениться (попутчика взяли, кого-то высадили), но машина всё та же. Совсем
+ * другая поездка заказов не разделяет — её точка не подхватится.
+ */
+function getPersistedDemoPosition(orderIds: string[]): [number, number] | null {
+  const saved = persistedDriverDemo.position
+  if (!saved || !orderIds.length)
+    return null
+
+  return orderIds.some(orderId => saved.orderIds.includes(orderId)) ?
+    [saved.lat, saved.lng] :
+    null
+}
+
+/** Точка высадки заказа — запасной ответ на «где водитель закончил поездку». */
+function toOrderDestinationPoint(order: IOrder): [number, number] | null {
+  const latitude = Number(order.b_destination_latitude)
+  const longitude = Number(order.b_destination_longitude)
+
+  return Number.isFinite(latitude) && Number.isFinite(longitude) && (latitude || longitude) ?
+    [latitude, longitude] :
+    null
+}
 
 function getStoredStartedVotingOrderIds(): string[] {
   try {
@@ -340,6 +446,51 @@ function removeStoredStartedVotingOrderId(orderId: IOrder['b_id']) {
   const nextIds = getStoredStartedVotingOrderIds().filter(id => id !== orderId)
   localStorage.setItem(DRIVER_STARTED_VOTING_ORDERS_STORAGE_KEY, JSON.stringify(nextIds))
   return nextIds
+}
+
+interface ISnappedOrderPoints {
+  start: [number, number] | null
+  destination: [number, number] | null
+}
+
+/**
+ * Привязка точек заказа к ближайшей дороге. Привязываем только заметно
+ * оторванные от дороги точки, чтобы не дёргать уже нормальные (снап на
+ * генерации оставляет дорогу в пределах REACHABLE).
+ */
+async function snapOrderPoints(order: IOrder): Promise<ISnappedOrderPoints> {
+  const rawStart = order.b_start_latitude && order.b_start_longitude ?
+    { latitude: Number(order.b_start_latitude), longitude: Number(order.b_start_longitude) } :
+    null
+  const rawDestination = order.b_destination_latitude && order.b_destination_longitude ?
+    { latitude: Number(order.b_destination_latitude), longitude: Number(order.b_destination_longitude) } :
+    null
+
+  const [startSnap, destinationSnap] = await Promise.all([
+    rawStart ? snapToRoad(rawStart) : Promise.resolve(null),
+    rawDestination ? snapToRoad(rawDestination) : Promise.resolve(null),
+  ])
+
+  const start = startSnap && startSnap.roadDistanceMeters > REACHABLE_ROAD_METERS ?
+    [startSnap.latitude, startSnap.longitude] as [number, number] :
+    null
+  const destination = destinationSnap && destinationSnap.roadDistanceMeters > REACHABLE_ROAD_METERS ?
+    [destinationSnap.latitude, destinationSnap.longitude] as [number, number] :
+    null
+
+  if (start || destination) {
+    writeRawLog('DRIVER_DEMO_ORDER_OFFROAD', {
+      source: 'driver-map',
+      screen: 'Driver/Map',
+      orderId: String(order.b_id),
+      startRoadDistanceMeters: startSnap?.roadDistanceMeters ?? null,
+      destinationRoadDistanceMeters: destinationSnap?.roadDistanceMeters ?? null,
+      snappedStart: Boolean(start),
+      snappedDestination: Boolean(destination),
+    })
+  }
+
+  return { start, destination }
 }
 
 const mapDispatchToProps = {
@@ -375,7 +526,14 @@ function DriverOrderMapMode(props: IProps) {
     <PageSection className="driver-order-map-mode">
       <DriverMapErrorBoundary resetKey={`driver-map-${props.user?.u_id || 'guest'}`}>
         <MapContainer
-          center={position ?? getSavedDriverMapPosition() ?? SITE_CONSTANTS.DEFAULT_POSITION}
+          center={
+            position ??
+            // Точка, где водитель остался после прошлого заказа, ближе к правде,
+            // чем последний GPS браузера: заказ мог закрыться далеко от дома.
+            getDriverParkedPosition() ??
+            getSavedDriverMapPosition() ??
+            SITE_CONSTANTS.DEFAULT_POSITION
+          }
           zoom={zoom}
           className='map'
           attributionControl={false}
@@ -463,11 +621,15 @@ function DriverOrderMapModeContent({
   const [hiddenOrderIds, setHiddenOrderIds] = useState<string[]>(() => getHiddenOrderIds(user?.u_id))
   const [mapActionPending, setMapActionPending] = useState(false)
   const orderControlMode = useSelector(orderControlModeSelectors.orderControlMode)
+  const driverCar = useSelector(carsSelectors.userDrivenCar)
   const autoProgressStepRef = useRef<string>('')
   const scheduledAutoStepRef = useRef<string>('')
   const toastShownStepRef = useRef<string>('')
   const autoProgressTimers = useRef<Array<ReturnType<typeof setTimeout>>>([])
   const latestPrimaryActionRef = useRef<{ onClick: () => void } | null>(null)
+  // К какому шагу поездки кнопка относится ПРЯМО СЕЙЧАС. Отложенное действие
+  // Строгого режима сверяется с этим ключом перед выполнением — см. ниже.
+  const latestAutoStepKeyRef = useRef<string>('')
 
   useEffect(() => () => {
     autoProgressTimers.current.forEach(clearTimeout)
@@ -477,24 +639,42 @@ function DriverOrderMapModeContent({
   // list the map reads can lag several seconds behind the backend, which made the
   // map buttons/marker look unresponsive after a tap. We honour this override until
   // the polled list catches up (see effectiveDriverState below).
-  const [optimisticDriverState, setOptimisticDriverState] = useState<{
-    orderId: IOrder['b_id']
-    state: EBookingDriverState
-  } | null>(() => persistedDriverDemo.optimistic)
+  const [optimisticDriverStates, setOptimisticDriverStates] = useState<
+    Record<string, EBookingDriverState>
+  >(() => persistedDriverDemo.optimistic ?? {})
 
   // Mirror the optimistic override into module scope so a tab switch (which
   // unmounts this view) does not lose it and revert the button to "Поехал".
   useEffect(() => {
-    persistedDriverDemo.optimistic = optimisticDriverState ?
-      { orderId: String(optimisticDriverState.orderId), state: optimisticDriverState.state } :
+    persistedDriverDemo.optimistic = Object.keys(optimisticDriverStates).length ?
+      { ...optimisticDriverStates } :
       null
-  }, [optimisticDriverState])
+  }, [optimisticDriverStates])
+
+  // Запомнить шаг, на который водитель только что перевёл КОНКРЕТНЫЙ заказ.
+  const rememberOptimisticState = useCallback((orderId: IOrder['b_id'], state: EBookingDriverState) => {
+    setOptimisticDriverStates(prev => ({ ...prev, [String(orderId)]: state }))
+  }, [])
+
+  const forgetOptimisticState = useCallback((orderId: IOrder['b_id']) => {
+    setOptimisticDriverStates(prev => {
+      const id = String(orderId)
+      if (!(id in prev)) return prev
+
+      const next = { ...prev }
+      delete next[id]
+      return next
+    })
+  }, [])
   const lastDriverMapOrdersRenderLogKeyRef = useRef('')
   const lastDriverMapOrderCardLogKeyRef = useRef('')
   const lastDriverMapVisibleOrderIdsRef = useRef<string[]>([])
   const loggedDriverMapOrderSnapshotIdsRef = useRef<Record<string, true>>({})
   const [resolvedDestinationAddresses, setResolvedDestinationAddresses] = useState<Record<string, string>>({})
   const fittedDestinationOrderRef = useRef<string | null>(null)
+  // Карту центрируем на водителе только при открытии: дальше кадром распоряжается
+  // он сам (и подгонка маршрута), а не каждый шаг маркера.
+  const centeredOnOpenRef = useRef(false)
   const lastRoutePointRef = useRef<IAddressPoint | null>(null)
   const lastRouteTargetRef = useRef<IAddressPoint | null>(null)
   const lastRouteGraphRef = useRef<IWayGraph | null>(null)
@@ -508,14 +688,63 @@ function DriverOrderMapModeContent({
   // re-transmits them; reacting to them (route mutations) is a later task/FSM.
   const orderEventAdapterRef = useRef<DriverOrderEventAdapter | null>(null)
   const wayGraphRef = useRef<IWayGraph | undefined>(undefined)
-  const activeRoutePointsRef = useRef<Array<[number, number]> | null>(null)
-  // Current route phase, read by the (long-lived) tick handler when it stashes the
-  // marker's travelled distance for cross-remount restore.
-  const routePhaseRef = useRef<{ orderId: string | null; toDestination: boolean }>({
-    orderId: null,
-    toDestination: false,
+  // Построенные ноги маршрута: план перестраивается заметно чаще, чем меняются
+  // сами сегменты, поэтому держим их под рукой вместо повторных запросов.
+  const routeSegmentCacheRef = useRef<Map<string, IGeoPoint[]>>(new Map())
+  // Свежие значения для долгоживущих обработчиков (подписка на модель создаётся
+  // один раз и видит только первый рендер).
+  const currentPositionRef = useRef<[number, number] | null>(null)
+  // Заказы текущего плана — под ними сохраняется позиция маркера (подписка на
+  // модель создаётся один раз и свежий план видит только через реф).
+  const planOrderIdsRef = useRef<string[]>([])
+  // Маршрут, скормленный модели, и точка, на которой она сейчас стоит и ждёт
+  // действия водителя.
+  const tripRouteKeyRef = useRef('')
+  const reachedStopKeyRef = useRef('')
+  // Просьба сторожа движения перестроить маршрут: сам он этого сделать не может —
+  // маршрут строит эффект, а эффекту нужна смена зависимостей.
+  const [routeSyncNonce, setRouteSyncNonce] = useState(0)
+  // ——— Попутные заказы ———
+  // Диффер помечает событием NEW_ALONG_THE_WAY_ORDER любой обычный заказ,
+  // появившийся, пока водитель в поездке. Кандидатом он становится только пройдя
+  // предикат (места, вид заказа, прошлые отказы) — см. alongTheWayCandidate.ts.
+  // Кандидата, найденного до ухода с карты, диффер повторно не найдёт (он видит
+  // только НОВЫЕ заказы), поэтому стартуем из сохранённого состояния.
+  const [alongTheWayOrderIds, setAlongTheWayOrderIds] = useState<string[]>(
+    () => persistedDriverDemo.alongTheWay?.orderIds ?? [],
+  )
+  // Попутчик, которого посадили сразу при взятии: водитель уже стоял рядом с ним,
+  // поэтому шаги «Поехал»/«Приехал» пропускаем. Пока бэкенд не подтвердил Started,
+  // план всё равно должен считать пассажира в салоне — иначе на пару секунд
+  // вернулись бы обе бессмысленные кнопки. Тот же приём, что у
+  // startedVotingOrderIds: бэкенд держит водителя в Performer, а пассажир уже едет.
+  const [boardedAlongTheWayIds, setBoardedAlongTheWayIds] = useState<string[]>(
+    () => persistedDriverDemo.alongTheWay?.boardedOrderIds ?? [],
+  )
+  // Подписка на модель живёт с deps [] и видит только первый рендер — свежий
+  // контекст предиката читаем через реф (тот же приём, что у mapContextRef).
+  const alongTheWayContextRef = useRef<{ userId?: IUser['u_id']; freeSeats: number }>({
+    userId: undefined,
+    freeSeats: 0,
   })
-  const demoRouteKeyRef = useRef('')
+  // «Не брать» по заказу: решение принято один раз и повторно не предлагается.
+  const declinedAlongTheWayRef = useRef<Record<string, boolean>>(
+    toIdMap(persistedDriverDemo.alongTheWay?.declinedOrderIds),
+  )
+  // «Взять» уже отправлено: заказ уходит из свободных раньше, чем появляется в
+  // моих активных, — держим точку в плане всё это время, иначе маркер на секунду
+  // потеряет её и уедет мимо попутчика.
+  const takingAlongTheWayRef = useRef<Record<string, boolean>>(
+    toIdMap(persistedDriverDemo.alongTheWay?.takingOrderIds),
+  )
+  // Последний известный снимок кандидата — из него строится точка, пока заказ
+  // «в пути» между списками.
+  const alongTheWayOrdersRef = useRef<Record<string, IOrder>>(
+    { ...(persistedDriverDemo.alongTheWay?.orders ?? {}) },
+  )
+  const scheduledAlongTheWayRef = useRef('')
+  const alongTheWayDecisionKeyRef = useRef('')
+  const latestAlongTheWayActionsRef = useRef<{ take: () => void; decline: () => void } | null>(null)
   // Manual route override: once the temporary test controls (Replace/Append/
   // Remove Last/Clear from DriverEmulatorPanel) touch the model, the automatic
   // order → setRoute pipeline stops feeding it, so the manually edited route is
@@ -523,7 +752,9 @@ function DriverOrderMapModeContent({
   // guard read inside effects; `manualRouteActive` drives rendering.
   const manualRouteOverrideRef = useRef(false)
   const [manualRouteActive, setManualRouteActive] = useState(false)
-  const [manualRoutePolyline, setManualRoutePolyline] = useState<[number, number][] | null>(null)
+  // Геометрия, по которой реально едет модель: и многоногий план заказов, и
+  // произвольный маршрут тестовых кнопок панели.
+  const [emulatorRoutePolyline, setEmulatorRoutePolyline] = useState<[number, number][] | null>(null)
   // Freshest map context for the (long-lived) command handler to read.
   const mapContextRef = useRef<{ position: [number, number] | null; orderStart: [number, number] | null }>({
     position: null,
@@ -631,15 +862,28 @@ function DriverOrderMapModeContent({
     }
   }, [user?.u_id])
 
+  // Свободные места в салоне с учётом уже взятых заказов: булавки заказов, куда
+  // столько пассажиров не поместится, водителю показывать нечего.
+  const driverFreeSeats = useMemo(
+    () => getDriverFreeSeats(driverCar, activeOrders, user?.u_id),
+    [driverCar, activeOrders, user?.u_id],
+  )
+
+  // Свежий контекст для предиката попутного (подписка на модель его не видит).
+  alongTheWayContextRef.current = { userId: user?.u_id, freeSeats: driverFreeSeats }
+
   const visibleReadyOrders = useMemo(() =>
-    readyOrders?.filter(item => !hiddenOrderIds.includes(String(item.b_id))) ?? null
-  , [readyOrders, hiddenOrderIds.join('|')])
+    readyOrders?.filter(item =>
+      !hiddenOrderIds.includes(String(item.b_id)) &&
+      canDriverTakeOrderBySeats(item, driverFreeSeats, user?.u_id),
+    ) ?? null
+  , [readyOrders, hiddenOrderIds.join('|'), driverFreeSeats, user?.u_id])
 
   const visibleMapOrders = useMemo(() => {
     const ordersById: Record<string, IOrder> = {}
 
     ;[
-      ...(activeOrders ?? []),
+      ...(activeOrders ?? []).filter(order => canDriverTakeOrderBySeats(order, driverFreeSeats, user?.u_id)),
       ...(visibleReadyOrders ?? []),
     ].forEach(order => {
       if (!order?.b_id)
@@ -650,8 +894,12 @@ function DriverOrderMapModeContent({
 
     return Object.values(ordersById)
   }, [
-    activeOrders?.map(order => `${order.b_id}:${order.b_state}:${order.b_start_latitude}:${order.b_start_longitude}:${order.drivers?.length ?? 0}`).join('|'),
-    visibleReadyOrders?.map(order => `${order.b_id}:${order.b_state}:${order.b_start_latitude}:${order.b_start_longitude}:${order.drivers?.length ?? 0}`).join('|'),
+    driverFreeSeats,
+    user?.u_id,
+    // Выгода входит в ключ: она пересчитывается по мере движения такси, и без
+    // неё маркеры остались бы с суммой, посчитанной на момент появления заказа.
+    activeOrders?.map(order => `${order.b_id}:${order.b_state}:${order.b_start_latitude}:${order.b_start_longitude}:${order.drivers?.length ?? 0}:${order.profit ?? ''}`).join('|'),
+    visibleReadyOrders?.map(order => `${order.b_id}:${order.b_state}:${order.b_start_latitude}:${order.b_start_longitude}:${order.drivers?.length ?? 0}:${order.profit ?? ''}`).join('|'),
   ])
 
   // Перцентильные группы прибыльности пересчитываются на каждое обновление набора
@@ -673,6 +921,23 @@ function DriverOrderMapModeContent({
         'ready-map-marker',
       order,
     }))
+    // Decision Log, стадия «карта»: на входе активные и свободные заказы, на
+    // выходе — те, у кого реально отрисована булавка. Заказ без координат
+    // отличается здесь от заказа, отсеянного по местам или расстоянию.
+    trackOrderDecisions({
+      stage: 'MAP_UI',
+      orders: mergeDecisionStageOrders(activeOrders, readyOrders),
+      visibleOrderIds: visibleMarkers.map(item => item.order.b_id),
+      context: buildOrderDecisionContext({
+        user,
+        car: driverCar,
+        activeOrders,
+        hiddenOrderIds,
+        freeSeats: driverFreeSeats,
+        declinedAlongTheWayOrderIds: declinedAlongTheWayRef.current,
+      }),
+    })
+
     const renderKey = JSON.stringify({
       userId: user?.u_id ?? null,
       active: activeMapOrders.map(order => order.b_id),
@@ -875,6 +1140,10 @@ function DriverOrderMapModeContent({
     visibleReadyOrders?.map(order => `${order.b_id}:${order.b_state}:${order.b_start_latitude}:${order.b_start_longitude}:${order.drivers?.length ?? 0}`).join('|'),
     visibleMapOrders.map(order => `${order.b_id}:${order.b_state}:${order.b_start_latitude}:${order.b_start_longitude}:${order.drivers?.length ?? 0}`).join('|'),
     hiddenOrderIds.join('|'),
+    // Нужны Decision Log: свободный заказ, отсеянный по местам, до
+    // visibleReadyOrders не доходит, а зафиксировать его скрытие надо.
+    readyOrders?.map(order => `${order.b_id}:${order.b_state}`).join('|'),
+    driverFreeSeats,
   ])
 
   // Не делаем reverseGeocode для всех видимых заказов на карте.
@@ -882,81 +1151,472 @@ function DriverOrderMapModeContent({
   // Для плашек берём только реальные адреса из заказа/options; активный заказ ниже
   // может догрузить адрес отдельно, если backend его не вернул.
 
-  const activeDriverOrder = useMemo(() => {
+  // ВСЕ заказы, которые водитель сейчас выполняет. Раньше карта знала только про
+  // первый из них; с попутными заказами их может быть несколько одновременно,
+  // поэтому источником истины становится список, а не единственный заказ.
+  const driverActiveOrders = useMemo(() => {
     const navigationStates = [
       EBookingDriverState.Performer,
       EBookingDriverState.Arrived,
       EBookingDriverState.Started,
     ]
 
-    const order = activeOrders?.find(item => {
-      const driver = item.drivers?.find(item => item.u_id === user?.u_id)
-      return !!driver && navigationStates.includes(driver.c_state)
-    })
+    return (activeOrders ?? []).reduce<Array<{ order: IOrder; driver: IDriver }>>((list, item) => {
+      const driver = item.drivers?.find(driver => driver.u_id === user?.u_id)
+      if (driver && navigationStates.includes(driver.c_state))
+        list.push({ order: item, driver })
 
-    if (!order) return null
-
-    const driver = order.drivers?.find(item => item.u_id === user?.u_id) ?? null
-    return { order, driver }
+      return list
+    }, [])
   }, [activeOrders, user?.u_id])
 
-  const isStartedVotingOrder = Boolean(
-    activeDriverOrder?.order.b_id &&
-    startedVotingOrderIds.includes(activeDriverOrder.order.b_id),
+  // Состояние водителя по каждому его заказу — чтобы шаги разных заказов не
+  // приходилось выводить из одного «текущего».
+  const driverStateByOrderId = useMemo(() => {
+    const states: Record<string, EBookingDriverState> = {}
+    driverActiveOrders.forEach(({ order, driver }) => {
+      states[String(order.b_id)] = driver.c_state
+    })
+
+    return states
+  }, [driverActiveOrders])
+
+  /**
+   * Свежайшее известное состояние заказа: оптимистичное сразу после нажатия,
+   * затем — пришедшее с бэкенда, как только оно догонит.
+   */
+  const effectiveStateOf = useCallback((orderId?: IOrder['b_id'] | null): EBookingDriverState | undefined => {
+    if (orderId === undefined || orderId === null) return undefined
+
+    const id = String(orderId)
+    const backendState = driverStateByOrderId[id]
+    const optimistic = optimisticDriverStates[id]
+    const state = optimistic !== undefined && (backendState === undefined || optimistic > backendState) ?
+      optimistic :
+      backendState
+
+    // Попутчика сажаем в момент взятия — водитель уже стоит рядом с ним. Пока
+    // бэкенд не подтвердил Started, состояние здесь всё равно «в салоне»: иначе
+    // план (он считает по boardedOrderIds) и кнопка разошлись бы, и водителю,
+    // который уже везёт этого пассажира, предложили бы «Поехал».
+    if (state !== undefined && state < EBookingDriverState.Started && boardedAlongTheWayIds.includes(id))
+      return EBookingDriverState.Started
+
+    return state
+  }, [driverStateByOrderId, optimisticDriverStates, boardedAlongTheWayIds])
+
+  // Drop each override once its order is gone or the backend has reached it.
+  // Пробегаем по всем ключам: чужие оптимистичные состояния трогать нельзя,
+  // иначе шаг одного заказа откатывал бы шаг другого.
+  useEffect(() => {
+    setOptimisticDriverStates(prev => {
+      const stale = Object.keys(prev).filter(orderId => {
+        const backendState = driverStateByOrderId[orderId]
+        return backendState === undefined || backendState >= prev[orderId]
+      })
+      if (!stale.length) return prev
+
+      const next = { ...prev }
+      stale.forEach(orderId => delete next[orderId])
+      return next
+    })
+  }, [driverStateByOrderId])
+
+  // ——— Позиция водителя ———
+  // Координата водителя одна на все его заказы, но приходит внутри каждого —
+  // берём первую валидную, чтобы позиция не пропадала из-за того, что в первом
+  // заказе бэкенд её ещё не заполнил.
+  const backendDriverPositionKey = driverActiveOrders
+    .map(({ driver }) => `${driver.c_latitude ?? ''}:${driver.c_longitude ?? ''}`)
+    .join('|')
+
+  const backendDriverPosition = useMemo((): [number, number] | null => {
+    for (const { driver } of driverActiveOrders) {
+      const latitude = Number(driver.c_latitude)
+      const longitude = Number(driver.c_longitude)
+
+      if (Number.isFinite(latitude) && Number.isFinite(longitude) && (latitude || longitude))
+        return [latitude, longitude]
+    }
+
+    return null
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [backendDriverPositionKey])
+
+  const browserDriverPosition = useMemo((): [number, number] | null => {
+    if (!lastPositions || !lastPositions.length) return null
+    const last = lastPositions[lastPositions.length - 1]
+    return [last[0], last[1]]
+  }, [lastPositions])
+
+  // Защитный слой (суррогат «FSM-проверки» из архитектуры генерации заказов):
+  // ТОЛЬКО в режиме эмулятора точки заказа могут оказаться в стороне от дорог
+  // (заказ «в парке») — тогда маркер физически не доезжает до точки посадки и
+  // приезд не подтвердить. Здесь мы страхуемся: спрашиваем Map Adapter о ближайшей
+  // дороге и, если точка заметно оторвана от неё, используем привязанную к дороге
+  // координату И для маршрута, И для проверки прибытия (обе должны совпадать).
+  // Реальные (не эмуляторные) заказы НЕ трогаем — там точка пассажира точна.
+  const [snappedOrderPoints, setSnappedOrderPoints] = useState<Record<string, ISnappedOrderPoints>>({})
+  const snappedOrdersRef = useRef<Record<string, true>>({})
+
+  // ——— Кандидаты в попутчики ———
+  // Отмеченный заказ живёт в свободных, пока его не разобрали. Держим последний
+  // снимок: между «взял» и появлением заказа в активных он не числится нигде.
+  useEffect(() => {
+    (readyOrders ?? []).forEach(order => {
+      const id = String(order.b_id)
+      if (alongTheWayOrdersRef.current[id])
+        alongTheWayOrdersRef.current[id] = order
+    })
+  }, [readyOrders])
+
+  const driverActiveOrderIdsKey = driverActiveOrders
+    .map(({ order }) => String(order.b_id))
+    .join('|')
+  const readyOrderIdsKey = (readyOrders ?? []).map(order => String(order.b_id)).join('|')
+
+  // Кандидат перестаёт быть кандидатом, когда его взяли (дальше точки даёт сам
+  // заказ), отклонили или разобрал другой водитель.
+  useEffect(() => {
+    const activeIds = new Set(driverActiveOrderIdsKey ? driverActiveOrderIdsKey.split('|') : [])
+    const readyIds = new Set(readyOrderIdsKey ? readyOrderIdsKey.split('|') : [])
+
+    setAlongTheWayOrderIds(prev => {
+      const next = prev.filter(id => {
+        if (declinedAlongTheWayRef.current[id])
+          return false
+
+        if (activeIds.has(id)) {
+          // Взят: точка посадки теперь приходит из активного заказа.
+          delete takingAlongTheWayRef.current[id]
+          delete alongTheWayOrdersRef.current[id]
+          return false
+        }
+
+        if (readyIds.has(id))
+          return true
+
+        // Пропал из свободных: держим только пока идёт наше взятие.
+        if (takingAlongTheWayRef.current[id])
+          return true
+
+        // Разобрал другой водитель — снимок больше не нужен.
+        delete alongTheWayOrdersRef.current[id]
+        return false
+      })
+
+      return next.length === prev.length ? prev : next
+    })
+  }, [driverActiveOrderIdsKey, readyOrderIdsKey])
+
+  // Зеркалим решение по попутчику в модульное хранилище: карта уходит с экрана
+  // вместе со всем своим состоянием, а вопрос про этого пассажира — нет.
+  // `mapActionPending` в зависимостях не случаен: он переключается ровно на
+  // время «взятия», когда заполняется takingAlongTheWayRef.
+  useEffect(() => {
+    persistedDriverDemo.alongTheWay = {
+      orderIds: alongTheWayOrderIds,
+      orders: { ...alongTheWayOrdersRef.current },
+      declinedOrderIds: Object.keys(declinedAlongTheWayRef.current),
+      takingOrderIds: Object.keys(takingAlongTheWayRef.current),
+      boardedOrderIds: boardedAlongTheWayIds,
+    }
+  }, [
+    alongTheWayOrderIds,
+    boardedAlongTheWayIds,
+    readyOrderIdsKey,
+    driverActiveOrderIdsKey,
+    mapActionPending,
+  ])
+
+  const alongTheWayCandidates = useMemo(() => {
+    if (!alongTheWayOrderIds.length)
+      return [] as IOrder[]
+
+    const readyById = new Map((readyOrders ?? []).map(order => [String(order.b_id), order]))
+
+    return alongTheWayOrderIds.reduce<IOrder[]>((list, id) => {
+      const order = readyById.get(id) ?? alongTheWayOrdersRef.current[id]
+      if (order)
+        list.push(order)
+
+      return list
+    }, [])
+  }, [alongTheWayOrderIds, readyOrders])
+
+  // ——— План поездки ———
+  // Заказы, чьи пассажиры уже в салоне. Считаем по ОПТИМИСТИЧНОМУ состоянию, а не
+  // по пришедшему с бэкенда: иначе после «Приехал» кнопка уже переключилась бы на
+  // «Завершить», а план ещё вёл бы к точке посадки — и водитель на несколько
+  // секунд увидел бы «Прервать поездку». Голосовой заказ с подтверждённым кодом
+  // тоже сюда: бэкенд оставляет такого водителя в Performer.
+  const boardedOrderIds = useMemo(() => {
+    const ids = new Set(startedVotingOrderIds.map(String))
+    boardedAlongTheWayIds.forEach(id => ids.add(id))
+    driverActiveOrders.forEach(({ order }) => {
+      if ((effectiveStateOf(order.b_id) ?? 0) >= EBookingDriverState.Started)
+        ids.add(String(order.b_id))
+    })
+
+    return Array.from(ids)
+  }, [startedVotingOrderIds, boardedAlongTheWayIds, driverActiveOrders, effectiveStateOf])
+
+  // Отметку снимаем, когда бэкенд подтвердил посадку: дальше состояние самого
+  // заказа говорит, что пассажир в салоне, и дублировать его не нужно.
+  useEffect(() => {
+    setBoardedAlongTheWayIds(prev => {
+      const next = prev.filter(id => (driverStateByOrderId[id] ?? 0) < EBookingDriverState.Started)
+      return next.length === prev.length ? prev : next
+    })
+  }, [driverStateByOrderId])
+
+  // Подпись СОСТАВА плана: заказы, их состояния и координаты плюс уже посаженные
+  // пассажиры. Она меняется, только когда меняется набор точек, — но НЕ когда
+  // едет маркер. Позиция водителя в план попадает через реф и в зависимостях не
+  // участвует: иначе порядок обхода переключался бы на ходу и маршрут строился
+  // бы заново на каждом тике (см. комментарий в tools/driverTripPlan.ts).
+  const planTasksKey = [
+    driverActiveOrders.map(({ order, driver }) => [
+      order.b_id,
+      driver.c_state,
+      order.b_start_latitude,
+      order.b_start_longitude,
+      order.b_destination_latitude,
+      order.b_destination_longitude,
+    ].join(':')).join('|'),
+    boardedOrderIds.join(','),
+    // Кандидаты в попутчики — тоже состав плана: их точка посадки появляется и
+    // исчезает вместе с решением водителя.
+    alongTheWayCandidates.map(order => [
+      order.b_id,
+      order.b_start_latitude,
+      order.b_start_longitude,
+    ].join(':')).join('|'),
+  ].join('#')
+
+  // Первая позиция приходит уже после первого рендера — тогда план нужно
+  // пересобрать один раз, иначе порядок останется посчитанным «из ниоткуда».
+  const hasPositionForPlan = Boolean(currentPositionRef.current)
+
+  const rawTripStops = useMemo(
+    () => buildDriverTripPlan({
+      activeOrders,
+      userId: user?.u_id,
+      position: currentPositionRef.current,
+      boardedOrderIds,
+      candidateOrders: alongTheWayCandidates,
+    }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [planTasksKey, hasPositionForPlan],
   )
 
-  const backendDriverState = activeDriverOrder?.driver?.c_state
-  const activeOrderId = activeDriverOrder?.order?.b_id
+  const planOrderIds = getTripPlanOrderIds(rawTripStops)
+  const planOrderIdsKey = planOrderIds.join('|')
+  const tripPlanOrderCount = planOrderIds.length
+  planOrderIdsRef.current = planOrderIds
+
+  // Где маркер стоял, когда карту в прошлый раз закрыли. Живёт ровно до первого
+  // тика модели: пока его нет, именно эта точка — «где сейчас водитель», и от
+  // неё же строится маршрут, поэтому поездка продолжается, а не начинается
+  // заново от последней координаты с бэкенда.
+  const restoredDemoPosition = useMemo(
+    () => getPersistedDemoPosition(planOrderIds),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [planOrderIdsKey],
+  )
+
+  // Привязываем к дорогам точки ВСЕХ заказов плана. Каждый заказ обрабатываем
+  // один раз (`snappedOrdersRef`) — иначе появление второго заказа заново
+  // дёргало бы Map Adapter по уже привязанным точкам.
+  useEffect(() => {
+    if (!emulatorOrdersEnabled) {
+      // Вне эмулятора точки заказа точны — привязка не нужна и не должна
+      // оставаться от прошлой сессии.
+      snappedOrdersRef.current = {}
+      setSnappedOrderPoints(previous => (Object.keys(previous).length ? {} : previous))
+      return
+    }
+
+    const pending: IOrder[] = []
+    rawTripStops.forEach(({ order, orderId }) => {
+      if (snappedOrdersRef.current[orderId])
+        return
+
+      snappedOrdersRef.current[orderId] = true
+      pending.push(order)
+    })
+    if (!pending.length)
+      return
+
+    let cancelled = false
+    ;(async() => {
+      const snapped = await Promise.all(pending.map(order => snapOrderPoints(order)))
+      if (cancelled)
+        return
+
+      const next: Record<string, ISnappedOrderPoints> = {}
+      pending.forEach((order, index) => {
+        const points = snapped[index]
+        if (points.start || points.destination)
+          next[String(order.b_id)] = points
+      })
+      if (Object.keys(next).length)
+        setSnappedOrderPoints(prev => ({ ...prev, ...next }))
+    })()
+
+    return () => { cancelled = true }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [emulatorOrdersEnabled, planOrderIdsKey])
+
+  // Снап точек к дорогам применяется к РЕЗУЛЬТАТУ плана, а не ко входу: иначе
+  // привязка меняла бы порядок обхода, а порядок — то, что нужно привязывать.
+  const tripStops = useMemo(
+    () => rawTripStops.map(stop => {
+      const snapped = snappedOrderPoints[stop.orderId]
+      const point = stop.kind === ETripStopKind.Pickup ? snapped?.start : snapped?.destination
+
+      return point ? { ...stop, lat: point[0], lng: point[1] } : stop
+    }),
+    [rawTripStops, snappedOrderPoints],
+  )
+
+  const currentStop = tripStops[0] ?? null
+  // Кнопка шага относится к ближайшему ВЗЯТОМУ заказу: точка попутчика своих
+  // шагов не имеет (см. getTripActionStop).
+  const actionStop = getTripActionStop(tripStops)
+  const isLastTripStop = isFinalTripStop(tripStops)
+
+  // Ключ геометрии маршрута: состав плана ПЛЮС координаты. Привязка точки к
+  // дороге меняет геометрию, не меняя состав, — без координат в ключе такой
+  // маршрут не был бы перестроен.
+  const tripRouteKey = tripStops
+    .map(stop => `${getTripStopKey(stop)}@${stop.lat.toFixed(5)},${stop.lng.toFixed(5)}`)
+    .join('|')
+
+  // Заказы, которые ещё предстоит забрать, и заказы, чьи пассажиры уже в салоне.
+  const pickupPendingOrderIds = useMemo(
+    () => new Set(
+      tripStops.filter(stop => stop.kind === ETripStopKind.Pickup).map(stop => stop.orderId),
+    ),
+    [tripStops],
+  )
+
+  const dropoffOnlyOrderIds = useMemo(
+    () => new Set(
+      tripStops
+        .filter(stop => stop.kind === ETripStopKind.Dropoff && !pickupPendingOrderIds.has(stop.orderId))
+        .map(stop => stop.orderId),
+    ),
+    [tripStops, pickupPendingOrderIds],
+  )
+
+  const routeOrder = currentStop?.order ?? null
+  const routeOrderIsVoting = isVotingOrder(routeOrder)
 
   // The button/marker follow the freshest known state: the optimistic override the
   // moment the driver taps, then the polled backend state once it catches up.
-  const effectiveDriverState = (
-    optimisticDriverState &&
-    activeOrderId !== undefined &&
-    String(optimisticDriverState.orderId) === String(activeOrderId) &&
-    (backendDriverState === undefined || optimisticDriverState.state > backendDriverState)
-  ) ? optimisticDriverState.state : backendDriverState
+  const effectiveDriverState = effectiveStateOf(actionStop?.orderId)
 
-  // Drop the override once the backend order is gone or has reached the override.
-  useEffect(() => {
-    if (!optimisticDriverState)
-      return
-    if (
-      activeOrderId === undefined ||
-      String(activeOrderId) !== String(optimisticDriverState.orderId) ||
-      (backendDriverState !== undefined && backendDriverState >= optimisticDriverState.state)
-    )
-      setOptimisticDriverState(null)
-  }, [optimisticDriverState, activeOrderId, backendDriverState])
+  // Фаза поездки больше не выводится из статуса заказа: «едем к высадке» — это
+  // просто `currentStop.kind === Dropoff`. Для голосового заказа с подтверждённым
+  // кодом это работает само собой: план считает его посаженным и оставляет
+  // только высадку.
 
-  const routeOrderIsVoting = isVotingOrder(activeDriverOrder?.order ?? null)
-
-  // Every order is a two-leg trip: first drive to the passenger (pickup leg),
-  // then to their destination. "Поехал" (→ Arrived) starts the pickup leg; the
-  // destination leg only starts with "Приехал" (→ Started) for normal orders, or
-  // once the boarding code is confirmed (isStartedVotingOrder) for voting orders.
-  const isRouteToDestination = Boolean(
-    effectiveDriverState === EBookingDriverState.Started ||
-    isStartedVotingOrder,
-  )
-
-  // The marker stays parked right after the order is accepted (Performer state)
-  // and only starts moving once the driver taps "Поехал" (state ≥ Arrived).
-  // Routing to the destination always implies the driver has departed — keep this
-  // independent of effectiveDriverState so the marker keeps moving on the
-  // destination leg even if that state momentarily regresses. On a live backend a
-  // voting performer stays at Performer (Arrived/Started are no-ops), so the
-  // optimistic "Arrived" is the only thing lifting effectiveDriverState; a refresh
-  // that briefly empties the active-orders list can drop it, which would otherwise
-  // freeze the marker right after the boarding code is confirmed.
+  // Маркер стоит на месте сразу после взятия заказа (Performer) и трогается,
+  // когда водитель нажал «Поехал». Дальше «машина едет» — свойство поездки, а не
+  // текущей точки: если водитель уже выехал по какому-то заказу или везёт
+  // пассажира, останавливаться из-за того, что ближайшая точка принадлежит
+  // только что появившемуся попутчику, нельзя.
   const hasDeparted = Boolean(
-    (effectiveDriverState !== undefined && effectiveDriverState >= EBookingDriverState.Arrived) ||
-    isRouteToDestination,
+    currentStop && (
+      dropoffOnlyOrderIds.size > 0 ||
+      tripStops.some(stop =>
+        !stop.pending &&
+        (effectiveStateOf(stop.orderId) ?? 0) >= EBookingDriverState.Arrived,
+      )
+    ),
   )
 
-  const performingOrder = !isRouteToDestination ? activeDriverOrder?.order : undefined
-  const currentOrder = isRouteToDestination ? activeDriverOrder?.order : undefined
-  const routeOrder = activeDriverOrder?.order ?? null
+  // The current driver is "me". While any emulator session is running and I have
+  // something to drive to, the emulator model drives my marker along the planned
+  // route instead of showing my real GPS. Намеренно НЕ зависит от нарисованного
+  // маршрута: тот перестраивается по ходу движения, и движение маркера не должно
+  // от него дёргаться.
+  const isDemoMapMovementEnabled = Boolean(tripStops.length && emulatorOrdersEnabled)
+
+  // Мемоизируем текущую позицию маркера (чтобы React не пересоздавал <Marker> из-за новой ссылки на массив).
+  // Вместе с точкой возвращается её источник: он ничего не меняет в поведении
+  // карты, но без него в журнале нельзя отличить смену провайдера координат от
+  // реального перемещения водителя.
+  const resolvedPosition = useMemo((): {
+    point: [number, number] | null
+    source: TDriverPositionSource
+  } => {
+    // Demo movement OR the manual test controls both drive the marker via the
+    // route emulator model, so honour its position first.
+    if ((isDemoMapMovementEnabled || manualRouteActive) && demoDriverPosition)
+      return { point: demoDriverPosition, source: 'EMULATOR_ROUTE' }
+
+    // Карта только что открылась заново, а модель ещё не сделала ни одного тика.
+    // Водитель в этот момент там, где его застало переключение вкладки, — иначе
+    // маркер (и строящийся от него маршрут) откатился бы к координате с
+    // бэкенда, то есть к месту, где водитель стоял до начала поездки.
+    if (isDemoMapMovementEnabled && restoredDemoPosition)
+      return { point: restoredDemoPosition, source: 'EMULATOR_RESTORED' }
+
+    // Заказ закрыт, план пуст — но водитель никуда не телепортировался: он там,
+    // где закончил прошлую поездку. Без этого маркер (а с ним и точка, вокруг
+    // которой генерируются новые заказы) откатывался к GPS браузера, то есть к
+    // домашнему гео, хотя заказ мог закрыться на другом конце города.
+    if (emulatorOrdersEnabled) {
+      const parkedPosition = getDriverParkedPosition()
+      if (parkedPosition) return { point: parkedPosition, source: 'PARKED' }
+    }
+
+    // Client emulator создаёт пассажирские заказы, но водитель остаётся реальным.
+    // Поэтому сначала берём GPS этого браузера, а серверную координату используем
+    // только как fallback, пока GPS ещё не пришёл.
+    if (isClientEmulatorMode && !isDriverEmulatorMode && browserDriverPosition)
+      return { point: browserDriverPosition, source: 'BROWSER_GPS' }
+
+    if (backendDriverPosition) return { point: backendDriverPosition, source: 'BACKEND' }
+    if (browserDriverPosition) return { point: browserDriverPosition, source: 'BROWSER_GPS' }
+    return { point: null, source: 'NONE' }
+  }, [
+    isDemoMapMovementEnabled,
+    manualRouteActive,
+    demoDriverPosition,
+    restoredDemoPosition,
+    emulatorOrdersEnabled,
+    isClientEmulatorMode,
+    isDriverEmulatorMode,
+    browserDriverPosition,
+    backendDriverPosition,
+  ])
+
+  const currentPosition = resolvedPosition.point
+
+  currentPositionRef.current = currentPosition
+
+  // Булавка с цветным хинтом стоит в точке посадки и служит выбору заказа
+  // («Куда», выгода, конкуренты). Пассажир сел, водитель поехал к высадке —
+  // точка посадки позади, выбирать нечего: булавку убираем. Маршрут дальше
+  // показывают метки «Откуда/Куда» и полилиния.
+  const markerMapOrders = useMemo(
+    () => visibleMapOrders.filter(order => {
+      // Пассажир уже в салоне — в плане у заказа осталась только высадка,
+      // выбирать по его точке посадки нечего.
+      if (dropoffOnlyOrderIds.has(String(order.b_id)))
+        return false
+
+      // План держится на активных заказах водителя, а они пропадают, как только
+      // поездка завершена — состояние самого заказа надёжнее: раз посадка
+      // состоялась (Started/Finished), булавка не должна вернуться.
+      const myState = order.drivers?.find(driver => driver.u_id === user?.u_id)?.c_state
+      return myState === undefined || myState < EBookingDriverState.Started
+    }),
+    [visibleMapOrders, dropoffOnlyOrderIds, user?.u_id],
+  )
 
   const routeOrderResolvedDestination = routeOrder?.b_id ?
     resolvedDestinationAddresses[String(routeOrder.b_id)] :
@@ -1054,10 +1714,10 @@ function DriverOrderMapModeContent({
 
   // "Поехал": order accepted (Performer) → depart (Arrived). The marker starts moving.
   const onMapArrivedClick = () => {
-    const order = activeDriverOrder?.order
+    const order = actionStop?.order
     if (!order) return
 
-    setOptimisticDriverState({ orderId: order.b_id, state: EBookingDriverState.Arrived })
+    rememberOptimisticState(order.b_id, EBookingDriverState.Arrived)
     runMapOrderTransition(order.b_id, async() => {
       await API.setOrderState(order.b_id, EBookingDriverState.Arrived)
       if (isVotingOrder(order))
@@ -1068,7 +1728,7 @@ function DriverOrderMapModeContent({
   // "Приехал": en route (Arrived) → started. Voting orders confirm the boarding
   // code in the order-details card, so open it instead of transitioning directly.
   const onMapStartedClick = () => {
-    const order = activeDriverOrder?.order
+    const order = actionStop?.order
     if (!order) return
 
     if (isVotingOrder(order)) {
@@ -1076,7 +1736,7 @@ function DriverOrderMapModeContent({
       return
     }
 
-    setOptimisticDriverState({ orderId: order.b_id, state: EBookingDriverState.Started })
+    rememberOptimisticState(order.b_id, EBookingDriverState.Started)
     runMapOrderTransition(order.b_id, async() => {
       await API.setOrderState(order.b_id, EBookingDriverState.Started)
     })
@@ -1084,14 +1744,35 @@ function DriverOrderMapModeContent({
 
   // "Завершить поездку": started → finished, then close the order view.
   const onCompleteOrderClick = () => {
-    const order = currentOrder ?? activeDriverOrder?.order
+    const order = actionStop?.order
     if (!order || mapActionPending) return
 
+    // Остались ли после этого заказа другие точки — тогда поездка продолжается,
+    // и уходить с карты (как и сбрасывать прогресс маркера) нельзя.
+    const planContinues = tripStops.some(stop => stop.orderId !== String(order.b_id))
+
+    // Смена продолжается там, где закрылся заказ. Сохранённая под план позиция
+    // сейчас будет сброшена вместе с самим планом, поэтому точку высадки
+    // запоминаем отдельно — от неё водитель и поедет дальше, вокруг неё же
+    // появятся следующие заказы.
+    // У настоящего водителя его место знает GPS, и подменять его нечем и незачем.
+    const finishPosition = emulatorOrdersEnabled ?
+      currentPositionRef.current ?? toOrderDestinationPoint(order) :
+      null
+    if (finishPosition)
+      rememberDriverParkedPosition(finishPosition, { immediate: true })
+
     // The trip is over, so drop the persisted demo state — otherwise coming back
-    // to the map would try to restore a finished order's marker/button.
-    persistedDriverDemo.optimistic = null
-    persistedDriverDemo.progress = null
-    setOptimisticDriverState(null)
+    // to the map would try to restore a finished order's marker/button. Чистим
+    // только этот заказ: у водителя может остаться попутчик в салоне.
+    if (persistedDriverDemo.optimistic)
+      delete persistedDriverDemo.optimistic[String(order.b_id)]
+    if (!planContinues) {
+      persistedDriverDemo.position = null
+      persistedDriverDemo.alongTheWay = null
+    }
+    forgetOptimisticState(order.b_id)
+    setBoardedAlongTheWayIds(prev => prev.filter(id => id !== String(order.b_id)))
     setMapActionPending(true)
     API.setOrderState(order.b_id, EBookingDriverState.Finished)
       .catch(error => console.error(error))
@@ -1099,6 +1780,9 @@ function DriverOrderMapModeContent({
         setStartedVotingOrderIds(removeStoredStartedVotingOrderId(order.b_id))
         refreshMapOrderState(order.b_id)
         setMapActionPending(false)
+        if (planContinues)
+          return
+
         // The rating modal is opened by the finished-order effect in Driver/index;
         // opening it here too would pop it twice.
         navigate(`/driver-order?tab=${EDriverTabs.Lite}`)
@@ -1108,7 +1792,7 @@ function DriverOrderMapModeContent({
   // "Прервать поездку": the trip is under way but the driver is not at the
   // dropoff, so ending it now is a cancellation and must carry a reason.
   const onInterruptTripClick = () => {
-    const order = currentOrder ?? activeDriverOrder?.order
+    const order = actionStop?.order
     if (!order || mapActionPending) return
 
     // Deliberately no persistedDriverDemo reset here: the driver can still back
@@ -1116,16 +1800,24 @@ function DriverOrderMapModeContent({
     setDriverTripCancelModal({ isOpen: true, orderId: order.b_id })
   }
 
+  // Действие относится к БЛИЖАЙШЕЙ точке плана, а не к «единственному заказу».
+  // Когда заказов несколько, к подписи добавляем номер заказа — иначе непонятно,
+  // к кому относится «Приехал».
   const mapPrimaryAction = useMemo(() => {
     const driverState = effectiveDriverState
-    const order = activeDriverOrder?.order
+    const order = actionStop?.order
     if (!order || !driverState)
       return null
+
+    const orderSuffix = tripPlanOrderCount > 1 ?
+      ` ${getOrderIdText(order.b_id, (activeOrders || []).map(item => item.b_id))}` :
+      ''
 
     // Accepted order: the car is parked, prompt the driver to depart.
     if (driverState === EBookingDriverState.Performer)
       return {
-        text: t(TRANSLATION.WENT),
+        text: `${t(TRANSLATION.WENT)}${orderSuffix}`,
+        orderSuffix,
         className: 'finish-drive-button--started',
         onClick: onMapArrivedClick,
       }
@@ -1134,7 +1826,10 @@ function DriverOrderMapModeContent({
     // code via the card instead).
     if (driverState === EBookingDriverState.Arrived)
       return {
-        text: isVotingOrder(order) ? t(TRANSLATION.DRIVER_VOTING_CONFIRM_CODE) : t(TRANSLATION.ARRIVED),
+        text: (isVotingOrder(order) ?
+          t(TRANSLATION.DRIVER_VOTING_CONFIRM_CODE) :
+          t(TRANSLATION.ARRIVED)) + orderSuffix,
+        orderSuffix,
         className: 'finish-drive-button--arrived',
         onClick: onMapStartedClick,
         // Both actions mean "I am at the passenger": confirming the boarding
@@ -1147,29 +1842,29 @@ function DriverOrderMapModeContent({
     // attributed interruption (same idiom as requiresPickupArrival above).
     if (driverState === EBookingDriverState.Started)
       return {
-        text: t(TRANSLATION.CLOSE_DRIVE),
+        // Промежуточная высадка закрывает один заказ, а поездка продолжается —
+        // «Завершить поездку» там врало бы. На последней точке наоборот: заказ
+        // один, уточнять номер нечем и незачем.
+        text: isLastTripStop ?
+          t(TRANSLATION.CLOSE_DRIVE) :
+          `${t(TRANSLATION.FINISH_ORDER)}${orderSuffix}`,
+        orderSuffix,
         className: 'finish-drive-button--finished',
         onClick: onCompleteOrderClick,
         requiresDestinationArrival: true,
       }
 
     return null
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     effectiveDriverState,
-    activeDriverOrder?.order?.b_id,
+    actionStop?.orderId,
+    actionStop?.kind,
+    isLastTripStop,
+    tripPlanOrderCount,
     routeOrderIsVoting,
     mapActionPending,
   ])
-
-  const backendDriverPosition = useMemo((): [number, number] | null => {
-    const latitude = Number(activeDriverOrder?.driver?.c_latitude)
-    const longitude = Number(activeDriverOrder?.driver?.c_longitude)
-
-    if (!Number.isFinite(latitude) || !Number.isFinite(longitude))
-      return null
-
-    return [latitude, longitude]
-  }, [activeDriverOrder?.driver?.c_latitude, activeDriverOrder?.driver?.c_longitude])
 
   useInterval(() => {
     if (!emulatorOrdersEnabled) return
@@ -1218,44 +1913,44 @@ function DriverOrderMapModeContent({
     )
   }, 1000)
 
-  // The current driver is "me". While any emulator session is running and I
-  // have a taken order with a built route, the emulator model drives my marker
-  // along that route instead of showing my real GPS.
-  const isDemoMapMovementEnabled = Boolean(
-    routeOrder &&
-    activeDriveRouteInfo?.points?.length &&
-    emulatorOrdersEnabled,
-  )
-
   // Keep the values the (long-lived) route provider reads up to date.
   wayGraphRef.current = wayGraph ?? undefined
-  activeRoutePointsRef.current = activeDriveRouteInfo?.points ?? null
-  routePhaseRef.current = {
-    orderId: routeOrder?.b_id ? String(routeOrder.b_id) : null,
-    toDestination: isRouteToDestination,
-  }
 
-  // Create the route emulator once. Its provider reuses the already-built
-  // route geometry when available, and falls back to makeRoutePointsSafe.
+  // Create the route emulator once. Каждый сегмент строится по-настоящему между
+  // своими from/to: маршрут теперь многоногий (посадки и высадки нескольких
+  // заказов), и переиспользование одной готовой полилинии схлопнуло бы все ноги
+  // в одну. Чтобы не бить по маршрутизатору на каждом перестроении, готовые
+  // сегменты кэшируем — состав плана меняется куда чаще, чем сами сегменты.
   useEffect(() => {
     const model = new DriverRouteEmulator({
       speedMps: DEMO_DRIVER_ROUTE_SPEED_MPS,
       routeProvider: async(from, to) => {
-        // For the automatic single-order case the model's only segment IS the
-        // order route, so reuse the already-built geometry. But under the manual
-        // test controls the route has arbitrary multi-point waypoints, so each
-        // segment must be routed for real between its own from/to — otherwise
-        // every segment would collapse onto the order's polyline.
-        const prebuilt = activeRoutePointsRef.current
-        if (!manualRouteOverrideRef.current && prebuilt && prebuilt.length > 1)
-          return prebuilt.map(([lat, lng]) => ({ lat, lng }))
+        const cacheKey = [
+          from.lat.toFixed(5), from.lng.toFixed(5),
+          to.lat.toFixed(5), to.lng.toFixed(5),
+        ].join(',')
+
+        const cached = routeSegmentCacheRef.current.get(cacheKey)
+        if (cached)
+          return cached
 
         const info = await makeRoutePointsSafe(
           { latitude: from.lat, longitude: from.lng },
           { latitude: to.lat, longitude: to.lng },
           wayGraphRef.current,
         )
-        return info.points.map(([lat, lng]) => ({ lat, lng }))
+        const points = info.points.map(([lat, lng]) => ({ lat, lng }))
+
+        // Кэш ограничен: у долгой смены сегментов накапливается много, а нужны
+        // только недавние (ноги текущего плана).
+        if (routeSegmentCacheRef.current.size >= ROUTE_SEGMENT_CACHE_LIMIT) {
+          const oldest = routeSegmentCacheRef.current.keys().next().value
+          if (oldest !== undefined)
+            routeSegmentCacheRef.current.delete(oldest)
+        }
+        routeSegmentCacheRef.current.set(cacheKey, points)
+
+        return points
       },
     })
     routeEmulatorRef.current = model
@@ -1263,28 +1958,67 @@ function DriverOrderMapModeContent({
     const unsubscribe = model.subscribe(event => {
       if (event.type === 'tick') {
         setDemoDriverPosition([event.position.lat, event.position.lng])
-        // Stash how far we have driven so a tab switch can restore the marker.
-        const phase = routePhaseRef.current
-        if (phase.orderId)
-          persistedDriverDemo.progress = {
-            orderId: phase.orderId,
-            toDestination: phase.toDestination,
-            traveledMeters: model.getState().traveledMeters,
+        // Точка живёт дольше поездки: заказ закроется — план опустеет вместе с
+        // сохранённой под него позицией, а водитель останется здесь же.
+        rememberDriverParkedPosition([event.position.lat, event.position.lng])
+        // Stash where the marker is so a tab switch can resume from there.
+        const orderIds = planOrderIdsRef.current
+        if (orderIds.length)
+          persistedDriverDemo.position = {
+            orderIds,
+            lat: event.position.lat,
+            lng: event.position.lng,
           }
+      } else if (event.type === 'waypoint-reached') {
+        // Раньше маркер вставал у цели просто потому, что маршрут был из двух
+        // точек. Теперь точек несколько, поэтому на каждой останавливаемся сами
+        // и ждём действия водителя (посадка/высадка) — движение возобновит смена
+        // состава плана, которая перестроит маршрут от текущей позиции.
+        const stopKey = (event.waypoint.meta as { stopKey?: string } | undefined)?.stopKey
+        if (stopKey) {
+          model.pause()
+          reachedStopKeyRef.current = stopKey
+        }
       } else if (event.type === 'route-loaded') {
         const state = model.getState()
         if (state.position)
           setDemoDriverPosition([state.position.lat, state.position.lng])
-        // Kept in sync so the manual test controls can draw the model's own
-        // geometry (it may diverge from the order's drawn route).
-        setManualRoutePolyline(
+        // Геометрия модели — то, по чему маркер реально едет; её же и рисуем,
+        // поэтому линия и движение не могут разойтись.
+        setEmulatorRoutePolyline(
           state.polyline.length > 1 ? state.polyline.map(point => [point.lat, point.lng]) : null,
         )
       } else if (event.type === 'route-cleared')
-        setManualRoutePolyline(null)
+        setEmulatorRoutePolyline(null)
       else if (event.type === 'external-event') {
-        // The model only re-transmits the event; log it so the pipeline is
-        // observable. Deciding what to do with it (route mutation) is task 9/10.
+        // Модель только ретранслирует событие — решает потребитель. Вот здесь и
+        // принимается решение по попутному: заказ, прошедший предикат, попадает
+        // в план отдельной точкой посадки (pending), до которой водитель доедет
+        // и там скажет «взять» или «не брать».
+        if (event.event.type === EDriverExternalEventType.NewAlongTheWayOrder) {
+          const candidate = (event.event.payload as { order?: IOrder } | undefined)?.order
+          const context = alongTheWayContextRef.current
+          const isCandidate = isAlongTheWayCandidate(candidate, {
+            userId: context.userId,
+            freeSeats: context.freeSeats,
+            declinedOrderIds: declinedAlongTheWayRef.current,
+          })
+
+          if (candidate && isCandidate) {
+            const orderId = String(candidate.b_id)
+            setAlongTheWayOrderIds(prev => {
+              // Ровно один попутчик за раз. Эмулятор клиентов сыплет заказами
+              // каждые полминуты, и без этого маршрут обрастал бы точками, по
+              // которым водитель не успевает принимать решения.
+              if (prev.length || prev.includes(orderId))
+                return prev
+
+              alongTheWayOrdersRef.current[orderId] = candidate
+              return [...prev, orderId]
+            })
+          }
+        }
+
         writeRawLog('DRIVER_ROUTE_EMULATOR_EVENT', {
           source: 'driver-route-emulator',
           screen: 'DriverMap',
@@ -1327,7 +2061,18 @@ function DriverOrderMapModeContent({
     adapter.ingest({ activeOrders, readyOrders }).forEach(event => model.dispatch(event))
   }, [activeOrders, readyOrders, user?.u_id])
 
-  // Feed the taken order's route into the model and start/stop movement.
+  // Feed the planned route into the model and start/stop movement.
+  //
+  // Ключ — подпись плана вместе с координатами точек. Намеренно НЕ зависим от
+  // нарисованного маршрута: раньше он перестраивался от текущей позиции по мере
+  // движения, каждое такое перестроение выглядело как «новый маршрут» и вызывало
+  // setRoute() посреди поездки — маркер дёргался на каждом тике. Модель кормим
+  // ровно один раз на состав плана; дальше она сама владеет своей геометрией и
+  // двигается по ней через step()/tick.
+  //
+  // Каждое перестроение начинает маршрут ПОД маркером, поэтому пройденная
+  // дистанция всегда обнуляется законно и никакого восстановления прогресса не
+  // требуется — где водитель был, там маршрут и начинается.
   useEffect(() => {
     const model = routeEmulatorRef.current
     if (!model)
@@ -1337,133 +2082,72 @@ function DriverOrderMapModeContent({
     if (manualRouteOverrideRef.current)
       return
 
-    const points = activeDriveRouteInfo?.points
-    if (!isDemoMapMovementEnabled || !points?.length) {
-      demoRouteKeyRef.current = ''
+    if (!isDemoMapMovementEnabled || !tripStops.length) {
+      tripRouteKeyRef.current = ''
+      reachedStopKeyRef.current = ''
       model.clearRoute()
       setDemoDriverPosition(null)
       return
     }
 
-    const start = points[0]
-    const end = points[points.length - 1]
-
-    // The drawn route is rebuilt asynchronously when the phase flips (pickup →
-    // destination), so for a render or two `activeDriveRouteInfo` can still end at
-    // the previous phase's target. Feeding that stale geometry to the emulator
-    // would snap the marker back to the old route's start and drive pickup again.
-    // Wait until the geometry actually ends at the current phase target.
-    // Use the SAME (possibly road-snapped) точки, что и построение маршрута/проверка
-    // прибытия — иначе при снапе оторванной точки конец полилинии не совпал бы с
-    // сырой координатой заказа, проверка всегда возвращала бы return, и маркер не ехал.
-    const phaseTarget: [number, number] | null = isRouteToDestination ?
-      currentOrderDestination :
-      currentOrderStart
-    if (
-      phaseTarget &&
-      distanceBetweenEarthCoordinates(end[0], end[1], phaseTarget[0], phaseTarget[1]) > 0.15
-    )
-      return
-
-    // Deliberately keyed on the order+phase only, NOT on points.length/start/end.
-    // `activeDriveRouteInfo` is rebuilt live from `currentRouteStart`, which is the
-    // driver's current position — and while the demo mover drives, that position IS
-    // the model's own emitted position (see currentPosition/currentRouteStart
-    // above). So as the model advances, the drawn route keeps being re-fetched from
-    // a point closer and closer to the target, producing a shorter polyline every
-    // ~800 m of travel (see the lastRoutePoint distance gate). Keying on that
-    // geometry made every such redraw look like "a new route" and called
-    // model.setRoute() again mid-trip, wiping traveledMeters back to 0 for the new
-    // (shorter) polyline; the progress-restore below would then seek() the OLD,
-    // larger absolute distance onto it, which seek() clamps to the new polyline's
-    // (smaller) total length — snapping the marker straight to the phase target.
-    // The model only needs to be (re)fed once per order+phase; from then on it
-    // owns its own polyline and advances it via step()/tick, so later redraws of
-    // the display route must not touch it.
-    const routeKey = [
-      routeOrder?.b_id || '',
-      isRouteToDestination ? 'destination' : 'pickup',
-    ].join(':')
-
-    if (demoRouteKeyRef.current === routeKey) {
-      // The route geometry is unchanged, but the "departed" flag may have just
-      // toggled (e.g. right after "Поехал" while still routing to the pickup).
-      // Keep the marker moving/parked in step with it instead of returning early.
-      if (hasDeparted)
+    // Геометрия у модели уже есть и она та же — трогать её нельзя. Сверяемся не
+    // только с ключом, но и с самой моделью: после возвращения на карту модель
+    // создаётся заново и пустая, и ключ от прошлой жизни (его мог восстановить
+    // сторож ниже) не должен помешать построить маршрут.
+    if (tripRouteKeyRef.current === tripRouteKey && model.getState().waypoints.length > 1) {
+      // Состав маршрута тот же, но флаг «поехал» мог только что переключиться
+      // (например, сразу после «Поехал»). Держим маркер в согласии с ним, но не
+      // трогаем стоянку на достигнутой точке — там ждём действия водителя.
+      if (hasDeparted && !reachedStopKeyRef.current)
         model.resume()
       else
         model.pause()
       return
     }
-    demoRouteKeyRef.current = routeKey
+    tripRouteKeyRef.current = tripRouteKey
+    reachedStopKeyRef.current = ''
+
+    // Маршрут начинается там, где водитель стоит СЕЙЧАС (сразу после
+    // возвращения на карту — там, где его застало переключение вкладки), и
+    // ведёт через все оставшиеся точки плана по очереди. Отматывать по нему
+    // пройденную дистанцию не нужно и нельзя: она измерена по прошлой
+    // геометрии, а эта начинается ровно под маркером.
+    const origin = currentPositionRef.current ??
+      restoredDemoPosition ??
+      [tripStops[0].lat, tripStops[0].lng]
 
     model.setRoute([
-      {
-        lat: start[0],
-        lng: start[1],
-        type: isRouteToDestination ? ERouteWaypointType.Boarding : ERouteWaypointType.Pickup,
-        orderId: routeOrder?.b_id,
-      },
-      {
-        lat: end[0],
-        lng: end[1],
-        type: isRouteToDestination ? ERouteWaypointType.Dropoff : ERouteWaypointType.Pickup,
-        orderId: routeOrder?.b_id,
-      },
+      { lat: origin[0], lng: origin[1], type: ERouteWaypointType.Custom },
+      ...tripStops.map(stop => ({
+        lat: stop.lat,
+        lng: stop.lng,
+        type: stop.kind === ETripStopKind.Pickup ?
+          ERouteWaypointType.Pickup :
+          ERouteWaypointType.Dropoff,
+        orderId: stop.orderId,
+        meta: { stopKey: getTripStopKey(stop), pending: Boolean(stop.pending) },
+      })),
     ]).then(() => {
-      // Restore how far the marker had driven before a tab switch rebuilt the
-      // route, so it does not snap back to the start (same order + same phase).
-      const saved = persistedDriverDemo.progress
-      if (
-        saved &&
-        String(saved.orderId) === String(routeOrder?.b_id ?? '') &&
-        saved.toDestination === isRouteToDestination &&
-        saved.traveledMeters > 0
-      )
-        model.seek(saved.traveledMeters)
+      // Маршрут построен ровно из-под маркера, а маркер может стоять НА первой
+      // точке: до ухода с карты модель уже доехала до неё и ждала действия
+      // водителя. Возобновлять движение в этом случае нельзя — иначе маркер
+      // сполз бы с точки, а вместе с ним уехал бы и вопрос «взять попутчика?».
+      const firstStop = tripStops[0]
+      const parkedAtFirstStop = firstStop.kind === ETripStopKind.Pickup ?
+        isAtPickupPoint(origin, firstStop.lat, firstStop.lng) :
+        isAtDestinationPoint(origin, firstStop.lat, firstStop.lng)
+
+      if (parkedAtFirstStop)
+        reachedStopKeyRef.current = getTripStopKey(firstStop)
 
       // Stay parked at the start until the driver taps "Поехал"; only then move.
-      if (hasDeparted)
+      if (hasDeparted && !parkedAtFirstStop)
         model.resume()
       else
         model.pause()
     })
-    // NB: currentOrderStart/currentOrderDestination (возможно снапнутые) объявлены
-    // ниже и используются в колбэке через замыкание. В deps их не добавляем (это был
-    // бы TDZ-краш при рендере); эффект и так перезапускается транзитивно — при снапе
-    // меняется currentRouteTarget → перестраивается activeDriveRouteInfo → сюда.
-  }, [isDemoMapMovementEnabled, activeDriveRouteInfo, routeOrder?.b_id, isRouteToDestination, hasDeparted])
-
-  const browserDriverPosition = useMemo((): [number, number] | null => {
-    if (!lastPositions || !lastPositions.length) return null
-    const last = lastPositions[lastPositions.length - 1]
-    return [last[0], last[1]]
-  }, [lastPositions])
-
-  // Мемоизируем текущую позицию маркера (чтобы React не пересоздавал <Marker> из-за новой ссылки на массив)
-  const currentPosition = useMemo((): [number, number] | null => {
-    // Demo movement OR the manual test controls both drive the marker via the
-    // route emulator model, so honour its position first.
-    if ((isDemoMapMovementEnabled || manualRouteActive) && demoDriverPosition) return demoDriverPosition
-
-    // Client emulator создаёт пассажирские заказы, но водитель остаётся реальным.
-    // Поэтому сначала берём GPS этого браузера, а серверную координату используем
-    // только как fallback, пока GPS ещё не пришёл.
-    if (isClientEmulatorMode && !isDriverEmulatorMode && browserDriverPosition)
-      return browserDriverPosition
-
-    if (backendDriverPosition) return backendDriverPosition
-    if (browserDriverPosition) return browserDriverPosition
-    return null
-  }, [
-    isDemoMapMovementEnabled,
-    manualRouteActive,
-    demoDriverPosition,
-    isClientEmulatorMode,
-    isDriverEmulatorMode,
-    browserDriverPosition,
-    backendDriverPosition,
-  ])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isDemoMapMovementEnabled, tripRouteKey, hasDeparted, routeSyncNonce])
 
   const centerOnDriver = () => {
     if (!currentPosition) return
@@ -1471,121 +2155,225 @@ function DriverOrderMapModeContent({
       safeLeafletAction(() => map.setView(currentPosition, Math.max(map.getZoom(), 16)))
   }
 
-  // Защитный слой (суррогат «FSM-проверки» из архитектуры генерации заказов):
-  // ТОЛЬКО в режиме эмулятора точки заказа могут оказаться в стороне от дорог
-  // (заказ «в парке») — тогда маркер физически не доезжает до точки посадки и
-  // приезд не подтвердить. Здесь мы страхуемся: спрашиваем Map Adapter о ближайшей
-  // дороге и, если точка заметно оторвана от неё, используем привязанную к дороге
-  // координату И для маршрута, И для проверки прибытия (обе должны совпадать).
-  // Реальные (не эмуляторные) заказы НЕ трогаем — там точка пассажира точна.
-  const [snappedDemoOrderPoints, setSnappedDemoOrderPoints] = useState<{
-    orderId: string
-    start: [number, number] | null
-    destination: [number, number] | null
-  } | null>(null)
-
+  // Карта открывается там, где водитель, — один раз, на первой известной точке.
+  // После завершённого заказа это место высадки, а не домашнее гео: центр карты
+  // кэширован с прошлого просмотра и сам туда не приедет. Поездку в кадр берёт
+  // fitBounds по плану, поэтому при живом маршруте не вмешиваемся.
   useEffect(() => {
-    if (!emulatorOrdersEnabled || !routeOrder?.b_id) {
-      setSnappedDemoOrderPoints(null)
+    if (centeredOnOpenRef.current || !currentPosition)
       return
-    }
 
-    const orderId = String(routeOrder.b_id)
-    const rawStart = routeOrder.b_start_latitude && routeOrder.b_start_longitude ?
-      { latitude: Number(routeOrder.b_start_latitude), longitude: Number(routeOrder.b_start_longitude) } :
-      null
-    const rawDestination = routeOrder.b_destination_latitude && routeOrder.b_destination_longitude ?
-      { latitude: Number(routeOrder.b_destination_latitude), longitude: Number(routeOrder.b_destination_longitude) } :
-      null
+    centeredOnOpenRef.current = true
+    if (currentStop || !isLeafletMapConnected(map))
+      return
 
-    let cancelled = false
-    ;(async() => {
-      const [startSnap, destinationSnap] = await Promise.all([
-        rawStart ? snapToRoad(rawStart) : Promise.resolve(null),
-        rawDestination ? snapToRoad(rawDestination) : Promise.resolve(null),
-      ])
-      if (cancelled) return
+    safeLeafletAction(() => map.setView(currentPosition, Math.max(map.getZoom(), 15)))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [map, currentPosition, currentStop])
 
-      // Привязываем только заметно оторванные от дороги точки, чтобы не дёргать
-      // уже нормальные (снап на генерации оставляет дорогу в пределах REACHABLE).
-      const startFixed = startSnap && startSnap.roadDistanceMeters > REACHABLE_ROAD_METERS ?
-        [startSnap.latitude, startSnap.longitude] as [number, number] :
-        null
-      const destinationFixed = destinationSnap && destinationSnap.roadDistanceMeters > REACHABLE_ROAD_METERS ?
-        [destinationSnap.latitude, destinationSnap.longitude] as [number, number] :
-        null
-
-      if (startFixed || destinationFixed) {
-        writeRawLog('DRIVER_DEMO_ORDER_OFFROAD', {
-          source: 'driver-map',
-          screen: 'Driver/Map',
-          orderId,
-          startRoadDistanceMeters: startSnap?.roadDistanceMeters ?? null,
-          destinationRoadDistanceMeters: destinationSnap?.roadDistanceMeters ?? null,
-          snappedStart: Boolean(startFixed),
-          snappedDestination: Boolean(destinationFixed),
-        })
-      }
-
-      setSnappedDemoOrderPoints({ orderId, start: startFixed, destination: destinationFixed })
-    })()
-
-    return () => { cancelled = true }
-  }, [
-    emulatorOrdersEnabled,
-    routeOrder?.b_id,
-    routeOrder?.b_start_latitude,
-    routeOrder?.b_start_longitude,
-    routeOrder?.b_destination_latitude,
-    routeOrder?.b_destination_longitude,
-  ])
-
-  const currentOrderDestination = useMemo((): [number, number] | null => {
-    if (!routeOrder?.b_destination_latitude || !routeOrder?.b_destination_longitude) return null
-    if (snappedDemoOrderPoints?.orderId === String(routeOrder.b_id) && snappedDemoOrderPoints.destination)
-      return snappedDemoOrderPoints.destination
-    return [
-      routeOrder.b_destination_latitude,
-      routeOrder.b_destination_longitude,
-    ]
-  }, [
-    routeOrder?.b_destination_latitude,
-    routeOrder?.b_destination_longitude,
-    routeOrder?.b_id,
-    snappedDemoOrderPoints,
-  ])
-
+  // Точка подачи текущего заказа — уже привязанная к дороге, если привязка была
+  // нужна. Служит запасным началом маршрута и базой для тестовых точек панели;
+  // сами метки поездки рисуются по точкам плана.
   const currentOrderStart = useMemo((): [number, number] | null => {
     if (!routeOrder?.b_start_latitude || !routeOrder?.b_start_longitude) return null
-    if (snappedDemoOrderPoints?.orderId === String(routeOrder.b_id) && snappedDemoOrderPoints.start)
-      return snappedDemoOrderPoints.start
-    return [
-      routeOrder.b_start_latitude,
-      routeOrder.b_start_longitude,
-    ]
-  }, [routeOrder?.b_start_latitude, routeOrder?.b_start_longitude, routeOrder?.b_id, snappedDemoOrderPoints])
+
+    const snapped = snappedOrderPoints[String(routeOrder.b_id)]?.start
+    return snapped ?? [routeOrder.b_start_latitude, routeOrder.b_start_longitude]
+  }, [routeOrder?.b_start_latitude, routeOrder?.b_start_longitude, routeOrder?.b_id, snappedOrderPoints])
 
   // Publish the resolved position so the order-details surfaces judge arrival by
   // the same marker the driver sees, instead of raw device GPS (which stands
   // still while the route emulator drives the marker).
   useEffect(() => {
-    publishDriverPosition(currentPosition)
-  }, [currentPosition])
+    publishDriverPosition(resolvedPosition.point, resolvedPosition.source)
+  }, [resolvedPosition])
+
+  // Поездка наружу: клиентский эмулятор по фазе выбирает момент, когда подбросить
+  // попутный заказ (до посадки / после), а по цели — куда его посадить, чтобы он
+  // действительно оказался по пути. Пока водитель не выехал, фазы нет —
+  // попутчик в этот момент бессмысленен. Цель — точка ВЗЯТОГО заказа: вести
+  // эмулятор на точку кандидата, которого он сам и создал, значит зациклиться.
+  const publishedTripPhase: TDriverTripPhase | null = !hasDeparted || !actionStop ?
+    null :
+    (actionStop.kind === ETripStopKind.Pickup ? 'to-pickup' : 'to-dropoff')
+  const publishedTripTargetKey = actionStop ? `${actionStop.lat},${actionStop.lng}` : ''
+
+  useEffect(() => {
+    publishDriverTrip({
+      phase: publishedTripPhase,
+      target: actionStop ? [actionStop.lat, actionStop.lng] : null,
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [publishedTripPhase, publishedTripTargetKey])
+
+  useEffect(() => () => publishDriverTrip({ phase: null, target: null }), [])
 
   // The driver has "reached the pickup" once they are within ~100 m of it — the
   // same threshold the order-details card uses to allow marking arrival. Gates the
   // boarding-code confirmation so it cannot happen before reaching the passenger.
-  const hasReachedPickup = useMemo(
-    () => isAtPickupPoint(currentPosition, currentOrderStart?.[0], currentOrderStart?.[1]),
-    [currentPosition, currentOrderStart],
-  )
+  // Считаем по ТЕКУЩЕЙ точке плана: у неё уже известен вид (посадка/высадка), и
+  // радиус прибытия берётся соответствующий.
+  const isAtStop = useCallback((stop: ITripStop | null) => {
+    if (!stop)
+      return false
 
+    return stop.kind === ETripStopKind.Pickup ?
+      isAtPickupPoint(currentPosition, stop.lat, stop.lng) :
+      isAtDestinationPoint(currentPosition, stop.lat, stop.lng)
+  }, [currentPosition])
+
+  // Гейт шага поездки считаем по той же точке, к которой относится кнопка.
+  const hasReachedCurrentStop = isAtStop(actionStop)
+
+  // Прежние имена сохраняем: по ним гейтятся кнопки и авто-шаги.
+  const hasReachedPickup = actionStop?.kind === ETripStopKind.Pickup && hasReachedCurrentStop
   // Same idea for the dropoff: it decides whether ending the trip means
   // "completed" or "interrupted".
-  const hasReachedDestination = useMemo(
-    () => isAtDestinationPoint(currentPosition, currentOrderDestination?.[0], currentOrderDestination?.[1]),
-    [currentPosition, currentOrderDestination],
-  )
+  const hasReachedDestination = actionStop?.kind === ETripStopKind.Dropoff && hasReachedCurrentStop
+
+  // ——— Решение по попутчику ———
+  // Момент решения — приезд к его точке посадки: модель уже встала на
+  // waypoint-reached, водителю остаётся сказать «беру» или «не беру». Пока
+  // взятие в полёте, спрашивать больше не о чем: точка ещё держится в плане, но
+  // решение уже принято — иначе окно открылось бы второй раз поверх ответа.
+  const alongTheWayDecisionStop =
+    currentStop?.pending &&
+    !takingAlongTheWayRef.current[currentStop.orderId] &&
+    isAtStop(currentStop) ?
+      currentStop :
+      null
+
+  // «Не брать»: заказ уходит из кандидатов, план пересобирается без его точки, и
+  // перестроение маршрута само снимает модель с паузы.
+  const declineAlongTheWayOrder = (order: IOrder) => {
+    const orderId = String(order.b_id)
+    declinedAlongTheWayRef.current[orderId] = true
+    delete takingAlongTheWayRef.current[orderId]
+    delete alongTheWayOrdersRef.current[orderId]
+    setAlongTheWayOrderIds(prev => prev.filter(id => id !== orderId))
+    // Взятие могло сорваться уже после отметки о посадке — снимаем и её.
+    setBoardedAlongTheWayIds(prev => prev.filter(id => id !== orderId))
+  }
+
+  // «Взять»: заказ принимается по-настоящему, а не только визуально. Точку из
+  // плана НЕ снимаем — она держится до появления заказа в активных, иначе маркер
+  // на секунду останется без ближайшей точки и уедет мимо попутчика.
+  const takeAlongTheWayOrder = (order: IOrder) => {
+    const orderId = String(order.b_id)
+    if (takingAlongTheWayRef.current[orderId] || mapActionPending)
+      return
+
+    // Пока ехали, состав активных заказов мог измениться — мест может уже не быть.
+    const freeSeats = getDriverFreeSeats(driverCar, activeOrders, user?.u_id)
+    if (!canDriverTakeOrderBySeats(order, freeSeats, user?.u_id)) {
+      declineAlongTheWayOrder(order)
+      return
+    }
+
+    takingAlongTheWayRef.current[orderId] = true
+    setMapActionPending(true)
+    API.takeOrder(order.b_id, { performers_price: 0 }, false)
+      .then(async() => {
+        // Водитель уже стоит у попутчика: «Поехал» ему ехать некуда, а «Приехал»
+        // подтверждать нечего — он приехал ещё до того, как взял заказ. Сажаем
+        // пассажира сразу, чтобы в плане у заказа осталась только высадка и
+        // движение продолжилось без двух бессмысленных нажатий.
+        setBoardedAlongTheWayIds(prev => (prev.includes(orderId) ? prev : [...prev, orderId]))
+        // Бэкенд ведёт заказ по шагам, перепрыгнуть через Arrived нельзя.
+        // Ошибки не блокируют поездку — демо-бэкенд отвечает шумом и на успешный
+        // переход (тот же приём, что в runMapOrderTransition).
+        await API.setOrderState(order.b_id, EBookingDriverState.Arrived).catch(error => console.error(error))
+        await API.setOrderState(order.b_id, EBookingDriverState.Started).catch(error => console.error(error))
+        refreshMapOrderState(order.b_id)
+        // Страховка: если заказ так и не появился в активных, точка «на пробу»
+        // осталась бы в плане навсегда, а маркер — стоять на ней без вопроса.
+        const timer = setTimeout(() => {
+          if (takingAlongTheWayRef.current[orderId])
+            declineAlongTheWayOrder(order)
+        }, ALONG_THE_WAY_TAKE_TIMEOUT_MS)
+        autoProgressTimers.current.push(timer)
+      })
+      .catch(error => {
+        // Не удалось (обычно заказ уже разобрали) — это тот же отказ, иначе
+        // маркер остался бы стоять на точке, которую некому подтвердить.
+        console.error(error)
+        declineAlongTheWayOrder(order)
+      })
+      .finally(() => setMapActionPending(false))
+  }
+
+  // Отложенные вызовы (таймер Строгого, окно Реалистичного) должны звать свежие
+  // обработчики — тот же приём, что и у latestPrimaryActionRef.
+  latestAlongTheWayActionsRef.current = alongTheWayDecisionStop ?
+    {
+      take: () => takeAlongTheWayOrder(alongTheWayDecisionStop.order),
+      decline: () => declineAlongTheWayOrder(alongTheWayDecisionStop.order),
+    } :
+    null
+
+  // Кандидат сменился или исчез (разобрали) — прошлое окно решения неактуально.
+  useEffect(() => {
+    const decisionKey = alongTheWayDecisionStop ? `${alongTheWayDecisionStop.orderId}:take-along` : ''
+    if (alongTheWayDecisionKeyRef.current && alongTheWayDecisionKeyRef.current !== decisionKey) {
+      dismissOrderModeDecision(alongTheWayDecisionKeyRef.current)
+      // Канал окна-решения один: вопрос про попутчика мог вытеснить окно шага
+      // поездки. Снимаем отметку «шаг уже показан», иначе его больше не
+      // предложат и водитель зависнет на точке.
+      autoProgressStepRef.current = ''
+    }
+
+    alongTheWayDecisionKeyRef.current = decisionKey
+  }, [alongTheWayDecisionStop?.orderId])
+
+  // Авто-режимы для попутного. Ручной обрабатывается кнопками при рендере —
+  // здесь только Реалистичный (окно с отсчётом) и Строгий (берём сам + тост).
+  useEffect(() => {
+    const stop = alongTheWayDecisionStop
+    if (!stop || mapActionPending)
+      return
+    if (orderControlMode === EOrderControlMode.Manual)
+      return
+
+    const decisionKey = `${stop.orderId}:take-along`
+
+    if (orderControlMode === EOrderControlMode.Strict) {
+      if (scheduledAlongTheWayRef.current === decisionKey)
+        return
+      scheduledAlongTheWayRef.current = decisionKey
+
+      const { suffix } = getOrderIdParts(stop.order.b_id, (activeOrders || []).map(item => item.b_id))
+      const timer = setTimeout(() => {
+        showOrderModeToast({
+          id: decisionKey,
+          orderLabel: `${t(TRANSLATION.ORDER_MODE_ORDER_WORD)} №${suffix}`,
+          message: t(TRANSLATION.ORDER_MODE_TOAST_ALONG_THE_WAY),
+          duration: STRICT_STEP_TOAST_MS,
+        })
+        // Замок снимаем: если взятие не прошло, эффект перепланирует шаг.
+        scheduledAlongTheWayRef.current = ''
+        latestAlongTheWayActionsRef.current?.take()
+      }, STRICT_STEP_DELAY_MS)
+      autoProgressTimers.current.push(timer)
+      return
+    }
+
+    // Реалистичный — окно с выбором; по истечении 5 с заказ берётся.
+    requestOrderModeDecision({
+      id: decisionKey,
+      orderLabel: [
+        t(TRANSLATION.ORDER_MODE_ORDER_WORD),
+        getOrderIdText(stop.order.b_id, (activeOrders || []).map(item => item.b_id)),
+      ].filter(Boolean).join(' '),
+      title: t(TRANSLATION.ORDER_MODE_DECISION_ALONG_THE_WAY_TITLE),
+      description: t(TRANSLATION.ORDER_MODE_DECISION_ALONG_THE_WAY_DESC),
+      actionText: t(TRANSLATION.TAKE_ORDER),
+      cancelText: t(TRANSLATION.DONT_GO),
+      seconds: 5,
+      onConfirm: () => latestAlongTheWayActionsRef.current?.take(),
+      onCancel: () => latestAlongTheWayActionsRef.current?.decline(),
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [alongTheWayDecisionStop?.orderId, orderControlMode, mapActionPending, activeOrders])
 
   // Keep the values the (long-lived) command/manual handlers read up to date.
   mapContextRef.current = { position: currentPosition, orderStart: currentOrderStart }
@@ -1593,6 +2381,11 @@ function DriverOrderMapModeContent({
   // сработал по устаревшему замыканию (иначе действие могло «не сработать» и маркер
   // застревал на точке посадки).
   latestPrimaryActionRef.current = mapPrimaryAction
+  // ...и ключ шага, которому это действие принадлежит: «свежее действие» без
+  // проверки, ТОТ ЛИ это шаг, закрывает следующий заказ вместо текущего.
+  latestAutoStepKeyRef.current = actionStop && effectiveDriverState !== undefined ?
+    `${actionStop.orderId}:${actionStop.kind}:${effectiveDriverState}` :
+    ''
 
   // Авто-режимы (Строгий/Реалистичный): ведём поездку по шагам автоматически.
   // Действие берём из mapPrimaryAction, а гейт — из достижения точки демо-маркером
@@ -1602,10 +2395,14 @@ function DriverOrderMapModeContent({
   useEffect(() => {
     if (orderControlMode === EOrderControlMode.Manual)
       return
-    const order = activeDriverOrder?.order
+    const order = actionStop?.order
     if (!order || isVotingOrder(order))
       return
     if (mapActionPending || !mapPrimaryAction)
+      return
+    // Пока решается судьба попутчика, шаг поездки не подгоняем: иначе окно
+    // решения и окно шага открылись бы одно поверх другого.
+    if (alongTheWayDecisionStop)
       return
 
     const state = effectiveDriverState
@@ -1617,7 +2414,10 @@ function DriverOrderMapModeContent({
     if (mapPrimaryAction.requiresDestinationArrival && !hasReachedDestination)
       return
 
-    const stepKey = `${order.b_id}:${state}`
+    // Вид точки входит в ключ: у одного заказа посадка и высадка — разные шаги,
+    // и при двух заказах шаги не должны схлопываться между собой.
+    // Тот же вид, что у latestAutoStepKeyRef — по нему сверяется отложенный шаг.
+    const stepKey = `${actionStop.orderId}:${actionStop.kind}:${state}`
 
     const meta = (() => {
       switch (state) {
@@ -1654,6 +2454,16 @@ function DriverOrderMapModeContent({
       const orderLabel = `${t(TRANSLATION.ORDER_MODE_ORDER_WORD)} №${suffix}`
 
       const timer = setTimeout(() => {
+        // Шаг мог пройти, пока мы ждали: действие сработало, заказ ушёл из
+        // активных, и кнопка теперь относится к СЛЕДУЮЩЕЙ точке — то есть к
+        // другому заказу. Дёрнуть «свежее действие» вслепую значит закрыть этот
+        // следующий заказ прямо на первой высадке и увести водителя с карты, не
+        // доехав до второй. Выполняем только тот шаг, который планировали.
+        if (latestAutoStepKeyRef.current !== stepKey) {
+          scheduledAutoStepRef.current = ''
+          return
+        }
+
         // Сообщение о шаге — тоже с задержкой (один раз на шаг).
         if (toastShownStepRef.current !== stepKey) {
           toastShownStepRef.current = stepKey
@@ -1680,6 +2490,10 @@ function DriverOrderMapModeContent({
 
     requestOrderModeDecision({
       id: stepKey,
+      orderLabel: [
+        t(TRANSLATION.ORDER_MODE_ORDER_WORD),
+        getOrderIdText(order.b_id, (activeOrders || []).map(item => item.b_id)),
+      ].filter(Boolean).join(' '),
       title: meta.title,
       description: meta.description,
       actionText: mapPrimaryAction.text,
@@ -1688,9 +2502,12 @@ function DriverOrderMapModeContent({
       onConfirm: () => mapPrimaryAction.onClick(),
       onCancel: () => onInterruptTripClick(),
     })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     orderControlMode,
-    activeDriverOrder?.order,
+    actionStop?.orderId,
+    actionStop?.kind,
+    alongTheWayDecisionStop?.orderId,
     activeOrders,
     effectiveDriverState,
     mapPrimaryAction,
@@ -1698,6 +2515,40 @@ function DriverOrderMapModeContent({
     hasReachedPickup,
     hasReachedDestination,
   ])
+
+  // ——— Сторож движения ———
+  // «Ехать или стоять» решает эффект маршрута, а он срабатывает только на смену
+  // своих зависимостей. После возвращения на карту сходится не всё: модель
+  // создаётся заново и пустой, маршрут ей строится асинхронно, и любой сбой на
+  // этом пути (маршрут не построился, модель осталась на паузе) больше некому
+  // заметить — водитель видит маркер, стоящий посреди незаконченной поездки.
+  // Раз в секунду сверяем намерение плана с фактическим состоянием модели.
+  useInterval(() => {
+    const model = routeEmulatorRef.current
+    if (!model || manualRouteOverrideRef.current)
+      return
+    if (!isDemoMapMovementEnabled || !hasDeparted || mapActionPending)
+      return
+    // Законные остановки: ждём решения по попутчику или действия водителя на
+    // достигнутой точке.
+    if (reachedStopKeyRef.current || alongTheWayDecisionStop || isAtStop(currentStop))
+      return
+
+    const state = model.getState()
+    if (state.loading || state.running)
+      return
+
+    // Маршрута нет (или он уже пройден), а ехать есть куда. Эффект на этих
+    // зависимостях уже отработал и сам не вернётся — сбрасываем его память о
+    // построенном маршруте и просим построить заново.
+    if (state.waypoints.length < 2 || state.polyline.length < 2 || state.finished) {
+      tripRouteKeyRef.current = ''
+      setRouteSyncNonce(value => value + 1)
+      return
+    }
+
+    model.resume()
+  }, 1000)
 
   // Base point for the temporary manual/test waypoints: the model's current
   // position if it has a route, else the driver/order position, else the map
@@ -1749,7 +2600,7 @@ function DriverOrderMapModeContent({
       engageManualRoute()
       model.clearRoute()
       setDemoDriverPosition(null)
-      setManualRoutePolyline(null)
+      setEmulatorRoutePolyline(null)
       return
     }
 
@@ -1782,12 +2633,10 @@ function DriverOrderMapModeContent({
     }
   }), [engageManualRoute, manualBasePoint, manualTestWaypoint])
 
-  const currentRouteTarget = useMemo((): [number, number] | null => {
-    if (isRouteToDestination)
-      return currentOrderDestination
-
-    return currentOrderStart
-  }, [isRouteToDestination, currentOrderDestination, currentOrderStart])
+  // Отображаемый маршрут ведёт к ближайшей точке плана.
+  const currentRouteTarget = useMemo((): [number, number] | null =>
+    currentStop ? [currentStop.lat, currentStop.lng] : null,
+  [currentStop])
 
   const currentRouteStart = useMemo((): [number, number] | null => {
     if (currentPosition)
@@ -1796,9 +2645,19 @@ function DriverOrderMapModeContent({
     return currentOrderStart
   }, [currentPosition, currentOrderStart])
 
+  // Пока едет эмулятор, источник линии — геометрия самой модели: по ней маркер и
+  // движется, поэтому линия и движение не могут разойтись. Для реального
+  // водителя без эмулятора остаётся построенный маршрут до текущей точки.
+  const tripRoutePoints = useMemo(
+    () => (emulatorRoutePolyline && emulatorRoutePolyline.length > 1 ?
+      emulatorRoutePolyline :
+      activeDriveRouteInfo?.points ?? null),
+    [emulatorRoutePolyline, activeDriveRouteInfo],
+  )
+
   const displayedActiveDriveRoutePoints = useMemo(() =>
-    trimRoutePointsToPosition(activeDriveRouteInfo?.points, currentPosition),
-  [activeDriveRouteInfo, currentPosition])
+    trimRoutePointsToPosition(tripRoutePoints, currentPosition),
+  [tripRoutePoints, currentPosition])
 
   const routeAreasRequestKey = useMemo(() => {
     if (!currentRouteStart || !currentRouteTarget) return ''
@@ -1817,14 +2676,23 @@ function DriverOrderMapModeContent({
 
   useEffect(() => {
     if (!currentRouteTarget) return
-    const fitKey = `${routeOrder?.b_id || ''}:${isRouteToDestination ? 'destination' : 'pickup'}`
+    // Ключ по набору заказов плана: подгонять карту на каждой точке маршрута —
+    // значит дёргать её на каждой посадке и высадке.
+    const fitKey = planOrderIdsKey
     if (fittedDestinationOrderRef.current === fitKey) return
 
     fittedDestinationOrderRef.current = fitKey
 
-    if (currentRouteStart) {
+    // В кадр берём ВСЮ поездку, а не только текущую ногу: при двух заказах
+    // остальные точки иначе оказались бы за экраном.
+    const bounds: Array<[number, number]> = [
+      ...(currentRouteStart ? [currentRouteStart] : []),
+      ...tripStops.map(stop => [stop.lat, stop.lng] as [number, number]),
+    ]
+
+    if (bounds.length > 1) {
       if (isLeafletMapConnected(map))
-        safeLeafletAction(() => map.fitBounds([currentRouteStart, currentRouteTarget], {
+        safeLeafletAction(() => map.fitBounds(bounds, {
           padding: [60, 90],
           maxZoom: 16,
         }))
@@ -1833,7 +2701,8 @@ function DriverOrderMapModeContent({
 
     if (isLeafletMapConnected(map))
       safeLeafletAction(() => map.setView(currentRouteTarget, Math.max(map.getZoom(), 15)))
-  }, [map, routeOrder?.b_id, currentRouteTarget, currentRouteStart])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [map, planOrderIdsKey, currentRouteTarget, currentRouteStart])
 
   useEffect(() => {
     if (!currentRouteStart || !currentRouteTarget) {
@@ -1862,6 +2731,12 @@ function DriverOrderMapModeContent({
       lastRouteGraphRef.current = null
       return
     }
+
+    // Линию рисует геометрия эмулятора — по ней же едет маркер. Строить рядом
+    // второй (двухточечный) маршрут незачем: это лишние запросы к роутеру на
+    // каждое перестроение плана и на каждый сдвиг водителя.
+    if (isDemoMapMovementEnabled && emulatorRoutePolyline && emulatorRoutePolyline.length > 1)
+      return
 
     const from: IAddressPoint = {
       latitude: currentRouteStart[0],
@@ -1912,12 +2787,24 @@ function DriverOrderMapModeContent({
     return () => {
       changed = true
     }
-  }, [currentRouteStart, currentRouteTarget, wayGraph, activeDriveRouteInfo, routeOrder?.b_id, emulatorOrdersEnabled])
+  }, [
+    currentRouteStart,
+    currentRouteTarget,
+    wayGraph,
+    activeDriveRouteInfo,
+    routeOrder?.b_id,
+    emulatorOrdersEnabled,
+    isDemoMapMovementEnabled,
+    emulatorRoutePolyline,
+  ])
 
 
-  const routeDestinationAddress = routeOrder ?
-    getOrderDestinationAddress(routeOrder, resolvedDestinationAddresses[String(routeOrder.b_id)]) :
-    ''
+  // Пул для коротких номеров заказов: активные плюс кандидаты в попутчики —
+  // номер попутчика водитель видит на кнопке решения ещё до взятия заказа.
+  const orderIdPool = [
+    ...(activeOrders || []).map(activeOrder => activeOrder.b_id),
+    ...alongTheWayCandidates.map(candidate => candidate.b_id),
+  ]
 
   return (
     <>
@@ -1953,7 +2840,7 @@ function DriverOrderMapModeContent({
             iconAnchor={[20, 20]}
             popupAnchor={[0, -22]}
             speedKmh={96}
-            path={activeDriveRouteInfo?.points}
+            path={tripRoutePoints ?? undefined}
             zIndexOffset={3000}
           />
         )
@@ -1963,9 +2850,11 @@ function DriverOrderMapModeContent({
         <Polyline positions={lastPositions} />
       }
       {
-        activeDriveRouteInfo && (
+        // Маршрут поездки целиком: пока едет эмулятор — его собственная
+        // геометрия (все ноги плана), иначе построенный маршрут до текущей точки.
+        !manualRouteActive && tripRoutePoints && tripRoutePoints.length > 1 && (
           <Polyline
-            positions={displayedActiveDriveRoutePoints.length > 1 ? displayedActiveDriveRoutePoints : activeDriveRouteInfo.points}
+            positions={displayedActiveDriveRoutePoints.length > 1 ? displayedActiveDriveRoutePoints : tripRoutePoints}
             pathOptions={{
               color: '#FF3B30',
               weight: 4,
@@ -1979,9 +2868,9 @@ function DriverOrderMapModeContent({
       {
         // Route emulator's own geometry while the manual test controls are active.
         // Drawn separately (blue, dashed) because it can diverge from the order route.
-        manualRouteActive && manualRoutePolyline && manualRoutePolyline.length > 1 && (
+        manualRouteActive && emulatorRoutePolyline && emulatorRoutePolyline.length > 1 && (
           <Polyline
-            positions={manualRoutePolyline}
+            positions={emulatorRoutePolyline}
             pathOptions={{
               color: '#007AFF',
               weight: 4,
@@ -1994,56 +2883,66 @@ function DriverOrderMapModeContent({
         )
       }
       {
-        currentOrderDestination && (
-          <Marker
-            position={currentOrderDestination}
-            icon={new L.Icon({
-              iconUrl: images.markerTo,
-              iconSize: [36, 41],
-              iconAnchor: [18, 41],
-              popupAnchor: [0, -35],
-            })}
-          >
-            <Tooltip direction="top" offset={[0, -40]} opacity={1} permanent>
-              {formatDriverPointTooltip(t(TRANSLATION.TO), routeDestinationAddress)}
-            </Tooltip>
-            <Popup>
-              {t(TRANSLATION.TO)}
-              {!!routeDestinationAddress && `: ${routeDestinationAddress}`}
-            </Popup>
-          </Marker>
-        )
+        // Метки ВСЕХ точек поездки. С попутным заказом маршрут стал многоточечным,
+        // и «Откуда/Куда» одного заказа больше не описывают, куда водитель едет.
+        // Постоянная подпись — только у ближайшей точки: на трёх-четырёх
+        // постоянных тултипах экран заливает текстом.
+        tripStops.map((stop, index) => {
+          const isPickup = stop.kind === ETripStopKind.Pickup
+          // Метка посадки стоит ровно поверх собственной булавки заказа, поэтому
+          // свой попап она не открывает — это съело бы клик и показало адрес
+          // подачи вместо карточки заказа.
+          const openOrderCard = {
+            click: (event: L.LeafletMouseEvent) => {
+              try {
+                event.originalEvent?.preventDefault?.()
+                event.originalEvent?.stopPropagation?.()
+                L.DomEvent.stopPropagation(event.originalEvent)
+              } catch (_) {}
+              setOrderCardModal({ isOpen: true, orderId: stop.order.b_id })
+            },
+          }
+          const address = isPickup ?
+            getAddressString(stop.order.b_start_address) :
+            getOrderDestinationAddress(stop.order, resolvedDestinationAddresses[stop.orderId])
+          const label = isPickup ? t(TRANSLATION.FROM) : t(TRANSLATION.TO)
+          const shortAddress = formatShortAddress(address)
+          const idText = getOrderIdText(stop.order.b_id, orderIdPool)
+
+          return (
+            <Marker
+              key={getTripStopKey(stop)}
+              position={[stop.lat, stop.lng]}
+              icon={new L.Icon({
+                iconUrl: isPickup ? images.markerFrom : images.markerTo,
+                iconSize: isPickup ? [35, 41] : [36, 41],
+                iconAnchor: [18, 41],
+                popupAnchor: [0, -35],
+              })}
+              eventHandlers={isPickup ? openOrderCard : undefined}
+            >
+              <Tooltip direction="top" offset={[0, -40]} opacity={1} permanent={index === 0}>
+                {formatDriverPointTooltip(label, address)}
+              </Tooltip>
+              {!isPickup && (
+                <Popup>
+                  <span className="driver-order-map-mode__point-popup">
+                    {!!idText && (
+                      <b className="driver-order-map-mode__point-popup-id">{idText}</b>
+                    )}
+                    <span title={address || undefined}>
+                      {label}
+                      {!!shortAddress && `: ${shortAddress}`}
+                    </span>
+                  </span>
+                </Popup>
+              )}
+            </Marker>
+          )
+        })
       }
       {
-        currentOrderStart && (
-          // This pin sits exactly on top of the taken order's own marker (both
-          // are placed at b_start_latitude/b_start_longitude), so it must not
-          // bind its own click popup — that would swallow the click and show
-          // the pickup address instead of opening the order details.
-          <Marker
-            position={currentOrderStart}
-            icon={new L.Icon({
-              iconUrl: images.markerFrom,
-              iconSize: [35, 41],
-              iconAnchor: [18, 41],
-              popupAnchor: [0, -35],
-            })}
-            eventHandlers={{
-              click: (event) => {
-                try {
-                  event.originalEvent?.preventDefault?.()
-                  event.originalEvent?.stopPropagation?.()
-                  L.DomEvent.stopPropagation(event.originalEvent)
-                } catch (_) {}
-                if (routeOrder?.b_id)
-                  setOrderCardModal({ isOpen: true, orderId: routeOrder.b_id })
-              },
-            }}
-          />
-        )
-      }
-      {
-        visibleMapOrders
+        markerMapOrders
           .filter(item => item.b_start_latitude && item.b_start_longitude)
           .map(item =>
             <Marker
@@ -2056,7 +2955,7 @@ function DriverOrderMapModeContent({
                 shadowAnchor: [7, 40],
                 html: getOrderMarkerHtml(
                   item,
-                  item === performingOrder,
+                  pickupPendingOrderIds.has(String(item.b_id)),
                   resolvedDestinationAddresses[String(item.b_id)],
                   // Same pool as <OrderId>/order details (active orders only) so
                   // the short id shown on the map matches the one in the order
@@ -2092,22 +2991,52 @@ function DriverOrderMapModeContent({
         }
       </button>
       {
-        mapPrimaryAction && (() => {
-          // Ending the trip short of the dropoff is a cancellation, so it asks
-          // for a reason instead of completing the order.
-          const interrupting = Boolean(mapPrimaryAction.requiresDestinationArrival && !hasReachedDestination)
-          return (
-            <Button
-              text={interrupting ? t(TRANSLATION.INTERRUPT_TRIP) : mapPrimaryAction.text}
-              className={`finish-drive-button ${
-                interrupting ? 'finish-drive-button--interrupted' : mapPrimaryAction.className
-              }`}
-              onClick={interrupting ? onInterruptTripClick : mapPrimaryAction.onClick}
-              disabled={mapActionPending || (mapPrimaryAction.requiresPickupArrival && !hasReachedPickup)}
-              fixedSize={false}
-            />
-          )
-        })()
+        // Ручной режим спрашивает про попутчика прямо на карте, в том же слоте,
+        // где обычно стоит кнопка шага поездки, и без таймера: решение за
+        // водителем. Кнопка шага на это время уступает место — иначе на экране
+        // оказались бы три кнопки про разные заказы.
+        alongTheWayDecisionStop && orderControlMode === EOrderControlMode.Manual ?
+          (
+            <div className="driver-order-map-mode__along-the-way-decision">
+              <Button
+                text={[
+                  t(TRANSLATION.TAKE_ORDER),
+                  getOrderIdText(alongTheWayDecisionStop.order.b_id, orderIdPool),
+                ].filter(Boolean).join(' ')}
+                className="driver-order-map-mode__along-the-way-button"
+                onClick={() => takeAlongTheWayOrder(alongTheWayDecisionStop.order)}
+                disabled={mapActionPending}
+                fixedSize={false}
+              />
+              <Button
+                text={t(TRANSLATION.DONT_GO)}
+                className="driver-order-map-mode__along-the-way-button driver-order-map-mode__along-the-way-button--decline"
+                onClick={() => declineAlongTheWayOrder(alongTheWayDecisionStop.order)}
+                disabled={mapActionPending}
+                fixedSize={false}
+              />
+            </div>
+          ) :
+          mapPrimaryAction && (() => {
+            // Ending the trip short of the dropoff is a cancellation, so it asks
+            // for a reason instead of completing the order.
+            const interrupting = Boolean(mapPrimaryAction.requiresDestinationArrival && !hasReachedDestination)
+            return (
+              <Button
+                // Номер заказа нужен и здесь: когда в салоне двое, «Прервать
+                // поездку» без него не говорит, чью именно поездку прерываем.
+                text={interrupting ?
+                  `${t(TRANSLATION.INTERRUPT_TRIP)}${mapPrimaryAction.orderSuffix}` :
+                  mapPrimaryAction.text}
+                className={`finish-drive-button ${
+                  interrupting ? 'finish-drive-button--interrupted' : mapPrimaryAction.className
+                }`}
+                onClick={interrupting ? onInterruptTripClick : mapPrimaryAction.onClick}
+                disabled={mapActionPending || (mapPrimaryAction.requiresPickupArrival && !hasReachedPickup)}
+                fixedSize={false}
+              />
+            )
+          })()
       }
       {/* {
         !!activeOrders?.length && (
@@ -2257,17 +3186,6 @@ function getSafeOrderTime(order: IOrder) {
   }
 }
 
-function getEstimatedProfit(order: IOrder) {
-  if (typeof order.profit === 'number' && Number.isFinite(order.profit))
-    return order.profit
-
-  const price = Number(order.b_price_estimate || (order as any).b_price || (order as any).price || 0)
-  const tips = Number(order.b_tips || 0)
-  const passengerBonus = Number(order.b_passengers_count || 0) * 3
-  const fallback = price + tips + passengerBonus
-  return Number.isFinite(fallback) && fallback > 0 ? fallback : undefined
-}
-
 function getProfitRankClass(order: IOrder) {
   const rank = order.profitRank
   if (rank !== undefined) {
@@ -2283,39 +3201,6 @@ function getProfitRankClass(order: IOrder) {
   if (profit >= 200) return 'high'
   if (profit >= 100) return 'medium'
   return 'low'
-}
-
-// Перцентильная раскраска хинтов: цвет зависит не от абсолютной суммы, а от того,
-// насколько заказ выгоднее ОСТАЛЬНЫХ видимых заказов. При каждом обновлении списка
-// собираем прибыли всех видимых заказов, ранжируем и делим на 5 групп по 20%:
-// p0 — нижние 20% (🔴), p1 20–40% (🟠), p2 40–60% (🟡), p3 60–80% (🟢), p4 — верхние 20% (💚).
-// Так даже при близких прибылях (10–12 €) сразу видно, какие заказы лучше других.
-const PROFIT_PERCENTILE_BUCKETS = 5
-
-function computeProfitPercentiles(orders: IOrder[]): Record<string, number> {
-  const entries: Array<{ id: string, profit: number }> = []
-  orders.forEach(order => {
-    if (!order?.b_id) return
-    const profit = getEstimatedProfit(order)
-    if (profit === undefined) return
-    entries.push({ id: String(order.b_id), profit })
-  })
-
-  const result: Record<string, number> = {}
-  const count = entries.length
-  if (!count) return result
-
-  const values = entries.map(entry => entry.profit)
-  entries.forEach(({ id, profit }) => {
-    // Мидранк-перцентиль: одинаковые прибыли получают одну группу (один цвет),
-    // а различающиеся — раскладываются по группам по относительному рангу.
-    const below = values.reduce((sum, value) => sum + (value < profit ? 1 : 0), 0)
-    const atOrBelow = values.reduce((sum, value) => sum + (value <= profit ? 1 : 0), 0)
-    const percentile = (below + atOrBelow) / (2 * count)
-    result[id] = Math.min(PROFIT_PERCENTILE_BUCKETS - 1, Math.floor(percentile * PROFIT_PERCENTILE_BUCKETS))
-  })
-
-  return result
 }
 
 function getOrderModeIcon(order: IOrder, performing: boolean) {

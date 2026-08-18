@@ -376,6 +376,67 @@
     z-index: -2;
   }
 
+  // Решение по попутчику: две кнопки в том же слоте, где обычно стоит одиночная
+  // кнопка шага поездки. Позиционируется ТОЛЬКО контейнер — сами кнопки не
+  // переиспользуют .finish-drive-button: та по своей природе одиночная
+  // (position: fixed + left: 50% + transform), и две такие легли бы одна на
+  // другую, а перебить её из вложенного правила нельзя — она объявлена ниже с
+  // той же специфичностью и выигрывает по порядку.
+  &__along-the-way-decision {
+    position: fixed;
+    top: auto;
+    bottom: max(18px, calc(env(safe-area-inset-bottom, 0px) + 14px));
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 1000;
+    display: flex;
+    align-items: stretch;
+    justify-content: center;
+    // Если вдвоём в строку не помещаются (длинный номер заказа на узком
+    // экране) — переносим на вторую строку, а не сплющиваем.
+    flex-wrap: wrap;
+    gap: 10px;
+    width: max-content;
+    max-width: calc(100% - 24px);
+
+    // Button рендерит кнопку внутри .button__wrapper (display: flex; width: 100%).
+    // Две таких обёртки-стопроцентника сплющивали бы друг друга, поэтому здесь
+    // они обычные флекс-элементы по содержимому.
+    .button__wrapper {
+      flex: 0 1 auto;
+      width: auto;
+      min-width: 0;
+    }
+  }
+
+  &__along-the-way-button {
+    width: auto;
+    height: unset;
+    min-width: 0;
+    max-width: 100%;
+    padding: 9px 18px;
+    color: white;
+    border: none;
+    border-radius: 999px;
+    font-weight: 600;
+    font-size: 14px;
+    line-height: 1.1;
+    white-space: nowrap;
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.18);
+    cursor: pointer;
+    transition: none;
+
+    @media (max-width: 1024px) {
+      padding: 8px 16px;
+      font-size: 13px;
+    }
+
+    @media (max-width: 560px) {
+      padding: 8px 12px;
+      font-size: 12px;
+    }
+  }
+
   .finish-drive-button {
     position: fixed;
     top: auto;
@@ -399,10 +460,6 @@
     box-shadow: 0 6px 16px rgba(0, 0, 0, 0.18);
     cursor: pointer;
     transition: none;
-
-    &:hover {
-      background-color: darken(#FF2400, 5%);
-    }
 
     @media (max-width: 1024px) {
       top: auto;
@@ -796,6 +853,22 @@
 }
 
 
+/* Попап точки назначения: номер заказа отдельной строкой над коротким адресом. */
+.driver-order-map-mode__point-popup {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-width: 220px;
+}
+
+.driver-order-map-mode__point-popup-id {
+  color: #971704;
+  font-size: 11px;
+  line-height: 13px;
+  font-weight: 800;
+}
+
+
 /* Driver list pages must scroll on mobile; map tab itself remains fixed inside its own container. */
 .page-section.driver {
   min-height: 0;
@@ -875,6 +948,20 @@
   flex: 0 0 auto;
   margin: 0 0 8px;
   padding: 0 0 2px;
+}
+
+/* Остаток мест в салоне: объясняет, почему часть заказов не показывается. */
+.page-section.driver .driver-orders__free-seats {
+  flex: 0 0 auto;
+  margin: 0 0 6px;
+  font-size: 12px;
+  line-height: 16px;
+  opacity: 0.75;
+}
+
+.page-section.driver .driver-orders__free-seats b {
+  font-weight: 600;
+  opacity: 1;
 }
 
 .page-section.driver .driver-orders__list {

@@ -187,3 +187,35 @@
   color: #2C3E50;
   font-weight: 600;
 }
+
+/* Перцентильная раскраска карточек по прибыльности — те же цвета и та же логика,
+   что у хинтов над булавками заказов на карте (pages/Driver/styles.scss).
+   p0 — нижние 20% (🔴 хуже остальных) … p4 — верхние 20% (💚 лучшие). Объявлены
+   ПОСЛЕ абсолютных low/medium/high, поэтому перекрывают их; убыточные — ниже всех. */
+.mini-order--profit-p0 { background: rgba(248, 196, 190, .97); }
+.mini-order--profit-p1 { background: rgba(255, 210, 158, .97); }
+.mini-order--profit-p2 { background: rgba(255, 244, 165, .97); }
+.mini-order--profit-p3 { background: rgba(206, 240, 190, .97); }
+.mini-order--profit-p4 { background: rgba(170, 238, 176, .98); }
+
+.mini-order--profit-p4 .mini-order__profit {
+  color: #0a7a2f;
+  font-weight: 800;
+}
+
+.mini-order--profit-p0 .mini-order__profit {
+  color: #a12318;
+  font-weight: 800;
+}
+
+/* Убыточный заказ виден как убыточный при любой группе: цвет группы говорит
+   «лучше или хуже соседних», а минус — «ехать невыгодно вообще». */
+.mini-order--profit-negative {
+  background: rgba(242, 239, 237, .97);
+  filter: saturate(.78) brightness(.98);
+}
+
+.mini-order--profit-negative .mini-order__profit {
+  color: #8B1010;
+  font-weight: 700;
+}

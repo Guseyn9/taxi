@@ -18,6 +18,9 @@ import {
 import { getDefaultCityLocationClassId, getDefaultIntercityLocationClassId, getOfferResponseBookingCommentIds, getPassengerConfirmedChoice, getStoredChoiceOrderMode, markEmulatorClientChoseOtherDriver, setPassengerConfirmedChoice, setStoredChoiceOrderMode, setStoredChoiceOutcome } from '../../tools/driverOffer'
 import { writeRawLog } from '../../tools/rawLog'
 import { ensureReachablePoint } from '../../tools/mapReachability'
+import { clearDriverParkedPosition, getDriverPosition } from '../../tools/driverPosition'
+import { getDriverTrip, getDriverTripPhaseLabel } from '../../tools/driverTripPhase'
+import { ALONG_THE_WAY_EVERY_NTH_ORDER, AlongTheWaySchedule } from '../../tools/alongTheWaySchedule'
 import * as API from '../../API'
 import store from '../../state'
 import { userSelectors } from '../../state/user'
@@ -83,6 +86,7 @@ const ROUTE_DENSIFY_STEP_METERS = 3
 const ROUTE_FINISH_THRESHOLD_METERS = 7
 const ROUTE_CACHE_STORAGE_KEY = 'orsRouteCache.v1'
 const SAVED_GEOLOCATION_KEY = 'gruzvill_last_browser_geolocation'
+const MANUAL_ORIGIN_KEY = 'gruzvill_emulator_manual_origin'
 const EMULATOR_GEOLOCATION_TIMEOUT_MS = 12000
 const EMULATOR_LOCATION_MAX_AGE_MS = 10 * 60 * 1000
 const DRIVER_STATES = {
@@ -1578,6 +1582,24 @@ const CLIENT_START_STAGGER_MIN_MS = 900
 const CLIENT_START_STAGGER_MAX_MS = 2600
 const CLIENT_ACCOUNTS_COUNT = 4
 
+// ——— Попутные заказы ———
+// Тестировать попутчика, дожидаясь случайного совпадения «заказ появился, пока
+// водитель едет», невозможно: сценарий выпадает раз в несколько прогонов. Поэтому
+// эмулятор создаёт попутного намеренно — каждый второй заказ, на ноге маршрута,
+// которую водитель едет прямо сейчас, и по очереди в двух фазах поездки (до
+// посадки и после). Само расписание — в tools/alongTheWaySchedule.ts.
+/**
+ * Где на текущей ноге маршрута ставим попутчика. Разброс вокруг этой точки —
+ * маленький: смысл в том, чтобы он оказался ВПЕРЕДИ по пути, а не просто рядом
+ * с водителем (случайное направление отправило бы половину попутчиков назад).
+ */
+const ALONG_THE_WAY_LEG_FRACTION = 0.45
+const ALONG_THE_WAY_PICKUP_MIN_METERS = 30
+const ALONG_THE_WAY_PICKUP_MAX_METERS = 180
+/** Его точка назначения — как у обычного заказа, но от точки посадки. */
+const ALONG_THE_WAY_DROPOFF_MIN_METERS = 900
+const ALONG_THE_WAY_DROPOFF_MAX_METERS = 2400
+
 const CLIENT_ORDER_POINTS = [
   {
     from: {
@@ -1862,6 +1884,25 @@ function getSavedBrowserGeolocationPoint(maxAgeMs = EMULATOR_LOCATION_MAX_AGE_MS
 }
 
 
+// Аварийный ручной ввод точки для окружений, где браузер/ОС не отдают геолокацию.
+// Формат в localStorage: '47.2213, 39.6331' либо {"latitude":47.2213,"longitude":39.6331}.
+function getManualOriginPoint(): Point | null {
+  try {
+    const raw = String(window.localStorage.getItem(MANUAL_ORIGIN_KEY) || '').trim()
+    if (!raw)
+      return null
+
+    if (raw.startsWith('{'))
+      return normalizeBrowserLocationPoint(JSON.parse(raw))
+
+    const [latitude, longitude] = raw.split(',').map(part => Number(part.trim()))
+    return normalizeBrowserLocationPoint({ latitude, longitude })
+  } catch {
+    return null
+  }
+}
+
+
 async function getBrowserGeolocationPermissionState(): Promise<'granted' | 'denied' | 'prompt' | 'unsupported' | 'unknown'> {
   if (typeof navigator === 'undefined' || !navigator.geolocation)
     return 'unsupported'
@@ -1879,7 +1920,63 @@ async function getBrowserGeolocationPermissionState(): Promise<'granted' | 'deni
   return 'unknown'
 }
 
-async function getBrowserGeolocationPoint(timeoutMs = EMULATOR_GEOLOCATION_TIMEOUT_MS): Promise<Point | null> {
+type GeoAttemptStatus = 'ok' | 'timeout' | 'denied' | 'unavailable'
+type GeoAttemptResult = { point: Point | null, status: GeoAttemptStatus, message: string }
+
+function requestBrowserPosition(options: PositionOptions, timeoutMs: number): Promise<GeoAttemptResult> {
+  return new Promise(resolve => {
+    let done = false
+    const finish = (point: Point | null, status: GeoAttemptStatus, message = '') => {
+      if (done) return
+      done = true
+      if (status === 'ok' && point) {
+        writeRawLog('GEO_POSITION_RESOLVED', {
+          source: 'browser-client-emulator',
+          screen: 'DriverEmulatorPanel',
+          latitude: point.latitude,
+          longitude: point.longitude,
+          ...options,
+        })
+      } else {
+        writeRawLog('GEO_POSITION_FAILED', {
+          source: 'browser-client-emulator',
+          screen: 'DriverEmulatorPanel',
+          status,
+          message,
+          ...options,
+        })
+      }
+      resolve({ point, status, message })
+    }
+    // Свой таймер нужен потому, что в некоторых сборках Chrome getCurrentPosition
+    // не вызывает ни один колбэк, когда системная служба геолокации недоступна.
+    const timer = window.setTimeout(() => finish(null, 'timeout', 'браузер не ответил на запрос позиции'), timeoutMs)
+    navigator.geolocation.getCurrentPosition(
+      ({ coords }) => {
+        window.clearTimeout(timer)
+        const point = normalizeBrowserLocationPoint(coords)
+        if (point)
+          saveBrowserGeolocationPoint(point, 'navigator')
+        finish(point, point ? 'ok' : 'unavailable', point ? '' : 'браузер вернул некорректные координаты')
+      },
+      (error) => {
+        window.clearTimeout(timer)
+        const status: GeoAttemptStatus = error?.code === error?.PERMISSION_DENIED ?
+          'denied' :
+          error?.code === error?.TIMEOUT ?
+            'timeout' :
+            'unavailable'
+        finish(null, status, String(error?.message || '').trim())
+      },
+      options,
+    )
+  })
+}
+
+async function getBrowserGeolocationPoint(
+  timeoutMs = EMULATOR_GEOLOCATION_TIMEOUT_MS,
+  onDiagnostic?: (message: string) => void,
+): Promise<Point | null> {
   // Для эмулятора не используем last-known/stored geo вообще.
   // Заказчик должен получать заказы около устройства, где нажал запуск.
   const permissionState = await getBrowserGeolocationPermissionState()
@@ -1895,6 +1992,7 @@ async function getBrowserGeolocationPoint(timeoutMs = EMULATOR_GEOLOCATION_TIMEO
       screen: 'DriverEmulatorPanel',
       status: 'unsupported',
     })
+    onDiagnostic?.('Геолокация: браузер не поддерживает navigator.geolocation (или страница открыта не по https/localhost).')
     return null
   }
 
@@ -1904,55 +2002,34 @@ async function getBrowserGeolocationPoint(timeoutMs = EMULATOR_GEOLOCATION_TIMEO
       screen: 'DriverEmulatorPanel',
       status: 'denied',
     })
+    onDiagnostic?.('Геолокация: доступ заблокирован в настройках сайта (permission=denied).')
     return null
   }
 
-  return new Promise(resolve => {
-    let done = false
-    const finish = (point: Point | null, status: 'ok' | 'timeout' | 'denied' | 'unavailable') => {
-      if (done) return
-      done = true
-      if (status === 'ok' && point) {
-        writeRawLog('GEO_POSITION_RESOLVED', {
-          source: 'browser-client-emulator',
-          screen: 'DriverEmulatorPanel',
-          latitude: point.latitude,
-          longitude: point.longitude,
-          maximumAge: 0,
-          timeoutMs,
-        })
-      } else {
-        writeRawLog('GEO_POSITION_FAILED', {
-          source: 'browser-client-emulator',
-          screen: 'DriverEmulatorPanel',
-          status,
-          maximumAge: 0,
-          timeoutMs,
-        })
-      }
-      resolve(point)
-    }
-    const timer = window.setTimeout(() => finish(null, 'timeout'), timeoutMs)
-    navigator.geolocation.getCurrentPosition(
-      ({ coords }) => {
-        window.clearTimeout(timer)
-        const point = normalizeBrowserLocationPoint(coords)
-        if (point)
-          saveBrowserGeolocationPoint(point, 'navigator')
-        finish(point, point ? 'ok' : 'unavailable')
-      },
-      (error) => {
-        window.clearTimeout(timer)
-        const status = error?.code === error?.PERMISSION_DENIED ?
-          'denied' :
-          error?.code === error?.TIMEOUT ?
-            'timeout' :
-            'unavailable'
-        finish(null, status)
-      },
-      { enableHighAccuracy: true, maximumAge: 0, timeout: timeoutMs },
-    )
-  })
+  // Точный фикс (GPS/Wi-Fi) — основной путь.
+  const precise = await requestBrowserPosition(
+    { enableHighAccuracy: true, maximumAge: 0, timeout: timeoutMs },
+    timeoutMs,
+  )
+  if (precise.point)
+    return precise.point
+
+  onDiagnostic?.(`Геолокация: точный запрос не прошёл (${precise.status}${precise.message ? `: ${precise.message}` : ''}). Пробую сетевое определение.`)
+
+  if (precise.status === 'denied')
+    return null
+
+  // На десктопе без GPS точный фикс часто отваливается по таймауту, а сетевое
+  // определение по Wi-Fi/IP отвечает сразу. Свежесть тут важнее точности до метра.
+  const coarse = await requestBrowserPosition(
+    { enableHighAccuracy: false, maximumAge: EMULATOR_LOCATION_MAX_AGE_MS, timeout: timeoutMs },
+    timeoutMs,
+  )
+  if (coarse.point)
+    return coarse.point
+
+  onDiagnostic?.(`Геолокация: сетевое определение тоже не прошло (${coarse.status}${coarse.message ? `: ${coarse.message}` : ''}).`)
+  return null
 }
 
 function formatEmulatorPoint(point?: Point | null) {
@@ -2065,17 +2142,33 @@ async function buildReachableOrderPoint(origin: Point, label: string, maxMeters:
   return { point: result.point, reachability: result }
 }
 
-async function buildGeneratedPassengerOrder(origin: Point) {
+async function buildGeneratedPassengerOrder(origin: Point, alongTheWay = false) {
   const [fromResult, toResult] = await Promise.all([
-    buildReachableOrderPoint(origin, 'Точка подачи рядом с вами', 650, 120),
-    buildReachableOrderPoint(origin, 'Точка назначения рядом с вами', 2200, 900),
+    // Попутчика ставим вплотную к водителю, иначе «по пути» он не окажется.
+    buildReachableOrderPoint(
+      origin,
+      'Точка подачи рядом с вами',
+      alongTheWay ? ALONG_THE_WAY_PICKUP_MAX_METERS : 650,
+      alongTheWay ? ALONG_THE_WAY_PICKUP_MIN_METERS : 120,
+    ),
+    buildReachableOrderPoint(
+      origin,
+      'Точка назначения рядом с вами',
+      alongTheWay ? ALONG_THE_WAY_DROPOFF_MAX_METERS : 2200,
+      alongTheWay ? ALONG_THE_WAY_DROPOFF_MIN_METERS : 900,
+    ),
   ])
   const from = fromResult.point
   const to = toResult.point
   const price = randInt(260, 460)
   const comment = pick(CLIENT_COMMENTS, 'Тестовый клиентский заказ')
-  const passengers = randInt(1, 3)
-  const mode = pickGeneratedOrderMode()
+  // Попутчик едет один: у водителя уже занято место под текущий заказ, а заказ,
+  // не помещающийся по местам, предикат попутного отсечёт и сценарий не пойдёт.
+  const passengers = alongTheWay ? 1 : randInt(1, 3)
+  // Голосование и предложение идут своими сценариями (код посадки, торг), в
+  // попутные они не годятся — попутчик всегда обычный заказ. Курсор режимов при
+  // этом не двигаем: обычная последовательность не должна сбиваться.
+  const mode: GeneratedOrderMode = alongTheWay ? 'order' : pickGeneratedOrderMode()
   const offerCommentIds = mode === 'offer' ? getOfferResponseBookingCommentIds() : []
   const intercityLocationClass = getDefaultIntercityLocationClassId()
   const cityLocationClass = getDefaultCityLocationClassId()
@@ -2117,7 +2210,10 @@ async function buildGeneratedPassengerOrder(origin: Point) {
 
   return {
     payload,
-    meta: { price, from, to, comment, passengers, mode, origin, reachability: { from: fromResult.reachability, to: toResult.reachability } },
+    meta: {
+      price, from, to, comment, passengers, mode, origin, alongTheWay,
+      reachability: { from: fromResult.reachability, to: toResult.reachability },
+    },
   }
 }
 
@@ -2232,6 +2328,9 @@ export class BrowserClientOrderEmulator {
   private plannedChoiceOutcomes = new Map<string, 'me' | 'other'>()
   private choiceOutcomeCounters = new Map<string, number>()
   private localOrigin: Point | null = null
+  // Расписание попутчиков: «каждый второй заказ» плюс чередование фаз.
+  private alongTheWaySchedule = new AlongTheWaySchedule()
+  private lastAlongTheWayWaitLog = ''
   private lastWakeTickAt = 0
   private wakeListener = (() => {
     if (!this.running) return
@@ -2349,10 +2448,17 @@ export class BrowserClientOrderEmulator {
 
     this.running = true
     generatedOrderModeCursor = 0
+    // Новый прогон — попутчик снова начинается с фазы «до посадки».
+    this.alongTheWaySchedule.reset()
+    this.lastAlongTheWayWaitLog = ''
     setBrowserEmulatorRunning('clients', true)
     this.emitNow()
     this.log(`Эмулятор клиентов запущен вокруг текущей локации: ${formatEmulatorPoint(origin)}`)
     this.log('Создаю новые заказы рядом с текущей геолокацией: сначала голосование, затем предложение/обычный заказ.')
+    this.log(
+      `Каждый ${ALONG_THE_WAY_EVERY_NTH_ORDER}-й заказ — попутный на текущей ноге маршрута водителя;` +
+      ' моменты чередуются: сначала до посадки, затем после.',
+    )
     await this.createOrdersFromAllReadyClients()
     this.ensureTimer()
     this.attachWakeListeners()
@@ -2367,6 +2473,9 @@ export class BrowserClientOrderEmulator {
     this.selectedVotingOrders.clear()
     this.detachWakeListeners()
     setBrowserEmulatorRunning('clients', false)
+    // Смена закончилась: следующий запуск снова начинается там, где физически
+    // стоит устройство, а не там, где водитель бросил прошлую поездку.
+    clearDriverParkedPosition()
     this.log('Эмулятор клиентов остановлен, закрываю тестовые заказы')
     await this.closeCreatedOrders()
     clearBrowserEmulatorOrderIds('clients')
@@ -2380,9 +2489,42 @@ export class BrowserClientOrderEmulator {
   }
 
   private async resolveLocalOrigin() {
-    const point = await getBrowserGeolocationPoint().catch(() => null)
-    if (point)
+    // Заказы появляются вокруг водителя, а не вокруг устройства. Пока смена идёт,
+    // это одно и то же место только в самом начале: закрыв заказ на другом конце
+    // города, водитель там и остаётся — и следующие заказы должны быть рядом с
+    // ним, иначе их подача навсегда привязана к домашнему гео. Живой GPS ниже
+    // остаётся источником для самого первого заказа смены.
+    const driverPosition = getDriverPosition()
+    if (driverPosition) {
+      this.localOrigin = { latitude: driverPosition[0], longitude: driverPosition[1] }
+      return this.localOrigin
+    }
+
+    const point = await getBrowserGeolocationPoint(
+      EMULATOR_GEOLOCATION_TIMEOUT_MS,
+      message => this.log(message),
+    ).catch(() => null)
+    if (point) {
       this.localOrigin = point
+      return this.localOrigin
+    }
+
+    // Живое гео — основной и предпочтительный источник. Ниже только аварийные
+    // варианты на случай, когда браузер/ОС вообще не отдают позицию: без них
+    // эмулятор становится полностью неработоспособным.
+    const manual = getManualOriginPoint()
+    if (manual) {
+      this.localOrigin = manual
+      this.log(`Использую ручную точку из ${MANUAL_ORIGIN_KEY}: ${formatEmulatorPoint(manual)}`)
+      return this.localOrigin
+    }
+
+    const saved = getSavedBrowserGeolocationPoint()
+    if (saved) {
+      this.localOrigin = saved
+      this.log(`Живой геолокации нет, беру последнюю сохранённую точку: ${formatEmulatorPoint(saved)}`)
+      return this.localOrigin
+    }
 
     return this.localOrigin
   }
@@ -2533,6 +2675,42 @@ export class BrowserClientOrderEmulator {
     return client
   }
 
+  /**
+   * Пора ли делать этот заказ попутным. Очередь подошла, водитель едет и именно
+   * в той фазе, которая сейчас на очереди — тогда точку берём с его текущей ноги
+   * маршрута. Если фаза не совпала, очередь остаётся взведённой, а этот тик
+   * отдаёт обычный заказ (см. alongTheWaySchedule.ts).
+   */
+  private planAlongTheWayOrder(): Point | null {
+    if (!this.alongTheWaySchedule.isDue())
+      return null
+
+    const wanted = this.alongTheWaySchedule.wantedPhase
+    const { phase, target } = getDriverTrip()
+    const position = getDriverPosition()
+
+    if (phase !== wanted || !position || !target) {
+      // Лог только на смену причины: иначе он забьётся повтором каждые 32 секунды.
+      const reason = `${wanted}|${phase}|${position && target ? 'geo' : 'nogeo'}`
+      if (this.lastAlongTheWayWaitLog !== reason) {
+        this.lastAlongTheWayWaitLog = reason
+        this.log(
+          `Попутчик ждёт фазы «${getDriverTripPhaseLabel(wanted)}»` +
+          ` (водитель сейчас: ${getDriverTripPhaseLabel(phase)}) — создаю обычный заказ.`,
+        )
+      }
+      return null
+    }
+
+    this.lastAlongTheWayWaitLog = ''
+    // Ставим его на ту ногу, которую водитель едет прямо сейчас — между ним и
+    // его текущей целью. Так попутчик оказывается впереди по пути, а не позади.
+    return {
+      latitude: position[0] + (target[0] - position[0]) * ALONG_THE_WAY_LEG_FRACTION,
+      longitude: position[1] + (target[1] - position[1]) * ALONG_THE_WAY_LEG_FRACTION,
+    }
+  }
+
   private async createOneOrder(clientOverride?: ClientBotState) {
     const client = clientOverride || this.getNextClient()
     if (!client?.session) {
@@ -2540,13 +2718,18 @@ export class BrowserClientOrderEmulator {
       return null
     }
 
-    const emulatorOrigin = await this.resolveLocalOrigin()
+    // Стартовая пачка (создаётся конкретными клиентами) попутчиков не даёт: в
+    // этот момент водитель ещё никуда не едет, и «по пути» ставить некуда.
+    const alongTheWayOrigin = clientOverride ? null : this.planAlongTheWayOrder()
+    const alongTheWayPhase = alongTheWayOrigin ? this.alongTheWaySchedule.wantedPhase : null
+
+    const emulatorOrigin = alongTheWayOrigin ?? await this.resolveLocalOrigin()
     if (!emulatorOrigin) {
       this.log('Заказ не создан: нет геолокации этого устройства. Разрешите доступ к местоположению и повторите запуск эмулятора.')
       return null
     }
 
-    const { payload, meta } = await buildGeneratedPassengerOrder(emulatorOrigin)
+    const { payload, meta } = await buildGeneratedPassengerOrder(emulatorOrigin, Boolean(alongTheWayOrigin))
     const resolvedAddresses = await resolveGeneratedOrderAddresses(meta)
     payload.b_start_address = resolvedAddresses.from.address
     payload.b_destination_address = resolvedAddresses.to.address
@@ -2571,7 +2754,11 @@ export class BrowserClientOrderEmulator {
           this.planChoiceOutcome(String(orderId), meta.mode)
         }
         await confirmPassengerOrder(client.session, orderId)
-        this.log(`[${client.name}] создал заказ ${orderId || '(id unknown)'}; режим=${meta.mode}; около ${formatEmulatorPoint(meta.origin)}; ${meta.from.shortAddress || meta.from.address} → ${meta.to.shortAddress || meta.to.address}; адрес=${meta.from.geocodeSource || 'unknown'}/${meta.to.geocodeSource || 'unknown'}; дорога=${meta.reachability?.from?.source || 'unknown'}/${meta.reachability?.to?.source || 'unknown'}; ${meta.price}; пассажиров=${meta.passengers}`)
+        this.alongTheWaySchedule.register(Boolean(alongTheWayOrigin))
+        const kind = alongTheWayPhase ?
+          `попутный (${getDriverTripPhaseLabel(alongTheWayPhase)}, у водителя)` :
+          `режим=${meta.mode}`
+        this.log(`[${client.name}] создал заказ ${orderId || '(id unknown)'}; ${kind}; около ${formatEmulatorPoint(meta.origin)}; ${meta.from.shortAddress || meta.from.address} → ${meta.to.shortAddress || meta.to.address}; адрес=${meta.from.geocodeSource || 'unknown'}/${meta.to.geocodeSource || 'unknown'}; дорога=${meta.reachability?.from?.source || 'unknown'}/${meta.reachability?.to?.source || 'unknown'}; ${meta.price}; пассажиров=${meta.passengers}`)
         return response
       }
       lastMessage = normalizeErrorMessage(response) || stringifyError(response)

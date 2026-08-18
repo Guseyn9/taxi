@@ -32,7 +32,15 @@ import {
   getPreferredBrowserEmulatorMode,
 } from '../../tools/emulatorMode'
 import { t, TRANSLATION } from '../../localization'
-import { copyAndClearFlowDebugLog, copyAndClearInterfaceLog, copyAndClearRawLog, summarizeOrder, writeFrontendLog } from '../../tools/frontendLog'
+import {
+  copyAndClearAllLogs,
+  copyAndClearDecisionLog,
+  copyAndClearFlowDebugLog,
+  copyAndClearInterfaceLog,
+  copyAndClearRawLog,
+  summarizeOrder,
+  writeFrontendLog,
+} from '../../tools/frontendLog'
 import { Burger } from '../Burger/Burger'
 import DriverStatusAvatar from '../DriverStatusAvatar'
 import DriverEmulatorPanel from '../DriverEmulatorPanel'
@@ -429,6 +437,30 @@ function Header({
     showLogExportResult(result, 'frontend_raw_log_downloaded', 'frontend_raw_log_copied', 'frontend_raw_log_copy_failed')
   }
 
+  const handleCopyDecisionLog = async() => {
+    writeFrontendLog('menu.decisionLog.copy.clicked', {
+      pathname: location.pathname,
+      selectedOrder,
+      activeOrdersCount: activeOrders?.length || 0,
+      role: user?.u_role ?? null,
+    })
+
+    const result = await copyAndClearDecisionLog(getDebugLogSnapshot())
+    showLogExportResult(result, 'frontend_decision_log_downloaded', 'frontend_decision_log_copied', 'frontend_decision_log_copy_failed')
+  }
+
+  const handleCopyAllLogs = async() => {
+    writeFrontendLog('menu.allLogs.copy.clicked', {
+      pathname: location.pathname,
+      selectedOrder,
+      activeOrdersCount: activeOrders?.length || 0,
+      role: user?.u_role ?? null,
+    })
+
+    const result = await copyAndClearAllLogs(getDebugLogSnapshot())
+    showLogExportResult(result, 'frontend_all_logs_downloaded', 'frontend_all_logs_copied', 'frontend_all_logs_copy_failed')
+  }
+
   const isDriverLogArea = user?.u_role === EUserRoles.Driver || location.pathname.includes('/driver-order')
   const isPassengerLogArea = !isDriverLogArea
 
@@ -449,7 +481,19 @@ function Header({
       label: t('frontend_raw_log_menu'),
       action: () => handleCopyRawLog(),
     })
+    // Decision Log — водительский журнал: он снимает решения о видимости заказов
+    // и таймлайн водителя, на пассажирской стороне его записей нет.
+    menuItems.push({
+      label: t('frontend_decision_log_menu'),
+      action: () => handleCopyDecisionLog(),
+    })
   }
+
+  // Разбор аномалии почти всегда требует всех журналов сразу, сшитых по sessionId.
+  menuItems.push({
+    label: t('frontend_all_logs_menu'),
+    action: () => handleCopyAllLogs(),
+  })
 
   const languages = SITE_CONSTANTS.LANGUAGES
     .filter(x => x.iso !== (config.SavedConfig !== 'children' ? ' ' : 'ru'))

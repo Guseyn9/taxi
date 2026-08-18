@@ -23,7 +23,7 @@ const RAW_LOG_STORAGE_KEY = 'taxi_raw_log_v1'
 const RAW_SESSION_STORAGE_KEY = 'taxi_raw_session_id_v1'
 const RAW_DEVICE_STORAGE_KEY = 'taxi_raw_device_id_v1'
 const RAW_LIFECYCLE_INITIALIZED_KEY = '__taxiRawLifecycleInitialized'
-const MAX_RAW_RECORDS = 3000
+export const MAX_RAW_RECORDS = 3000
 const MAX_DEPTH = 6
 const MAX_ARRAY_ITEMS = 80
 const MAX_STRING_LENGTH = 1400
@@ -175,11 +175,15 @@ function getPlatform() {
   return 'web'
 }
 
-function getSessionId() {
+/**
+ * Идентификатор сессии общий для всех трёх журналов (RAW, Flow, Decision):
+ * без него экспортированные логи невозможно сшить между собой.
+ */
+export function getSessionId() {
   return getStorageValue(RAW_SESSION_STORAGE_KEY, makeId('session'))
 }
 
-function getDeviceId() {
+export function getDeviceId() {
   return getStorageValue(RAW_DEVICE_STORAGE_KEY, makeId('device'))
 }
 

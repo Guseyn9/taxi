@@ -10,10 +10,13 @@ import { modalsActionCreators, modalsSelectors } from '../../state/modals'
 import { IRootState } from '../../state'
 import Overlay from './Overlay'
 import { orderSelectors } from '../../state/order'
+import { userSelectors } from '../../state/user'
+import { clearOrderCancelledByDriver, markOrderCancelledByDriver } from '../../tools/driverSelfCancel'
 
 const mapStateToProps = (state: IRootState) => ({
   isOpen: modalsSelectors.isDriverCancelModalOpen(state),
   selectedOrderId: orderSelectors.selectedOrderId(state),
+  user: userSelectors.user(state),
 })
 
 const mapDispatchToProps = {
@@ -29,13 +32,20 @@ const CancelDriverOrderModal: React.FC<IProps> = ({
   isOpen,
   setDriverCancelModal,
   selectedOrderId,
+  user,
 }) => {
   const navigate = useNavigate()
 
   const onCancel = () => {
     console.log('onCancel', selectedOrderId)
     if (selectedOrderId) {
+      // Отмена водителем не должна отзываться окном «Клиент отменил заказ».
+      markOrderCancelledByDriver(selectedOrderId, user?.u_id)
       API.cancelDrive(selectedOrderId)
+        .catch(error => {
+          console.error(error)
+          clearOrderCancelledByDriver(selectedOrderId, user?.u_id)
+        })
       navigate('/driver-order')
     }
     setDriverCancelModal(false)

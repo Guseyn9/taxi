@@ -1,4 +1,4 @@
-import { writeRawLog } from './rawLog'
+import { getDeviceId, getSessionId, writeRawLog } from './rawLog'
 
 type JsonLike = string | number | boolean | null | JsonLike[] | { [key: string]: JsonLike }
 
@@ -45,6 +45,11 @@ export type FlowEvent =
   | 'ERROR_SHOWN_TO_DRIVER'
   | 'ORDER_STATE_CHANGED'
   | 'DRIVER_GEOLOCATION_SNAPSHOT'
+  // Факты об источнике координат. Сами координаты идут только в RAW —
+  // Flow остаётся журналом бизнес-процесса и не должен тонуть в телеметрии.
+  | 'LOCATION_SOURCE_CHANGED'
+  | 'EMULATOR_GEO_STARTED'
+  | 'EMULATOR_GEO_STOPPED'
   | 'ACTIVE_ORDER_LOCATION_EVALUATED'
   | 'ACTIVE_ORDER_FILTER_DECISION'
   | 'EMULATOR_MODE_CHANGED'
@@ -118,7 +123,7 @@ interface FlowLogData {
 export const FLOW_LOG_STORAGE_KEY = 'taxi_flow_log_v1'
 const FLOW_SCENARIO_STORAGE_KEY = 'taxi_flow_scenario_v1'
 const DEFAULT_SCENARIO = 'PassengerOrderFlow'
-const MAX_FLOW_STEPS = 400
+export const MAX_FLOW_STEPS = 400
 const MAX_DEPTH = 5
 const MAX_ARRAY_ITEMS = 50
 const MAX_STRING_LENGTH = 900
@@ -323,7 +328,13 @@ export function writeFlowEvent(event: FlowEvent, payload: any = {}) {
 }
 
 export function getFlowLogSnapshot() {
-  return readFlowLog()
+  // sessionId/deviceId общие с RAW и Decision: без них три выгруженных журнала
+  // невозможно сшить в одну ленту времени.
+  return {
+    ...readFlowLog(),
+    sessionId: getSessionId(),
+    deviceId: getDeviceId(),
+  }
 }
 
 export function clearFlowLog() {

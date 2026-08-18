@@ -296,6 +296,8 @@ interface IProps extends ConnectedProps<typeof connector> {
   isHistory?: boolean,
   isSelected?: boolean,
   innerRef?: React.Ref<HTMLDivElement>
+  /** Группа прибыльности 0..4 среди актуальных заказов — та же, что у булавок на карте. */
+  profitBucket?: number,
 }
 
 function MiniOrder({
@@ -310,6 +312,7 @@ function MiniOrder({
   isSelected,
   onSelect,
   innerRef,
+  profitBucket,
 }: IProps) {
   void language
 
@@ -418,6 +421,9 @@ function MiniOrder({
           [EOrderProfitRank.Medium]: 'medium',
           [EOrderProfitRank.High]: 'high',
         }[order.profitRank]}`,
+        // Перцентильный класс перекрывает абсолютный low/medium/high (правила в scss),
+        // как это уже сделано для хинтов над булавками заказов на карте.
+        profitBucket !== undefined && `mini-order--profit-p${profitBucket}`,
       )}
       onClick={() => {
         onSelect?.(order.b_id)

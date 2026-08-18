@@ -1732,3 +1732,50 @@ $high-profit-fg: #22A613;
 .status-card__modal .address__row .svg {
   min-width: 28px;
 }
+
+
+/* Перцентильная раскраска карточек по прибыльности — те же цвета и та же логика,
+   что у хинтов над булавками заказов на карте (pages/Driver/styles.scss).
+   p0 — нижние 20% (🔴 хуже остальных) … p4 — верхние 20% (💚 лучшие). Объявлены
+   ПОСЛЕ абсолютных low/medium/high, поэтому перекрывают их; убыточные — ниже всех. */
+.status-card--profit-p0 {
+  background: rgba(248, 196, 190, .97) !important;
+}
+
+.status-card--profit-p1 {
+  background: rgba(255, 210, 158, .97) !important;
+}
+
+.status-card--profit-p2 {
+  background: rgba(255, 244, 165, .97) !important;
+}
+
+.status-card--profit-p3 {
+  background: rgba(206, 240, 190, .97) !important;
+}
+
+.status-card--profit-p4 {
+  background: rgba(170, 238, 176, .98) !important;
+}
+
+.status-card--profit-p4 .status-card__profit {
+  color: #0a7a2f !important;
+  font-weight: 800 !important;
+}
+
+.status-card--profit-p0 .status-card__profit {
+  color: #a12318 !important;
+  font-weight: 800 !important;
+}
+
+/* Убыточный заказ виден как убыточный при любой группе: цвет группы говорит
+   «лучше или хуже соседних», а минус — «ехать невыгодно вообще». */
+.status-card--profit-negative {
+  background: rgba(242, 239, 237, .97) !important;
+  filter: saturate(.78) brightness(.98) !important;
+}
+
+.status-card--profit-negative .status-card__profit {
+  color: #8B1010 !important;
+  font-weight: 700 !important;
+}

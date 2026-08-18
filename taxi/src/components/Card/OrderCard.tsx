@@ -19,6 +19,7 @@ import {
   shortenAddress,
   formatCurrency,
 } from '../../tools/utils'
+import { formatShortAddress } from '../../tools/address'
 import { useSelector } from '../../tools/hooks'
 import {
   ordersDetailsSelectors,
@@ -193,6 +194,8 @@ interface IProps extends ConnectedProps<typeof connector> {
   showChat?: boolean,
   onSelect?: (id: IOrder['b_id']) => void,
   isSelected?: boolean
+  /** Группа прибыльности 0..4 среди актуальных заказов — та же, что у булавок на карте. */
+  profitBucket?: number,
 }
 
 function OrderCard({
@@ -207,6 +210,7 @@ function OrderCard({
   onClick,
   onSelect,
   isSelected,
+  profitBucket,
 }: IProps) {
 
   useEffect(() => {
@@ -237,7 +241,15 @@ function OrderCard({
       ),
     }
 
-  const destinationText = getOrderDestinationText(order, destinationAddress) || t(TRANSLATION.ADDRESS_NOT_SPECIFIED)
+  // В список идёт короткий адрес, полный остаётся в подсказке: на телефоне
+  // административный «хвост» геокодера занимал пол-карточки.
+  const fullFromText = getAddressString(
+    address?.shortAddress || address?.address || order.b_start_address,
+  )
+  const fromText = formatShortAddress(fullFromText)
+
+  const fullDestinationText = getOrderDestinationText(order, destinationAddress)
+  const destinationText = formatShortAddress(fullDestinationText) || t(TRANSLATION.ADDRESS_NOT_SPECIFIED)
 
   const offerOrder = isOfferOrder(order)
   const votingOrder = isVotingOrder(order)
@@ -280,6 +292,9 @@ function OrderCard({
           [EOrderProfitRank.Medium]: 'medium',
           [EOrderProfitRank.High]: 'high',
         }[order.profitRank]}`,
+        // Перцентильный класс перекрывает абсолютный low/medium/high (правила в scss),
+        // как это уже сделано для хинтов над булавками заказов на карте.
+        profitBucket !== undefined && `status-card--profit-p${profitBucket}`,
         className,
       )}
       style={style}
@@ -326,9 +341,9 @@ function OrderCard({
           <div className="status-card__from">
             <span className="status-card__from-address">
               {t(TRANSLATION.FROM)}:
-              {address ?
-                <span>{address?.shortAddress ? address?.shortAddress : address?.address}</span> :
-                order.b_start_address ? <span>{order.b_start_address}</span> : <Loader />
+              {fromText ?
+                <span title={fullFromText}>{fromText}</span> :
+                <Loader />
               }
               {/* {start?.shortAddress && (
                 <img
@@ -339,7 +354,7 @@ function OrderCard({
               )} */}
 
               {t(TRANSLATION.TO)}:
-              <span>{destinationText}</span>
+              <span title={fullDestinationText}>{destinationText}</span>
             </span>
           </div>
 

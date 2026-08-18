@@ -12,6 +12,8 @@ import {
 import images from '../constants/images'
 import SITE_CONSTANTS, { CURRENCY } from '../siteConstants'
 import { t, TRANSLATION } from '../localization'
+import { distanceBetweenEarthCoordinates } from './geo'
+import { recordOrderInteraction } from './orderInteractionLog'
 
 export function firstItem<T>(value: Iterable<T>): T | undefined {
   for (const item of value)
@@ -393,28 +395,10 @@ export const getCurrentLocationError = (point?: IAddressPoint | null) => {
   return null
 }
 
-const degreesToRadians = (degrees: number): number => {
-  return degrees * Math.PI / 180
-}
-
-export const distanceBetweenEarthCoordinates = (
-  lat1: number,
-  lon1: number,
-  lat2: number,
-  lon2: number,
-): number => {
-  const earthRadiusKm = 6371
-
-  let dLat = degreesToRadians(lat2-lat1),
-    dLon = degreesToRadians(lon2-lon1)
-
-  lat1 = degreesToRadians(lat1)
-  lat2 = degreesToRadians(lat2)
-
-  let a = Math.sin(dLat/2) * Math.sin(dLat/2) + Math.sin(dLon/2) * Math.sin(dLon/2) * Math.cos(lat1) * Math.cos(lat2),
-    c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a))
-  return earthRadiusKm * c
-}
+// Формула переехала в tools/geo.ts — модуль без зависимостей, чтобы её могли
+// использовать юнит-тестируемые модули, не втягивая локализацию и redux.
+// Реэкспорт сохраняет прежнее место импорта для остального кода.
+export { distanceBetweenEarthCoordinates }
 
 export const getAngle = (from: IAddressPoint, to: IAddressPoint) => {
   if (!to.longitude || !from.longitude || !to.latitude || !from.latitude) return
@@ -616,8 +600,13 @@ export function addHiddenOrder(orderID?: IOrder['b_id'], userID?: IUser['u_id'])
   if (!orderID || !userID) return
   const hiddenOrders = JSON.parse(localStorage.getItem('hiddenOrders') || '{}')
   const currentOrders: IOrder['b_id'][] = Array.isArray(hiddenOrders[userID]) ? hiddenOrders[userID] : []
-  hiddenOrders[userID] = currentOrders.includes(orderID) ? currentOrders : [...currentOrders, orderID]
+  const alreadyHidden = currentOrders.includes(orderID)
+  hiddenOrders[userID] = alreadyHidden ? currentOrders : [...currentOrders, orderID]
   localStorage.setItem('hiddenOrders', JSON.stringify(hiddenOrders))
+  // Единственная точка, через которую заказ уходит из выдачи по решению самого
+  // водителя, — поэтому шаг таймлайна пишется здесь, а не на каждой кнопке.
+  if (!alreadyHidden)
+    recordOrderInteraction({ step: 'HIDDEN_BY_DRIVER', orderId: orderID, driverId: userID })
   window.dispatchEvent(new CustomEvent('hiddenOrdersChanged', { detail: { orderID, userID } }))
 }
 

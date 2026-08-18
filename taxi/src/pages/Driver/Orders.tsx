@@ -30,6 +30,16 @@ import { writeRawLog } from '../../tools/rawLog'
 import { summarizeOrder } from '../../tools/frontendLog'
 import { isVotingOrder } from '../../tools/driverOffer'
 import { getOrderIdText } from '../../tools/orderId'
+import { computeProfitPercentiles } from '../../tools/order'
+import { canDriverTakeOrderBySeats, getCarCapacity, getDriverFreeSeats } from '../../tools/driverCapacity'
+import {
+  buildOrderDecisionContext,
+  getHiddenOrderIds,
+  mergeDecisionStageOrders,
+} from '../../tools/orderDecisionContext'
+import { trackOrderDecisions } from '../../tools/orderDecisionTracker'
+import { recordOrderInteraction } from '../../tools/orderInteractionLog'
+import { carsSelectors } from '../../state/cars'
 import './styles.scss'
 
 const mapDispatchToProps = {
@@ -41,6 +51,7 @@ const mapDispatchToProps = {
 
 const mapStateToProps = (state: IRootState) => ({
   language: configSelectors.language(state),
+  driverCar: carsSelectors.userDrivenCar(state),
 })
 
 const connector = connect(mapStateToProps, mapDispatchToProps)
@@ -63,6 +74,7 @@ const DriverOrders: React.FC<IProps> = ({
   closeAllModals,
   setUser,
   language,
+  driverCar,
 }) => {
   const languageIso = language?.iso
   const [showCandidateOrders, setShowCandidateOrders] = useState(true)
@@ -99,6 +111,14 @@ const DriverOrders: React.FC<IProps> = ({
 
   const handleOrderClick = (id: string) => navigate(`/driver-order/${id}`)
 
+  // Выделение карточки — отдельный наблюдаемый шаг: водитель уже обратил на
+  // заказ внимание, но экран заказа ещё не открыл.
+  const handleOrderSelect = (id: IOrder['b_id'] | null) => {
+    setSelectedOrderId(id)
+    if (id !== null && id !== selectedOrderId)
+      recordOrderInteraction({ step: 'SELECTED', orderId: id, driverId: user?.u_id, surface: 'LIST' })
+  }
+
   const handleDrovePassengerClick = () => {
     API.setOutDrive(true)
       .then(API.getAuthorizedUser)
@@ -118,18 +138,42 @@ const DriverOrders: React.FC<IProps> = ({
 
   const emulatorOrdersVisible = isBrowserEmulatorRunning('clients') || isBrowserEmulatorRunning('drivers')
 
+  // Взял заказ на трёх пассажиров при четырёх местах — в салоне осталось одно
+  // место, и предлагать заказы на двоих и больше уже нельзя. Считаем остаток
+  // мест и скрываем всё, что в него не влезает (свои заказы не трогаем).
+  const carCapacity = getCarCapacity(driverCar)
+  const driverFreeSeats = useMemo(
+    () => getDriverFreeSeats(driverCar, activeOrders, user?.u_id),
+    [carCapacity, activeOrders, user?.u_id],
+  )
+
   const visibleActiveOrders = useMemo(() =>
     activeOrders?.filter(item =>
       !hiddenOrderIds.includes(item.b_id) &&
+      canDriverTakeOrderBySeats(item, driverFreeSeats, user?.u_id) &&
       (!isAnyBrowserEmulatorOrder(item) || emulatorOrdersVisible || isDriverActuallyAssigned(item, user?.u_id))
     ) ?? null
-  , [activeOrders, hiddenOrderIds.join('|'), emulatorOrdersVisible, user?.u_id])
+  , [activeOrders, hiddenOrderIds.join('|'), emulatorOrdersVisible, user?.u_id, driverFreeSeats])
   const visibleReadyOrders = useMemo(() =>
     readyOrders?.filter(item =>
       !hiddenOrderIds.includes(item.b_id) &&
+      canDriverTakeOrderBySeats(item, driverFreeSeats, user?.u_id) &&
       (!isAnyBrowserEmulatorOrder(item) || emulatorOrdersVisible)
     ) ?? null
-  , [readyOrders, hiddenOrderIds.join('|'), emulatorOrdersVisible])
+  , [readyOrders, hiddenOrderIds.join('|'), emulatorOrdersVisible, driverFreeSeats, user?.u_id])
+
+  // Та же перцентильная раскраска, что у хинтов над булавками на карте: цвет
+  // показывает, насколько заказ выгоднее остальных актуальных. Пул специально
+  // совпадает с картой (активные + свободные, без истории), иначе один и тот же
+  // заказ был бы «зелёным» на карте и «жёлтым» в списке.
+  const orderProfitPercentiles = useMemo(
+    () => computeProfitPercentiles([
+      ...(visibleActiveOrders ?? []),
+      ...(visibleReadyOrders ?? []),
+    ]),
+    [visibleActiveOrders, visibleReadyOrders],
+  )
+  const profitBucketOf = (order: IOrder) => orderProfitPercentiles[String(order.b_id)]
 
   const candidateOrders = visibleActiveOrders?.filter(item => {
     return (
@@ -149,6 +193,24 @@ const DriverOrders: React.FC<IProps> = ({
       ...(showHistoryOrders ? (historyOrders ?? []).map(order => ({ section: 'history', order })) : []),
     ]
     const visibleOrderIds = visibleSections.map(item => String(item.order.b_id))
+
+    // Decision Log, стадия «список водителя»: на входе всё, что отдал селектор,
+    // на выходе — заказы, у которых реально отрисована карточка. Трекер сам
+    // отбросит повтор, если матрица с прошлого раза не изменилась.
+    trackOrderDecisions({
+      stage: 'LIST_UI',
+      orders: mergeDecisionStageOrders(activeOrders, readyOrders),
+      visibleOrderIds,
+      context: buildOrderDecisionContext({
+        user,
+        car: driverCar,
+        activeOrders,
+        hiddenOrderIds,
+        freeSeats: driverFreeSeats,
+        carCapacity,
+      }),
+    })
+
     const renderKey = JSON.stringify({
       tab: type,
       userId: user?.u_id ?? null,
@@ -159,6 +221,8 @@ const DriverOrders: React.FC<IProps> = ({
       readyCards: (visibleReadyOrders ?? []).map(order => order.b_id),
       historyCards: showHistoryOrders ? (historyOrders ?? []).map(order => order.b_id) : [],
       hiddenOrderIds,
+      carCapacity,
+      driverFreeSeats,
       showCandidateOrders,
       showReadyOrders,
       showHistoryOrders,
@@ -184,6 +248,8 @@ const DriverOrders: React.FC<IProps> = ({
         visibleHistoryOrdersCount: showHistoryOrders ? historyOrders?.length ?? null : 0,
         hiddenOrderIds,
         emulatorOrdersVisible,
+        carCapacity,
+        driverFreeSeats,
         showCandidateOrders,
         showReadyOrders,
         showHistoryOrders,
@@ -344,6 +410,8 @@ const DriverOrders: React.FC<IProps> = ({
     visibleReadyOrders?.map(order => order.b_id).join('|'),
     hiddenOrderIds.join('|'),
     emulatorOrdersVisible,
+    carCapacity,
+    driverFreeSeats,
     showCandidateOrders,
     showReadyOrders,
     showHistoryOrders,
@@ -491,17 +559,19 @@ const DriverOrders: React.FC<IProps> = ({
                 user={user as IUser}
                 order={item}
                 onClick={() => handleOrderClick(item.b_id)}
-                onSelect={setSelectedOrderId}
+                onSelect={handleOrderSelect}
                 isSelected={selectedOrderId === item.b_id}
                 innerRef={setOrderCardRef(item.b_id)}
+                profitBucket={profitBucketOf(item)}
                 key={item.b_id}
               /> :
               <StatusCard
                 className="driver-order-wide-mode-status-card"
                 style={{ boxShadow: '0px 1px 7px rgba(0, 0, 0, 0.23)', border: 'none' }}
                 onClick={() => handleOrderClick(item.b_id)}
-                onSelect={setSelectedOrderId}
+                onSelect={handleOrderSelect}
                 isSelected={selectedOrderId === item.b_id}
+                profitBucket={profitBucketOf(item)}
                 key={item.b_id}
                 order={item}
                 user={user as IUser}
@@ -531,9 +601,10 @@ const DriverOrders: React.FC<IProps> = ({
                     user={user as IUser}
                     order={item}
                     onClick={() => handleOrderClick(item.b_id)}
-                    onSelect={setSelectedOrderId}
+                    onSelect={handleOrderSelect}
                     isSelected={selectedOrderId === item.b_id}
                     innerRef={setOrderCardRef(item.b_id)}
+                    profitBucket={profitBucketOf(item)}
                     key={item.b_id}
                     isHistory={false}
                   /> :
@@ -541,8 +612,9 @@ const DriverOrders: React.FC<IProps> = ({
                     className="driver-order-wide-mode-status-card"
                     style={{ boxShadow: '0px 1px 7px rgba(0, 0, 0, 0.23)', border: 'none' }}
                     onClick={() => handleOrderClick(item.b_id)}
-                    onSelect={setSelectedOrderId}
+                    onSelect={handleOrderSelect}
                     isSelected={selectedOrderId === item.b_id}
+                    profitBucket={profitBucketOf(item)}
                     key={item.b_id}
                     order={item}
                     user={user as IUser}
@@ -560,6 +632,9 @@ const DriverOrders: React.FC<IProps> = ({
       <div
         className={cn('driver-orders driver-orders--ready', { 'driver-orders--active': showReadyOrders })}
       >
+        <div className="driver-orders__free-seats">
+          {t(TRANSLATION.DRIVER_OFFER_SEATS)}: <b>{driverFreeSeats}</b> / {carCapacity}
+        </div>
         <div className="driver-statuses">
           {
             statuses.map(status => {
@@ -587,17 +662,19 @@ const DriverOrders: React.FC<IProps> = ({
                 user={user as IUser}
                 order={item}
                 onClick={() => handleOrderClick(item.b_id)}
-                onSelect={setSelectedOrderId}
+                onSelect={handleOrderSelect}
                 isSelected={selectedOrderId === item.b_id}
                 innerRef={setOrderCardRef(item.b_id)}
+                profitBucket={profitBucketOf(item)}
                 key={item.b_id}
                 isHistory={false}
               /> :
               <StatusCard
                 style={{ boxShadow: '0px 1px 7px rgba(0, 0, 0, 0.23)', border: 'none' }}
                 onClick={() => handleOrderClick(item.b_id)}
-                onSelect={setSelectedOrderId}
+                onSelect={handleOrderSelect}
                 isSelected={selectedOrderId === item.b_id}
+                profitBucket={profitBucketOf(item)}
                 key={item.b_id}
                 order={item}
                 user={user as IUser}
@@ -622,7 +699,7 @@ const DriverOrders: React.FC<IProps> = ({
                 user={user as IUser}
                 order={item}
                 onClick={() => handleOrderClick(item.b_id)}
-                onSelect={setSelectedOrderId}
+                onSelect={handleOrderSelect}
                 isSelected={selectedOrderId === item.b_id}
                 innerRef={setOrderCardRef(item.b_id)}
                 key={item.b_id}
@@ -632,7 +709,7 @@ const DriverOrders: React.FC<IProps> = ({
                 className="driver-order-wide-mode-status-card"
                 style={{ boxShadow: '0px 1px 7px rgba(0, 0, 0, 0.23)', border: 'none' }}
                 onClick={() => handleOrderClick(item.b_id)}
-                onSelect={setSelectedOrderId}
+                onSelect={handleOrderSelect}
                 isSelected={selectedOrderId === item.b_id}
                 key={item.b_id}
                 order={item}
@@ -663,18 +740,6 @@ function isDriverActuallyAssigned(order: IOrder, userID?: string) {
 }
 
 export default connector(DriverOrders)
-
-function getHiddenOrderIds(userID?: IUser['u_id']): string[] {
-  if (!userID)
-    return []
-
-  try {
-    const hiddenOrders = JSON.parse(localStorage.getItem('hiddenOrders') || '{}')
-    return Array.isArray(hiddenOrders?.[userID]) ? hiddenOrders[userID] : []
-  } catch {
-    return []
-  }
-}
 
 function isVotingOrderExpired(order: IOrder) {
   if (hasVotingSelectedDriver(order))
