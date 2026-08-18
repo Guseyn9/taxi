@@ -1,5 +1,7 @@
-import { clearFlowLog, getFlowLogSnapshot, validatePassengerLifecycleFlow, validateReviewFlow, validateSuccessfulVotingTrip } from './flowLog'
-import { clearRawLog, getRawLogSnapshot, setupRawLifecycleLogging, writeRawLog } from './rawLog'
+import { MAX_FLOW_STEPS, clearFlowLog, getFlowLogSnapshot, validatePassengerLifecycleFlow, validateReviewFlow, validateSuccessfulVotingTrip } from './flowLog'
+import { MAX_RAW_RECORDS, clearRawLog, getRawLogSnapshot, setupRawLifecycleLogging, writeRawLog } from './rawLog'
+import { MAX_DECISION_RECORDS, clearDecisionLog, getDecisionLogSnapshot } from './decisionLog'
+import { getLegacyInterpretationManifest } from './legacyLogReasons'
 
 type JsonLike = string | number | boolean | null | JsonLike[] | { [key: string]: JsonLike }
 
@@ -468,6 +470,134 @@ export async function copyAndClearRawLog(extraSnapshot?: any) {
   return {
     ...exported,
     entriesCount: raw.entries.length,
+    text,
+  }
+}
+
+/**
+ * Decision Log выгружается отдельным файлом: это журнал фактов для анализатора,
+ * а не диагностика интерфейса.
+ */
+export async function copyAndClearDecisionLog(extraSnapshot?: any) {
+  const decision = getDecisionLogSnapshot()
+  const data = {
+    ...decision,
+    // Анализатор должен знать, каким полям в файле верить нельзя.
+    legacyInterpretation: getLegacyInterpretationManifest(),
+    currentSnapshot: sanitize(extraSnapshot),
+  }
+  const text = JSON.stringify(data, null, 2)
+  const exported = await exportLogText(text, 'decision')
+
+  if (exported.downloaded || exported.copied) {
+    clearDecisionLog()
+  }
+  else {
+    try {
+      // eslint-disable-next-line no-console
+      console.info('[taxi-decision-log-export]', text)
+    } catch (_) {}
+  }
+
+  return {
+    ...exported,
+    entriesCount: decision.entries.length,
+    text,
+  }
+}
+
+/**
+ * Сколько записей содержит выгрузка и каковы лимиты буферов. Нужен, чтобы обрезка
+ * не была молчаливой: счётчик, равный лимиту, означает, что начало смены вытеснено.
+ *
+ * Размера в байтах здесь намеренно нет — его видно по самому файлу, а посчитать его
+ * можно было бы только второй сериализацией всего бандла, а он весит мегабайты.
+ */
+function summarizeLogVolume(counts: Record<string, number>) {
+  const limits = {
+    rawRecords: MAX_RAW_RECORDS,
+    flowSteps: MAX_FLOW_STEPS,
+    decisionRecords: MAX_DECISION_RECORDS,
+    interfaceEntries: MAX_LOG_ENTRIES,
+  }
+
+  return {
+    entryCounts: counts,
+    totalEntries: Object.values(counts).reduce((sum, count) => sum + count, 0),
+    limits,
+    atLimit: Object.entries({
+      raw: counts.raw >= limits.rawRecords,
+      flow: counts.flow >= limits.flowSteps,
+      decision: counts.decision >= limits.decisionRecords,
+      interfaceLog: counts.interfaceLog >= limits.interfaceEntries,
+    }).filter(([, reached]) => reached).map(([name]) => name),
+    note: 'Журналы — кольцевые буферы. Журнал из atLimit достиг предела: его самые старые записи вытеснены.',
+  }
+}
+
+/**
+ * Все четыре журнала одним файлом. Разбор аномалии почти всегда требует их
+ * вместе: Decision Log говорит, что система решила, RAW — что при этом
+ * происходило с координатами, Flow — как шёл бизнес-процесс. Сшиваются они по
+ * общему `sessionId`.
+ */
+export async function copyAndClearAllLogs(extraSnapshot?: any) {
+  flushFrontendLogStorage()
+  const raw = getRawLogSnapshot()
+  const flow = getFlowLogSnapshot()
+  const decision = getDecisionLogSnapshot()
+  const interfaceEntries = getCachedEntries()
+  const interfaceSnapshots = getCachedSnapshots()
+
+  const data = {
+    title: 'taxi full log bundle',
+    specification: 'DECISION_LOG_SPEC_RU.md',
+    exportedAt: safeNow(),
+    sessionId: raw.session_id,
+    deviceId: raw.device_id,
+    appVersion: raw.app_version,
+    platform: raw.platform,
+    volume: summarizeLogVolume({
+      decision: decision.entries.length,
+      raw: raw.entries.length,
+      flow: flow.steps.length,
+      interfaceLog: interfaceEntries.length,
+    }),
+    environment: getEnvironmentSnapshot(),
+    currentSnapshot: sanitize(extraSnapshot),
+    legacyInterpretation: getLegacyInterpretationManifest(),
+    decision,
+    raw,
+    flow,
+    flowCheck: validatePassengerLifecycleFlow(flow),
+    reviewFlowCheck: validateReviewFlow(flow),
+    votingFlowCheck: validateSuccessfulVotingTrip(flow),
+    interfaceLog: {
+      entries: interfaceEntries,
+      latestSnapshots: sanitize(interfaceSnapshots),
+    },
+  }
+
+  const text = JSON.stringify(data, null, 2)
+  const exported = await exportLogText(text, 'all')
+
+  if (exported.downloaded || exported.copied) {
+    clearDecisionLog()
+    clearRawLog()
+    clearFlowLog()
+    clearFrontendLog()
+  }
+  else {
+    try {
+      // eslint-disable-next-line no-console
+      console.info('[taxi-all-logs-export]', text)
+    } catch (_) {}
+  }
+
+  return {
+    ...exported,
+    entriesCount: data.volume.totalEntries,
+    byteLength: text.length,
     text,
   }
 }

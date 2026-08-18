@@ -10,8 +10,10 @@ import {
 } from '../../state/orderControlMode'
 import {
   EOrderControlMode,
+  ERealisticSubMode,
   ORDER_CONTROL_MODE_ORDER,
 } from '../../state/orderControlMode/constants'
+import OrderModeSubModeModal from '../OrderModeSubModeModal'
 import './styles.scss'
 
 /** Через сколько после клика фактически применяется режим и показывается тост. */
@@ -26,10 +28,16 @@ function getNextMode(mode: EOrderControlMode): EOrderControlMode {
   return ORDER_CONTROL_MODE_ORDER[(index + 1) % ORDER_CONTROL_MODE_ORDER.length]
 }
 
-function getModeName(mode: EOrderControlMode): string {
+function getModeName(mode: EOrderControlMode, subMode?: ERealisticSubMode): string {
   switch (mode) {
     case EOrderControlMode.Realistic:
-      return t(TRANSLATION.ORDER_MODE_REALISTIC)
+      // Подтип у Реалистичного всегда выбран, но пока он не спрошен (первые 2 с
+      // после клика) показываем нейтральное имя режима.
+      if (!subMode)
+        return t(TRANSLATION.ORDER_MODE_REALISTIC)
+      return t(subMode === ERealisticSubMode.Minus ?
+        TRANSLATION.ORDER_MODE_REALISTIC_MINUS :
+        TRANSLATION.ORDER_MODE_REALISTIC_PLUS)
     case EOrderControlMode.Strict:
       return t(TRANSLATION.ORDER_MODE_STRICT)
     case EOrderControlMode.Manual:
@@ -50,7 +58,7 @@ const ModeIcon: React.FC<{ mode: EOrderControlMode }> = ({ mode }) => {
   )
 }
 
-const OrderModeToast: React.FC<{ mode: EOrderControlMode }> = ({ mode }) => {
+const OrderModeToast: React.FC<{ name: string }> = ({ name }) => {
   if (typeof document === 'undefined')
     return null
 
@@ -58,7 +66,7 @@ const OrderModeToast: React.FC<{ mode: EOrderControlMode }> = ({ mode }) => {
     <div className="order-mode-toast" role="status">
       <img className="order-mode-toast__icon" src={images.orderModeComplete} alt="" />
       <span className="order-mode-toast__text">
-        {getModeName(mode)} {t(TRANSLATION.ORDER_MODE_ENABLED)}
+        {name} {t(TRANSLATION.ORDER_MODE_ENABLED)}
       </span>
     </div>,
     document.body,
@@ -68,13 +76,17 @@ const OrderModeToast: React.FC<{ mode: EOrderControlMode }> = ({ mode }) => {
 const OrderModeButton: React.FC = () => {
   const dispatch = useDispatch()
   const committedMode = useSimpleSelector(orderControlModeSelectors.orderControlMode)
+  const committedSubMode = useSimpleSelector(orderControlModeSelectors.realisticSubMode)
 
   // То, что показывается на кнопке (меняется сразу по клику).
   const [displayMode, setDisplayMode] = useState<EOrderControlMode>(committedMode)
   const [spinning, setSpinning] = useState(false)
-  const [toastMode, setToastMode] = useState<EOrderControlMode | null>(null)
+  const [toastName, setToastName] = useState<string | null>(null)
+  // Окно выбора подтипа Реалистичного — открывается после применения режима.
+  const [subModePrompt, setSubModePrompt] = useState(false)
 
   const commitTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const subModeCommitTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const spinTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const interactingRef = useRef(false)
@@ -87,8 +99,15 @@ const OrderModeButton: React.FC = () => {
 
   useEffect(() => () => {
     if (commitTimer.current) clearTimeout(commitTimer.current)
+    if (subModeCommitTimer.current) clearTimeout(subModeCommitTimer.current)
     if (spinTimer.current) clearTimeout(spinTimer.current)
     if (toastTimer.current) clearTimeout(toastTimer.current)
+  }, [])
+
+  const showToast = useCallback((name: string) => {
+    setToastName(name)
+    if (toastTimer.current) clearTimeout(toastTimer.current)
+    toastTimer.current = setTimeout(() => setToastName(null), TOAST_DURATION_MS)
   }, [])
 
   const handleClick = useCallback(() => {
@@ -103,15 +122,41 @@ const OrderModeButton: React.FC = () => {
 
     // Фактическое переключение — только через 2 секунды бездействия.
     if (commitTimer.current) clearTimeout(commitTimer.current)
+    // Клик отменяет отложенное включение Реалистичного, если водитель
+    // передумал сразу после выбора подтипа.
+    if (subModeCommitTimer.current) clearTimeout(subModeCommitTimer.current)
     commitTimer.current = setTimeout(() => {
+      // У Реалистичного сначала спрашиваем подтип. Режим НЕ включаем: иначе
+      // автоматика начнёт разбирать заказы прямо за окном выбора, а водитель
+      // ещё даже не выбрал, какой это будет Реалистичный.
+      if (target === EOrderControlMode.Realistic) {
+        if (toastTimer.current) clearTimeout(toastTimer.current)
+        setToastName(null)
+        setSubModePrompt(true)
+        return
+      }
+
       interactingRef.current = false
       dispatch(orderControlModeActionCreators.setOrderControlMode(target))
-
-      setToastMode(target)
-      if (toastTimer.current) clearTimeout(toastTimer.current)
-      toastTimer.current = setTimeout(() => setToastMode(null), TOAST_DURATION_MS)
+      showToast(getModeName(target))
     }, COMMIT_DELAY_MS)
-  }, [displayMode, dispatch])
+  }, [displayMode, dispatch, showToast])
+
+  const handleSubModeSelect = useCallback((subMode: ERealisticSubMode) => {
+    setSubModePrompt(false)
+
+    // Та же пауза, что и у остальных режимов: окно закрылось — режим включается
+    // через 2 секунды, тогда же приходит уведомление.
+    if (subModeCommitTimer.current) clearTimeout(subModeCommitTimer.current)
+    subModeCommitTimer.current = setTimeout(() => {
+      interactingRef.current = false
+      // Подтип — раньше режима: к моменту включения Реалистичного окна решений
+      // должны уже знать, на какой кнопке тикает таймер.
+      dispatch(orderControlModeActionCreators.setRealisticSubMode(subMode))
+      dispatch(orderControlModeActionCreators.setOrderControlMode(EOrderControlMode.Realistic))
+      showToast(getModeName(EOrderControlMode.Realistic, subMode))
+    }, COMMIT_DELAY_MS)
+  }, [dispatch, showToast])
 
   return (
     <>
@@ -127,14 +172,15 @@ const OrderModeButton: React.FC = () => {
           handleClick()
         }}
         aria-label={t(TRANSLATION.ORDER_MODE_SWITCH)}
-        title={getModeName(displayMode)}
+        title={getModeName(displayMode, displayMode === committedMode ? committedSubMode : undefined)}
       >
         <img className="order-mode-button__arrows" src={images.orderModeArrows} alt="" />
         <span className="order-mode-button__icon" key={displayMode}>
           <ModeIcon mode={displayMode} />
         </span>
       </button>
-      {toastMode && <OrderModeToast mode={toastMode} />}
+      {subModePrompt && <OrderModeSubModeModal onSelect={handleSubModeSelect} />}
+      {toastName && <OrderModeToast name={toastName} />}
     </>
   )
 }

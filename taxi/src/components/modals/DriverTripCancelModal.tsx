@@ -7,6 +7,8 @@ import { t, TRANSLATION } from '../../localization'
 import { getLocalizedCancelReasons } from '../../tools/cancelReasons'
 import { modalsActionCreators, modalsSelectors } from '../../state/modals'
 import { ordersSelectors } from '../../state/orders'
+import { userSelectors } from '../../state/user'
+import { clearOrderCancelledByDriver, markOrderCancelledByDriver } from '../../tools/driverSelfCancel'
 import { IRootState } from '../../state'
 import { EStatuses } from '../../types/types'
 import * as API from '../../API'
@@ -19,6 +21,7 @@ import './styles.scss'
 const mapStateToProps = (state: IRootState) => ({
   modal: modalsSelectors.driverTripCancelModal(state),
   activeOrders: ordersSelectors.activeOrders(state),
+  user: userSelectors.user(state),
 })
 
 const mapDispatchToProps = {
@@ -39,6 +42,7 @@ interface IProps extends ConnectedProps<typeof connector> {
 const DriverTripCancelModal: React.FC<IProps> = ({
   modal,
   activeOrders,
+  user,
   setDriverTripCancelModal,
   setMessageModal,
 }) => {
@@ -67,6 +71,9 @@ const DriverTripCancelModal: React.FC<IProps> = ({
       return
 
     setIsSubmitting(true)
+    // Метку ставим до запроса: опрос активных заказов может увидеть отмену
+    // раньше, чем вернётся ответ, и показать «Клиент отменил заказ».
+    markOrderCancelledByDriver(orderId, user?.u_id)
     API.cancelDrive(orderId, reasons.find(item => item.id === reason)?.label)
       .then(() => {
         setDriverTripCancelModal({ isOpen: false })
@@ -80,6 +87,7 @@ const DriverTripCancelModal: React.FC<IProps> = ({
       })
       .catch(error => {
         console.error(error)
+        clearOrderCancelledByDriver(orderId, user?.u_id)
         setIsSubmitting(false)
         setMessageModal({
           isOpen: true,

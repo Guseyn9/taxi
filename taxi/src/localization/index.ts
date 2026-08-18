@@ -35,6 +35,48 @@ const FALLBACK_TRANSLATIONS: Record<string, Record<string, string>> = {
     fr: 'Réaliste',
     ar: 'واقعي',
   },
+  order_mode_realistic_plus: {
+    ru: 'Реалистичный +',
+    en: 'Realistic +',
+    fr: 'Réaliste +',
+    ar: 'واقعي +',
+  },
+  order_mode_realistic_minus: {
+    ru: 'Реалистичный -',
+    en: 'Realistic -',
+    fr: 'Réaliste -',
+    ar: 'واقعي -',
+  },
+  order_mode_realistic_sub_title: {
+    ru: 'Реалистичный режим',
+    en: 'Realistic mode',
+    fr: 'Mode réaliste',
+    ar: 'الوضع الواقعي',
+  },
+  order_mode_realistic_sub_subtitle: {
+    ru: 'Выберите тип режима',
+    en: 'Choose the mode type',
+    fr: 'Choisissez le type de mode',
+    ar: 'اختر نوع الوضع',
+  },
+  order_mode_realistic_sub_hint: {
+    ru: 'Автоматическое решение с интервалом 5 сек принимается в пользу',
+    en: 'The automatic decision after 5 sec is made in favour of',
+    fr: 'La décision automatique après 5 s est prise en faveur de',
+    ar: 'يُتخذ القرار التلقائي بعد 5 ثوانٍ لصالح',
+  },
+  order_mode_realistic_sub_hint_take: {
+    ru: 'взятия заказа',
+    en: 'taking the order',
+    fr: 'la prise de la commande',
+    ar: 'قبول الطلب',
+  },
+  order_mode_realistic_sub_hint_cancel: {
+    ru: 'отмены заказа',
+    en: 'cancelling the order',
+    fr: "l'annulation de la commande",
+    ar: 'إلغاء الطلب',
+  },
   order_mode_strict: {
     ru: 'Строгий',
     en: 'Strict',
@@ -119,6 +161,18 @@ const FALLBACK_TRANSLATIONS: Record<string, Record<string, string>> = {
     fr: 'Terminer le trajet ?',
     ar: 'إنهاء الرحلة؟',
   },
+  order_mode_decision_along_the_way_title: {
+    ru: 'Попутный заказ',
+    en: 'Same-way order',
+    fr: 'Commande sur le trajet',
+    ar: 'طلب في نفس الطريق',
+  },
+  order_mode_decision_along_the_way_desc: {
+    ru: 'Пассажир по пути. Взять этот заказ?',
+    en: 'A passenger is on your way. Take this order?',
+    fr: 'Un passager est sur votre trajet. Prendre cette commande ?',
+    ar: 'هناك راكب في طريقك. هل تقبل هذا الطلب؟',
+  },
   order_mode_order_word: {
     ru: 'Заказ',
     en: 'Order',
@@ -142,6 +196,12 @@ const FALLBACK_TRANSLATIONS: Record<string, Record<string, string>> = {
     en: 'Passenger delivered',
     fr: 'Passager déposé',
     ar: 'تم توصيل الراكب',
+  },
+  order_mode_toast_along_the_way: {
+    ru: 'Попутный заказ принят',
+    en: 'Same-way order accepted',
+    fr: 'Commande sur le trajet acceptée',
+    ar: 'تم قبول الطلب في نفس الطريق',
   },
 
   profile: {
@@ -469,6 +529,54 @@ const FALLBACK_TRANSLATIONS: Record<string, Record<string, string>> = {
     en: 'Route log was exported as a JSON file to downloads and cleared.',
     fr: 'Le log itinéraire a été exporté en fichier JSON dans les téléchargements et effacé.',
     ar: 'تم تصدير سجل المسار كملف JSON إلى التنزيلات ومسحه.',
+  },
+  frontend_decision_log_menu: {
+    ru: 'Decision лог',
+    en: 'Decision log',
+    fr: 'Log Decision',
+    ar: 'سجل القرارات',
+  },
+  frontend_decision_log_copied: {
+    ru: 'Decision лог скопирован и очищен. Теперь его можно вставить в чат.',
+    en: 'Decision log copied and cleared. You can paste it into the chat now.',
+    fr: 'Le log Decision est copié et effacé. Vous pouvez maintenant le coller dans le chat.',
+    ar: 'تم نسخ سجل القرارات ومسحه. يمكنك الآن لصقه في المحادثة.',
+  },
+  frontend_decision_log_downloaded: {
+    ru: 'Decision лог выгружен JSON-файлом в загрузки и очищен.',
+    en: 'Decision log was exported as a JSON file to downloads and cleared.',
+    fr: 'Le log Decision a été exporté en fichier JSON dans les téléchargements et effacé.',
+    ar: 'تم تصدير سجل القرارات كملف JSON إلى التنزيلات ومسحه.',
+  },
+  frontend_decision_log_copy_failed: {
+    ru: 'Decision лог собран, но браузер не дал сохранить файл или скопировать текст. Откройте консоль и скопируйте запись taxi-decision-log-export.',
+    en: 'Decision log was collected, but the browser did not allow saving the file or copying text. Open the console and copy taxi-decision-log-export.',
+    fr: 'Le log Decision a été collecté, mais le navigateur n’a pas autorisé l’enregistrement ou la copie. Ouvrez la console et copiez taxi-decision-log-export.',
+    ar: 'تم جمع سجل القرارات، لكن المتصفح لم يسمح بحفظ الملف أو نسخ النص. افتح وحدة التحكم وانسخ taxi-decision-log-export.',
+  },
+  frontend_all_logs_menu: {
+    ru: 'Все журналы одним файлом',
+    en: 'All logs in one file',
+    fr: 'Tous les logs en un fichier',
+    ar: 'كل السجلات في ملف واحد',
+  },
+  frontend_all_logs_copied: {
+    ru: 'Все журналы скопированы и очищены. Теперь их можно вставить в чат.',
+    en: 'All logs copied and cleared. You can paste them into the chat now.',
+    fr: 'Tous les logs sont copiés et effacés. Vous pouvez maintenant les coller dans le chat.',
+    ar: 'تم نسخ كل السجلات ومسحها. يمكنك الآن لصقها في المحادثة.',
+  },
+  frontend_all_logs_downloaded: {
+    ru: 'Все журналы выгружены одним JSON-файлом в загрузки и очищены.',
+    en: 'All logs were exported as a single JSON file to downloads and cleared.',
+    fr: 'Tous les logs ont été exportés en un fichier JSON dans les téléchargements et effacés.',
+    ar: 'تم تصدير كل السجلات كملف JSON واحد إلى التنزيلات ومسحها.',
+  },
+  frontend_all_logs_copy_failed: {
+    ru: 'Журналы собраны, но браузер не дал сохранить файл или скопировать текст. Откройте консоль и скопируйте запись taxi-all-logs-export.',
+    en: 'Logs were collected, but the browser did not allow saving the file or copying text. Open the console and copy taxi-all-logs-export.',
+    fr: 'Les logs ont été collectés, mais le navigateur n’a pas autorisé l’enregistrement ou la copie. Ouvrez la console et copiez taxi-all-logs-export.',
+    ar: 'تم جمع السجلات، لكن المتصفح لم يسمح بحفظ الملف أو نسخ النص. افتح وحدة التحكم وانسخ taxi-all-logs-export.',
   },
   frontend_raw_log_menu: {
     ru: 'RAW лог',
@@ -800,6 +908,13 @@ const FALLBACK_TRANSLATIONS: Record<string, Record<string, string>> = {
     en: 'Interrupt the trip',
     fr: 'Interrompre le trajet',
     ar: 'إيقاف الرحلة',
+  },
+  // Промежуточная высадка: поездка продолжается, закрывается только этот заказ.
+  finish_order: {
+    ru: 'Завершить заказ',
+    en: 'Finish the order',
+    fr: 'Terminer la commande',
+    ar: 'إنهاء الطلب',
   },
   driver_trip_cancel_title: {
     ru: 'Причина отмены поездки',

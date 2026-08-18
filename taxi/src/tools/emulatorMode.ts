@@ -1,4 +1,5 @@
 import { writeRawLog } from './rawLog'
+import { recordEmulatorGeoState } from './driverLocationLog'
 import { IOrder, IDriver, EBookingDriverState } from '../types/types'
 
 export type TBrowserEmulatorMode = 'drivers' | 'clients'
@@ -298,6 +299,10 @@ export function setBrowserEmulatorRunning(mode: TBrowserEmulatorMode, running: b
     startedAt: running ? (wasRunning ? state[mode]?.startedAt || Date.now() : Date.now()) : null,
   }
   storage.setItem(BROWSER_EMULATOR_STATE_KEY, JSON.stringify(state))
+  // Момент запуска/остановки эмуляции — тот самый стык, на котором меняется
+  // источник координат. Пишем только фактическое переключение.
+  if (wasRunning !== running)
+    recordEmulatorGeoState(mode, running)
   writeRawLog('EMULATOR_MODE_CHANGED', {
     source: 'browser-emulator-mode',
     mode,

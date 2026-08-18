@@ -18,7 +18,8 @@ import {
   TDriverPosition,
   useDriverPosition,
 } from '../../tools/driverPosition'
-import { EBookingDriverState, EBookingStates, EColorTypes, EStatuses } from '../../types/types'
+import { EBookingDriverState, EBookingStates, EColorTypes, EStatuses, EUserRoles } from '../../types/types'
+import { recordOrderInteraction } from '../../tools/orderInteractionLog'
 import images from '../../constants/images'
 import { useForm } from 'react-hook-form'
 import cn from 'classnames'
@@ -39,6 +40,7 @@ import { EMapModalTypes } from '../../state/modals/constants'
 import { withLayout } from '../../HOCs/withLayout'
 import { isAnyBrowserEmulatorOrder } from '../../tools/emulatorMode'
 import { getOrderIdText } from '../../tools/orderId'
+import { wasOrderCancelledByDriver } from '../../tools/driverSelfCancel'
 import {
   clearDriverOfferClientResponse,
   clearEmulatorClientChoseOtherDriver,
@@ -496,6 +498,21 @@ const Order: React.FC<IProps> = ({
   const id = useParams().id as string
   const navigate = useNavigate()
 
+  // Открытие экрана заказа — шаг таймлайна взаимодействия. Фиксируем здесь, а не
+  // на кнопках карточек: на этот экран водитель попадает и со списка, и с карты,
+  // и по прямой ссылке.
+  useEffect(() => {
+    if (!id || user?.u_role !== EUserRoles.Driver)
+      return
+
+    recordOrderInteraction({
+      step: 'OPENED',
+      orderId: id,
+      driverId: user?.u_id,
+      surface: 'ORDER_SCREEN',
+    })
+  }, [id, user?.u_id, user?.u_role])
+
   const activeOrderIds = (activeOrders ?? []).map(item => item.b_id)
   const driver = order?.drivers?.find(item => order.b_voting ?
     isVotingDriverParticipating(item) :
@@ -724,11 +741,12 @@ const Order: React.FC<IProps> = ({
 
     setVotingParticipationIds(removeVotingParticipationId(id))
     setVotingArrivedIds(removeVotingArrivedId(id))
-    setMessageModal({
-      isOpen: true,
-      status: EStatuses.Warning,
-      message: [message, getOrderIdText(id, activeOrderIds)].filter(Boolean).join(' '),
-    })
+    if (!wasOrderCancelledByDriver(id, user?.u_id))
+      setMessageModal({
+        isOpen: true,
+        status: EStatuses.Warning,
+        message: [message, getOrderIdText(id, activeOrderIds)].filter(Boolean).join(' '),
+      })
     navigate('/driver-order')
   }, [order, id, votingParticipationIds])
 
@@ -755,12 +773,14 @@ const Order: React.FC<IProps> = ({
     driverClosedOrderPopupShown.current = true
     removeStoredDriverOffer(id, user?.u_id)
     setLocalDriverOffer(null)
-    setMessageModal({
-      isOpen: true,
-      status: EStatuses.Warning,
-      message: [t(TRANSLATION.DRIVER_ORDER_CANCELLED_BY_CLIENT), getOrderIdText(id, activeOrderIds)]
-        .filter(Boolean).join(' '),
-    })
+    // Отмену, сделанную самим водителем, подтверждает окно из формы отмены.
+    if (!wasOrderCancelledByDriver(id, user?.u_id))
+      setMessageModal({
+        isOpen: true,
+        status: EStatuses.Warning,
+        message: [t(TRANSLATION.DRIVER_ORDER_CANCELLED_BY_CLIENT), getOrderIdText(id, activeOrderIds)]
+          .filter(Boolean).join(' '),
+      })
     navigate('/driver-order')
   }, [order, userAsDriver, id, user?.u_id, navigate])
 

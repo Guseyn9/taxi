@@ -1,6 +1,11 @@
 import moment from 'moment'
 import SITE_CONSTANTS from '../siteConstants'
-import { DEFAULT_CITY_ID, PROFIT_RANKS } from '../constants/orders'
+import {
+  APPROXIMATE_ROUTE_COST_PER_KM,
+  APPROXIMATE_SUBMIT_COST_PER_KM,
+  DEFAULT_CITY_ID,
+  PROFIT_RANKS,
+} from '../constants/orders'
 import {
   EBookingStates,
   EDriverResponseModes,
@@ -142,12 +147,24 @@ export function estimateOrder(
   startingPoint: [lat: number, lng: number],
   graph: IWayGraph,
 ): IOrderEstimation {
+  // Расстояния считаются один раз и переиспользуются: поиск пути по графу дорог —
+  // самая дорогая часть оценки, а пересчёт идёт по таймеру для всех видимых заказов.
   const distance = calculateDistance(order, startingPoint, graph)
-  const profit = estimateProfit(order, car, startingPoint, graph)
+  const profit = distance ? estimateProfitByDistance(order, car, distance) : undefined
   const profitRank = typeof profit === 'number' ? rankProfit(profit) : undefined
 
+  // Оценку накладывают на заказ спредом и пересчитывают по мере движения такси,
+  // поэтому «пусто» тоже возвращаем всеми полями: иначе от прошлого расчёта
+  // остался бы холостой пробег, посчитанный от другой точки.
   if (!distance || typeof profit !== 'number' || !Number.isFinite(profit))
-    return { profit, profitRank }
+    return {
+      profit,
+      profitRank,
+      emptyMileageKm: undefined,
+      routeMileageKm: undefined,
+      profitPerEmptyKm: undefined,
+      profitSortValue: undefined,
+    }
 
   const [emptyMeters, routeMeters] = distance
   const emptyMileageKm = Number((emptyMeters / 1000).toFixed(2))
@@ -205,8 +222,14 @@ function estimateProfitByDisplayedPrice(order: IOrder, distance: [number, number
   // Fallback for configs where calculation_benefits is absent for the current
   // city/car class. It keeps the order in the profit sorting and, importantly,
   // shows negative values instead of silently hiding the calculation.
-  const approximateCostPerKm = 1.35
-  return Number((income - approximateCostPerKm * (startingPointToOrder + startToDestination)).toFixed(2))
+  //
+  // Подача и оплаченная часть маршрута стоят по-разному: пассажир платит только
+  // за «Откуда» → «Куда», поэтому километр до точки посадки водитель оплачивает
+  // из своего кармана и он бьёт по выгоде заметно сильнее.
+  const cost =
+    APPROXIMATE_SUBMIT_COST_PER_KM * startingPointToOrder +
+    APPROXIMATE_ROUTE_COST_PER_KM * startToDestination
+  return Number((income - cost).toFixed(2))
 }
 
 export function estimateProfit(
@@ -215,10 +238,19 @@ export function estimateProfit(
   startingPoint: [lat: number, lng: number],
   graph: IWayGraph,
 ): number | undefined {
-  let factors = getProfitFactorsForCar(car)
   const distance = calculateDistance(order, startingPoint, graph)
   if (!distance)
     return
+
+  return estimateProfitByDistance(order, car, distance)
+}
+
+function estimateProfitByDistance(
+  order: IOrder,
+  car: ICar,
+  distance: [startingPointToOrder: number, startToDestination: number],
+): number | undefined {
+  let factors = getProfitFactorsForCar(car)
 
   if (!factors)
     return estimateProfitByDisplayedPrice(order, distance)
@@ -251,6 +283,87 @@ export function rankProfit(profit: number): EOrderProfitRank {
     if (profit >= minProfit)
       rank = minProfitRank
   return rank
+}
+
+/**
+ * Прибыль заказа для раскраски. Отличается от {@link estimateOrder} тем, что не
+ * должна оставлять карточку/булавку без цвета: если оценка не посчиталась (нет
+ * координат, машины или геопозиции), берём грубую прикидку по цене заказа.
+ */
+export function getEstimatedProfit(order: IOrder) {
+  if (typeof order.profit === 'number' && Number.isFinite(order.profit))
+    return order.profit
+
+  const price = Number(order.b_price_estimate || (order as any).b_price || (order as any).price || 0)
+  const tips = Number(order.b_tips || 0)
+  const passengerBonus = Number(order.b_passengers_count || 0) * 3
+  const fallback = price + tips + passengerBonus
+  return Number.isFinite(fallback) && fallback > 0 ? fallback : undefined
+}
+
+// Перцентильная раскраска: цвет зависит не от абсолютной суммы, а от того,
+// насколько заказ выгоднее ОСТАЛЬНЫХ видимых заказов. При каждом обновлении списка
+// собираем прибыли всех видимых заказов, ранжируем и делим на 5 групп по 20%:
+// p0 — нижние 20% (🔴), p1 20–40% (🟠), p2 40–60% (🟡), p3 60–80% (🟢), p4 — верхние 20% (💚).
+// Так даже при близких прибылях сразу видно, какие заказы лучше других.
+export const PROFIT_PERCENTILE_BUCKETS = 5
+
+/** Карта { b_id -> группа 0..4 }, общая для булавок на карте и карточек в списках. */
+export function computeProfitPercentiles(orders: IOrder[]): Record<string, number> {
+  const entries: Array<{ id: string, profit: number }> = []
+  orders.forEach(order => {
+    if (!order?.b_id) return
+    const profit = getEstimatedProfit(order)
+    if (profit === undefined) return
+    entries.push({ id: String(order.b_id), profit })
+  })
+
+  const result: Record<string, number> = {}
+  const count = entries.length
+  if (!count) return result
+
+  const values = entries.map(entry => entry.profit)
+  entries.forEach(({ id, profit }) => {
+    // Мидранк-перцентиль: одинаковые прибыли получают одну группу (один цвет),
+    // а различающиеся — раскладываются по группам по относительному рангу.
+    const below = values.reduce((sum, value) => sum + (value < profit ? 1 : 0), 0)
+    const atOrBelow = values.reduce((sum, value) => sum + (value <= profit ? 1 : 0), 0)
+    const percentile = (below + atOrBelow) / (2 * count)
+    result[id] = Math.min(PROFIT_PERCENTILE_BUCKETS - 1, Math.floor(percentile * PROFIT_PERCENTILE_BUCKETS))
+  })
+
+  return result
+}
+
+export function getProfitSortValue(order: IOrder) {
+  if (typeof order.profitSortValue === 'number' && Number.isFinite(order.profitSortValue))
+    return order.profitSortValue
+
+  if (typeof order.profitPerEmptyKm === 'number' && Number.isFinite(order.profitPerEmptyKm))
+    return order.profitPerEmptyKm
+
+  if (typeof order.profit === 'number' && Number.isFinite(order.profit))
+    return order.profit
+
+  return Number.NEGATIVE_INFINITY
+}
+
+/**
+ * Порядок списка заказов у водителя. Живёт рядом с расчётом выгоды, потому что
+ * пересортировать нужно везде, где выгода пересчитана: и в селекторах, и при
+ * обновлении по текущему положению такси.
+ */
+export function sortOrdersByProfit(orders: IOrder[] | null): IOrder[] | null {
+  if (!orders)
+    return null
+
+  return [...orders].sort((a, b) => {
+    const profitDiff = getProfitSortValue(b) - getProfitSortValue(a)
+    if (profitDiff !== 0)
+      return profitDiff
+
+    return String(b.b_id).localeCompare(String(a.b_id))
+  })
 }
 
 export function calculateDistance(

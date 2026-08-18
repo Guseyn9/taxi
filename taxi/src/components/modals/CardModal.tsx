@@ -40,6 +40,7 @@ import {
   TDriverPosition,
   useDriverPosition,
 } from '../../tools/driverPosition'
+import { useLiveEstimatedOrder } from '../../tools/liveOrderProfit'
 import { t, TRANSLATION } from '../../localization'
 import { IRootState } from '../../state'
 import { modalsActionCreators, modalsSelectors } from '../../state/modals'
@@ -730,7 +731,9 @@ function CardModalContent({
   const closeModal = () => setModal({ isOpen: false, orderId })
 
   useEffect(() => active ? watchOrder(orderId) : undefined, [orderId, active])
-  const order = useSelector(ordersSelectors.order, orderId) ?? null
+  // Выгода в карточке считается от текущего положения такси, а не от GPS браузера:
+  // иначе она расходилась бы со списком и картой во время прогона эмулятора.
+  const order = useLiveEstimatedOrder(useSelector(ordersSelectors.order, orderId) ?? null)
   const orderMutates = useSelector(ordersSelectors.orderMutates, orderId)
   const activeOrders = useSelector(ordersSelectors.activeOrders)
   const activeOrderIds = useMemo(() =>

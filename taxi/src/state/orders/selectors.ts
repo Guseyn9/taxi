@@ -1,7 +1,7 @@
 import { List as ImmutableList, is } from 'immutable'
 import { createSelector, weakMapMemoize } from 'reselect'
 import { IOrder, ICar, EBookingDriverState, EUserRoles } from '../../types/types'
-import { estimateOrder } from '../../tools/order'
+import { estimateOrder, sortOrdersByProfit } from '../../tools/order'
 import {
   filterOrdersForBrowserEmulator,
   filterOrderDriversForBrowserEmulator,
@@ -16,6 +16,7 @@ import {
   IWayGraph,
   calculateDistance, geopositionToPoint,
 } from '../../tools/maps'
+import { MAX_DRIVER_VISIBLE_ORDER_DISTANCE_KM } from '../../constants/orders'
 import { IRootState } from '../'
 import { geoposition } from '../geolocation/selectors'
 import { userPrimaryCar } from '../cars/selectors'
@@ -24,7 +25,10 @@ import { wayGraph } from '../areas/selectors'
 import { moduleName } from './constants'
 
 const GEOLOCATION_CHANGE_THRESHOLD_METERS = 100
-export const MAX_DRIVER_VISIBLE_ORDER_DISTANCE_KM = 80
+
+// Порог переехал в constants/orders.ts (его читает и матрица Decision Log).
+// Реэкспорт сохраняет прежнее место импорта для саг и остального кода.
+export { MAX_DRIVER_VISIBLE_ORDER_DISTANCE_KM }
 
 function shouldUseStrictEmulatorOnlyOrders(user: any) {
   return user?.u_role === EUserRoles.Driver
@@ -255,31 +259,6 @@ const estimatedOrders = (
     orders.map(order => estimatedOrder(order, geolocation, car, graph)) :
     (orders ?? null)
 
-function getProfitSortValue(order: IOrder) {
-  if (typeof order.profitSortValue === 'number' && Number.isFinite(order.profitSortValue))
-    return order.profitSortValue
-
-  if (typeof order.profitPerEmptyKm === 'number' && Number.isFinite(order.profitPerEmptyKm))
-    return order.profitPerEmptyKm
-
-  if (typeof order.profit === 'number' && Number.isFinite(order.profit))
-    return order.profit
-
-  return Number.NEGATIVE_INFINITY
-}
-
-function sortOrdersByProfit(orders: IOrder[] | null): IOrder[] | null {
-  if (!orders)
-    return null
-
-  return [...orders].sort((a, b) => {
-    const profitDiff = getProfitSortValue(b) - getProfitSortValue(a)
-    if (profitDiff !== 0)
-      return profitDiff
-
-    return String(b.b_id).localeCompare(String(a.b_id))
-  })
-}
 const approximatedCoords = createSelector(
   geoposition,
   geoposition => geoposition && geopositionToPoint(geoposition),

@@ -18,6 +18,8 @@ import { getOrderIdText } from '../../tools/orderId'
 import { getVisibleBrowserEmulatorOrderIds, isAnyBrowserEmulatorModeRunning, isExternalEmulatorEnabled } from '../../tools/emulatorMode'
 import { writeFlowEvent } from '../../tools/flowLog'
 import { writeRawLog } from '../../tools/rawLog'
+import { buildOrderDecisionContext } from '../../tools/orderDecisionContext'
+import { trackOrderDecisions } from '../../tools/orderDecisionTracker'
 import { t, TRANSLATION } from '../../localization'
 import * as API from '../../API'
 import { IRootState } from '..'
@@ -247,9 +249,13 @@ function writeActiveOrderDiffFlowEvents(prevOrders: IOrder[] = [], nextOrders: I
           screen: 'OrdersSaga',
           uiState: 'ActiveOrdersPolling',
           data: {
+            driverInPreviousResponse: false,
+            driverInCurrentResponse: true,
+            previousDriverState: null,
+            driverState: nextDriver?.c_state ?? null,
+            // LEGACY: выводы старой модели, см. tools/legacyLogReasons.ts.
             result: 'accepted',
             reason: 'server_returned_driver_in_order',
-            driverState: nextDriver?.c_state ?? null,
           },
         })
       } else if (prevDriver.c_state !== nextDriver.c_state) {
@@ -275,9 +281,13 @@ function writeActiveOrderDiffFlowEvents(prevOrders: IOrder[] = [], nextOrders: I
           screen: 'OrdersSaga',
           uiState: 'ActiveOrdersPolling',
           data: {
+            driverInPreviousResponse: true,
+            driverInCurrentResponse: false,
+            previousDriverState: prevDrivers[driverId]?.c_state ?? null,
+            driverState: null,
+            // LEGACY: выводы старой модели, см. tools/legacyLogReasons.ts.
             result: 'rejected',
             reason: 'server_removed_driver_from_order',
-            previousDriverState: prevDrivers[driverId]?.c_state ?? null,
           },
         })
       }
@@ -389,32 +399,51 @@ function isOrderCurrentDriverActiveTrip(order: IOrder, user: any) {
   ].includes(state)
 }
 
+/**
+ * `distanceFilterWouldHide` и `distanceFilterReason` — LEGACY: это вычисленные
+ * выводы, зарегистрированные в `tools/legacyLogReasons.ts`. Рядом с ними теперь
+ * пишутся измеренные значения, по которым тот же вывод строится заново, — они и
+ * переживут смену правила. Сами строки оставлены на переходный период, чтобы
+ * старую и новую модель можно было сверить на уже собранных логах.
+ */
 function getDistanceFilterDecision(order: IOrder, driverGeoposition: any, user: any) {
   const distanceFromDriverKm = getOrderDistanceFromDriverKm(order, driverGeoposition)
+  const facts = {
+    pickupDistanceKm: distanceFromDriverKm === null ? null : Number(distanceFromDriverKm.toFixed(3)),
+    pickupDistanceLimitKm: MAX_DRIVER_VISIBLE_ORDER_DISTANCE_KM,
+    driverHasActiveTripInOrder: isOrderCurrentDriverActiveTrip(order, user),
+    externalEmulatorEnabled: isExternalEmulatorEnabled(),
+  }
+
   if (distanceFromDriverKm === null)
     return {
+      ...facts,
       distanceFilterWouldHide: false,
       distanceFilterReason: 'distance_unavailable',
     }
 
   if (distanceFromDriverKm <= MAX_DRIVER_VISIBLE_ORDER_DISTANCE_KM)
     return {
+      ...facts,
       distanceFilterWouldHide: false,
       distanceFilterReason: 'inside_visible_radius',
     }
 
-  if (isOrderCurrentDriverActiveTrip(order, user))
+  if (facts.driverHasActiveTripInOrder)
     return {
+      ...facts,
       distanceFilterWouldHide: false,
       distanceFilterReason: 'active_trip_kept_even_if_far',
     }
 
   return {
+    ...facts,
     distanceFilterWouldHide: true,
     distanceFilterReason: 'outside_visible_radius',
   }
 }
 
+/** LEGACY-вывод, см. `tools/legacyLogReasons.ts`. Факты — в {@link getOrderLocationFacts}. */
 function getOrderLocationDecisionReason(order: IOrder, driverGeoposition: any, user: any) {
   const currentDriver = order.drivers?.find(driver => String(driver.u_id) === String(user?.u_id))
   if (currentDriver)
@@ -424,6 +453,21 @@ function getOrderLocationDecisionReason(order: IOrder, driverGeoposition: any, u
   if (!getOrderStartPoint(order))
     return 'order_start_coordinates_missing'
   return 'server_returned_active_order_nearby_or_by_backend_filter'
+}
+
+/**
+ * Те же наблюдения, но значениями: из них строка `reason` выводится заново, а
+ * при смене правила они останутся верными, в отличие от неё.
+ */
+function getOrderLocationFacts(order: IOrder, driverGeoposition: any, user: any) {
+  const currentDriver = order.drivers?.find(driver => String(driver.u_id) === String(user?.u_id))
+
+  return {
+    serverReturnedCurrentDriver: Boolean(currentDriver),
+    currentDriverStateInOrder: currentDriver?.c_state ?? null,
+    hasDriverGeoposition: Boolean(driverGeoposition?.coords),
+    hasOrderStartCoordinates: Boolean(getOrderStartPoint(order)),
+  }
 }
 
 function writeActiveOrderLocationAudit(
@@ -436,6 +480,8 @@ function writeActiveOrderLocationAudit(
 ) {
   const data = {
     ...summarizeOrderLocationForAudit(order, driverGeoposition, user, car),
+    ...getOrderLocationFacts(order, driverGeoposition, user),
+    // LEGACY: вывод старой модели, остаётся для сверки. Факты — строкой выше.
     reason: getOrderLocationDecisionReason(order, driverGeoposition, user),
     ...extraData,
   }
@@ -463,15 +509,25 @@ function* getActiveOrdersSaga() {
   const currentUserAtStart = yield* select(userSelector)
 
   if (isDriverEmulatorOnlyUiForcedEmpty(currentUserAtStart)) {
+    // Состояние гейта значениями: строка `emulator_not_running` — вывод из них,
+    // и при смене правила доступности она устареет, а эти факты нет.
+    const emulatorGateFacts = {
+      driverRole: currentUserAtStart?.u_role === EUserRoles.Driver,
+      emulatorAnyModeRunning: isAnyBrowserEmulatorModeRunning(),
+      externalEmulatorEnabled: isExternalEmulatorEnabled(),
+    }
+
     writeFlowEvent('ACTIVE_ORDERS_REQUEST_SKIPPED', {
       driverId: currentUserAtStart?.u_id ?? null,
       screen: 'OrdersSaga',
       uiState: 'EmulatorOnlyGate',
       data: {
-        reason: 'emulator_not_running',
+        ...emulatorGateFacts,
         type: 'activeOrders',
         previousCount: prev.length,
         previousOrderIds: prev.map(order => order.b_id),
+        // LEGACY: вывод старой модели, см. tools/legacyLogReasons.ts.
+        reason: 'emulator_not_running',
       },
     })
     writeRawLog('ACTIVE_ORDERS_REQUEST_SKIPPED', {
@@ -479,11 +535,22 @@ function* getActiveOrdersSaga() {
       screen: 'OrdersSaga',
       uiState: 'EmulatorOnlyGate',
       driverId: currentUserAtStart?.u_id ?? null,
-      reason: 'emulator_not_running',
+      ...emulatorGateFacts,
       type: 'activeOrders',
       previousCount: prev.length,
       previousOrderIds: prev.map(order => order.b_id),
+      reason: 'emulator_not_running',
     })
+    // Decision Log: пустой список — тоже решение. Матрица зафиксирует состояние
+    // эмуляторного гейта, из-за которого заказы до водителя не дошли.
+    trackOrderDecisions({
+      stage: 'SELECTOR',
+      orders: prev,
+      visibleOrderIds: [],
+      context: buildOrderDecisionContext({ user: currentUserAtStart, activeOrders: prev }),
+      legacyReasonOf: () => 'emulator_not_running',
+    })
+
     yield put(setSelectedOrder(null))
     yield put({ type: ActionTypes.GET_ACTIVE_ORDERS_SUCCESS, payload: [] })
     writeOrdersUiForcedEmpty('emulator_not_running', 'activeOrders', prev)
@@ -595,6 +662,22 @@ function* getActiveOrdersSaga() {
     orders = yield* cancelExpiredOrdersSaga(orders)
     yield* notifyMissingExpiredVotingOrdersSaga(prev, orders)
     writeActiveOrderDiffFlowEvents(prev, orders)
+
+    // Decision Log, стадия «ответ API»: на входе всё, что прислал бэкенд, на
+    // выходе — то, что пережило отмену просроченных заказов.
+    const decisionContext = buildOrderDecisionContext({
+      user: currentUser,
+      car: currentCar,
+      activeOrders: orders,
+      fallbackPosition: driverGeoposition ? geopositionToPoint(driverGeoposition) : null,
+    })
+    trackOrderDecisions({
+      stage: 'API_RESPONSE',
+      orders: responseOrders,
+      visibleOrderIds: orders.map(order => order.b_id),
+      context: decisionContext,
+    })
+
     if (orders.length === 0)
       yield put(setSelectedOrder(null))
 
@@ -662,6 +745,20 @@ function* getActiveOrdersSaga() {
         decision: selectorOrderIds.has(String(order.b_id)) ? 'visible_for_driver_ui' : 'hidden_by_selector_or_filter',
       },
     ))
+
+    // Decision Log, стадия «селектор»: на входе payload редьюсера, на выходе —
+    // то, что селектор реально отдал водительскому UI. Legacy-причина остаётся
+    // рядом с матрицей на переходный период, чтобы модели можно было сверить.
+    trackOrderDecisions({
+      stage: 'SELECTOR',
+      orders,
+      visibleOrderIds: selectedActiveOrdersAfterStore.map(order => order.b_id),
+      context: decisionContext,
+      legacyReasonOf: order => selectorOrderIds.has(String(order.b_id)) ?
+        'visible_for_driver_ui' :
+        'hidden_by_selector_or_filter',
+      debugOf: order => ({ order }),
+    })
 
     const geoposition = driverGeoposition
     if (geoposition) {

@@ -10,7 +10,8 @@ import './styles.scss'
 import { ordersSelectors, ordersActionCreators } from '../../state/orders'
 import { modalsActionCreators } from '../../state/modals'
 import { userSelectors } from '../../state/user'
-import { carsActionCreators } from '../../state/cars'
+import { carsActionCreators, carsSelectors } from '../../state/cars'
+import { canDriverTakeOrderBySeats, getDriverFreeSeats } from '../../tools/driverCapacity'
 import SITE_CONSTANTS from '../../siteConstants'
 import { EBookingDriverState, EBookingStates, EStatuses, EUserRoles, IAddressPoint, IOrder } from '../../types/types'
 import cn from 'classnames'
@@ -18,6 +19,7 @@ import ErrorFrame from '../../components/ErrorFrame'
 import images from '../../constants/images'
 import { withLayout } from '../../HOCs/withLayout'
 import { addHiddenOrder } from '../../tools/utils'
+import { useLiveEstimatedOrders } from '../../tools/liveOrderProfit'
 import * as API from '../../API'
 import { clearEmulatorClientChoseOtherDriver, getOfferEvent, getStoredDriverOffer, hasEmulatorClientChoseOtherDriver, isOfferOrder, isVotingOrder, subscribeEmulatorClientChoseOtherDriver, updateStoredDriverOfferStatus } from '../../tools/driverOffer'
 import { orderControlModeSelectors } from '../../state/orderControlMode'
@@ -26,6 +28,7 @@ import OrderModeDecisionModal from '../../components/OrderModeDecisionModal'
 import OrderModeToast from '../../components/OrderModeToast'
 import { requestOrderModeDecision } from '../../tools/orderModeDecision'
 import { getOrderIdText } from '../../tools/orderId'
+import { wasOrderCancelledByDriver } from '../../tools/driverSelfCancel'
 
 /** Задержка перед авто-взятием заказа в Строгом режиме (сглаживает цепочку действий). */
 const STRICT_TAKE_DELAY_MS = 5000
@@ -39,6 +42,7 @@ const mapStateToProps = (state: IRootState) => ({
   historyOrders: ordersSelectors.historyOrders(state),
   user: userSelectors.user(state),
   orderControlMode: orderControlModeSelectors.orderControlMode(state),
+  driverCar: carsSelectors.userDrivenCar(state),
 })
 
 const mapDispatchToProps = {
@@ -76,6 +80,7 @@ const Driver: React.FC<IProps> = ({
   historyOrders,
   user,
   orderControlMode,
+  driverCar,
   watchActiveOrders,
   watchHistoryOrders,
   watchReadyOrders,
@@ -111,6 +116,13 @@ const Driver: React.FC<IProps> = ({
   }, [])
   const [emulatorOrdersEnabled, setEmulatorOrdersEnabled] = useState(() => isAnyBrowserEmulatorModeRunning() || isExternalEmulatorEnabled())
 
+  // Выгода заказа зависит от расстояния до точки «Откуда», а такси едет — значит
+  // и выгода должна пересчитываться. Селекторы считают её от GPS браузера,
+  // который во время прогона эмулятора стоит на месте, поэтому списку и карте
+  // отдаём заказы, пересчитанные от положения маркера водителя.
+  const liveActiveOrders = useLiveEstimatedOrders(activeOrders)
+  const liveReadyOrders = useLiveEstimatedOrders(readyOrders)
+
   useEffect(() => {
     if (user?.u_role !== EUserRoles.Driver)
       return undefined
@@ -137,12 +149,19 @@ const Driver: React.FC<IProps> = ({
     return () => window.removeEventListener(BROWSER_EMULATOR_STATE_EVENT, syncEmulatorMode)
   }, [user?.u_role, clearOrders, closeAllModals])
 
+  // Машины водителя нужны и без эмулятора: по ним считается вместимость салона,
+  // от которой зависит, какие заказы вообще можно показывать.
+  useEffect(() => {
+    if (user?.u_role !== EUserRoles.Driver)
+      return
+    getUserCars()
+  }, [user?.u_role, user?.u_id, getUserCars])
+
   useEffect(() => {
     if (user?.u_role !== EUserRoles.Driver || !emulatorOrdersEnabled)
       return
-    getUserCars()
     return watchActiveOrders()
-  }, [user?.u_role, emulatorOrdersEnabled, watchActiveOrders, getUserCars])
+  }, [user?.u_role, emulatorOrdersEnabled, watchActiveOrders])
 
   useEffect(() => {
     if (user?.u_role !== EUserRoles.Driver || !emulatorOrdersEnabled)
@@ -260,6 +279,11 @@ const Driver: React.FC<IProps> = ({
 
       shownDriverClosedNotifications.current[orderID] = true
       addHiddenOrder(orderID, user.u_id)
+      // Заказ, отменённый самим водителем, уже подтверждён своим окном —
+      // сообщать про отмену клиентом нечего.
+      if (wasOrderCancelledByDriver(orderID, user.u_id))
+        return
+
       closeAllModals()
       setMessageModal({
         isOpen: true,
@@ -434,10 +458,13 @@ const Driver: React.FC<IProps> = ({
     if (busy)
       return
 
+    const freeSeats = getDriverFreeSeats(driverCar, activeOrders, userId)
+
     const candidate = readyOrders.find(order =>
       !isVotingOrder(order) &&
       !isOfferOrder(order) &&
       !order.drivers?.some(driver => driver.u_id === userId) &&
+      canDriverTakeOrderBySeats(order, freeSeats, userId) &&
       !autoAcceptedOrderIds.current[order.b_id] &&
       !realisticDeclinedOrderIds.current[order.b_id],
     )
@@ -484,6 +511,10 @@ const Driver: React.FC<IProps> = ({
     // Realistic: окно с выбором и таймером.
     requestOrderModeDecision({
       id: `${orderId}:take`,
+      orderLabel: [
+        t(TRANSLATION.ORDER_MODE_ORDER_WORD),
+        getOrderIdText(orderId, (activeOrders || []).map(item => item.b_id)),
+      ].filter(Boolean).join(' '),
       title: t(TRANSLATION.ORDER_MODE_DECISION_TAKE_TITLE),
       description: t(TRANSLATION.ORDER_MODE_DECISION_TAKE_DESC),
       actionText: t(TRANSLATION.TAKE_ORDER),
@@ -494,7 +525,7 @@ const Driver: React.FC<IProps> = ({
         realisticDeclinedOrderIds.current[orderId] = true
       },
     })
-  }, [orderControlMode, readyOrders, activeOrders, user?.u_id, user?.u_role, navigate, setMessageModal])
+  }, [orderControlMode, readyOrders, activeOrders, driverCar, user?.u_id, user?.u_role, navigate, setMessageModal])
 
   if (user?.u_role !== EUserRoles.Driver) {
     return (
@@ -546,8 +577,8 @@ const Driver: React.FC<IProps> = ({
           <DriverOrders
             user={user}
             type={tab}
-            activeOrders={activeOrders}
-            readyOrders={readyOrders}
+            activeOrders={liveActiveOrders}
+            readyOrders={liveReadyOrders}
             historyOrders={historyOrders}
           />
         </OrderAddressContext.Provider>
@@ -556,8 +587,8 @@ const Driver: React.FC<IProps> = ({
         <OrderAddressContext.Provider value={{ ordersAddressRef }}>
           <DriverMap
             user={user}
-            activeOrders={activeOrders}
-            readyOrders={readyOrders}
+            activeOrders={liveActiveOrders}
+            readyOrders={liveReadyOrders}
           />
         </OrderAddressContext.Provider>
       }

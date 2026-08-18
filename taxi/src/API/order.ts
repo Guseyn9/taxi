@@ -31,6 +31,7 @@ import {
   saveBrowserEmulatorOrderId,
 } from '../tools/emulatorMode'
 import { setPassengerConfirmedChoice } from '../tools/driverOffer'
+import { recordOrderInteraction } from '../tools/orderInteractionLog'
 
 function normalizeId(value: unknown) {
   if (value === null || value === undefined || value === '') return ''
@@ -450,15 +451,7 @@ const _updateOrderCustomerPrice = (
 }
 export const updateOrderCustomerPrice = apiMethod<typeof _updateOrderCustomerPrice>(_updateOrderCustomerPrice)
 
-const _takeOrder = (
-  { formData }: IApiMethodArguments,
-  id: IOrder['b_id'],
-  options: {
-    votingNumber?: string | number
-    performers_price: number
-  },
-  candidate?: boolean,
-): Promise<{
+interface ITakeOrderResult {
   /** Индекс водителя */
   c_index: string,
   /** Текущее число машин поездки с booking_driver_states=3,4,5,6 */
@@ -467,7 +460,58 @@ const _takeOrder = (
   b_cars_count: string,
   /** Если изменился статус поезки */
   b_state?: '1->2' | null
-}> => {
+}
+
+/**
+ * Взятие заказа инструментировано здесь, а не в пяти местах вызова (экран
+ * заказа, карта, контейнер водителя, карточка): это единственная точка, через
+ * которую проходит любое взятие, и пропустить его тут нельзя.
+ */
+const _takeOrder = (
+  args: IApiMethodArguments,
+  id: IOrder['b_id'],
+  options: {
+    votingNumber?: string | number
+    performers_price: number
+  },
+  candidate?: boolean,
+): Promise<ITakeOrderResult> => {
+  recordOrderInteraction({
+    step: 'TAKE_REQUESTED',
+    orderId: id,
+    surface: 'API',
+    details: {
+      candidate: Boolean(candidate),
+      performersPrice: options.performers_price,
+      hasVotingNumber: options.votingNumber !== undefined && options.votingNumber !== null,
+    },
+  })
+
+  return takeOrderRequest(args, id, options, candidate)
+    .then(result => {
+      recordOrderInteraction({ step: 'TAKE_SUCCEEDED', orderId: id, surface: 'API' })
+      return result
+    })
+    .catch(error => {
+      recordOrderInteraction({
+        step: 'TAKE_FAILED',
+        orderId: id,
+        surface: 'API',
+        details: { message: error?.message ?? error?.error ?? String(error) },
+      })
+      return Promise.reject(error)
+    })
+}
+
+const takeOrderRequest = (
+  { formData }: IApiMethodArguments,
+  id: IOrder['b_id'],
+  options: {
+    votingNumber?: string | number
+    performers_price: number
+  },
+  candidate?: boolean,
+): Promise<ITakeOrderResult> => {
   const userID = userSelectors.user(store.getState())?.u_id
   if (!userID)
     return Promise.reject({ message: t(TRANSLATION.WRONG_USER_ROLE) })
