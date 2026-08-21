@@ -28,13 +28,13 @@ import OrderModeToast from '../../components/OrderModeToast'
 import { requestOrderModeDecision } from '../../tools/orderModeDecision'
 import { getOrderIdText } from '../../tools/orderId'
 import { wasOrderCancelledByDriver } from '../../tools/driverSelfCancel'
-
-/** Задержка перед авто-взятием заказа в Строгом режиме (сглаживает цепочку действий). */
-const STRICT_TAKE_DELAY_MS = 5000
 import { BROWSER_EMULATOR_STATE_EVENT, getVisibleBrowserEmulatorOrderIds, isAnyBrowserEmulatorModeRunning, isExternalEmulatorEnabled } from '../../tools/emulatorMode'
 import { writeFlowEvent } from '../../tools/flowLog'
 import { writeRawLog } from '../../tools/rawLog'
 import { PLATFORM_ROUTES, usePlatformNavigate } from '../../platform/platform-interface'
+
+/** Задержка перед авто-взятием заказа в Строгом режиме (сглаживает цепочку действий). */
+const STRICT_TAKE_DELAY_MS = 5000
 
 const mapStateToProps = (state: IRootState) => ({
   activeOrders: ordersSelectors.activeOrders(state),

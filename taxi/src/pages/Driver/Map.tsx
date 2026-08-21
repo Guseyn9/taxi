@@ -1,6 +1,5 @@
 import React, { useCallback, useState, useEffect, useMemo, useRef } from 'react'
 import { connect, ConnectedProps } from 'react-redux'
-import { useNavigate } from 'react-router-dom'
 import L from 'leaflet'
 import {
   MapContainer, Marker, TileLayer, Polyline,
@@ -16,7 +15,6 @@ import {
   IUser,
 } from '../../types/types'
 import { IWayGraph } from '../../tools/maps'
-import { makeRoutePointsSafe } from '../../tools/route'
 import {
   DriverRouteEmulator,
   EDriverExternalEventType,
@@ -69,7 +67,18 @@ import { computeProfitPercentiles, getEstimatedProfit } from '../../tools/order'
 import { formatShortAddress } from '../../tools/address'
 
 import SITE_CONSTANTS from '../../siteConstants'
-import * as API from '../../API'
+import { backendGateway } from '../../platform/adapters/LegacyBackendGateway'
+import {
+  DRIVER_MAP_EVENTS,
+  driverMapGateway,
+} from '../../platform/adapters/DriverMapGateway'
+import type { DriverMapFailurePayload } from '../../platform/adapters/DriverMapGateway'
+import {
+  PLATFORM_ROUTES,
+  useDriverHudSurface,
+  useMapSurface,
+  usePlatformNavigate,
+} from '../../platform/platform-interface'
 import { orderActionCreators } from '../../state/order'
 import { ordersActionCreators } from '../../state/orders'
 import { modalsActionCreators } from '../../state/modals'
@@ -596,9 +605,9 @@ interface IContentProps extends IProps {
 }
 
 function DriverOrderMapModeContent({
-  user,
-  activeOrders,
-  readyOrders,
+  user: userProp,
+  activeOrders: activeOrdersProp,
+  readyOrders: readyOrdersProp,
   locate,
   setPosition,
   setZoom,
@@ -610,7 +619,72 @@ function DriverOrderMapModeContent({
   wayGraph,
 }: IContentProps) {
 
-  const navigate = useNavigate()
+  const navigate = usePlatformNavigate()
+
+  // Platform Interface: Driver HUD Surface — источник состояния водителя и заказов.
+  // Пока Snapshot недоступен, работает legacy fallback на props из Redux.
+  const driverPresentation = useDriverHudSurface()
+  let user = userProp
+  if (driverPresentation.available && driverPresentation.user) {
+    user = {
+      ...(userProp ?? {}),
+      ...driverPresentation.user,
+    } as IUser
+  }
+  const activeOrders = driverPresentation.available ?
+    driverPresentation.activeOrders as IOrder[] :
+    activeOrdersProp
+  const readyOrders = driverPresentation.available ?
+    driverPresentation.readyOrders as IOrder[] :
+    readyOrdersProp
+
+  // Map Surface управляет lifecycle Map Channel. mockEnabled = false: демо-режим
+  // маркера (markerMock) в основной репозиторий не переносился, мок-режимом здесь
+  // остаётся эмулятор водителя.
+  const mapChannel = useMapSurface({ mockEnabled: false, setOrderCardModal })
+
+  // Platform Interface: монтирование Driver Map Gateway и подписка на его события.
+  //
+  // Arrived / Started / Finished здесь НЕ обрабатываются намеренно: обновление
+  // состояния после перехода принадлежит обработчикам карты (runMapOrderTransition,
+  // refreshMapOrderState, продолжение плана поездки, припаркованная позиция), и
+  // дублировать его в событии значило бы дважды дёргать getOrder. Промис шлюза
+  // резолвится после терминального результата команды, поэтому этот порядок
+  // одинаково верен и в legacy-режиме, и с настроенным Command API.
+  //
+  // Failed логируется без модалки: карта сознательно не блокирует поездку окном
+  // ошибки — демо-бэкенд отвечает шумом и на успешный переход.
+  useEffect(() => {
+    const unmountGateway = driverMapGateway.mount()
+    const unsubscribe = driverMapGateway.subscribe(event => {
+      const payload = event.payload as {
+        readonly orderId?: IOrder['b_id']
+        readonly points?: readonly [number, number][]
+      }
+
+      switch (event.type) {
+        case DRIVER_MAP_EVENTS.CardOpened:
+          if (payload.orderId)
+            setOrderCardModal({ isOpen: true, orderId: payload.orderId })
+          break
+        case DRIVER_MAP_EVENTS.AreasRequested:
+          if (payload.points?.length)
+            getAreasBetweenPoints([...payload.points])
+          break
+        case DRIVER_MAP_EVENTS.Failed: {
+          const failure = event.payload as DriverMapFailurePayload
+          console.error('[DriverMap]', failure.code, failure.message)
+          break
+        }
+      }
+    })
+
+    return () => {
+      unsubscribe()
+      unmountGateway()
+    }
+  }, [getAreasBetweenPoints, setOrderCardModal])
+
   const map = useMap()
 
   const [lastPositions, setLastPositions] = useState<[number, number][]>([])
@@ -1637,7 +1711,7 @@ function DriverOrderMapModeContent({
 
     let cancelled = false
 
-    API.reverseGeocode(
+    driverMapGateway.reverseGeocode(
       String(routeOrder.b_destination_latitude),
       String(routeOrder.b_destination_longitude),
       { details: true },
@@ -1718,11 +1792,9 @@ function DriverOrderMapModeContent({
     if (!order) return
 
     rememberOptimisticState(order.b_id, EBookingDriverState.Arrived)
-    runMapOrderTransition(order.b_id, async() => {
-      await API.setOrderState(order.b_id, EBookingDriverState.Arrived)
-      if (isVotingOrder(order))
-        await API.arrivedVotingOrder(order.b_id)
-    })
+    runMapOrderTransition(order.b_id, () =>
+      driverMapGateway.arrive(order.b_id, isVotingOrder(order)),
+    )
   }
 
   // "Приехал": en route (Arrived) → started. Voting orders confirm the boarding
@@ -1732,14 +1804,12 @@ function DriverOrderMapModeContent({
     if (!order) return
 
     if (isVotingOrder(order)) {
-      setOrderCardModal({ isOpen: true, orderId: order.b_id })
+      void driverMapGateway.openCard(order.b_id)
       return
     }
 
     rememberOptimisticState(order.b_id, EBookingDriverState.Started)
-    runMapOrderTransition(order.b_id, async() => {
-      await API.setOrderState(order.b_id, EBookingDriverState.Started)
-    })
+    runMapOrderTransition(order.b_id, () => driverMapGateway.start(order.b_id))
   }
 
   // "Завершить поездку": started → finished, then close the order view.
@@ -1774,7 +1844,7 @@ function DriverOrderMapModeContent({
     forgetOptimisticState(order.b_id)
     setBoardedAlongTheWayIds(prev => prev.filter(id => id !== String(order.b_id)))
     setMapActionPending(true)
-    API.setOrderState(order.b_id, EBookingDriverState.Finished)
+    driverMapGateway.finish(order.b_id)
       .catch(error => console.error(error))
       .finally(() => {
         setStartedVotingOrderIds(removeStoredStartedVotingOrderId(order.b_id))
@@ -1785,7 +1855,7 @@ function DriverOrderMapModeContent({
 
         // The rating modal is opened by the finished-order effect in Driver/index;
         // opening it here too would pop it twice.
-        navigate(`/driver-order?tab=${EDriverTabs.Lite}`)
+        navigate(PLATFORM_ROUTES.DriverOrders, { query: { tab: EDriverTabs.Lite } })
       })
   }
 
@@ -1934,7 +2004,7 @@ function DriverOrderMapModeContent({
         if (cached)
           return cached
 
-        const info = await makeRoutePointsSafe(
+        const info = await driverMapGateway.makeRoutePoints(
           { latitude: from.lat, longitude: from.lng },
           { latitude: to.lat, longitude: to.lng },
           wayGraphRef.current,
@@ -2272,7 +2342,7 @@ function DriverOrderMapModeContent({
 
     takingAlongTheWayRef.current[orderId] = true
     setMapActionPending(true)
-    API.takeOrder(order.b_id, { performers_price: 0 }, false)
+    backendGateway.takeOrder(order.b_id, { performers_price: 0 }, false)
       .then(async() => {
         // Водитель уже стоит у попутчика: «Поехал» ему ехать некуда, а «Приехал»
         // подтверждать нечего — он приехал ещё до того, как взял заказ. Сажаем
@@ -2282,8 +2352,8 @@ function DriverOrderMapModeContent({
         // Бэкенд ведёт заказ по шагам, перепрыгнуть через Arrived нельзя.
         // Ошибки не блокируют поездку — демо-бэкенд отвечает шумом и на успешный
         // переход (тот же приём, что в runMapOrderTransition).
-        await API.setOrderState(order.b_id, EBookingDriverState.Arrived).catch(error => console.error(error))
-        await API.setOrderState(order.b_id, EBookingDriverState.Started).catch(error => console.error(error))
+        await driverMapGateway.arrive(order.b_id).catch(error => console.error(error))
+        await driverMapGateway.start(order.b_id).catch(error => console.error(error))
         refreshMapOrderState(order.b_id)
         // Страховка: если заказ так и не появился в активных, точка «на пробу»
         // осталась бы в плане навсегда, а маркер — стоять на ней без вопроса.
@@ -2671,7 +2741,7 @@ function DriverOrderMapModeContent({
   useEffect(() => {
     if (!currentRouteStart || !currentRouteTarget) return
 
-    getAreasBetweenPoints([currentRouteStart, currentRouteTarget])
+    void driverMapGateway.requestAreas([currentRouteStart, currentRouteTarget])
   }, [routeAreasRequestKey, getAreasBetweenPoints])
 
   useEffect(() => {
@@ -2773,7 +2843,7 @@ function DriverOrderMapModeContent({
     lastRouteTargetRef.current = to
     lastRouteGraphRef.current = wayGraph
 
-    makeRoutePointsSafe(from, to, wayGraph)
+    driverMapGateway.makeRoutePoints(from, to, wayGraph)
       .then((info) => {
         if (changed) return
         setActiveDriveRouteInfo(info)
@@ -2899,7 +2969,7 @@ function DriverOrderMapModeContent({
                 event.originalEvent?.stopPropagation?.()
                 L.DomEvent.stopPropagation(event.originalEvent)
               } catch (_) {}
-              setOrderCardModal({ isOpen: true, orderId: stop.order.b_id })
+              mapChannel.selectOrder(stop.order.b_id)
             },
           }
           const address = isPickup ?
@@ -2971,7 +3041,7 @@ function DriverOrderMapModeContent({
                     event.originalEvent?.stopPropagation?.()
                     L.DomEvent.stopPropagation(event.originalEvent)
                   } catch (_) {}
-                  setOrderCardModal({ isOpen: true, orderId: item.b_id })
+                  mapChannel.selectOrder(item.b_id)
                 },
               }}
               key={item.b_id}
@@ -2980,7 +3050,7 @@ function DriverOrderMapModeContent({
       }
       <button
         className='no-coords-orders'
-        onClick={() => navigate(`/driver-order?tab=${EDriverTabs.Detailed}`)}
+        onClick={() => navigate(PLATFORM_ROUTES.DriverOrders, { query: { tab: EDriverTabs.Detailed } })}
       >
         {
           (
