@@ -19,7 +19,8 @@ import { getStableRemainingLifetimeSeconds, getTimestamp } from '../../tools/rel
 import { getDriverTripStartedAt } from '../../tools/tripTimer'
 import { configSelectors } from '../../state/config'
 import SITE_CONSTANTS from '../../siteConstants'
-import * as API from '../../API'
+import { backendGateway } from '../../platform/adapters/LegacyBackendGateway'
+import { driverMapGateway } from '../../platform/adapters/DriverMapGateway'
 import ChatToggler from '../Chat/Toggler'
 import CarClassBadge, { getRequiredCarClassKind } from '../CarClassBadge'
 import votingModeIconPng from './icon_group_check.png'
@@ -480,7 +481,7 @@ function MiniOrders({
     setSelectedOrder(order.b_id)
     setFinishingOrders(prev => ({ ...prev, [order.b_id]: true }))
 
-    API.setOrderState(order.b_id, EBookingDriverState.Finished)
+    driverMapGateway.finish(order.b_id)
       .then(() => {
         refreshActiveOrders()
         setRatingModal({ isOpen: true, orderID: order.b_id })
@@ -516,7 +517,7 @@ function MiniOrders({
       if (!routePoints)
         return
 
-      withRouteTimeout(API.makeRoutePoints(routePoints.from, routePoints.to))
+      withRouteTimeout(backendGateway.makeRoutePoints(routePoints.from, routePoints.to))
         .then(routeInfo => {
           if (cancelled)
             return

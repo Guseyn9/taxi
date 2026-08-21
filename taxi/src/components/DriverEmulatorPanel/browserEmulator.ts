@@ -21,7 +21,7 @@ import { ensureReachablePoint } from '../../tools/mapReachability'
 import { clearDriverParkedPosition, getDriverPosition } from '../../tools/driverPosition'
 import { getDriverTrip, getDriverTripPhaseLabel } from '../../tools/driverTripPhase'
 import { ALONG_THE_WAY_EVERY_NTH_ORDER, AlongTheWaySchedule } from '../../tools/alongTheWaySchedule'
-import * as API from '../../API'
+import { backendGateway } from '../../platform/adapters/LegacyBackendGateway'
 import store from '../../state'
 import { userSelectors } from '../../state/user'
 
@@ -2083,7 +2083,7 @@ function coordinateAddressFallback(point: Point, label: 'подачи' | 'наз
 
 async function resolveGeneratedPointAddress(point: any, label: 'подачи' | 'назначения') {
   try {
-    const response = await API.reverseGeocode(String(point.latitude), String(point.longitude))
+    const response = await backendGateway.reverseGeocode(String(point.latitude), String(point.longitude))
     const resolved = compactReverseAddress(response)
     if (resolved.address && !isGeneratedAddressPlaceholder(resolved.address)) {
       return {

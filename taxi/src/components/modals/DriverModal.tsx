@@ -4,7 +4,7 @@ import Button from '../Button'
 import OrderId from '../OrderId'
 import { t, TRANSLATION } from '../../localization'
 import images from '../../constants/images'
-import * as API from '../../API'
+import { backendGateway } from '../../platform/adapters/LegacyBackendGateway'
 import { clientOrderSelectors } from '../../state/clientOrder'
 import { IRootState } from '../../state'
 import { ordersSelectors } from '../../state/orders'
@@ -49,10 +49,10 @@ const DriverModal: React.FC<IProps> = ({
 
   useEffect(() => {
     if (isOpen && selectedOrder && driver?.c_id) {
-      API.getCar(driver.c_id)
+      backendGateway.getCar(driver.c_id)
         .then(setCar)
         .catch(error => console.error(error))
-      API.getUser(driver.u_id)
+      backendGateway.getUser(driver.u_id)
         .then(setDriverUser)
         .catch(error => console.error(error))
     }

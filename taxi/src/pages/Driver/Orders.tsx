@@ -1,13 +1,12 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { connect, ConnectedProps } from 'react-redux'
-import { useNavigate } from 'react-router-dom'
 import cn from 'classnames'
 import {
   EBookingDriverState, EColorTypes, EStatuses,
   IUser, IOrder,
 } from '../../types/types'
 import SITE_CONSTANTS from '../../siteConstants'
-import * as API from '../../API'
+import { backendGateway } from '../../platform/adapters/LegacyBackendGateway'
 import { modalsActionCreators } from '../../state/modals'
 import { userActionCreators } from '../../state/user'
 import { IUserState } from '../../state/user/constants'
@@ -40,6 +39,11 @@ import {
 import { trackOrderDecisions } from '../../tools/orderDecisionTracker'
 import { recordOrderInteraction } from '../../tools/orderInteractionLog'
 import { carsSelectors } from '../../state/cars'
+import {
+  PLATFORM_ROUTES,
+  useDriverListSurface,
+  usePlatformNavigate,
+} from '../../platform/platform-interface'
 import './styles.scss'
 
 const mapDispatchToProps = {
@@ -64,10 +68,10 @@ interface IProps extends ConnectedProps<typeof connector> {
   type: Omit<EDriverTabs, EDriverTabs.Map>,
 }
 const DriverOrders: React.FC<IProps> = ({
-  user,
-  activeOrders,
-  readyOrders,
-  historyOrders,
+  user: userProp,
+  activeOrders: activeOrdersProp,
+  readyOrders: readyOrdersProp,
+  historyOrders: historyOrdersProp,
   type,
   setTakePassengerModal,
   setMessageModal,
@@ -76,6 +80,23 @@ const DriverOrders: React.FC<IProps> = ({
   language,
   driverCar,
 }) => {
+  const driverPresentation = useDriverListSurface()
+  let user = userProp
+  if (driverPresentation.available && driverPresentation.user) {
+    user = {
+      ...(userProp ?? {}),
+      ...driverPresentation.user,
+    } as IUser
+  }
+  const activeOrders = driverPresentation.available ?
+    driverPresentation.activeOrders as IOrder[] :
+    activeOrdersProp
+  const readyOrders = driverPresentation.available ?
+    driverPresentation.readyOrders as IOrder[] :
+    readyOrdersProp
+  const historyOrders = driverPresentation.available ?
+    driverPresentation.historyOrders as IOrder[] :
+    historyOrdersProp
   const languageIso = language?.iso
   const [showCandidateOrders, setShowCandidateOrders] = useState(true)
   const [showReadyOrders, setShowReadyOrders] = useState(true)
@@ -107,9 +128,12 @@ const DriverOrders: React.FC<IProps> = ({
     orderCardRefs.current[String(id)] = element
   }
 
-  const navigate = useNavigate()
+  const navigate = usePlatformNavigate()
 
-  const handleOrderClick = (id: string) => navigate(`/driver-order/${id}`)
+  const handleOrderClick = (id: string) => navigate(
+    PLATFORM_ROUTES.DriverOrder,
+    { params: { id } },
+  )
 
   // Выделение карточки — отдельный наблюдаемый шаг: водитель уже обратил на
   // заказ внимание, но экран заказа ещё не открыл.
@@ -120,8 +144,8 @@ const DriverOrders: React.FC<IProps> = ({
   }
 
   const handleDrovePassengerClick = () => {
-    API.setOutDrive(true)
-      .then(API.getAuthorizedUser)
+    backendGateway.setOutDrive(true)
+      .then(backendGateway.getAuthorizedUser)
       .then((user) => setUser(user))
   }
 

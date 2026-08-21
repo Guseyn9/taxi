@@ -8,13 +8,12 @@ import {
 import images from '../../constants/images'
 import { getBase64 } from '../../tools/utils'
 import { formatPhoneNumber, normalizePhoneNumber } from '../../tools/phoneUtils'
-import * as API from '../../API'
-import {
+import { backendGateway } from '../../platform/adapters/LegacyBackendGateway'
+import type {
   TEditClient,
   TEditDriverCheckRequired,
   TEditDriverCheckActive,
 } from '../../API/user'
-import { getImageFile } from '../../API'
 import { IRootState } from '../../state'
 import { modalsActionCreators, modalsSelectors } from '../../state/modals'
 import { defaultProfileModal } from '../../state/modals/reducer'
@@ -88,7 +87,7 @@ const DRIVER_CHECK_ACTIVE_FIELDS = new Set<
   'ref_code',
   'u_details',
 ])
-const CAR_FIELDS = new Set<keyof Parameters<typeof API.editCar>[1]>([
+const CAR_FIELDS = new Set<keyof Parameters<typeof backendGateway.editCar>[1]>([
   'cm_id',
   'seats',
   'registration_plate',
@@ -102,7 +101,7 @@ const getCarFields = (uCar: ICar | null) =>
   uCar ?
     objectFromEntries(Object.entries(uCar)
       .filter(([key]) => CAR_FIELDS.has(key as any)),
-    ) as Parameters<typeof API.createUserCar>[0] :
+    ) as Parameters<typeof backendGateway.createUserCar>[0] :
     null
 
 const isDeepEqual = (left: any, right: any): boolean => {
@@ -157,7 +156,7 @@ const normalizeImageIds = (value: unknown): any[] => {
 }
 
 const loadImageFiles = (ids: unknown, setter: (value: [number, File][]) => void) => {
-  Promise.all(normalizeImageIds(ids).map(getImageFile))
+  Promise.all(normalizeImageIds(ids).map(backendGateway.getImageFile))
     .then(items => setter(items.filter(Boolean) as [number, File][]))
     .catch(error => {
       console.error(error)
@@ -232,7 +231,7 @@ function ProfileModalContent({
     const file = e.target.files[0]
     if (!user || !tokens || !file) return
     getBase64(file)
-      .then((base64: any) => API.editUser({ u_photo: base64 }))
+      .then((base64: any) => backendGateway.editUser({ u_photo: base64 }))
       .then(() => updateUser())
       .catch(error => alert(JSON.stringify(error)))
   }, [user, tokens])
@@ -311,7 +310,7 @@ function ProfileModalContent({
     }
 
     if (values.ref_code && values.ref_code !== user!.ref_code) {
-      const res = await API.checkRefCode(values.ref_code)
+      const res = await backendGateway.checkRefCode(values.ref_code)
       if (!res) {
         setErrors({
           ref_code: true,
@@ -334,7 +333,7 @@ function ProfileModalContent({
       }
 
       try {
-        const response = await API.editUser(changedClientFields as any)
+        const response = await backendGateway.editUser(changedClientFields as any)
         if (
           response?.status === 'error' ||
           (response?.code && String(response.code) !== '200')
@@ -432,7 +431,7 @@ function ProfileModalContent({
             })
             .filter((image: [any, File]) => !image[0])
             .map((image: [any, File]) =>
-              API.uploadFile({
+              backendGateway.uploadFile({
                 file: image[1],
                 u_id: user!.u_id,
                 token: tokens?.token,
@@ -457,7 +456,7 @@ function ProfileModalContent({
 
         if (!Object.keys(changedDriverFields).length && !hasCarChanges) return
 
-        const response = await API.editUser(changedDriverFields as any)
+        const response = await backendGateway.editUser(changedDriverFields as any)
         if (
           response?.status === 'error' ||
           (response?.code && String(response.code) !== '200')

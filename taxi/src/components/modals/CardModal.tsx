@@ -1,10 +1,10 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { connect, ConnectedProps } from 'react-redux'
-import { useNavigate } from 'react-router-dom'
 import OrderId from '../OrderId'
 import { useForm } from 'react-hook-form'
 import cn from 'classnames'
-import * as API from '../../API'
+import { backendGateway } from '../../platform/adapters/LegacyBackendGateway'
+import { driverMapGateway } from '../../platform/adapters/DriverMapGateway'
 import {
   EBookingDriverState,
   EBookingStates,
@@ -58,6 +58,7 @@ import {
 import { userSelectors } from '../../state/user'
 import { configSelectors } from '../../state/config'
 import { EDriverTabs } from '../../pages/Driver'
+import { PLATFORM_ROUTES, usePlatformNavigate } from '../../platform/platform-interface'
 import {
   clearDriverOfferClientResponse,
   ensureDriverOfferClientResponse,
@@ -514,11 +515,6 @@ function isAlreadyVotingParticipantError(error: any) {
   return text.includes('already performer') || text.includes('booking driver state 2')
 }
 
-function isNotAppointedPerformerError(error: any) {
-  return getApiErrorText(error).includes('not appointed performer')
-}
-
-
 function getNumericRouteValue(...values: unknown[]): number | undefined {
   for (const value of values) {
     if (value === null || value === undefined || value === '')
@@ -659,7 +655,6 @@ const mapStateToProps = (state: IRootState) => ({
 const mapDispatchToProps = {
   watchOrder: ordersActionCreators.watchOrder,
   takeOrder: ordersActionCreators.take,
-  setOrderState: ordersActionCreators.setState,
   cancelOrder: ordersActionCreators.cancel,
   getOrderStart: ordersDetailsActionCreators.getOrderStart,
   getOrderDestination: ordersDetailsActionCreators.getOrderDestination,
@@ -709,7 +704,6 @@ function CardModalContent({
   activeChat,
   watchOrder,
   takeOrder,
-  setOrderState,
   cancelOrder,
   getOrderStart,
   getOrderDestination,
@@ -806,7 +800,7 @@ function CardModalContent({
     let cancelled = false
     setIsRouteDurationLoading(true)
 
-    withRouteTimeout(API.makeRoutePoints(routePoints.from, routePoints.to))
+    withRouteTimeout(backendGateway.makeRoutePoints(routePoints.from, routePoints.to))
       .then((routeInfo) => {
         if (cancelled)
           return
@@ -854,7 +848,7 @@ function CardModalContent({
     true,
   )
 
-  const navigate = useNavigate()
+  const navigate = usePlatformNavigate()
 
   const { register, formState: { errors }, handleSubmit: formHandleSubmit, getValues, setValue, watch } = useForm<IFormValues>({
     criteriaMode: 'all',
@@ -871,7 +865,7 @@ function CardModalContent({
 
     let cancelled = false
 
-    API.getUserCar(user.u_id)
+    backendGateway.getUserCar(user.u_id)
       .then(car => {
         if (cancelled)
           return
@@ -1137,7 +1131,7 @@ function CardModalContent({
         eta: values.offerEta || t(TRANSLATION.DRIVER_OFFER_ETA_15),
         comment: values.offerComment,
       }
-      await API.sendOrderOffer(orderId, offerPayload)
+      await backendGateway.sendOrderOffer(orderId, offerPayload)
       const storedOffer = saveStoredDriverOffer(orderId, user?.u_id, offerPayload, 'sent')
       setLocalDriverOffer(storedOffer)
       clearDriverOfferClientResponse(orderId, user?.u_id)
@@ -1153,13 +1147,13 @@ function CardModalContent({
       if (isVotingDriverParticipating(userAsDriver)) {
         const nextIds = saveVotingParticipationId(orderId)
         setVotingParticipationIds(nextIds)
-        navigate('/driver-order?tab=map')
+        navigate(PLATFORM_ROUTES.DriverOrders, { query: { tab: EDriverTabs.Map } })
         closeModal()
         return
       }
 
       try {
-        await API.participateVotingOrder(orderId, getValues().performers_price, getValues().offerEta || t(TRANSLATION.DRIVER_OFFER_ETA_15))
+        await backendGateway.participateVotingOrder(orderId, getValues().performers_price, getValues().offerEta || t(TRANSLATION.DRIVER_OFFER_ETA_15))
       } catch (error) {
         if (!isAlreadyVotingParticipantError(error))
           throw error
@@ -1172,18 +1166,18 @@ function CardModalContent({
         message: [t(TRANSLATION.DRIVER_VOTING_READY_SENT), getOrderIdText(orderId, activeOrderIds)]
           .filter(Boolean).join(' '),
       })
-      navigate('/driver-order?tab=map')
+      navigate(PLATFORM_ROUTES.DriverOrders, { query: { tab: EDriverTabs.Map } })
       closeModal()
       return
     }
 
     await takeOrder(orderId, { ...getValues() })
-    navigate('/driver-order?tab=map')
+    navigate(PLATFORM_ROUTES.DriverOrders, { query: { tab: EDriverTabs.Map } })
     closeModal()
   })
 
   const onArrivedClick = () => orderMutation(async() => {
-    await setOrderState(orderId, EBookingDriverState.Arrived)
+    await driverMapGateway.arrive(orderId)
   })
 
   const requestHideOrder = () => {
@@ -1203,7 +1197,7 @@ function CardModalContent({
   }
 
   const confirmCancelOfferAndHide = () => orderMutation(async() => {
-    await API.cancelVotingParticipation(orderId)
+    await backendGateway.cancelVotingParticipation(orderId)
     removeStoredDriverOffer(orderId, user?.u_id)
     clearDriverOfferClientResponse(orderId, user?.u_id)
     setLocalOfferClientResponse(null)
@@ -1223,14 +1217,14 @@ function CardModalContent({
 
   const confirmClientSelectedOffer = () => orderMutation(async() => {
     const values = getValues()
-    await API.takeOrder(orderId, {
+    await backendGateway.takeOrder(orderId, {
       votingNumber: values.votingNumber,
       performers_price: currentDriverOffer?.price ?? values.performers_price,
     }, false)
     const nextResponse = updateDriverOfferClientResponseStatus(orderId, user?.u_id, 'driver_confirmed')
     watchOrder(orderId)
     setLocalOfferClientResponse(nextResponse)
-    navigate('/driver-order?tab=map')
+    navigate(PLATFORM_ROUTES.DriverOrders, { query: { tab: EDriverTabs.Map } })
     closeModal()
   })
 
@@ -1255,14 +1249,14 @@ function CardModalContent({
   }
 
   const onStartedClick = () => orderMutation(async() => {
-    await setOrderState(orderId, EBookingDriverState.Started)
-    navigate('/driver-order?tab=map')
+    await driverMapGateway.start(orderId)
+    navigate(PLATFORM_ROUTES.DriverOrders, { query: { tab: EDriverTabs.Map } })
     closeModal()
   })
 
   const onCompleteOrderClick = () => orderMutation(async() => {
-    await setOrderState(orderId, EBookingDriverState.Finished)
-    navigate(`/driver-order?tab=${EDriverTabs.Lite}`)
+    await driverMapGateway.finish(orderId)
+    navigate(PLATFORM_ROUTES.DriverOrders, { query: { tab: EDriverTabs.Lite } })
     setRatingModal({ isOpen: true, orderID: orderId })
     closeModal()
   })
@@ -1278,7 +1272,7 @@ function CardModalContent({
   })
 
   const refuseVotingOrder = () => orderMutation(async() => {
-    await API.cancelVotingParticipation(orderId)
+    await backendGateway.cancelVotingParticipation(orderId)
     const nextIds = removeVotingParticipationId(orderId)
     const nextArrivedIds = removeVotingArrivedId(orderId)
     setVotingParticipationIds(nextIds)
@@ -1289,41 +1283,30 @@ function CardModalContent({
       message: [t(TRANSLATION.DRIVER_VOTING_REFUSED), getOrderIdText(orderId, activeOrderIds)]
         .filter(Boolean).join(' '),
     })
-    navigate('/driver-order')
+    navigate(PLATFORM_ROUTES.DriverOrders)
     closeModal()
   })
 
   const arrivedVotingOrder = () => orderMutation(async() => {
-    if (userAsDriver?.c_state !== EBookingDriverState.Arrived) {
-      try {
-        if (
-          userAsDriver?.c_state === EBookingDriverState.Performer ||
-          userAsDriver?.c_state === EBookingDriverState.Started
-        )
-          await setOrderState(orderId, EBookingDriverState.Arrived)
-      } catch (error) {
-        if (!isNotAppointedPerformerError(error))
-          throw error
-      }
-    }
-    try {
-      await API.arrivedVotingOrder(orderId)
-    } catch (error) {
-      if (!isNotAppointedPerformerError(error))
-        throw error
-    }
+    const updateState = userAsDriver?.c_state !== EBookingDriverState.Arrived && (
+      userAsDriver?.c_state === EBookingDriverState.Performer ||
+      userAsDriver?.c_state === EBookingDriverState.Started
+    )
+    await driverMapGateway.arrive(orderId, {
+      voting: true,
+      updateState,
+      tolerateNotAppointed: true,
+    })
     const nextIds = saveVotingArrivedId(orderId)
     setVotingArrivedIds(nextIds)
   })
 
   const onVotingWentClick = () => orderMutation(async() => {
-    await setOrderState(orderId, EBookingDriverState.Arrived)
-    try {
-      await API.arrivedVotingOrder(orderId)
-    } catch (error) {
-      if (!isNotAppointedPerformerError(error))
-        throw error
-    }
+    await driverMapGateway.arrive(orderId, {
+      voting: true,
+      updateState: true,
+      tolerateNotAppointed: true,
+    })
   })
 
   const openVotingNavigation = () => {
@@ -1359,12 +1342,11 @@ function CardModalContent({
       return
     }
 
-    await API.confirmVotingCode(orderId, enteredCode)
-    await setOrderState(orderId, EBookingDriverState.Started, enteredCode)
+    await driverMapGateway.confirmBoarding(orderId, enteredCode)
     saveStartedVotingOrderId(orderId)
     setVotingParticipationIds(removeVotingParticipationId(orderId))
     setVotingArrivedIds(removeVotingArrivedId(orderId))
-    navigate('/driver-order?tab=map')
+    navigate(PLATFORM_ROUTES.DriverOrders, { query: { tab: EDriverTabs.Map } })
     closeModal()
   }))
 

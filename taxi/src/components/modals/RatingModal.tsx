@@ -10,7 +10,7 @@ import {
 import { useSimpleSelector } from '../../tools/hooks'
 import images from '../../constants/images'
 import { CURRENCY } from '../../siteConstants'
-import * as API from '../../API'
+import { backendGateway } from '../../platform/adapters/LegacyBackendGateway'
 import { IRootState } from '../../state'
 import { modalsActionCreators, modalsSelectors } from '../../state/modals'
 import { clientOrderSelectors } from '../../state/clientOrder'
@@ -120,7 +120,7 @@ function RatingModal({
           hasComment: Boolean(comment),
         },
       })
-      API.setOrderRating(_orderID, stars)
+      backendGateway.setOrderRating(_orderID, stars)
         .catch(error => {
           writeFlowEvent('REVIEW_SCREEN_FAILED', {
             orderId: _orderID,
