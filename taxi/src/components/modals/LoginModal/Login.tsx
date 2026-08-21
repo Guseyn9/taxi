@@ -17,10 +17,11 @@ import Alert from '../../Alert/Alert'
 import { Intent } from '../../Alert'
 import { useVisibility } from '../../../tools/hooks'
 import { GoogleLoginButton } from 'react-social-login-buttons'
-import { useLocation, useNavigate } from 'react-router-dom'
+import { useLocation } from 'react-router-dom'
 import { modalsActionCreators,  modalsSelectors } from '../../../state/modals'
 import { Input } from './elements'
 import { replaceAllString } from '../../../tools/compat'
+import { usePlatformNavigator } from '../../../platform/platform-interface'
 
 
 const mapStateToProps = (state: IRootState) => ({
@@ -78,7 +79,7 @@ const LoginForm: React.FC<IProps> = ({
   const [isVisible, toggleVisibility] = useVisibility(false)
   const [isPasswordVisible, togglePasswordVisibility] = useVisibility(true)
   const location = useLocation()
-  const navigate = useNavigate()
+  const { navigatePath: navigate } = usePlatformNavigator()
   const googleClientId = '973943716904-b33r11ijgi08m5etsg5ndv409shh1tjl.apps.googleusercontent.com'
 
   const role = !location.pathname.includes('/driver-order') ?

@@ -1,5 +1,5 @@
 import React, { Suspense, lazy, useEffect } from 'react'
-import { Route, Routes, Navigate, useNavigate } from 'react-router-dom'
+import { Route, Routes, Navigate } from 'react-router-dom'
 import {
   configSelectors,
 } from './state/config'
@@ -11,6 +11,11 @@ import { EStatuses, EUserRoles, IUser } from './types/types'
 import { userSelectors } from './state/user'
 import Sandbox from './pages/Sandbox'
 import PageSection from './components/PageSection'
+import {
+  PLATFORM_ROUTES,
+  platformInterface,
+  usePlatformNavigationBridge,
+} from './platform/platform-interface'
 
 const PassengerOrder = lazy(() => import('./pages/Passenger')) as any
 const Order = lazy(() => import('./pages/Order')) as any
@@ -29,6 +34,7 @@ interface IProps extends ConnectedProps<typeof connector> {
 }
 
 const AppRoutesWrapper: React.FC<IProps> = ({ status, user, language }) => {
+  usePlatformNavigationBridge()
   const languageIso = language?.iso
 
   return status === EStatuses.Success ?
@@ -46,10 +52,11 @@ const UnavailableBase = () => {
 }
 
 const HomePageRedirect = () => {
-  const navigate = useNavigate()
+  const passengerPath = platformInterface.navigationRegistry
+    .require(PLATFORM_ROUTES.PassengerOrder).path
   useEffect(() => {
     const timer = setTimeout(() => {
-      navigate('/passenger-order')
+      platformInterface.navigationRuntime.navigate(PLATFORM_ROUTES.PassengerOrder)
     }, 11000)
     return () => clearTimeout(timer)
   }, [])
@@ -68,7 +75,7 @@ const HomePageRedirect = () => {
       }}
     >
       <a
-        href='/passenger-order'
+        href={passengerPath}
         style={{
           background: 'linear-gradient(90deg, rgb(15, 44, 118) 0%, rgb(30, 88, 235) 100%)',
           height: 60,
@@ -86,33 +93,33 @@ const HomePageRedirect = () => {
   )
 }
 
-const AppRoutes = ({ user, languageIso }: {user: IUser | null, languageIso?: string}) => (
-  <Routes>
+const AppRoutes = ({ user, languageIso }: {user: IUser | null, languageIso?: string}) => {
+  const routePath = (id: string) => platformInterface.navigationRegistry.require(id).path
+  const defaultRoute = [EUserRoles.Client, EUserRoles.Agent].includes(user?.u_role as any) ?
+    PLATFORM_ROUTES.PassengerOrder :
+    user?.u_role === EUserRoles.Driver ? PLATFORM_ROUTES.DriverOrders : null
+
+  return <Routes>
     <Route
       path="/*"
       element={<>
         <Navigate
           replace
           to={
-            [
-              EUserRoles.Client,
-              EUserRoles.Agent,
-            ].includes(user?.u_role as any) ?
-              '/passenger-order' :
-              user?.u_role === EUserRoles.Driver ?
-                '/driver-order' :
-                '/'
+            defaultRoute ?
+              routePath(defaultRoute) :
+              '/'
           }
         />
         <PassengerOrder languageIso={languageIso} />
       </>}
     />
-    <Route path="/passenger-order" element={<PassengerOrder languageIso={languageIso} />} />
-    <Route path="/driver-order/:id" element={<Order languageIso={languageIso} />} />
-    <Route path="/driver-order" element={<DriverOrder languageIso={languageIso} />} />
-    <Route path="/driver-order-test" element={<DriverOrder languageIso={languageIso} />} />
-    <Route path="/sandbox" element={<Sandbox />} />
+    <Route path={routePath(PLATFORM_ROUTES.PassengerOrder)} element={<PassengerOrder languageIso={languageIso} />} />
+    <Route path={routePath(PLATFORM_ROUTES.DriverOrder)} element={<Order languageIso={languageIso} />} />
+    <Route path={routePath(PLATFORM_ROUTES.DriverOrders)} element={<DriverOrder languageIso={languageIso} />} />
+    <Route path={routePath(PLATFORM_ROUTES.DriverTest)} element={<DriverOrder languageIso={languageIso} />} />
+    <Route path={routePath(PLATFORM_ROUTES.Sandbox)} element={<Sandbox />} />
   </Routes>
-)
+}
 
 export default connector(AppRoutesWrapper)

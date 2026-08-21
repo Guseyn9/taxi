@@ -3,7 +3,7 @@ import { connect, ConnectedProps } from 'react-redux'
 import Button from '../Button'
 import Input, { EInputTypes } from '../Input'
 import { t, TRANSLATION } from '../../localization'
-import * as API from '../../API'
+import { backendGateway } from '../../platform/adapters/LegacyBackendGateway'
 import { getPointError } from '../../tools/utils'
 import images from '../../constants/images'
 import { modalsActionCreators, modalsSelectors } from '../../state/modals'
@@ -37,12 +37,12 @@ interface IProps extends ConnectedProps<typeof connector> {
 }
 
 const debouncedGetFromPointSuggestion = _.debounce((callback, ...args) => {
-  API.getPointSuggestions(
+  backendGateway.getPointSuggestions(
     ...args,
   ).then(callback)
 }, 500)
 const debouncedGetToPointSuggestion = _.debounce((callback, ...args) => {
-  API.getPointSuggestions(
+  backendGateway.getPointSuggestions(
     ...args,
   ).then(callback)
 }, 500)
@@ -78,7 +78,7 @@ const TakePassengerModal: React.FC<IProps> = ({
   const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
 
-    API.setOutDrive(
+    backendGateway.setOutDrive(
       false,
       {
         fromAddress: from?.address,
@@ -91,7 +91,7 @@ const TakePassengerModal: React.FC<IProps> = ({
       seats,
     )
       .then(() => setTakePassengerModal({ isOpen: false }))
-      .then(API.getAuthorizedUser)
+      .then(backendGateway.getAuthorizedUser)
       .then(setUser)
       .catch(error => {
         console.error(error)
@@ -112,7 +112,7 @@ const TakePassengerModal: React.FC<IProps> = ({
           },
         })
 
-        API.reverseGeocode(String(coords.latitude), String(coords.longitude))
+        backendGateway.reverseGeocode(String(coords.latitude), String(coords.longitude))
           .then(response => {
             const address = String(response?.display_name || '').trim()
             updateTakePassengerModal({

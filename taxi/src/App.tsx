@@ -2,18 +2,29 @@ import React, { useEffect } from 'react'
 import { connect, ConnectedProps } from 'react-redux'
 import { Helmet } from 'react-helmet-async'
 import SITE_CONSTANTS from './siteConstants'
-import * as API from './API'
-import { IRootState } from './state'
+import store, { IRootState } from './state'
 import { configSelectors } from './state/config'
 import { userActionCreators } from './state/user'
+import { userSelectors } from './state/user'
+import { EUserRoles } from './types/types'
 import Theme from './components/Theme'
 import { ModalHost } from './components/modals'
 import AppRoutes from './Routes'
+import { LegacyReduxSnapshotProvider } from './platform/adapters/LegacyReduxSnapshotProvider'
+import { backendGateway } from './platform/adapters/LegacyBackendGateway'
+import { createConfiguredFsmOrderSnapshotProvider } from './platform/adapters/FsmOrderSnapshotTransport'
+import { createConfiguredFsmDriverSnapshotProvider } from './platform/adapters/FsmDriverSnapshotTransport'
+import { platformInterface } from './platform/platform-interface'
 import './App.scss'
+
+const legacySnapshotProvider = new LegacyReduxSnapshotProvider(store)
+const serverOrderSnapshotProvider = createConfiguredFsmOrderSnapshotProvider()
+backendGateway.setEventPublisher(event => platformInterface.runtime.publish(event))
 
 const mapStateToProps = (state: IRootState) => ({
   configStatus: configSelectors.status(state),
   language: configSelectors.language(state),
+  user: userSelectors.user(state),
 })
 
 const mapDispatchToProps = {
@@ -28,6 +39,7 @@ interface IProps extends ConnectedProps<typeof connector> {
 const App: React.FC<IProps> = ({
   configStatus,
   language,
+  user,
   initUser,
 }) => {
   if ((window as any).ReactNativeWebView) {
@@ -39,12 +51,23 @@ const App: React.FC<IProps> = ({
   useEffect(() => {
     initUser()
 
-    API.activateChatServer()
-    const interval = setInterval(() => API.activateChatServer(), 30000)
+    backendGateway.activateChatServer()
+    const interval = setInterval(() => backendGateway.activateChatServer(), 30000)
     return () => {
       clearInterval(interval)
     }
   }, [])
+
+  useEffect(() => {
+    const driverSnapshotProvider = user?.u_role === EUserRoles.Driver ?
+      createConfiguredFsmDriverSnapshotProvider(user.u_id) :
+      null
+    platformInterface.snapshotProvider
+      .setProvider(
+        driverSnapshotProvider ?? serverOrderSnapshotProvider ?? legacySnapshotProvider,
+      )
+      .catch(error => console.error('[PlatformInterface] Snapshot provider setup failed', error))
+  }, [user?.u_id, user?.u_role])
 
   const getMetaTags = () => {
     let _domain = `${window.location.protocol}//${window.location.host}/`

@@ -1,14 +1,11 @@
 import React, { useEffect, useMemo, useState } from 'react'
-import { connect, ConnectedProps } from 'react-redux'
 import cn from 'classnames'
-import * as API from '../../API'
+import { passengerGateway } from '../../platform/adapters/LegacyPassengerGateway'
+import {
+  passengerLiveOrderConnector,
+  PassengerLiveOrderStoreProps,
+} from '../../platform/adapters/LegacyPassengerChannelStoreAdapter'
 import { t, TRANSLATION } from '../../localization'
-import { IRootState } from '../../state'
-import { configSelectors } from '../../state/config'
-import { modalsActionCreators, modalsSelectors } from '../../state/modals'
-import { clientOrderActionCreators } from '../../state/clientOrder'
-import { ordersActionCreators } from '../../state/orders'
-import { userSelectors } from '../../state/user'
 import SITE_CONSTANTS, { CURRENCY } from '../../siteConstants'
 import {
   EBookingDriverState,
@@ -47,26 +44,7 @@ import './styles.scss'
 
 const DRIVER_AVATAR_FALLBACK = '/assets/images/default/driver-avatar-default.png'
 
-const mapStateToProps = (state: IRootState) => ({
-  currentUser: userSelectors.user(state),
-  activeChat: modalsSelectors.activeChat(state),
-  language: configSelectors.language(state),
-})
-
-const mapDispatchToProps = {
-  setActiveChat: modalsActionCreators.setActiveChat,
-  setAlarmModal: modalsActionCreators.setAlarmModal,
-  setCancelModal: modalsActionCreators.setCancelModal,
-  setMessageModal: modalsActionCreators.setMessageModal,
-  setRatingModal: modalsActionCreators.setRatingModal,
-  setSelectedOrder: clientOrderActionCreators.setSelectedOrder,
-  setPickupPrice: clientOrderActionCreators.setPickupPrice,
-  refreshActiveOrders: ordersActionCreators.refreshActiveOrders,
-}
-
-const connector = connect(mapStateToProps, mapDispatchToProps)
-
-interface IProps extends ConnectedProps<typeof connector> {
+interface IProps extends PassengerLiveOrderStoreProps {
   order: IOrder
   onNewOrder?: () => void
 }
@@ -199,7 +177,7 @@ function PassengerLiveOrder({
       return
     }
 
-    API.getUser(selectedDriver.u_id)
+    passengerGateway.getUser(selectedDriver.u_id)
       .then(user => {
         if (!cancelled) setDriverUser(user)
       })
@@ -209,7 +187,7 @@ function PassengerLiveOrder({
       })
 
     if (selectedDriver.c_id) {
-      API.getCar(selectedDriver.c_id)
+      passengerGateway.getCar(selectedDriver.c_id)
         .then(car => {
           if (!cancelled) setDriverCar(car)
         })
@@ -251,7 +229,7 @@ function PassengerLiveOrder({
       return
     }
 
-    API.getUsers(candidateDrivers.map(candidate => candidate.u_id))
+    passengerGateway.getUsers(candidateDrivers.map(candidate => candidate.u_id))
       .then(users => {
         if (!cancelled) setCandidateUsers(users)
       })
@@ -260,7 +238,7 @@ function PassengerLiveOrder({
         if (!cancelled) setCandidateUsers([])
       })
 
-    API.getCars(candidateDrivers.map(candidate => candidate.c_id).filter(Boolean))
+    passengerGateway.getCars(candidateDrivers.map(candidate => candidate.c_id).filter(Boolean))
       .then(cars => {
         if (!cancelled) setCandidateCars(cars)
       })
@@ -367,7 +345,7 @@ function PassengerLiveOrder({
     setSelectedOrder(order.b_id)
     setIsFinishing(true)
 
-    API.setOrderState(order.b_id, EBookingDriverState.Finished)
+    passengerGateway.completeRide(order.b_id)
       .then(() => {
         setPickupPrice(null)
         refreshActiveOrders()
@@ -408,21 +386,21 @@ function PassengerLiveOrder({
       ]))
 
       try {
-        await API.releaseCandidateChoice(order.b_id)
+        await passengerGateway.releaseCandidate(order.b_id)
       } catch (error) {
         console.error(error)
       }
 
       for (const releaseId of releaseIds) {
         try {
-          await API.releaseCandidateChoice(order.b_id, releaseId)
+          await passengerGateway.releaseCandidate(order.b_id, releaseId)
         } catch (error) {
           console.error(error)
         }
       }
 
       try {
-        await API.chooseCandidate(order.b_id, nextCandidateId)
+        await passengerGateway.selectCandidate(order.b_id, nextCandidateId)
       } catch (error) {
         if (!isChoiceDriverSelectionBlockedError(error))
           throw error
@@ -443,21 +421,21 @@ function PassengerLiveOrder({
         ]))
 
         try {
-          await API.releaseCandidateChoice(order.b_id)
+          await passengerGateway.releaseCandidate(order.b_id)
         } catch (releaseError) {
           console.error(releaseError)
         }
 
         for (const releaseId of hardReleaseIds) {
           try {
-            await API.releaseCandidateChoice(order.b_id, releaseId)
+            await passengerGateway.releaseCandidate(order.b_id, releaseId)
           } catch (releaseError) {
             console.error(releaseError)
           }
         }
 
         await wait(650)
-        await API.chooseCandidate(order.b_id, nextCandidateId)
+        await passengerGateway.selectCandidate(order.b_id, nextCandidateId)
       }
 
       setPassengerConfirmedChoice(order.b_id, nextCandidateId)
@@ -514,7 +492,7 @@ function PassengerLiveOrder({
     ;(async() => {
       let releasedByBackend = false
       try {
-        await API.releaseCandidateChoice(order.b_id, driverId)
+        await passengerGateway.releaseCandidate(order.b_id, driverId)
         releasedByBackend = true
       } catch (error) {
         console.error(error, reason)
@@ -522,7 +500,7 @@ function PassengerLiveOrder({
 
       if (!releasedByBackend) {
         try {
-          await API.releaseCandidateChoice(order.b_id)
+          await passengerGateway.releaseCandidate(order.b_id)
           releasedByBackend = true
         } catch (error) {
           console.error(error)
@@ -543,7 +521,7 @@ function PassengerLiveOrder({
       if (isChoiceOrder(order)) {
         try {
           const elapsedSeconds = getOrderElapsedSeconds(order)
-          await API.setWaitingTime(
+          await passengerGateway.updateWaitingTime(
             order.b_id,
             elapsedSeconds ?? getOrderWaitingSeconds(order),
             SITE_CONSTANTS.WAITING_INTERVAL,
@@ -894,7 +872,7 @@ function wait(ms: number) {
   return new Promise(resolve => window.setTimeout(resolve, ms))
 }
 
-export default connector(PassengerLiveOrder)
+export default passengerLiveOrderConnector(PassengerLiveOrder)
 
 function getOrderWaitingSeconds(order?: IOrder | null) {
   return normalizeSeconds(order?.b_max_waiting, SITE_CONSTANTS.WAITING_INTERVAL)

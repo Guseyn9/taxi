@@ -25,7 +25,7 @@ import { useInterval } from '../../tools/hooks'
 import SITE_CONSTANTS from '../../siteConstants'
 import images from '../../constants/images'
 import { t, TRANSLATION } from '../../localization'
-import * as API from '../../API'
+import { backendGateway } from '../../platform/adapters/LegacyBackendGateway'
 import { IRootState } from '../../state'
 import { modalsSelectors } from '../../state/modals'
 import { EMapModalTypes } from '../../state/modals/constants'
@@ -1248,7 +1248,7 @@ function MapContent({
 
   useEffect(() => {
     if (isOpen) {
-      API.getWashTrips()
+      backendGateway.getWashTrips()
         .then(items => items.filter(item =>
           // @ts-ignore
           item.t_start_latitude && item.t_start_latitude === item.t_destination_latitude &&
@@ -2608,7 +2608,7 @@ async function makeRoutePointsSafe(
   }
 
   try {
-    const apiRoute = await API.makeRoutePoints(from, to)
+    const apiRoute = await backendGateway.makeRoutePoints(from, to)
     if (isUsableRouteInfo(apiRoute)) {
       writeFrontendLog('route.source.api.success', {
         context: logContext,
