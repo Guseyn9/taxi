@@ -41,6 +41,11 @@ interface FsmRealtimeMessage {
   readonly snapshot?: FsmOrderSnapshot
 }
 
+interface QuerySnapshotContext {
+  readonly sequence: number
+  readonly realtimeEpoch: number
+}
+
 const browserSocketFactory: RealtimeSocketFactory = url =>
   new WebSocket(url) as unknown as RealtimeSocket
 
@@ -59,7 +64,13 @@ export class FsmOrderSnapshotTransport implements DomainSnapshotTransport {
   private readonly socketFactory: RealtimeSocketFactory
   private readonly now: () => string
   private readonly transport: ReconnectingSnapshotTransport
-  private revision = 0
+  private localRevision = 0
+  private realtimeEpoch = 0
+  private querySequence = 0
+  private lastAcceptedQuerySequence = 0
+  private lastServerRevision: number | null = null
+  private lastServerUpdatedAt: number | null = null
+  private latestSnapshot: PlatformSnapshotInput | null = null
 
   constructor(
     config: FsmOrderTransportConfig,
@@ -90,6 +101,28 @@ export class FsmOrderSnapshotTransport implements DomainSnapshotTransport {
   }
 
   private async loadFromQuery(): Promise<PlatformSnapshotInput> {
+    const query = this.beginQuery()
+    const snapshot = await this.fetchSnapshot()
+    const accepted = this.acceptSnapshot(snapshot, query)
+    if (accepted)
+      return accepted
+    if (this.latestSnapshot)
+      return this.latestSnapshot
+    throw new BackendInteractionError(
+      'FSM_ORDER_STALE_SNAPSHOT',
+      'FSM Order Query returned a stale snapshot',
+      snapshot,
+    )
+  }
+
+  private beginQuery(): QuerySnapshotContext {
+    return {
+      sequence: ++this.querySequence,
+      realtimeEpoch: this.realtimeEpoch,
+    }
+  }
+
+  private async fetchSnapshot(): Promise<FsmOrderSnapshot> {
     const response = await this.fetchRequest(this.queryUrl(), {
       method: 'GET',
       headers: this.httpHeaders(),
@@ -103,7 +136,7 @@ export class FsmOrderSnapshotTransport implements DomainSnapshotTransport {
       )
     }
 
-    return this.mapSnapshot(await response.json() as FsmOrderSnapshot)
+    return await response.json() as FsmOrderSnapshot
   }
 
   private connectRealtime(
@@ -137,7 +170,11 @@ export class FsmOrderSnapshotTransport implements DomainSnapshotTransport {
           (message.type === 'snapshot' || message.type === 'entity.updated') &&
           message.snapshot
         ) {
-          onSnapshot(this.mapSnapshot(message.snapshot))
+          const accepted = this.acceptSnapshot(message.snapshot)
+          if (accepted) {
+            this.realtimeEpoch += 1
+            onSnapshot(accepted)
+          }
           return
         }
         throw new BackendInteractionError(
@@ -164,13 +201,60 @@ export class FsmOrderSnapshotTransport implements DomainSnapshotTransport {
     }
   }
 
-  private mapSnapshot(snapshot: FsmOrderSnapshot): PlatformSnapshotInput {
-    this.revision = Math.max(
-      this.revision + 1,
-      Number.isFinite(snapshot.revision) ? Number(snapshot.revision) : 0,
+  /**
+   * Инвариант Query/Realtime: устаревший snapshot не должен перезаписать более
+   * новый. Локальный revision монотонен сам по себе и такой защиты не даёт,
+   * поэтому решение принимается по серверным revision/updatedAt, а Query
+   * дополнительно отбрасывается, если пока он летел, пришёл WS-snapshot
+   * (realtimeEpoch) или уже принят более поздний Query (sequence).
+   */
+  private acceptSnapshot(
+    snapshot: FsmOrderSnapshot,
+    query?: QuerySnapshotContext,
+  ): PlatformSnapshotInput | null {
+    const serverRevision = getServerRevision(snapshot)
+    const serverUpdatedAt = getServerUpdatedAt(snapshot)
+
+    if (query && query.realtimeEpoch !== this.realtimeEpoch)
+      return null
+    if (query && query.sequence < this.lastAcceptedQuerySequence)
+      return null
+    if (
+      serverRevision !== null &&
+      this.lastServerRevision !== null &&
+      serverRevision <= this.lastServerRevision
     )
+      return null
+    if (
+      serverRevision === null &&
+      serverUpdatedAt !== null &&
+      this.lastServerUpdatedAt !== null &&
+      serverUpdatedAt < this.lastServerUpdatedAt
+    )
+      return null
+
+    if (query)
+      this.lastAcceptedQuerySequence = query.sequence
+    if (serverRevision !== null)
+      this.lastServerRevision = serverRevision
+    if (serverUpdatedAt !== null)
+      this.lastServerUpdatedAt = serverUpdatedAt
+
+    this.localRevision = Math.max(
+      this.localRevision + 1,
+      serverRevision ?? 0,
+    )
+    const mapped = this.mapSnapshot(snapshot, this.localRevision)
+    this.latestSnapshot = mapped
+    return mapped
+  }
+
+  private mapSnapshot(
+    snapshot: FsmOrderSnapshot,
+    revision: number,
+  ): PlatformSnapshotInput {
     return {
-      revision: this.revision,
+      revision,
       state: {
         domainOrder: {
           service: 'taxi',
@@ -265,6 +349,19 @@ function getServerErrorMessage(details: unknown, fallback: string): string {
   if (details && typeof details === 'object' && 'detail' in details)
     return String((details as { readonly detail?: unknown }).detail || fallback)
   return fallback
+}
+
+function getServerRevision(snapshot: FsmOrderSnapshot): number | null {
+  if (typeof snapshot.revision === 'number' && Number.isFinite(snapshot.revision))
+    return snapshot.revision
+  return null
+}
+
+function getServerUpdatedAt(snapshot: FsmOrderSnapshot): number | null {
+  if (!snapshot.updatedAt)
+    return null
+  const updatedAt = Date.parse(snapshot.updatedAt)
+  return Number.isFinite(updatedAt) ? updatedAt : null
 }
 
 function trimTrailingSlash(value: string): string {

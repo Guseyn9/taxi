@@ -35,6 +35,28 @@ const SERVER_SNAPSHOT = {
   availableActions: ['order_select_candidate', 'order_cancel_by_client'],
 }
 
+/** Серверный snapshot заказа с явными revision/state. */
+function serverSnapshot(revision, state) {
+  return { ...SERVER_SNAPSHOT, revision, state }
+}
+
+function socketRecorder(sockets) {
+  return jest.fn(url => {
+    const socket = createSocket()
+    socket.url = url
+    sockets.push(socket)
+    return socket
+  })
+}
+
+function deliver(socket, type, snapshot) {
+  socket.onmessage({ data: JSON.stringify({ type, snapshot }) })
+}
+
+function snapshotState(mapped) {
+  return mapped.state.domainOrder.snapshot.state
+}
+
 describe('FsmOrderSnapshotTransport', () => {
   beforeEach(() => jest.useFakeTimers())
   afterEach(() => jest.useRealTimers())
@@ -210,5 +232,128 @@ describe('FsmOrderSnapshotTransport', () => {
     unmount()
     expect(composition.runtime.getState().status).toBe('stopped')
     expect(socket.close).toHaveBeenCalledTimes(1)
+  })
+  // TASK_PI_001_QUERY_REALTIME: устаревший Query не должен перезаписать новый
+  // WS Snapshot. Проверяем каждый барьер по отдельности.
+  describe('защита от устаревших Snapshot', () => {
+    const transportConfig = {
+      apiUrl: 'https://fsm.example.test',
+      orderId: 42,
+      apiToken: 'driver-secret',
+    }
+
+    it('не принимает WS Snapshot с revision старше уже принятого', () => {
+      const sockets = []
+      const transport = new FsmOrderSnapshotTransport(transportConfig, {
+        socketFactory: socketRecorder(sockets),
+      })
+      const listener = jest.fn()
+      transport.subscribeSnapshots(listener)
+
+      deliver(sockets[0], 'snapshot', serverSnapshot(10, 'order_started'))
+      deliver(sockets[0], 'entity.updated', serverSnapshot(9, 'order_arrived'))
+
+      expect(listener).toHaveBeenCalledTimes(1)
+      expect(snapshotState(listener.mock.calls[0][0])).toBe('order_started')
+    })
+
+    it('не принимает WS Snapshot, повторяющий последний принятый revision', () => {
+      const sockets = []
+      const transport = new FsmOrderSnapshotTransport(transportConfig, {
+        socketFactory: socketRecorder(sockets),
+      })
+      const listener = jest.fn()
+      transport.subscribeSnapshots(listener)
+
+      deliver(sockets[0], 'snapshot', serverSnapshot(10, 'order_started'))
+      deliver(sockets[0], 'entity.updated', serverSnapshot(10, 'order_arrived'))
+
+      expect(listener).toHaveBeenCalledTimes(1)
+      expect(snapshotState(listener.mock.calls[0][0])).toBe('order_started')
+    })
+
+    it('не принимает Query с revision старше принятого WS Snapshot', async() => {
+      const sockets = []
+      const fetchRequest = jest.fn().mockResolvedValue(
+        createResponse(serverSnapshot(9, 'order_arrived')),
+      )
+      const transport = new FsmOrderSnapshotTransport(transportConfig, {
+        fetch: fetchRequest,
+        socketFactory: socketRecorder(sockets),
+      })
+      const listener = jest.fn()
+      transport.subscribeSnapshots(listener)
+
+      deliver(sockets[0], 'snapshot', serverSnapshot(10, 'order_started'))
+      const resolved = await transport.loadSnapshot()
+
+      expect(fetchRequest).toHaveBeenCalledTimes(1)
+      expect(snapshotState(resolved)).toBe('order_started')
+      expect(resolved.revision).toBe(10)
+    })
+
+    it('отбрасывает Query, который обогнал пришедший за время запроса WS Snapshot', async() => {
+      const sockets = []
+      let resolveFetch
+      const fetchRequest = jest.fn(() => new Promise(resolve => {
+        resolveFetch = resolve
+      }))
+      const transport = new FsmOrderSnapshotTransport(transportConfig, {
+        fetch: fetchRequest,
+        socketFactory: socketRecorder(sockets),
+      })
+      const listener = jest.fn()
+      transport.subscribeSnapshots(listener)
+
+      const pending = transport.loadSnapshot()
+      // Пока Query летел, пришёл WS Snapshot: ответ Query больше не актуален,
+      // даже если его revision выше — он собран до этого события.
+      deliver(sockets[0], 'snapshot', serverSnapshot(10, 'order_started'))
+      resolveFetch(createResponse(serverSnapshot(11, 'order_arrived')))
+
+      const resolved = await pending
+      expect(snapshotState(resolved)).toBe('order_started')
+      expect(resolved.revision).toBe(10)
+    })
+
+    it('при отсутствии revision сравнивает по updatedAt', () => {
+      const sockets = []
+      const transport = new FsmOrderSnapshotTransport(transportConfig, {
+        socketFactory: socketRecorder(sockets),
+      })
+      const listener = jest.fn()
+      transport.subscribeSnapshots(listener)
+
+      deliver(sockets[0], 'snapshot', {
+        ...SERVER_SNAPSHOT,
+        state: 'order_started',
+        updatedAt: '2026-08-08T12:00:05.000Z',
+      })
+      deliver(sockets[0], 'entity.updated', {
+        ...SERVER_SNAPSHOT,
+        state: 'order_arrived',
+        updatedAt: '2026-08-08T12:00:01.000Z',
+      })
+
+      expect(listener).toHaveBeenCalledTimes(1)
+      expect(snapshotState(listener.mock.calls[0][0])).toBe('order_started')
+    })
+
+    it('принимает более новый Snapshot после отброшенного устаревшего', () => {
+      const sockets = []
+      const transport = new FsmOrderSnapshotTransport(transportConfig, {
+        socketFactory: socketRecorder(sockets),
+      })
+      const listener = jest.fn()
+      transport.subscribeSnapshots(listener)
+
+      deliver(sockets[0], 'snapshot', serverSnapshot(10, 'order_started'))
+      deliver(sockets[0], 'entity.updated', serverSnapshot(9, 'order_arrived'))
+      deliver(sockets[0], 'entity.updated', serverSnapshot(11, 'order_finished'))
+
+      expect(listener).toHaveBeenCalledTimes(2)
+      expect(snapshotState(listener.mock.calls[1][0])).toBe('order_finished')
+      expect(listener.mock.calls[1][0].revision).toBe(11)
+    })
   })
 })
