@@ -1,8 +1,7 @@
 import React, { useEffect } from 'react'
 import { connect, ConnectedProps } from 'react-redux'
-import { useNavigate } from 'react-router-dom'
 import Button from '../../Button'
-import * as API from '../../../API'
+import { backendGateway } from '../../../platform/adapters/LegacyBackendGateway'
 import '../styles.scss'
 import { IRootState } from '../../../state'
 import { modalsActionCreators, modalsSelectors } from '../../../state/modals'
@@ -20,6 +19,7 @@ import { useVisibility } from '../../../tools/hooks'
 import Alert from '../../Alert/Alert'
 import { Intent } from '../../Alert'
 import { ERegistrationType } from '../../../state/user/constants'
+import { usePlatformNavigator } from '../../../platform/platform-interface'
 interface IFormValues {
   code: string,
 }
@@ -53,8 +53,7 @@ const RefCodeModal: React.FC<IProps> = ({
   whatsappSignUpData,
 }) => {
   const [isVisible, toggleVisibility] = useVisibility(false)
-
-  const navigate = useNavigate()
+  const { navigatePath: navigate } = usePlatformNavigator()
 
   const schema = yup.object({
     code: yup.string(),
@@ -98,7 +97,7 @@ const RefCodeModal: React.FC<IProps> = ({
       }
     }
 
-    API.checkRefCode(formData.code).then(isFreeCode => {
+    backendGateway.checkRefCode(formData.code).then(isFreeCode => {
       if (isFreeCode) {
         setError('code', { type: 'custom', message: t(TRANSLATION.REF_CODE_NOT_FOUND) })
         return

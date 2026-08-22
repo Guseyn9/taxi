@@ -47,4 +47,5 @@ export interface PassengerUiConfig {
   visibleBlocks: string[]
   mapMode: 'draft' | 'selected-order'
   legacy: boolean
+  availableActions?: readonly string[]
 }

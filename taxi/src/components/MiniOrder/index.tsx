@@ -35,7 +35,7 @@ import { IRootState } from '../../state'
 import { configSelectors } from '../../state/config'
 import { modalsActionCreators, modalsSelectors } from '../../state/modals'
 import { t, TRANSLATION } from '../../localization'
-import * as API from '../../API'
+import { backendGateway } from '../../platform/adapters/LegacyBackendGateway'
 import { isOfferOrder, isVotingOrder } from '../../tools/driverOffer'
 import './styles.scss'
 
@@ -350,7 +350,7 @@ function MiniOrder({
 
     let cancelled = false
 
-    withRouteTimeout(API.makeRoutePoints(routePoints.from, routePoints.to))
+    withRouteTimeout(backendGateway.makeRoutePoints(routePoints.from, routePoints.to))
       .then(routeInfo => {
         if (cancelled)
           return

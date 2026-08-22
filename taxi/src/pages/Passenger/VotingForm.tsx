@@ -2,7 +2,6 @@ import React, {
   useState, useRef, useLayoutEffect,
   useMemo, useCallback, useImperativeHandle, useEffect,
 } from 'react'
-import { connect, ConnectedProps, useStore } from 'react-redux'
 import moment from 'moment'
 import {
   EBookingDriverState,
@@ -42,17 +41,13 @@ import {
   setPassengerConfirmedChoice,
   setStoredChoiceOrderMode,
 } from '../../tools/driverOffer'
-import * as API from '../../API'
-import { t, TRANSLATION } from '../../localization'
-import { IRootState } from '../../state'
-import { modalsActionCreators } from '../../state/modals'
-import { userSelectors } from '../../state/user'
-import { ordersActionCreators } from '../../state/orders'
-import { configSelectors } from '../../state/config'
+import { passengerGateway } from '../../platform/adapters/LegacyPassengerGateway'
 import {
-  clientOrderSelectors,
-  clientOrderActionCreators,
-} from '../../state/clientOrder'
+  passengerVotingFormConnector,
+  PassengerVotingFormStoreProps,
+  usePassengerOrderSubmissionReader,
+} from '../../platform/adapters/LegacyPassengerChannelStoreAdapter'
+import { t, TRANSLATION } from '../../localization'
 import Icon from '../../components/Icon'
 import Input, { EInputTypes, EInputStyles } from '../../components/Input'
 import Button, { EButtonStyles } from '../../components/Button'
@@ -87,47 +82,12 @@ export interface IRequestOrderDraft {
   isOffer?: boolean
 }
 
-const mapStateToProps = (state: IRootState) => ({
-  from: clientOrderSelectors.from(state),
-  to: clientOrderSelectors.to(state),
-  comments: clientOrderSelectors.comments(state),
-  time: clientOrderSelectors.time(state),
-  phone: clientOrderSelectors.phone(state),
-  user: userSelectors.user(state),
-  locationClass: clientOrderSelectors.locationClass(state),
-  locationClassSelectionMode: clientOrderSelectors.locationClassSelectionMode(state),
-  algorithmLocationClass: clientOrderSelectors.algorithmLocationClass(state),
-  locationClasses: clientOrderSelectors.availableLocationClasses(state),
-  orderFormLayout: clientOrderSelectors.orderFormLayout(state),
-  pickupPrice: clientOrderSelectors.pickupPrice(state),
-  customerPrice: clientOrderSelectors.customerPrice(state),
-  language: configSelectors.language(state),
-})
-
-const mapDispatchToProps = {
-  setPickTimeModal: modalsActionCreators.setPickTimeModal,
-  setCommentsModal: modalsActionCreators.setCommentsModal,
-  setLoginModal: modalsActionCreators.setLoginModal,
-  setMessageModal: modalsActionCreators.setMessageModal,
-  setRatingModal: modalsActionCreators.setRatingModal,
-  createOrder: ordersActionCreators.create,
-  refreshActiveOrders: ordersActionCreators.refreshActiveOrders,
-  setPhone: clientOrderActionCreators.setPhone,
-  setPickupPrice: clientOrderActionCreators.setPickupPrice,
-  setCustomerPrice: clientOrderActionCreators.setCustomerPrice,
-  resetClientOrder: clientOrderActionCreators.reset,
-  setFrom: clientOrderActionCreators.setFrom,
-  setTo: clientOrderActionCreators.setTo,
-}
-
-const connector = connect(mapStateToProps, mapDispatchToProps)
-
-interface IProps extends ConnectedProps<typeof connector> {
+interface IProps extends PassengerVotingFormStoreProps {
   isExpanded: boolean
   setIsExpanded: React.Dispatch<React.SetStateAction<boolean>>
   syncFrom: () => void
   syncTo: () => void
-  onSubmit: (data: Awaited<ReturnType<typeof API.postDrive>>, draft?: IRequestOrderDraft) => void
+  onSubmit: (data: Awaited<ReturnType<typeof passengerGateway.createOrder>>, draft?: IRequestOrderDraft) => void
   lockedOrder?: IOrder | null
   lockedDraft?: IRequestOrderDraft | null
   lockedOrderId?: IOrder['b_id'] | null
@@ -233,7 +193,7 @@ const VotingForm = function VotingForm({
     }
   }, [])
 
-  const store = useStore<IRootState>()
+  const readSubmissionState = usePassengerOrderSubmissionReader()
 
   const hasPointCoordinates = (point: typeof from | typeof to) => {
     const latitude = Number(point?.latitude)
@@ -269,7 +229,7 @@ const VotingForm = function VotingForm({
       return point
 
     try {
-      const address = await API.geocode(query, { details: true, searchCenter: searchCenter || undefined })
+      const address = await passengerGateway.geocode(query, { details: true, searchCenter: searchCenter || undefined })
       if (!address?.display_name || !address.lat || !address.lon)
         return point
 
@@ -299,11 +259,12 @@ const VotingForm = function VotingForm({
 
     setSubmitError(null)
 
-    const state = store.getState()
-    const carClass = clientOrderSelectors.carClass(state)
-    const seats = clientOrderSelectors.seats(state)
-    const currentPickupPrice = clientOrderSelectors.pickupPrice(state)
-    const currentCustomerPrice = clientOrderSelectors.customerPrice(state)
+    const {
+      carClass,
+      seats,
+      pickupPrice: currentPickupPrice,
+      customerPrice: currentCustomerPrice,
+    } = readSubmissionState()
     const currentPickupPriceNumber = Number(currentPickupPrice ?? 0)
     const currentCustomerPriceNumber = Number(currentCustomerPrice ?? 0)
     const safePickupPrice = Number.isFinite(currentPickupPriceNumber) ?
@@ -437,7 +398,7 @@ const VotingForm = function VotingForm({
   }, [
     locked,
     from, to, comments, time, phone, user,
-    locationClass, algorithmLocationClass, store, setLoginModal, createOrder,
+    locationClass, algorithmLocationClass, readSubmissionState, setLoginModal, createOrder,
     setIsExpanded, onSubmit, resetClientOrder,
   ])
 
@@ -734,7 +695,7 @@ const VotingForm = function VotingForm({
       return
     }
 
-    API.getUsers(candidateDrivers.map(candidate => candidate.u_id))
+    passengerGateway.getUsers(candidateDrivers.map(candidate => candidate.u_id))
       .then(users => {
         if (!cancelled) setCandidateUsers(users)
       })
@@ -743,7 +704,7 @@ const VotingForm = function VotingForm({
         if (!cancelled) setCandidateUsers([])
       })
 
-    API.getCars(candidateDrivers.map(candidate => candidate.c_id).filter(Boolean))
+    passengerGateway.getCars(candidateDrivers.map(candidate => candidate.c_id).filter(Boolean))
       .then(cars => {
         if (!cancelled) setCandidateCars(cars)
       })
@@ -775,7 +736,7 @@ const VotingForm = function VotingForm({
       return
     }
 
-    API.getUser(selectedDriver.u_id)
+    passengerGateway.getUser(selectedDriver.u_id)
       .then(user => {
         if (!cancelled) setSelectedDriverUser(user)
       })
@@ -785,7 +746,7 @@ const VotingForm = function VotingForm({
       })
 
     if (selectedDriver.c_id) {
-      API.getCar(selectedDriver.c_id)
+      passengerGateway.getCar(selectedDriver.c_id)
         .then(car => {
           if (!cancelled) setSelectedDriverCar(car)
         })
@@ -866,7 +827,7 @@ const VotingForm = function VotingForm({
         if (onLockedCancel)
           await onLockedCancel(orderId)
         else
-          await API.cancelDrive(orderId)
+          await passengerGateway.cancelOrder(orderId)
       } catch (error) {
         console.error(error)
       } finally {
@@ -893,7 +854,7 @@ const VotingForm = function VotingForm({
     const previousWaitingTime = getChoiceOrderMaxWaitingSeconds(lockedOrder) + lockedWaitingExtensionSeconds
 
     setExtendingLockedWaiting(true)
-    API.setWaitingTime(lockedOrder.b_id, previousWaitingTime, additionalTime)
+    passengerGateway.updateWaitingTime(lockedOrder.b_id, previousWaitingTime, additionalTime)
       .then(() => {
         setLockedWaitingExtensionSeconds(prev => prev + additionalTime)
         setLockedWaitingExtendSuccess(true)
@@ -959,21 +920,21 @@ const VotingForm = function VotingForm({
       // На части backend-версий после отмены выбранного водителя заказ всё ещё
       // считается занятым старым performer, и следующий выбор падает с ошибкой.
       try {
-        await API.releaseCandidateChoice(lockedOrder.b_id)
+        await passengerGateway.releaseCandidate(lockedOrder.b_id)
       } catch (error) {
         console.error(error)
       }
 
       for (const releaseId of releaseIds) {
         try {
-          await API.releaseCandidateChoice(lockedOrder.b_id, releaseId)
+          await passengerGateway.releaseCandidate(lockedOrder.b_id, releaseId)
         } catch (error) {
           console.error(error)
         }
       }
 
       try {
-        await API.chooseCandidate(lockedOrder.b_id, nextCandidateId)
+        await passengerGateway.selectCandidate(lockedOrder.b_id, nextCandidateId)
       } catch (error) {
         if (!isChoiceDriverSelectionBlockedError(error))
           throw error
@@ -994,21 +955,21 @@ const VotingForm = function VotingForm({
         ]))
 
         try {
-          await API.releaseCandidateChoice(lockedOrder.b_id)
+          await passengerGateway.releaseCandidate(lockedOrder.b_id)
         } catch (releaseError) {
           console.error(releaseError)
         }
 
         for (const releaseId of hardReleaseIds) {
           try {
-            await API.releaseCandidateChoice(lockedOrder.b_id, releaseId)
+            await passengerGateway.releaseCandidate(lockedOrder.b_id, releaseId)
           } catch (releaseError) {
             console.error(releaseError)
           }
         }
 
         await wait(650)
-        await API.chooseCandidate(lockedOrder.b_id, nextCandidateId)
+        await passengerGateway.selectCandidate(lockedOrder.b_id, nextCandidateId)
       }
 
       setPassengerConfirmedChoice(lockedOrder.b_id, nextCandidateId)
@@ -1114,7 +1075,7 @@ const VotingForm = function VotingForm({
     ;(async() => {
       let releasedByBackend = false
       try {
-        await API.releaseCandidateChoice(orderId, driverId)
+        await passengerGateway.releaseCandidate(orderId, driverId)
         releasedByBackend = true
       } catch (error) {
         console.error(error, reason)
@@ -1122,7 +1083,7 @@ const VotingForm = function VotingForm({
 
       if (!releasedByBackend) {
         try {
-          await API.releaseCandidateChoice(orderId)
+          await passengerGateway.releaseCandidate(orderId)
           releasedByBackend = true
         } catch (error) {
           console.error(error)
@@ -1180,7 +1141,7 @@ const VotingForm = function VotingForm({
     setLockedCustomerPriceOverride({ orderId: lockedOrder.b_id, price: safeValue })
     setCustomerPrice(safeValue)
 
-    API.updateOrderCustomerPrice(lockedOrder, safeValue)
+    passengerGateway.updateCustomerPrice(lockedOrder, safeValue)
       .then(() => {
         refreshActiveOrders()
       })
@@ -1229,7 +1190,7 @@ const VotingForm = function VotingForm({
     setSubmitError(null)
     setFinishing(true)
     try {
-      await API.setOrderState(lockedOrderId, EBookingDriverState.Finished)
+      await passengerGateway.completeRide(lockedOrderId)
       setPickupPrice(null)
       refreshActiveOrders()
       setRatingModal({ isOpen: true, orderID: lockedOrderId })
@@ -1841,7 +1802,7 @@ const VotingForm = function VotingForm({
   )
 }
 
-export default connector(VotingForm)
+export default passengerVotingFormConnector(VotingForm)
 
 
 function getLockedCustomerPrice(order: IOrder | null, draft: IRequestOrderDraft | null) {

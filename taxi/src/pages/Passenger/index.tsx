@@ -1,19 +1,14 @@
 import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react'
 import cn from 'classnames'
-import { connect, ConnectedProps } from 'react-redux'
 import { EBookingDriverState, EStatuses, IOrder } from '../../types/types'
 import { getPassengerConfirmedChoice, isChoiceOrder, isStoredSimpleOrderMode } from '../../tools/driverOffer'
 import { candidateMode } from '../../tools/order'
 import { useSwipe } from '../../tools/swipe'
-import * as API from '../../API'
-import { IRootState } from '../../state'
+import { passengerGateway } from '../../platform/adapters/LegacyPassengerGateway'
 import {
-  clientOrderSelectors,
-  clientOrderActionCreators,
-} from '../../state/clientOrder'
-import { ordersSelectors, ordersActionCreators } from '../../state/orders'
-import { modalsActionCreators } from '../../state/modals'
-import { userSelectors } from '../../state/user'
+  passengerScreenConnector,
+  PassengerScreenStoreProps,
+} from '../../platform/adapters/LegacyPassengerChannelStoreAdapter'
 import MiniOrders from '../../components/MiniOrders'
 import Map from '../../components/Map'
 import Layout from '../../components/Layout'
@@ -24,36 +19,9 @@ import VotingForm, { IRequestOrderDraft } from './VotingForm'
 import './styles.scss'
 import { t, TRANSLATION } from '../../localization'
 import { getOrderIdText } from '../../tools/orderId'
-import { configSelectors } from '../../state/config'
 import { writeFlowEvent } from '../../tools/flowLog'
-import { resolvePassengerUiConfig } from './uiFsm'
 import { isPassengerUiFsmEnabled } from './fsmFeature'
-
-const mapStateToProps = (state: IRootState) => ({
-  activeOrders: ordersSelectors.activeOrders(state),
-  selectedOrder: clientOrderSelectors.selectedOrder(state),
-  user: userSelectors.user(state),
-  language: configSelectors.language(state),
-})
-
-const mapDispatchToProps = {
-  setVoteModal: modalsActionCreators.setVoteModal,
-  setDriverModal: modalsActionCreators.setDriverModal,
-  setMessageModal: modalsActionCreators.setMessageModal,
-  setCancelModal: modalsActionCreators.setCancelModal,
-  setOnTheWayModal: modalsActionCreators.setOnTheWayModal,
-  setRatingModal: modalsActionCreators.setRatingModal,
-  setCandidatesModal: modalsActionCreators.setCandidatesModal,
-  watchActiveOrders: ordersActionCreators.watchActiveOrders,
-  refreshActiveOrders: ordersActionCreators.refreshActiveOrders,
-  setFrom: clientOrderActionCreators.setFrom,
-  setTo: clientOrderActionCreators.setTo,
-  setSelectedOrder: clientOrderActionCreators.setSelectedOrder,
-  resetClientOrder: clientOrderActionCreators.reset,
-  setPickupPrice: clientOrderActionCreators.setPickupPrice,
-}
-
-const connector = connect(mapStateToProps, mapDispatchToProps)
+import { usePassengerSurface } from '../../platform/platform-interface'
 
 function getReverseGeocodeText(response: any) {
   const address = String(response?.display_name || '').trim()
@@ -68,7 +36,7 @@ function getReverseGeocodeText(response: any) {
   }
 }
 
-interface IProps extends ConnectedProps<typeof connector> { }
+interface IProps extends PassengerScreenStoreProps { }
 
 function Passenger({
   activeOrders,
@@ -127,7 +95,7 @@ function Passenger({
       isAddressResolving: true,
     })
 
-    API.reverseGeocode(String(latitude), String(longitude))
+    passengerGateway.reverseGeocode(String(latitude), String(longitude))
       .then(response => {
         if (mapPointRequestId.current[type] !== requestId)
           return
@@ -269,20 +237,13 @@ function Passenger({
     ].includes(item.c_state))
   }, [selectedOrder])
 
-  const passengerUiConfig = useMemo(() => resolvePassengerUiConfig({
+  const passengerPresentation = usePassengerSurface({
     selectedOrder,
     submittedOrderId,
     isCreatingAnotherOrder,
     selectedDriver: selectedOrderDriver ?? null,
-  }), [
-    selectedOrder?.b_id,
-    selectedOrder?.b_state,
-    selectedOrder?.drivers?.map(driver => `${driver.u_id}:${driver.c_state}`).join('|'),
-    submittedOrderId,
-    isCreatingAnotherOrder,
-    selectedOrderDriver?.u_id,
-    selectedOrderDriver?.c_state,
-  ])
+  })
+  const passengerUiConfig = passengerPresentation.uiConfig
 
   const passengerUiFsmEnabled = useMemo(() => isPassengerUiFsmEnabled(), [])
   const effectivePassengerUiConfig = passengerUiFsmEnabled ? passengerUiConfig : undefined
@@ -636,7 +597,7 @@ function Passenger({
 
         if (driver.c_state <= EBookingDriverState.Started) {
           try {
-            const res = await API.getOrder(order.b_id)
+            const res = await passengerGateway.getOrder(order.b_id)
             const resDriver = res?.drivers
               ?.find(item => item.c_state !== EBookingDriverState.Canceled)
             if (resDriver?.c_state === EBookingDriverState.Finished) {
@@ -917,7 +878,7 @@ function Passenger({
   )
 }
 
-export default connector(Passenger)
+export default passengerScreenConnector(Passenger)
 
 interface IOrderFlowSnapshot {
   orderState?: IOrder['b_state']

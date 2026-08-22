@@ -1,5 +1,4 @@
 import React, { createContext, useEffect, useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 import DriverOrders from './Orders'
 import DriverMap from './Map'
 import { t, TRANSLATION } from '../../localization'
@@ -20,7 +19,7 @@ import images from '../../constants/images'
 import { withLayout } from '../../HOCs/withLayout'
 import { addHiddenOrder } from '../../tools/utils'
 import { useLiveEstimatedOrders } from '../../tools/liveOrderProfit'
-import * as API from '../../API'
+import { backendGateway } from '../../platform/adapters/LegacyBackendGateway'
 import { clearEmulatorClientChoseOtherDriver, getOfferEvent, getStoredDriverOffer, hasEmulatorClientChoseOtherDriver, isOfferOrder, isVotingOrder, subscribeEmulatorClientChoseOtherDriver, updateStoredDriverOfferStatus } from '../../tools/driverOffer'
 import { orderControlModeSelectors } from '../../state/orderControlMode'
 import { EOrderControlMode } from '../../state/orderControlMode/constants'
@@ -29,12 +28,13 @@ import OrderModeToast from '../../components/OrderModeToast'
 import { requestOrderModeDecision } from '../../tools/orderModeDecision'
 import { getOrderIdText } from '../../tools/orderId'
 import { wasOrderCancelledByDriver } from '../../tools/driverSelfCancel'
-
-/** Задержка перед авто-взятием заказа в Строгом режиме (сглаживает цепочку действий). */
-const STRICT_TAKE_DELAY_MS = 5000
 import { BROWSER_EMULATOR_STATE_EVENT, getVisibleBrowserEmulatorOrderIds, isAnyBrowserEmulatorModeRunning, isExternalEmulatorEnabled } from '../../tools/emulatorMode'
 import { writeFlowEvent } from '../../tools/flowLog'
 import { writeRawLog } from '../../tools/rawLog'
+import { PLATFORM_ROUTES, usePlatformNavigate } from '../../platform/platform-interface'
+
+/** Задержка перед авто-взятием заказа в Строгом режиме (сглаживает цепочку действий). */
+const STRICT_TAKE_DELAY_MS = 5000
 
 const mapStateToProps = (state: IRootState) => ({
   activeOrders: ordersSelectors.activeOrders(state),
@@ -94,7 +94,7 @@ const Driver: React.FC<IProps> = ({
 
   const { tab = EDriverTabs.Lite } = useQuery()
 
-  const navigate = useNavigate()
+  const navigate = usePlatformNavigate()
 
   const ordersAddressRef = useRef<{ [orderId:string]: IAddressPoint }>({})
   const previousVotingParticipations = useRef<IOrder[]>([])
@@ -235,7 +235,7 @@ const Driver: React.FC<IProps> = ({
       if (activeOrderIds.has(previousOrder.b_id))
         continue
 
-      API.getOrder(previousOrder.b_id)
+      backendGateway.getOrder(previousOrder.b_id)
         .then(order => {
           if (
             order?.b_completed ||
@@ -302,7 +302,7 @@ const Driver: React.FC<IProps> = ({
       if (isVotingOrderExpired(previousOrder))
         continue
 
-      API.getOrder(previousOrder.b_id)
+      backendGateway.getOrder(previousOrder.b_id)
         .then(order => {
           if (!order || order.b_state === EBookingStates.Canceled)
             notifyClientCancelled(previousOrder.b_id)
@@ -477,7 +477,7 @@ const Driver: React.FC<IProps> = ({
       autoAcceptedOrderIds.current[orderId] = true
       autoAcceptInFlight.current = true
 
-      API.takeOrder(orderId, { performers_price: 0 }, false)
+      backendGateway.takeOrder(orderId, { performers_price: 0 }, false)
         .then(() => {
           if (notify)
             setMessageModal({
@@ -486,7 +486,7 @@ const Driver: React.FC<IProps> = ({
               message: [t(TRANSLATION.ORDER_AUTO_ACCEPTED), getOrderIdText(orderId, (activeOrders || []).map(item => item.b_id))]
                 .filter(Boolean).join(' '),
             })
-          navigate(`/driver-order?tab=${EDriverTabs.Map}`)
+          navigate(PLATFORM_ROUTES.DriverOrders, { query: { tab: EDriverTabs.Map } })
         })
         .catch(error => {
           // Не удалось взять (например, заказ уже разобрали) — разрешаем повтор.
@@ -541,11 +541,11 @@ const Driver: React.FC<IProps> = ({
   }
 
   const onFirstTabClick = () => {
-    navigate(`/driver-order?tab=${EDriverTabs.Lite}`)
+    navigate(PLATFORM_ROUTES.DriverOrders, { query: { tab: EDriverTabs.Lite } })
   }
 
   const onSecondTabClick = () => {
-    navigate(`/driver-order?tab=${EDriverTabs.Detailed}`)
+    navigate(PLATFORM_ROUTES.DriverOrders, { query: { tab: EDriverTabs.Detailed } })
   }
 
   return (
@@ -566,7 +566,10 @@ const Driver: React.FC<IProps> = ({
           {t(TRANSLATION.ALL)}
         </button>
         <button
-          onClick={() => navigate(`/driver-order?tab=${EDriverTabs.Map}`)}
+          onClick={() => navigate(
+            PLATFORM_ROUTES.DriverOrders,
+            { query: { tab: EDriverTabs.Map } },
+          )}
           className={cn('driver-tabs__tab', { 'driver-tabs__tab--active': tab === EDriverTabs.Map })}
         >
           {t(TRANSLATION.MAP)}

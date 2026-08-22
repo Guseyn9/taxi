@@ -3,15 +3,16 @@ import React, { useRef } from 'react'
 import { useState, useEffect } from 'react'
 import { connect, ConnectedProps } from 'react-redux'
 import { IRootState } from '../../state'
-import { userSelectors } from '../../state/user'
 import { IUser } from '../../types/types'
 import { useForm } from 'react-hook-form'
 import './styles.scss'
 import { t, TRANSLATION } from '../../localization'
-import * as API from '../../API'
 import Input, { EInputTypes } from '../Input'
 import { Resizable } from 're-resizable'
 import { modalsActionCreators, modalsSelectors } from '../../state/modals'
+import { SHARED_CHAT_SURFACE_ID, useRegisteredSurface } from '../../platform/platform-interface'
+import { chatGateway } from '../../platform/adapters/LegacyChatGateway'
+import type { LegacyChatSession } from '../../platform/adapters/LegacyChatGateway'
 
 const ResizableComponent = Resizable as React.ComponentType<any>
 
@@ -55,7 +56,6 @@ const getMessageClass = (type?: EMessageType) => {
 }
 
 const mapStateToProps = (state: IRootState) => ({
-  user: userSelectors.user(state),
   activeChat: modalsSelectors.activeChat(state),
 })
 
@@ -65,21 +65,17 @@ const mapDispatchToProps = {
 
 const connector = connect(mapStateToProps, mapDispatchToProps)
 
-const host = 'chat.itest24.com'
-const port = 7007
-
 interface IProps extends ConnectedProps<typeof connector> {
 }
 
 const Chat: React.FC<IProps> = ({
-  user,
   activeChat,
   setActiveChat,
 }) => {
-  const [socket, setSocket] = useState<WebSocket | null>(null)
+  useRegisteredSurface(SHARED_CHAT_SURFACE_ID, Boolean(activeChat))
   const [messages, setMessages] = useState<IMessage[]>([])
   const [anotherUser, setAnotherUser] = useState<IUser | null>(null)
-
+  const sessionRef = useRef<LegacyChatSession | null>(null)
   const messagesRef = useRef<HTMLDivElement>(null)
 
   const {
@@ -92,35 +88,31 @@ const Chat: React.FC<IProps> = ({
     mode: 'onSubmit',
   })
 
-  let from: string, to: string, anotherUserID: string, order: string
+  const [from = '', to = ''] = activeChat?.split(';') ?? []
+  const [anotherUserID = '', order = ''] = to.split('_')
 
   useEffect(() => {
-    API.getUser(anotherUserID)
+    if (!activeChat || !from || !to || !anotherUserID)
+      return undefined
+
+    setMessages([])
+    setAnotherUser(null)
+    chatGateway.getUser(anotherUserID)
       .then(setAnotherUser)
       .catch(error => console.error(error))
 
-    let _socket = socket
-    try {
-      _socket = new WebSocket(`wss://${host}:${port}`)
-      setSocket(_socket)
-    } catch (error) {
-      console.log(error)
-    }
-
-    if (_socket) {
-      _socket.onopen = () => {
-        _socket?.send(JSON.stringify({
-          from,
-          to,
-          action: 'start',
-        }))
-      }
-      _socket.onclose = () => {
-
-      }
-
-      _socket.onmessage = e => {
-        const { action, event, arg, msg, from: dataFrom, history }: ISocketData = JSON.parse(e.data)
+    const session = chatGateway.connect({
+      from,
+      to,
+      onMessage: rawData => {
+        let data: ISocketData
+        try {
+          data = JSON.parse(String(rawData)) as ISocketData
+        } catch (error) {
+          console.error('Wrong chat message:', error)
+          return
+        }
+        const { action, event, arg, msg, from: dataFrom, history } = data
 
         switch (action) {
           case 'notify': {
@@ -175,27 +167,26 @@ const Chat: React.FC<IProps> = ({
           }
           default: console.error('Wrong chat event:', event)
         }
-      }
-
-      _socket.onerror = (error) => {
+      },
+      onError: error => {
         console.error('Socket error:', error)
-      }
-    }
-  }, [])
+      },
+    })
+    sessionRef.current = session
 
-  if (!activeChat) return null;
-  [from, to] = activeChat.split(';');
-  [anotherUserID, order] = to.split('_')
+    return () => {
+      session.close()
+      if (sessionRef.current === session)
+        sessionRef.current = null
+    }
+  }, [activeChat, anotherUserID, from, to])
+
+  if (!activeChat) return null
 
   const handleSubmit = () => {
-    if (!socket) return console.error('Error: Socket is not ready yet for send')
-
-    socket.send(JSON.stringify({
-      from,
-      to,
-      msg: getValues().message,
-      action: 'send',
-    }))
+    const sent = sessionRef.current?.send(getValues().message) ?? false
+    if (!sent)
+      return console.error('Error: Socket is not ready yet for send')
 
     reset()
   }
@@ -217,13 +208,13 @@ const Chat: React.FC<IProps> = ({
       >
         <div className="chat__header">
           №{order} {anotherUser?.u_name}
-          <button className="chat__close-button" onClick={(e) => {e.stopPropagation(); setActiveChat(null)}}>✖</button>
+          <button type="button" className="chat__close-button" onClick={(e) => {e.stopPropagation(); setActiveChat(null)}}>✖</button>
         </div>
 
         <div className="chat__messages" ref={messagesRef}>
           {
-            messages.map((item) =>
-              <div className={cn('chat__message', `chat__message--${getMessageClass(item.type)}`)}>
+            messages.map((item, index) =>
+              <div key={`${item.from || 'action'}-${index}`} className={cn('chat__message', `chat__message--${getMessageClass(item.type)}`)}>
                 {item.from && <span className="chat__name">{item.from === from ? 'You' : anotherUser?.u_name}</span>}
                 {item.text}
               </div>,

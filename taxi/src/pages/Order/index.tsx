@@ -1,11 +1,12 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { connect, ConnectedProps } from 'react-redux'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams } from 'react-router-dom'
 import PageSection from '../../components/PageSection'
 import Button from '../../components/Button'
 import Input, { EInputTypes } from '../../components/Input'
 import { addHiddenOrder, distanceBetweenEarthCoordinates } from '../../tools/utils'
-import * as API from '../../API'
+import { backendGateway } from '../../platform/adapters/LegacyBackendGateway'
+import { driverMapGateway } from '../../platform/adapters/DriverMapGateway'
 import { t, TRANSLATION } from '../../localization'
 import ClientInfo from '../../components/order/ClientInfo'
 import OrderInfo from '../../components/order/orderInfo/index'
@@ -37,6 +38,7 @@ import {
   geolocationSelectors,
 } from '../../state/geolocation'
 import { EMapModalTypes } from '../../state/modals/constants'
+import { PLATFORM_ROUTES, usePlatformNavigate } from '../../platform/platform-interface'
 import { withLayout } from '../../HOCs/withLayout'
 import { isAnyBrowserEmulatorOrder } from '../../tools/emulatorMode'
 import { getOrderIdText } from '../../tools/orderId'
@@ -496,7 +498,7 @@ const Order: React.FC<IProps> = ({
   const lastDriverRelatedOrder = useRef<typeof order>(null)
 
   const id = useParams().id as string
-  const navigate = useNavigate()
+  const navigate = usePlatformNavigate()
 
   // Открытие экрана заказа — шаг таймлайна взаимодействия. Фиксируем здесь, а не
   // на кнопках карточек: на этот экран водитель попадает и со списка, и с карты,
@@ -596,7 +598,7 @@ const Order: React.FC<IProps> = ({
 
     let cancelled = false
 
-    API.getUserCar(user.u_id)
+    backendGateway.getUserCar(user.u_id)
       .then(car => {
         if (cancelled)
           return
@@ -659,7 +661,7 @@ const Order: React.FC<IProps> = ({
     let cancelled = false
     setIsRouteDurationLoading(true)
 
-    withRouteTimeout(API.makeRoutePoints(routePoints.from, routePoints.to))
+    withRouteTimeout(backendGateway.makeRoutePoints(routePoints.from, routePoints.to))
       .then((routeInfo) => {
         if (cancelled)
           return
@@ -747,7 +749,7 @@ const Order: React.FC<IProps> = ({
         status: EStatuses.Warning,
         message: [message, getOrderIdText(id, activeOrderIds)].filter(Boolean).join(' '),
       })
-    navigate('/driver-order')
+    navigate(PLATFORM_ROUTES.DriverOrders)
   }, [order, id, votingParticipationIds])
 
   useEffect(() => {
@@ -781,7 +783,7 @@ const Order: React.FC<IProps> = ({
         message: [t(TRANSLATION.DRIVER_ORDER_CANCELLED_BY_CLIENT), getOrderIdText(id, activeOrderIds)]
           .filter(Boolean).join(' '),
       })
-    navigate('/driver-order')
+    navigate(PLATFORM_ROUTES.DriverOrders)
   }, [order, userAsDriver, id, user?.u_id, navigate])
 
   useEffect(() => {
@@ -800,7 +802,7 @@ const Order: React.FC<IProps> = ({
       status: EStatuses.Warning,
       message: [closeReason, getOrderIdText(id, activeOrderIds)].filter(Boolean).join(' '),
     })
-    navigate('/driver-order')
+    navigate(PLATFORM_ROUTES.DriverOrders)
   }, [order, isVotingParticipant, votingCloseHandled, user?.u_id])
 
   // Клиентский эмулятор симулирует исход "клиент выбрал другого водителя" локально
@@ -836,7 +838,7 @@ const Order: React.FC<IProps> = ({
           getOrderIdText(id, activeOrderIds),
         ].filter(Boolean).join(' '),
       })
-      navigate('/driver-order')
+      navigate(PLATFORM_ROUTES.DriverOrders)
     }
 
     handleEmulatedOtherChoice()
@@ -940,7 +942,7 @@ const Order: React.FC<IProps> = ({
         message: [t(TRANSLATION.DRIVER_OFFER_REJECTED), getOrderIdText(id, activeOrderIds)]
           .filter(Boolean).join(' '),
       })
-      navigate('/driver-order')
+      navigate(PLATFORM_ROUTES.DriverOrders)
       return
     }
 
@@ -953,7 +955,7 @@ const Order: React.FC<IProps> = ({
         message: [t(TRANSLATION.DRIVER_OFFER_ACCEPTED), getOrderIdText(id, activeOrderIds)]
           .filter(Boolean).join(' '),
       })
-      navigate('/driver-order?tab=map')
+      navigate(PLATFORM_ROUTES.DriverOrders, { query: { tab: 'map' } })
       return
     }
 
@@ -989,7 +991,7 @@ const Order: React.FC<IProps> = ({
         comment: values.offerComment,
       }
 
-      API.sendOrderOffer(id, offerPayload)
+      backendGateway.sendOrderOffer(id, offerPayload)
         .then(() => {
           const storedOffer = saveStoredDriverOffer(id, user?.u_id, offerPayload, 'sent')
           setLocalDriverOffer(storedOffer)
@@ -1018,11 +1020,11 @@ const Order: React.FC<IProps> = ({
       if (isVotingDriverParticipating(userAsDriver)) {
         const nextIds = saveVotingParticipationId(id)
         setVotingParticipationIds(nextIds)
-        navigate('/driver-order?tab=map')
+        navigate(PLATFORM_ROUTES.DriverOrders, { query: { tab: 'map' } })
         return
       }
 
-      API.participateVotingOrder(id, getValues().performers_price, getValues().offerEta || t(TRANSLATION.DRIVER_OFFER_ETA_15))
+      backendGateway.participateVotingOrder(id, getValues().performers_price, getValues().offerEta || t(TRANSLATION.DRIVER_OFFER_ETA_15))
         .then(() => {
           const nextIds = saveVotingParticipationId(id)
           setVotingParticipationIds(nextIds)
@@ -1033,7 +1035,7 @@ const Order: React.FC<IProps> = ({
             message: [t(TRANSLATION.DRIVER_VOTING_READY_SENT), getOrderIdText(id, activeOrderIds)]
               .filter(Boolean).join(' '),
           })
-          navigate('/driver-order?tab=map')
+          navigate(PLATFORM_ROUTES.DriverOrders, { query: { tab: 'map' } })
         })
         .catch(error => {
           if (isAlreadyVotingParticipantError(error)) {
@@ -1046,7 +1048,7 @@ const Order: React.FC<IProps> = ({
               message: [t(TRANSLATION.DRIVER_VOTING_READY_SENT), getOrderIdText(id, activeOrderIds)]
                 .filter(Boolean).join(' '),
             })
-            navigate('/driver-order?tab=map')
+            navigate(PLATFORM_ROUTES.DriverOrders, { query: { tab: 'map' } })
             return
           }
           console.error(error)
@@ -1059,7 +1061,7 @@ const Order: React.FC<IProps> = ({
       return
     }
 
-    API.takeOrder(id, { ...getValues() }, isCandidate)
+    backendGateway.takeOrder(id, { ...getValues() }, isCandidate)
       .then(() => {
         getOrder(id)
         setMessageModal({
@@ -1070,7 +1072,7 @@ const Order: React.FC<IProps> = ({
             getOrderIdText(id, activeOrderIds),
           ].filter(Boolean).join(' '),
         })
-        navigate('/driver-order?tab=map')
+        navigate(PLATFORM_ROUTES.DriverOrders, { query: { tab: 'map' } })
       })
       .catch(error => {
         console.error(error)
@@ -1092,14 +1094,14 @@ const Order: React.FC<IProps> = ({
 
   const confirmHideOrder = () => {
     addHiddenOrder(id, user?.u_id)
-    navigate('/driver-order')
+    navigate(PLATFORM_ROUTES.DriverOrders)
     window.requestAnimationFrame(() => {
       window.scrollTo({ top: 0, behavior: 'smooth' })
     })
   }
 
   const confirmCancelOfferAndHide = () => {
-    API.cancelVotingParticipation(id)
+    backendGateway.cancelVotingParticipation(id)
       .then(() => {
         removeStoredDriverOffer(id, user?.u_id)
         clearDriverOfferClientResponse(id, user?.u_id)
@@ -1112,7 +1114,7 @@ const Order: React.FC<IProps> = ({
           message: [t('driver_offer_cancelled_hidden'), getOrderIdText(id, activeOrderIds)]
             .filter(Boolean).join(' '),
         })
-        navigate('/driver-order')
+        navigate(PLATFORM_ROUTES.DriverOrders)
         window.requestAnimationFrame(() => {
           window.scrollTo({ top: 0, behavior: 'smooth' })
         })
@@ -1129,7 +1131,7 @@ const Order: React.FC<IProps> = ({
 
   const confirmClientSelectedOffer = () => {
     const values = getValues()
-    API.takeOrder(id, {
+    backendGateway.takeOrder(id, {
       votingNumber: values.votingNumber,
       performers_price: currentDriverOffer?.price ?? values.performers_price,
     }, false)
@@ -1137,7 +1139,7 @@ const Order: React.FC<IProps> = ({
         const nextResponse = updateDriverOfferClientResponseStatus(id, user?.u_id, 'driver_confirmed')
         setLocalOfferClientResponse(nextResponse)
         getOrder(id)
-        navigate('/driver-order?tab=map')
+        navigate(PLATFORM_ROUTES.DriverOrders, { query: { tab: 'map' } })
       })
       .catch(error => {
         console.error(error)
@@ -1155,7 +1157,7 @@ const Order: React.FC<IProps> = ({
     removeStoredDriverOffer(id, user?.u_id)
     setLocalDriverOffer(null)
     addHiddenOrder(id, user?.u_id)
-    navigate('/driver-order')
+    navigate(PLATFORM_ROUTES.DriverOrders)
     window.requestAnimationFrame(() => {
       window.scrollTo({ top: 0, behavior: 'smooth' })
     })
@@ -1163,14 +1165,14 @@ const Order: React.FC<IProps> = ({
 
   const hideOtherClientSelectedOffer = () => {
     addHiddenOrder(id, user?.u_id)
-    navigate('/driver-order')
+    navigate(PLATFORM_ROUTES.DriverOrders)
     window.requestAnimationFrame(() => {
       window.scrollTo({ top: 0, behavior: 'smooth' })
     })
   }
 
   const onArrivedClick = () =>
-    API.setOrderState(id, EBookingDriverState.Arrived)
+    driverMapGateway.arrive(id)
       .then(() => getOrder(id))
       .catch(error => {
         console.error(error)
@@ -1178,10 +1180,10 @@ const Order: React.FC<IProps> = ({
       })
 
   const onStartedClick = () =>
-    API.setOrderState(id, EBookingDriverState.Started)
+    driverMapGateway.start(id)
       .then(() => {
         getOrder(id)
-        navigate('/driver-order?tab=map')
+        navigate(PLATFORM_ROUTES.DriverOrders, { query: { tab: 'map' } })
       })
 
   const onCompleteOrderClick = () => {
@@ -1195,7 +1197,7 @@ const Order: React.FC<IProps> = ({
     }
 
     
-    API.setOrderState(id, EBookingDriverState.Finished)
+    driverMapGateway.finish(id)
       .then(() => {
         getOrder(id)
         setMessageModal({
@@ -1226,10 +1228,10 @@ const Order: React.FC<IProps> = ({
     setRatingModal({ isOpen: true })
 
   const onExit = () =>
-    navigate('/driver-order')
+    navigate(PLATFORM_ROUTES.DriverOrders)
 
   const onVotingRefuseOrder = () => {
-    API.cancelVotingParticipation(id)
+    backendGateway.cancelVotingParticipation(id)
       .then(() => {
         const nextIds = removeVotingParticipationId(id)
         const nextArrivedIds = removeVotingArrivedId(id)
@@ -1241,7 +1243,7 @@ const Order: React.FC<IProps> = ({
           message: [t(TRANSLATION.DRIVER_VOTING_REFUSED), getOrderIdText(id, activeOrderIds)]
             .filter(Boolean).join(' '),
         })
-        navigate('/driver-order')
+        navigate(PLATFORM_ROUTES.DriverOrders)
       })
       .catch(error => {
         console.error(error)
@@ -1254,23 +1256,15 @@ const Order: React.FC<IProps> = ({
   }
 
   const onVotingArrived = () => {
-    Promise.resolve()
-      .then(() => {
-        if (
-          userAsDriver?.c_state === EBookingDriverState.Performer ||
-          userAsDriver?.c_state === EBookingDriverState.Started
-        )
-          return API.setOrderState(id, EBookingDriverState.Arrived)
-      })
-      .catch(error => {
-        if (!isNotAppointedPerformerError(error))
-          throw error
-      })
-      .then(() => API.arrivedVotingOrder(id))
-      .catch(error => {
-        if (!isNotAppointedPerformerError(error))
-          throw error
-      })
+    const updateState =
+      userAsDriver?.c_state === EBookingDriverState.Performer ||
+      userAsDriver?.c_state === EBookingDriverState.Started
+
+    driverMapGateway.arrive(id, {
+      voting: true,
+      updateState,
+      tolerateNotAppointed: true,
+    })
       .then(() => {
         const nextIds = saveVotingArrivedId(id)
         setVotingArrivedIds(nextIds)
@@ -1287,16 +1281,11 @@ const Order: React.FC<IProps> = ({
   }
 
   const onVotingWentClick = () => {
-    API.setOrderState(id, EBookingDriverState.Arrived)
-      .catch(error => {
-        if (!isNotAppointedPerformerError(error))
-          throw error
-      })
-      .then(() => API.arrivedVotingOrder(id))
-      .catch(error => {
-        if (!isNotAppointedPerformerError(error))
-          throw error
-      })
+    driverMapGateway.arrive(id, {
+      voting: true,
+      updateState: true,
+      tolerateNotAppointed: true,
+    })
       .then(() => getOrder(id))
       .catch(error => {
         console.error(error)
@@ -1342,20 +1331,17 @@ const Order: React.FC<IProps> = ({
       return
     }
 
-    Promise.resolve()
-      .then(() => API.confirmVotingCode(id, enteredCode))
-      .then(() => {
-        if (userAsDriver?.c_state === EBookingDriverState.Started)
-          return null
-
-        return API.setOrderState(id, EBookingDriverState.Started, enteredCode)
-      })
+    driverMapGateway.confirmBoarding(
+      id,
+      enteredCode,
+      userAsDriver?.c_state !== EBookingDriverState.Started,
+    )
       .then(() => {
         saveStartedVotingOrderId(id)
         setVotingParticipationIds(removeVotingParticipationId(id))
         setVotingArrivedIds(removeVotingArrivedId(id))
         getOrder(id)
-        navigate('/driver-order?tab=map')
+        navigate(PLATFORM_ROUTES.DriverOrders, { query: { tab: 'map' } })
       })
       .catch(error => {
         console.error(error)
@@ -2324,8 +2310,4 @@ function getReadableApiError(error: any) {
 function isAlreadyVotingParticipantError(error: any) {
   const text = getApiErrorText(error)
   return text.includes('already performer') || text.includes('booking driver state 2')
-}
-
-function isNotAppointedPerformerError(error: any) {
-  return getApiErrorText(error).includes('not appointed performer')
 }

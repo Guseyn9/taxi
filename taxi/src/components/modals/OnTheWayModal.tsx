@@ -11,7 +11,7 @@ import { ordersSelectors } from '../../state/orders'
 import { IRootState } from '../../state'
 import './styles.scss'
 import Overlay from './Overlay'
-import * as API from '../../API'
+import { passengerGateway } from '../../platform/adapters/LegacyPassengerGateway'
 import { EBookingDriverState, EColorTypes, EStatuses } from '../../types/types'
 import { getOrderDriveStartedAt } from '../../tools/order'
 
@@ -57,7 +57,7 @@ const OnTheWayModal: React.FC<IProps> = ({
   }, 1000)
 
   const handleCloseDriveClick = () => {
-    selectedOrder && API.setOrderState(selectedOrder, EBookingDriverState.Finished)
+    selectedOrder && passengerGateway.completeRide(selectedOrder)
       .then(() => {
         setOnTheWayModal(false)
         setRatingModal({ isOpen: true, orderID: selectedOrder })

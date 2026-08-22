@@ -1,13 +1,12 @@
 import React, { useState } from 'react'
 import { connect, ConnectedProps } from 'react-redux'
-import { matchPath, useLocation, useNavigate } from 'react-router-dom'
+import { matchPath, useLocation } from 'react-router-dom'
 import cn from 'classnames'
 import moment from 'moment'
 import { EBookingDriverState, EUserRoles, ILanguage, EStatuses } from '../../types/types'
 import config from '../../config'
 import images from '../../constants/images'
 import SITE_CONSTANTS from '../../siteConstants'
-import * as API from '../../API'
 import { useInterval } from '../../tools/hooks'
 import { setCookie } from '../../utils/cookies'
 import { IRootState } from '../../state'
@@ -46,6 +45,8 @@ import DriverStatusAvatar from '../DriverStatusAvatar'
 import DriverEmulatorPanel from '../DriverEmulatorPanel'
 import emulationModeExactIcon from '../../assets/images/emulationModeExactIcon.png'
 import versionInfo from '../../version.json'
+import { usePlatformNavigator } from '../../platform/platform-interface'
+import { backendGateway } from '../../platform/adapters/LegacyBackendGateway'
 import './styles.scss'
 
 const FLAGS_IMAGES: Record<string, string> = {
@@ -126,7 +127,7 @@ function Header({
     setLanguagesOpened(false)
 
   const location = useLocation()
-  const navigate = useNavigate()
+  const navigation = usePlatformNavigator()
 
   React.useEffect(() => {
     if (driverStatusRefreshedRef.current || user?.u_role !== EUserRoles.Driver || !user?.u_id)
@@ -248,7 +249,7 @@ function Header({
   }, 1000)
 
   const onReturn = () => {
-    navigate(-1)
+    navigation.go(-1)
   }
 
   const toggleMenuOpened = () => {
@@ -345,7 +346,7 @@ function Header({
 
     setStatusChanging(true)
     try {
-      const response = await API.editUser({ u_active: active as any })
+      const response = await backendGateway.editUser({ u_active: active as any })
       if (response?.status === 'error' || (response?.code && String(response.code) !== '200')) {
         throw new Error(response?.message || t('driver_status_change_failed'))
       }
@@ -542,7 +543,7 @@ function Header({
                         <button
                           onClick={() =>
                             item.href ?
-                              navigate(item.href) :
+                              navigation.navigatePath(item.href) :
                               item.action?.(index)
                           }
                           className="menu__button"

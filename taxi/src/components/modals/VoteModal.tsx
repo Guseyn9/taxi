@@ -3,7 +3,7 @@ import { connect, ConnectedProps } from 'react-redux'
 import Button from '../Button'
 import OrderId from '../OrderId'
 import './styles.scss'
-import * as API from '../../API'
+import { passengerGateway } from '../../platform/adapters/LegacyPassengerGateway'
 import { t, TRANSLATION } from '../../localization'
 import SITE_CONSTANTS from '../../siteConstants'
 import { IRootState } from '../../state'
@@ -124,10 +124,10 @@ const VoteModal: React.FC<IProps> = ({
     if (!isOpen || !order?.drivers?.length)
       return
 
-    API.getUsers(order.drivers.map(driver => driver.u_id))
+    passengerGateway.getUsers(order.drivers.map(driver => driver.u_id))
       .then(setUsers)
       .catch(error => console.error(error))
-    API.getCars(order.drivers.map(driver => driver.c_id).filter(Boolean))
+    passengerGateway.getCars(order.drivers.map(driver => driver.c_id).filter(Boolean))
       .then(setCars)
       .catch(error => console.error(error))
   }, [isOpen, order?.drivers?.map(driver => `${driver.u_id}_${driver.c_id}`).sort().join('.')])
@@ -148,7 +148,7 @@ const VoteModal: React.FC<IProps> = ({
     const previousWaitingTime = sumSeconds || order?.b_max_waiting || SITE_CONSTANTS.WAITING_INTERVAL
 
     setIsExtendingWaiting(true)
-    API.setWaitingTime(selectedOrder, previousWaitingTime, additionalTime)
+    passengerGateway.updateWaitingTime(selectedOrder, previousWaitingTime, additionalTime)
       .then(() => {
         setSumSeconds(prev => (prev || previousWaitingTime) + additionalTime)
         setSeconds(prev => Math.max(0, prev) + additionalTime)
@@ -161,7 +161,7 @@ const VoteModal: React.FC<IProps> = ({
     if (!selectedOrder || !activeCandidate || isChoosing) return
 
     setIsChoosing(true)
-    API.chooseCandidate(selectedOrder, activeCandidate)
+    passengerGateway.selectCandidate(selectedOrder, activeCandidate)
       .then(() => {
         setVoteModal(false)
       })

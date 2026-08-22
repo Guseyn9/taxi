@@ -5,7 +5,7 @@ import { ICar, IDriver, IOrder, IReply, IUser } from '../../types/types'
 import { dateFormatDate, distanceBetweenEarthCoordinates } from '../../tools/utils'
 import { useInterval } from '../../tools/hooks'
 import images from '../../constants/images'
-import * as API from '../../API'
+import { passengerGateway } from '../../platform/adapters/LegacyPassengerGateway'
 import SITE_CONSTANTS, { CURRENCY } from '../../siteConstants'
 import { IRootState } from '../../state'
 import { modalsActionCreators, modalsSelectors } from '../../state/modals'
@@ -288,7 +288,7 @@ function CandidatesModal({
 
   useEffect(() => {
     if (user && isOpen && selectedOrder) {
-      API.getOrder(selectedOrder)
+      passengerGateway.getOrder(selectedOrder)
         .then(setOrder)
     }
   }, [selectedOrder, isOpen])
@@ -308,16 +308,16 @@ function CandidatesModal({
 
   useInterval(() => {
     if (user && isOpen && selectedOrder) {
-      API.getOrder(selectedOrder)
+      passengerGateway.getOrder(selectedOrder)
         .then(setOrder)
     }
   }, 3000)
 
   useEffect(() => {
     if (user && selectedOrder) {
-      API.getUsers(order?.drivers?.map(i => i.u_id) || [])
+      passengerGateway.getUsers(order?.drivers?.map(i => i.u_id) || [])
         .then(setUsers)
-      API.getCars(order?.drivers?.map(i => i.c_id) || [])
+      passengerGateway.getCars(order?.drivers?.map(i => i.c_id) || [])
         .then(setCars)
     }
   }, [order?.drivers?.map(i => `${i.u_id}_${i.c_id}`).sort().join('.'), pickupEtaVersion])
@@ -328,7 +328,7 @@ function CandidatesModal({
 
   const handleChoseClick = () => {
     if (!selectedOrder || !activeCandidate) return
-    API.chooseCandidate(selectedOrder, activeCandidate)
+    passengerGateway.selectCandidate(selectedOrder, activeCandidate)
       .then(() => {
         setCandidatesModal(false)
       })

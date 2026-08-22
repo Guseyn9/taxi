@@ -13,7 +13,7 @@ import {
   EPointType,
   ISuggestion, EBookingLocationKinds, IAddressPoint,
 } from '../../types/types'
-import * as API from '../../API'
+import { backendGateway } from '../../platform/adapters/LegacyBackendGateway'
 import { useCachedState } from '../../tools/hooks'
 import { cachedOrderDataStateKey } from '../../tools/utils'
 import Input, { EInputStyles } from '../Input'
@@ -44,7 +44,7 @@ interface IProps extends ConnectedProps<typeof connector> {
 }
 
 const debouncedGetPointSuggestion = _.debounce((callback, ...args) => {
-  API.getPointSuggestions(
+  backendGateway.getPointSuggestions(
     ...args,
   ).then(callback)
 }, 500)
