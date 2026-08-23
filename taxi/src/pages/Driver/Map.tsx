@@ -30,6 +30,7 @@ import {
   getTripStopKey,
   isFinalTripStop,
 } from '../../tools/driverTripPlan'
+import { isDriverOrderBoarded, resolveEffectiveDriverState } from '../../tools/driverOrderState'
 import { isAlongTheWayCandidate } from '../../tools/alongTheWayCandidate'
 import { DriverOrderEventAdapter } from '../../tools/driverOrderEventAdapter'
 import {
@@ -1263,21 +1264,23 @@ function DriverOrderMapModeContent({
     if (orderId === undefined || orderId === null) return undefined
 
     const id = String(orderId)
-    const backendState = driverStateByOrderId[id]
-    const optimistic = optimisticDriverStates[id]
-    const state = optimistic !== undefined && (backendState === undefined || optimistic > backendState) ?
-      optimistic :
-      backendState
 
-    // Попутчика сажаем в момент взятия — водитель уже стоит рядом с ним. Пока
-    // бэкенд не подтвердил Started, состояние здесь всё равно «в салоне»: иначе
-    // план (он считает по boardedOrderIds) и кнопка разошлись бы, и водителю,
-    // который уже везёт этого пассажира, предложили бы «Поехал».
-    if (state !== undefined && state < EBookingDriverState.Started && boardedAlongTheWayIds.includes(id))
-      return EBookingDriverState.Started
-
-    return state
-  }, [driverStateByOrderId, optimisticDriverStates, boardedAlongTheWayIds])
+    return resolveEffectiveDriverState({
+      backendState: driverStateByOrderId[id],
+      optimisticState: optimisticDriverStates[id],
+      // Попутчика сажаем в момент взятия — водитель уже стоит рядом с ним.
+      // Голосовой заказ с подтверждённым кодом посадки — сюда же: отметка
+      // ставится ТОЛЬКО после успешного ответа бэкенда на confirmBoarding и
+      // переживает уход с карты, поэтому она же и чинит рассинхронизацию —
+      // без неё кнопка снова предлагала бы «Код посадки» тому, кто этот код
+      // уже подтвердил, при том что план (он читает ту же отметку) вёл бы уже
+      // к точке высадки.
+      boarded: isDriverOrderBoarded(id, {
+        boardedAlongTheWayIds,
+        confirmedBoardingOrderIds: startedVotingOrderIds,
+      }),
+    })
+  }, [driverStateByOrderId, optimisticDriverStates, boardedAlongTheWayIds, startedVotingOrderIds])
 
   // Drop each override once its order is gone or the backend has reached it.
   // Пробегаем по всем ключам: чужие оптимистичные состояния трогать нельзя,
@@ -1762,11 +1765,28 @@ function DriverOrderMapModeContent({
   // transition we must refresh THAT list (getOrder only updates the single-order
   // slice the order-details screen reads). Refresh immediately and once more
   // shortly after, to cover any backend lag before the 5s watch poll catches up.
-  const refreshMapOrderState = (orderId: IOrder['b_id']) => {
+  const refreshMapOrderState = useCallback((orderId: IOrder['b_id']) => {
     getOrder(orderId)
     refreshActiveOrders()
     window.setTimeout(() => refreshActiveOrders(), 1500)
-  }
+  }, [getOrder, refreshActiveOrders])
+
+  // Подтверждение кода посадки приходит НЕ из обработчиков карты, а из карточки
+  // заказа — поэтому для него (в отличие от Arrived/Started/Finished, см.
+  // комментарий у подписки выше) событие шлюза и есть единственный сигнал, что
+  // бэкенд уже перевёл заказ в Started. Дальше работает тот же механизм, что и у
+  // переходов самой карты: состояние сразу, сверка со списком заказов — следом.
+  useEffect(() => driverMapGateway.subscribe(event => {
+    if (event.type !== DRIVER_MAP_EVENTS.BoardingConfirmed)
+      return
+
+    const { orderId } = event.payload as { readonly orderId?: IOrder['b_id'] }
+    if (!orderId)
+      return
+
+    rememberOptimisticState(orderId, EBookingDriverState.Started)
+    refreshMapOrderState(orderId)
+  }), [rememberOptimisticState, refreshMapOrderState])
 
   // Drive a forward order-state transition from the map. The emulator/demo backend
   // may answer a valid forward transition with a noisy error while still applying

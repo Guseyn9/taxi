@@ -75,6 +75,15 @@ describe('buildDriverTripPlan — один заказ', () => {
     expect(keys(stops)).toEqual(['A:dropoff'])
   })
 
+  // Test 5 ТЗ DRIVER-BOARDING-001: подтверждают код именно из Arrived — маршрут
+  // после подтверждения должен вести к точке высадки, а не обратно к посадке.
+  it('код подтверждён из Arrived — маршрут ведёт к точке высадки', () => {
+    const arrived = [order('A', { state: EBookingDriverState.Arrived, pickup: 0.01, dropoff: 0.02 })]
+
+    expect(keys(plan(arrived))).toEqual(['A:pickup', 'A:dropoff'])
+    expect(keys(plan(arrived, { boardedOrderIds: ['A'] }))).toEqual(['A:dropoff'])
+  })
+
 })
 
 describe('buildDriverTripPlan — попутные заказы', () => {
