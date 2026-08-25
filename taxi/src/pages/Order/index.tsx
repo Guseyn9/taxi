@@ -1353,9 +1353,15 @@ const Order: React.FC<IProps> = ({
         code,
         userAsDriver?.c_state !== EBookingDriverState.Started,
       ),
-      // Заказ уже в Started — тем же механизмом, что и watchOrder, приводим к
-      // этому и локальное состояние: и слайс карточки, и список активных
-      // заказов, из которого состояние берёт карта водителя.
+      // Заказ уже в Started — приводим к этому и локальное состояние, тем же
+      // механизмом, которым его обновляет watchOrder. Три вызова — это три
+      // РАЗНЫХ слайса, а не одно и то же трижды:
+      //   getOrder           → state/order,  его читает эта страница;
+      //   refreshOrder       → state/orders, его читают карточка и карта;
+      //   refreshActiveOrders→ список активных заказов.
+      // refreshActiveOrders одного не хватает: он кладёт заказ в partial, а
+      // ordersSelectors.order отдаёт `value ?? partial` — устаревший value
+      // заслонил бы свежий partial (закреплено в refreshOrder.test.js).
       syncOrderState: orderId => {
         getOrder(orderId)
         refreshOrder(orderId)

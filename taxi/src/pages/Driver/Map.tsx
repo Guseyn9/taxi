@@ -74,6 +74,7 @@ import {
   driverMapGateway,
 } from '../../platform/adapters/DriverMapGateway'
 import type { DriverMapFailurePayload } from '../../platform/adapters/DriverMapGateway'
+import { subscribeDriverBoardingConfirmed } from '../../platform/adapters/DriverBoardingProjection'
 import {
   PLATFORM_ROUTES,
   useDriverHudSurface,
@@ -1774,18 +1775,11 @@ function DriverOrderMapModeContent({
   // Подтверждение кода посадки приходит НЕ из обработчиков карты, а из карточки
   // заказа — поэтому для него (в отличие от Arrived/Started/Finished, см.
   // комментарий у подписки выше) событие шлюза и есть единственный сигнал, что
-  // бэкенд уже перевёл заказ в Started. Дальше работает тот же механизм, что и у
-  // переходов самой карты: состояние сразу, сверка со списком заказов — следом.
-  useEffect(() => driverMapGateway.subscribe(event => {
-    if (event.type !== DRIVER_MAP_EVENTS.BoardingConfirmed)
-      return
-
-    const { orderId } = event.payload as { readonly orderId?: IOrder['b_id'] }
-    if (!orderId)
-      return
-
-    rememberOptimisticState(orderId, EBookingDriverState.Started)
-    refreshMapOrderState(orderId)
+  // бэкенд уже перевёл заказ в Started. Саму цепочку проверяет
+  // DriverBoardingProjection.test.js — целиком, в runtime.
+  useEffect(() => subscribeDriverBoardingConfirmed(driverMapGateway, {
+    rememberBoardedState: rememberOptimisticState,
+    refreshOrderState: refreshMapOrderState,
   }), [rememberOptimisticState, refreshMapOrderState])
 
   // Drive a forward order-state transition from the map. The emulator/demo backend

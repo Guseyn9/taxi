@@ -6,7 +6,9 @@ jest.mock('../../geolocation/actionCreators', () => ({ watch: () => ({}), activa
 
 import reducer from '../reducer'
 import { ActionTypes } from '../constants'
+import { ActionTypes as OrderActionTypes } from '../../order/constants'
 import { refreshOrder } from '../actionCreators'
+import { getOrder } from '../../order/actionCreators'
 
 const ORDER_ID = '1509-2'
 const DRIVER_ID = 'driver-1'
@@ -64,6 +66,67 @@ describe('ordersActionCreators.refreshOrder', () => {
     state = reducer(state, refreshOrder(ORDER_ID))
 
     expect(driverState(state)).toBe(ARRIVED)
+  })
+
+})
+
+/**
+ * Замечание с ревью PR #11: не избыточны ли getOrder(id) и refreshOrder(id),
+ * которые Order/index.tsx вызывает подряд. Нет — это разные слайсы: state/order
+ * читает сама страница заказа, state/orders — карточка и карта водителя.
+ */
+describe('getOrder и refreshOrder — разные слайсы', () => {
+
+  it('действия расходятся по типу, у каждого свой редьюсер и сага', () => {
+    expect(refreshOrder(ORDER_ID).type).toBe(ActionTypes.GET_ORDER_REQUEST)
+    expect(getOrder(ORDER_ID).type).toBe(OrderActionTypes.GET_ORDER_REQUEST)
+    expect(refreshOrder(ORDER_ID).type).not.toBe(getOrder(ORDER_ID).type)
+  })
+
+  it('успех соседнего слайса состояние в orders не меняет', () => {
+    let state = reducer(undefined, { type: ActionTypes.WATCH_ORDER, payload: ORDER_ID })
+    state = reducer(state, {
+      type: ActionTypes.GET_ORDER_SUCCESS,
+      payload: orderWith(ARRIVED),
+    })
+
+    state = reducer(state, {
+      type: OrderActionTypes.GET_ORDER_SUCCESS,
+      payload: orderWith(STARTED),
+    })
+
+    expect(driverState(state)).toBe(ARRIVED)
+  })
+
+  /**
+   * И почему refreshActiveOrders в одиночку не закрывает вопрос: список кладёт
+   * заказ в partial, а ordersSelectors.order отдаёт `value ?? partial` —
+   * устаревший value заслоняет свежий partial.
+   */
+  it('список активных заказов не перебивает устаревший value', () => {
+    let state = reducer(undefined, { type: ActionTypes.WATCH_ORDER, payload: ORDER_ID })
+    state = reducer(state, {
+      type: ActionTypes.GET_ORDER_SUCCESS,
+      payload: orderWith(ARRIVED),
+    })
+
+    state = reducer(state, {
+      type: ActionTypes.GET_ACTIVE_ORDERS_SUCCESS,
+      payload: [orderWith(STARTED)],
+    })
+
+    const record = state.orders.get(ORDER_ID)
+    expect(record.partial.drivers[0].c_state).toBe(STARTED)
+    // Селектор отдаёт `value ?? partial` — значит, наружу пойдёт устаревшее.
+    expect(record.value.drivers[0].c_state).toBe(ARRIVED)
+
+    // Ровно это и чинит refreshOrder: он обновляет value.
+    state = reducer(state, {
+      type: ActionTypes.GET_ORDER_SUCCESS,
+      payload: orderWith(STARTED),
+    })
+
+    expect(driverState(state)).toBe(STARTED)
   })
 
 })

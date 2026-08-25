@@ -75,15 +75,17 @@ describe('Driver boarding command path', () => {
     expect(source).not.toMatch(/setOrderState\(/)
   })
 
-  // §14 ТЗ: результат команды доходит до состояния карты через событие шлюза, а
-  // не через новый путь в обход Platform Interface.
-  it('карта водителя приводит своё состояние к результату шлюза', () => {
+  // Сама цепочка «BoardingConfirmed → состояние = Started» проверяется в runtime
+  // (DriverBoardingProjection.test.js). Здесь сторожится только то, что карта эту
+  // цепочку действительно подключает и кормит отметкой подтверждённой посадки:
+  // рендерить Driver/Map.tsx в тесте нечем.
+  it('карта водителя подключает подписку на подтверждённую посадку', () => {
     const source = fs.readFileSync(
       path.resolve(process.cwd(), 'src/pages/Driver/Map.tsx'),
       'utf8',
     )
 
-    expect(source).toMatch(/DRIVER_MAP_EVENTS\.BoardingConfirmed/)
+    expect(source).toMatch(/subscribeDriverBoardingConfirmed\(driverMapGateway/)
     expect(source).toMatch(/confirmedBoardingOrderIds:\s*startedVotingOrderIds/)
   })
 
