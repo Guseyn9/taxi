@@ -3107,6 +3107,12 @@ function DriverOrderMapModeContent({
             const interrupting = Boolean(mapPrimaryAction.requiresDestinationArrival && !hasReachedDestination)
             return (
               <Button
+                // Контракт для E2E: состояние заказа, к которому относится
+                // кнопка, читается атрибутом, а не переводом подписи — иначе
+                // тест ловил бы язык интерфейса, а не состояние водителя.
+                data-testid="driver-map-primary-action"
+                data-driver-state={effectiveDriverState}
+                data-order-id={actionStop?.orderId}
                 // Номер заказа нужен и здесь: когда в салоне двое, «Прервать
                 // поездку» без него не говорит, чью именно поездку прерываем.
                 text={interrupting ?

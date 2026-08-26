@@ -1786,6 +1786,7 @@ const Order: React.FC<IProps> = ({
       {order.drivers?.find(i => i.u_id === user?.u_id)?.c_state !== EBookingDriverState.Considering && (<>
         {order?.b_voting && renderOfferEtaPicker('order__driver-offer-choice--voting')}
         <Button
+          data-testid="driver-order-take"
           text={t(
             order?.b_voting ?
               TRANSLATION.DRIVER_VOTING_GOING_ACTION :

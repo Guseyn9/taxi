@@ -1723,6 +1723,9 @@ function CardModalContent({
         {hasVotingDeparted && <>
           {isVotingArrived && (
             <Input
+              // Приведение нужно только ради data-testid: общий тип inputProps —
+              // объединение input/select/textarea/маски, и data-атрибуты в него
+              // не попадают.
               inputProps={{
                 ...register('votingNumber', {
                   required: t(TRANSLATION.REQUIRED_FIELD),
@@ -1739,7 +1742,8 @@ function CardModalContent({
                 pattern: '[0-9]*',
                 maxLength: 4,
                 autoComplete: 'off',
-              }}
+                'data-testid': 'driver-boarding-code-input',
+              } as React.ComponentProps<'input'>}
               error={errors?.votingNumber?.message}
               label={t(TRANSLATION.CLIENT_BOARDING_CODE)}
             />
@@ -1747,6 +1751,7 @@ function CardModalContent({
           {!isVotingArrived && (
             <Button
               {...actionButtonProps}
+              data-testid="driver-voting-arrived"
               text={t(TRANSLATION.DRIVER_VOTING_ARRIVED)}
               onClick={arrivedVotingOrder}
               disabled={orderMutates || !canMarkVotingArrived(order, effectiveDriverPosition, user?.u_id)}
@@ -1755,6 +1760,7 @@ function CardModalContent({
           {isVotingArrived && (
             <Button
               {...actionButtonProps}
+              data-testid="driver-boarding-confirm"
               text={t(TRANSLATION.DRIVER_VOTING_CONFIRM_CODE)}
               onClick={confirmVotingCode}
               disabled={orderMutates || boardingPending}
@@ -1872,6 +1878,7 @@ function CardModalContent({
         {isVotingMode && renderOfferEtaPicker('order__driver-offer-choice--voting')}
         <Button
           {...submitButtonProps}
+          data-testid="driver-order-take"
           text={t(
             isVotingMode ?
               TRANSLATION.DRIVER_VOTING_GOING_ACTION :
