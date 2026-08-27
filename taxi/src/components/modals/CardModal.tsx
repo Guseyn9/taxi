@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { connect, ConnectedProps } from 'react-redux'
 import OrderId from '../OrderId'
 import { useForm } from 'react-hook-form'
@@ -86,6 +86,7 @@ import Input, { EInputTypes } from '../Input'
 import { Loader } from '../loader/Loader'
 import { getStableRemainingLifetimeSeconds } from '../../tools/reliableTime'
 import { DRIVER_DOOR_NUMBER_PATTERN, getDriverDoorNumber, normalizeDriverDoorNumber } from '../../tools/driverDoorNumber'
+import { confirmDriverBoarding, isBoardingCodeAccepted } from '../../tools/driverBoarding'
 import { getEmulatorCaseName, isAnyBrowserEmulatorOrder } from '../../tools/emulatorMode'
 import { getOrderIdText } from '../../tools/orderId'
 import '../Card/styles.scss'
@@ -656,6 +657,8 @@ const mapDispatchToProps = {
   watchOrder: ordersActionCreators.watchOrder,
   takeOrder: ordersActionCreators.take,
   cancelOrder: ordersActionCreators.cancel,
+  refreshOrder: ordersActionCreators.refreshOrder,
+  refreshActiveOrders: ordersActionCreators.refreshActiveOrders,
   getOrderStart: ordersDetailsActionCreators.getOrderStart,
   getOrderDestination: ordersDetailsActionCreators.getOrderDestination,
   setSelectedOrderId: orderActionCreators.setSelectedOrderId,
@@ -705,6 +708,8 @@ function CardModalContent({
   watchOrder,
   takeOrder,
   cancelOrder,
+  refreshOrder,
+  refreshActiveOrders,
   getOrderStart,
   getOrderDestination,
   setSelectedOrderId,
@@ -779,6 +784,10 @@ function CardModalContent({
   const [votingArrivedIds, setVotingArrivedIds] = useState(() =>
     getStoredVotingArrivedIds(),
   )
+  // Команда посадки в полёте: карточка ещё открыта, но подтверждать код повторно
+  // уже нечего (см. confirmVotingCode ниже).
+  const [boardingPending, setBoardingPending] = useState(false)
+  const boardingPendingRef = useRef(false)
   const now = useReliableNow(Boolean(active && order), 1000)
   const [votingCloseHandled, setVotingCloseHandled] = useState(false)
   const storedRouteDurationMinutes = getStoredRouteDurationMinutes(order)
@@ -1328,12 +1337,25 @@ function CardModalContent({
     })
   }
 
+  // Локальное состояние заказа после посадки. Команду выполняет шлюз, но он не
+  // трогает store — а именно из него карточка и карта берут c_state. Перечитываем
+  // заказ и список активных заказов ТЕМ ЖЕ механизмом, что и watchOrder: своего
+  // FSM у фронтенда нет, источником истины остаётся бэкенд.
+  const syncBoardedOrderState = (id: IOrder['b_id']) => {
+    refreshOrder(id)
+    refreshActiveOrders()
+  }
+
   const confirmVotingCode = formHandleSubmit(({ votingNumber }) => orderMutation(async() => {
-    const expectedCode = normalizeDriverDoorNumber(order?.b_driver_code)
+    // Карточка закрывается только после успеха, поэтому до него повторное
+    // нажатие отправило бы по тому же заказу вторую команду посадки. Флаг в
+    // рефе, а не в состоянии: два клика подряд успевают пройти до перерисовки.
+    if (boardingPendingRef.current)
+      return
+
     const enteredCode = normalizeDriverDoorNumber(votingNumber)
 
-    if (!DRIVER_DOOR_NUMBER_PATTERN.test(enteredCode) ||
-      (DRIVER_DOOR_NUMBER_PATTERN.test(expectedCode) && enteredCode !== expectedCode)) {
+    if (!isBoardingCodeAccepted(order?.b_driver_code, enteredCode)) {
       setMessageModal({
         isOpen: true,
         message: t(TRANSLATION.WRONG_BOARDING_CODE),
@@ -1342,12 +1364,27 @@ function CardModalContent({
       return
     }
 
-    await driverMapGateway.confirmBoarding(orderId, enteredCode)
-    saveStartedVotingOrderId(orderId)
-    setVotingParticipationIds(removeVotingParticipationId(orderId))
-    setVotingArrivedIds(removeVotingArrivedId(orderId))
-    navigate(PLATFORM_ROUTES.DriverOrders, { query: { tab: EDriverTabs.Map } })
-    closeModal()
+    boardingPendingRef.current = true
+    setBoardingPending(true)
+    try {
+      await confirmDriverBoarding({
+        orderId,
+        code: enteredCode,
+        confirmBoarding: (id, code) => driverMapGateway.confirmBoarding(id, code),
+        syncOrderState: syncBoardedOrderState,
+        onBoarded: id => {
+          saveStartedVotingOrderId(id)
+          setVotingParticipationIds(removeVotingParticipationId(id))
+          setVotingArrivedIds(removeVotingArrivedId(id))
+          navigate(PLATFORM_ROUTES.DriverOrders, { query: { tab: EDriverTabs.Map } })
+          closeModal()
+        },
+      })
+    } finally {
+      // При ошибке водитель должен получить кнопку обратно и ввести код заново.
+      boardingPendingRef.current = false
+      setBoardingPending(false)
+    }
   }))
 
   async function orderMutation(mutation: () => Promise<void>) {
@@ -1686,6 +1723,9 @@ function CardModalContent({
         {hasVotingDeparted && <>
           {isVotingArrived && (
             <Input
+              // Приведение нужно только ради data-testid: общий тип inputProps —
+              // объединение input/select/textarea/маски, и data-атрибуты в него
+              // не попадают.
               inputProps={{
                 ...register('votingNumber', {
                   required: t(TRANSLATION.REQUIRED_FIELD),
@@ -1702,7 +1742,8 @@ function CardModalContent({
                 pattern: '[0-9]*',
                 maxLength: 4,
                 autoComplete: 'off',
-              }}
+                'data-testid': 'driver-boarding-code-input',
+              } as React.ComponentProps<'input'>}
               error={errors?.votingNumber?.message}
               label={t(TRANSLATION.CLIENT_BOARDING_CODE)}
             />
@@ -1710,6 +1751,7 @@ function CardModalContent({
           {!isVotingArrived && (
             <Button
               {...actionButtonProps}
+              data-testid="driver-voting-arrived"
               text={t(TRANSLATION.DRIVER_VOTING_ARRIVED)}
               onClick={arrivedVotingOrder}
               disabled={orderMutates || !canMarkVotingArrived(order, effectiveDriverPosition, user?.u_id)}
@@ -1718,8 +1760,10 @@ function CardModalContent({
           {isVotingArrived && (
             <Button
               {...actionButtonProps}
+              data-testid="driver-boarding-confirm"
               text={t(TRANSLATION.DRIVER_VOTING_CONFIRM_CODE)}
               onClick={confirmVotingCode}
+              disabled={orderMutates || boardingPending}
             />
           )}
           <Button
@@ -1834,6 +1878,7 @@ function CardModalContent({
         {isVotingMode && renderOfferEtaPicker('order__driver-offer-choice--voting')}
         <Button
           {...submitButtonProps}
+          data-testid="driver-order-take"
           text={t(
             isVotingMode ?
               TRANSLATION.DRIVER_VOTING_GOING_ACTION :

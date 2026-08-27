@@ -26,11 +26,12 @@ import { useForm } from 'react-hook-form'
 import cn from 'classnames'
 import { getStableRemainingLifetimeSeconds } from '../../tools/reliableTime'
 import { DRIVER_DOOR_NUMBER_PATTERN, getDriverDoorNumber, normalizeDriverDoorNumber } from '../../tools/driverDoorNumber'
+import { confirmDriverBoarding, isBoardingCodeAccepted } from '../../tools/driverBoarding'
 import './styles.scss'
 import { CURRENCY } from '../../siteConstants'
 import ChatToggler from '../../components/Chat/Toggler'
 import { orderSelectors, orderActionCreators } from '../../state/order'
-import { ordersSelectors } from '../../state/orders'
+import { ordersSelectors, ordersActionCreators } from '../../state/orders'
 import { modalsActionCreators } from '../../state/modals'
 import { userSelectors } from '../../state/user'
 import {
@@ -81,6 +82,8 @@ const mapStateToProps = (state: IRootState) => ({
 const mapDispatchToProps = {
   getOrder: orderActionCreators.getOrder,
   setOrder: orderActionCreators.setOrder,
+  refreshOrder: ordersActionCreators.refreshOrder,
+  refreshActiveOrders: ordersActionCreators.refreshActiveOrders,
   setCancelDriverOrderModal: modalsActionCreators.setDriverCancelModal,
   setDriverTripCancelModal: modalsActionCreators.setDriverTripCancelModal,
   setRatingModal: modalsActionCreators.setRatingModal,
@@ -467,6 +470,8 @@ const Order: React.FC<IProps> = ({
   activeOrders,
   getOrder,
   setOrder,
+  refreshOrder,
+  refreshActiveOrders,
   setMapModal,
   setRatingModal,
   setCancelDriverOrderModal,
@@ -484,6 +489,9 @@ const Order: React.FC<IProps> = ({
   const [votingArrivedIds, setVotingArrivedIds] = useState(() =>
     getStoredVotingArrivedIds(),
   )
+  // Команда посадки в полёте (см. onVotingConfirmCode ниже).
+  const [boardingPending, setBoardingPending] = useState(false)
+  const boardingPendingRef = useRef(false)
   const now = useReliableNow(Boolean(order), 1000)
   const [votingCloseHandled, setVotingCloseHandled] = useState(false)
   const [offerFormOpen, setOfferFormOpen] = useState(false)
@@ -1318,11 +1326,15 @@ const Order: React.FC<IProps> = ({
   }
 
   const onVotingConfirmCode = formHandleSubmit(({ votingNumber }) => {
-    const expectedCode = normalizeDriverDoorNumber(order?.b_driver_code)
+    // Повторное нажатие, пока команда в полёте, отправило бы по тому же заказу
+    // вторую посадку. Флаг в рефе: два клика подряд успевают пройти до
+    // перерисовки (тот же приём, что в карточке заказа).
+    if (boardingPendingRef.current)
+      return
+
     const enteredCode = normalizeDriverDoorNumber(votingNumber)
 
-    if (!DRIVER_DOOR_NUMBER_PATTERN.test(enteredCode) ||
-      (DRIVER_DOOR_NUMBER_PATTERN.test(expectedCode) && enteredCode !== expectedCode)) {
+    if (!isBoardingCodeAccepted(order?.b_driver_code, enteredCode)) {
       setMessageModal({
         isOpen: true,
         message: t(TRANSLATION.WRONG_BOARDING_CODE),
@@ -1331,18 +1343,37 @@ const Order: React.FC<IProps> = ({
       return
     }
 
-    driverMapGateway.confirmBoarding(
-      id,
-      enteredCode,
-      userAsDriver?.c_state !== EBookingDriverState.Started,
-    )
-      .then(() => {
-        saveStartedVotingOrderId(id)
-        setVotingParticipationIds(removeVotingParticipationId(id))
-        setVotingArrivedIds(removeVotingArrivedId(id))
-        getOrder(id)
+    boardingPendingRef.current = true
+    setBoardingPending(true)
+    confirmDriverBoarding({
+      orderId: id,
+      code: enteredCode,
+      confirmBoarding: (orderId, code) => driverMapGateway.confirmBoarding(
+        orderId,
+        code,
+        userAsDriver?.c_state !== EBookingDriverState.Started,
+      ),
+      // Заказ уже в Started — приводим к этому и локальное состояние, тем же
+      // механизмом, которым его обновляет watchOrder. Три вызова — это три
+      // РАЗНЫХ слайса, а не одно и то же трижды:
+      //   getOrder           → state/order,  его читает эта страница;
+      //   refreshOrder       → state/orders, его читают карточка и карта;
+      //   refreshActiveOrders→ список активных заказов.
+      // refreshActiveOrders одного не хватает: он кладёт заказ в partial, а
+      // ordersSelectors.order отдаёт `value ?? partial` — устаревший value
+      // заслонил бы свежий partial (закреплено в refreshOrder.test.js).
+      syncOrderState: orderId => {
+        getOrder(orderId)
+        refreshOrder(orderId)
+        refreshActiveOrders()
+      },
+      onBoarded: orderId => {
+        saveStartedVotingOrderId(orderId)
+        setVotingParticipationIds(removeVotingParticipationId(orderId))
+        setVotingArrivedIds(removeVotingArrivedId(orderId))
         navigate(PLATFORM_ROUTES.DriverOrders, { query: { tab: 'map' } })
-      })
+      },
+    })
       .catch(error => {
         console.error(error)
         setMessageModal({
@@ -1350,6 +1381,11 @@ const Order: React.FC<IProps> = ({
           message: error?.message || error.toString() || t(TRANSLATION.ERROR),
           status: EStatuses.Fail,
         })
+      })
+      .finally(() => {
+        // При ошибке водитель должен получить кнопку обратно и ввести код заново.
+        boardingPendingRef.current = false
+        setBoardingPending(false)
       })
   })
 
@@ -1704,6 +1740,7 @@ const Order: React.FC<IProps> = ({
             text={t(TRANSLATION.DRIVER_VOTING_CONFIRM_CODE)}
             className="order_take-order-btn"
             onClick={onVotingConfirmCode}
+            disabled={boardingPending}
             label={message}
             status={status}
           />
@@ -1749,6 +1786,7 @@ const Order: React.FC<IProps> = ({
       {order.drivers?.find(i => i.u_id === user?.u_id)?.c_state !== EBookingDriverState.Considering && (<>
         {order?.b_voting && renderOfferEtaPicker('order__driver-offer-choice--voting')}
         <Button
+          data-testid="driver-order-take"
           text={t(
             order?.b_voting ?
               TRANSLATION.DRIVER_VOTING_GOING_ACTION :

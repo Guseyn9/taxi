@@ -261,8 +261,14 @@ export class DriverMapGateway {
       instanceId: accepted.instanceId,
       baseline,
     })
-    if (result.status === COMMAND_COMPLETION_STATUSES.Completed)
+    if (result.status === COMMAND_COMPLETION_STATUSES.Completed) {
+      // Тот же событийный контракт, что и в legacy-режиме: подписчик узнаёт об
+      // успешном переходе одинаково, независимо от того, ждали мы бэкенд
+      // напрямую или через Command Status API. Событие публикуется ПОСЛЕ
+      // терминального результата команды, поэтому «выполнено» здесь не аванс.
+      this.publish(action, this.successEventFor(action.type), { orderId: payload.orderId })
       return
+    }
 
     const error = new BackendInteractionError(
       result.errorCode ?? 'FSM_COMMAND_COMPLETION_FAILED',
