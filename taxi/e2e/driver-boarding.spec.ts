@@ -15,6 +15,7 @@ import { expect, test } from '@playwright/test'
 import { driverAccount, passengerAccount } from './fixtures/accounts'
 import {
   boardingCodeOf,
+  cancelDriverActiveOrders,
   cancelOrder,
   choosePerformer,
   createVotingOrder,
@@ -68,11 +69,48 @@ test.beforeAll(async() => {
   await goOnline(driver, car, PICKUP)
 })
 
-test.afterEach(async() => {
-  // §22: каждый прогон убирает за собой, аккаунты не зависают.
+const reason = (error: unknown) => (error as Error)?.message ?? String(error)
+
+test.afterEach(async({}, testInfo) => {
+  // §24: при падении нужно, чем разбираться на бэкенде. Печатаются только
+  // идентификаторы и состояние заказа — ни токена, ни пароля, ни cookie.
+  if (testInfo.status !== testInfo.expectedStatus) {
+    for (const orderId of createdOrders) {
+      const state = await backendState(orderId).catch(() => undefined)
+      const diagnostics = `orderId=${orderId} driverId=${driver?.userId} ` +
+        `carId=${car?.c_id} c_state=${state ?? 'unknown'}`
+      console.error(`E2E FAILURE DIAGNOSTICS: ${diagnostics}`)
+      testInfo.annotations.push({ type: 'backend', description: diagnostics })
+    }
+  }
+
+  // §22: каждый прогон убирает за собой, аккаунты не зависают. Если отменить не
+  // вышло — заказ остаётся живым на бэкенде, поэтому его номер обязан попасть в
+  // лог: по нему тестовый заказ можно найти и удалить руками.
   while (createdOrders.length) {
     const orderId = createdOrders.pop() as string
-    await cancelOrder(passenger, orderId).catch(() => undefined)
+    try {
+      await cancelOrder(passenger, orderId)
+    } catch (error) {
+      console.error(
+        `E2E CLEANUP FAILED: orderId=${orderId} — заказ остался на бэкенде, ` +
+        `отмените его вручную. Причина: ${reason(error)}`)
+      testInfo.annotations.push({ type: 'cleanup-failed', description: `orderId=${orderId}` })
+    }
+  }
+})
+
+test.afterAll(async() => {
+  // Подмести то, что осталось от прерванных прогонов: следующий прогон не
+  // должен начинаться с водителем, занятым чужим заказом.
+  if (!passenger || !driver)
+    return
+  try {
+    const cancelled = await cancelDriverActiveOrders(passenger, driver.userId)
+    if (cancelled)
+      console.log(`E2E sweep: отменено зависших заказов — ${cancelled}`)
+  } catch (error) {
+    console.error(`E2E SWEEP FAILED: ${reason(error)}`)
   }
 })
 
