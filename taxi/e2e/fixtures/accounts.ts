@@ -37,8 +37,15 @@ function loadEnvFile(): Record<string, string> {
 
 const fileEnv = loadEnvFile()
 
+/**
+ * Значение из окружения или из файла. Обрамляющие кавычки снимаются, как это
+ * делает dotenv: секрет, заданный как "user@example.com", иначе дошёл бы до
+ * формы вместе с кавычками и не прошёл бы её проверку формата.
+ */
 function readValue(name: string): string {
-  return (process.env[name] ?? fileEnv[name] ?? '').trim()
+  const raw = (process.env[name] ?? fileEnv[name] ?? '').trim()
+  const quoted = /^(['"])(.*)\1$/.exec(raw)
+  return quoted ? quoted[2] : raw
 }
 
 function readAccount(prefix: string, role: string): IAccount {
