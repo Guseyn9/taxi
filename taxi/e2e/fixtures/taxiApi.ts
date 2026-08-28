@@ -250,12 +250,19 @@ export async function choosePerformer(
   )
 }
 
-/** Уборка после теста: заказ уводится в терминальное состояние. */
+/**
+ * Уборка после теста: заказ уводится в терминальное состояние. Бросает, если
+ * бэкенд отменить отказался, — иначе незакрытый заказ остался бы незамеченным,
+ * а его номер обязан попасть в лог прогона.
+ */
 export async function cancelOrder(session: ISession, orderId: string): Promise<void> {
-  await post(`/drive/get/${orderId}`, authFields(session, {
-    action: 'set_cancel_state',
-    b_comments: 'E2E cleanup',
-  }))
+  assertOk(
+    await post(`/drive/get/${orderId}`, authFields(session, {
+      action: 'set_cancel_state',
+      b_comments: 'E2E cleanup',
+    })),
+    `отмена заказа ${orderId}`,
+  )
 }
 
 /** Активные заказы водителя — для уборки «зависших» прогонов. */
@@ -274,8 +281,14 @@ export async function cancelDriverActiveOrders(
     const label = String(order?.b_custom_comment ?? '')
     if (!mine && !label.includes('[E2E'))
       continue
-    await cancelOrder(passenger, orderId)
-    cancelled += 1
+    try {
+      await cancelOrder(passenger, orderId)
+      cancelled += 1
+    } catch (error) {
+      // Один упрямый заказ не должен обрывать уборку остальных, но и потеряться
+      // он не должен: его номер уходит в лог прогона.
+      console.error(`E2E SWEEP: не удалось отменить orderId=${orderId} — ${(error as Error)?.message ?? error}`)
+    }
   }
   return cancelled
 }

@@ -8,6 +8,7 @@ import { defineConfig, devices } from '@playwright/test'
 
 const APP_URL = process.env.E2E_APP_URL || 'http://localhost:3000'
 const REUSE_SERVER = !process.env.CI || !!process.env.E2E_APP_URL
+const STRIP_SETUP_SNAPSHOTS = './e2e/reporters/stripSetupErrorContext.ts'
 
 export default defineConfig({
   testDir: './e2e',
@@ -21,9 +22,11 @@ export default defineConfig({
   fullyParallel: false,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
+  // Стоит первым: снимает с результатов `setup` снимок страницы с логином и
+  // паролем до того, как его увидят HTML- и JSON-репортёр.
   reporter: process.env.CI ?
-    [['list'], ['html', { open: 'never' }], ['json', { outputFile: 'e2e-results/results.json' }]] :
-    [['list'], ['html', { open: 'never' }]],
+    [[STRIP_SETUP_SNAPSHOTS], ['list'], ['html', { open: 'never' }], ['json', { outputFile: 'e2e-results/results.json' }]] :
+    [[STRIP_SETUP_SNAPSHOTS], ['list'], ['html', { open: 'never' }]],
   outputDir: 'e2e-results/artifacts',
 
   use: {
@@ -42,6 +45,10 @@ export default defineConfig({
     {
       name: 'setup',
       testMatch: /auth\.setup\.ts/,
+      // Здесь логин и пароль вводятся в форму, а trace хранит само значение
+      // fill(). Диагностику этого шага поэтому не собираем: учётные данные не
+      // должны оказаться в артефактах прогона.
+      use: { trace: 'off', screenshot: 'off', video: 'off' },
     },
     {
       name: 'driver-boarding',
