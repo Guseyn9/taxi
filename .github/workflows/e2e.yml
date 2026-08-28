@@ -1,7 +1,7 @@
 name: E2E
 
 # Тот же Playwright-тест, что и локально (`npm run test:e2e`), но запускаемый
-# автоматически. Отдельной CI-реализации сценария нет — см. taxi/e2e/README.md.
+# автоматически. Отдельной CI-реализации сценария нет — см. taxi/e2e/README.md
 on:
   pull_request:
   push:
