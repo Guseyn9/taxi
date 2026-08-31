@@ -570,6 +570,9 @@ const Driver: React.FC<IProps> = ({
             PLATFORM_ROUTES.DriverOrders,
             { query: { tab: EDriverTabs.Map } },
           )}
+          // Контракт для E2E: вкладку надо выбирать так же, как водитель, —
+          // переходом внутри приложения, а не перезагрузкой страницы.
+          data-testid="driver-tab-map"
           className={cn('driver-tabs__tab', { 'driver-tabs__tab--active': tab === EDriverTabs.Map })}
         >
           {t(TRANSLATION.MAP)}

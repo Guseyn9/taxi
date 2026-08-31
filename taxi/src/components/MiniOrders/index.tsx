@@ -613,6 +613,9 @@ function MiniOrders({
                   !isVotingOrder(order) &&
                   !(candidateMode(order) && !isStoredSimpleOrderMode(order)),
               })}
+              // Контракт для E2E: плашка конкретного активного заказа пассажира.
+              data-testid="passenger-mini-order"
+              data-order-id={order.b_id}
               onClick={() => handleOrderClick(order)}
             >
               <span className={cn('mini-orders__mode-icon', `mini-orders__mode-icon--${orderMode}`)} aria-hidden="true">

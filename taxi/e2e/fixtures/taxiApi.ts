@@ -32,6 +32,9 @@ export interface IOrderSnapshot {
   readonly b_id: string
   readonly b_state?: string | number
   readonly b_voting?: string | number
+  readonly b_cars_count?: string | number
+  readonly b_services?: unknown
+  readonly b_confirm_state?: string | number
   readonly b_driver_code?: string
   readonly drivers?: IOrderDriver[] | null
   readonly b_start_latitude?: string
@@ -65,9 +68,46 @@ function encode(fields: Record<string, unknown>): URLSearchParams {
   return params
 }
 
+/**
+ * Коды, которые означают, что соединение так и не установилось: запрос до
+ * бэкенда не дошёл и повторить его безопасно. Всё остальное — включая обрыв
+ * уже отправленного запроса — не повторяется: там нельзя утверждать, что
+ * заказ не создался.
+ */
+const CONNECT_FAILURE_CODES = new Set([
+  'UND_ERR_CONNECT_TIMEOUT',
+  'ECONNREFUSED',
+  'ENOTFOUND',
+  'EAI_AGAIN',
+])
+
+const CONNECT_ATTEMPTS = 3
+
+const connectFailureCode = (error: unknown): string | undefined => {
+  const code = String((error as any)?.cause?.code ?? (error as any)?.code ?? '')
+  return CONNECT_FAILURE_CODES.has(code) ? code : undefined
+}
+
+async function fetchWithConnectRetry(url: string, init: RequestInit): Promise<Response> {
+  let lastCode = ''
+  for (let attempt = 1; attempt <= CONNECT_ATTEMPTS; attempt += 1) {
+    try {
+      return await fetch(url, init)
+    } catch (error) {
+      const code = connectFailureCode(error)
+      if (!code)
+        throw error
+      lastCode = code
+    }
+  }
+  throw new BackendError(
+    `нет соединения с ${url}: ${CONNECT_ATTEMPTS} попытки подряд не установили ` +
+    `соединение (${lastCode})`, lastCode)
+}
+
 async function post(endpoint: string, fields: Record<string, unknown>): Promise<any> {
   const url = `${apiBase()}${endpoint}`
-  const response = await fetch(url, {
+  const response = await fetchWithConnectRetry(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
     body: encode(fields),
@@ -166,7 +206,7 @@ function startDatetime(offsetMinutes: number): string {
     `${sign}${pad(Math.floor(absolute / 60))}:${pad(absolute % 60)}`
 }
 
-export interface ICreateVotingOrderOptions {
+export interface ICreateOrderOptions {
   readonly pickup: { latitude: number; longitude: number }
   readonly destination: { latitude: number; longitude: number }
   /** Заказ помечается для конкретного водителя — чужие прогоны друг друга не видят. */
@@ -175,11 +215,16 @@ export interface ICreateVotingOrderOptions {
   readonly label: string
 }
 
-/** Голосовой заказ от лица пассажира. Каждый прогон создаёт свой. */
-export async function createVotingOrder(
-  session: ISession,
-  options: ICreateVotingOrderOptions,
-): Promise<string> {
+/** Совпадает с ICreateOrderOptions; имя оставлено ради прежних вызовов. */
+export type ICreateVotingOrderOptions = ICreateOrderOptions
+
+/**
+ * Общая часть заказа — те же поля, что собирает форма пассажира
+ * (pages/Passenger/VotingForm.tsx). Тип заказа задаётся НЕ здесь: голосование
+ * добавляет b_voting/b_services, предложение — b_cars_count=0, а стандартный
+ * вызов не добавляет ничего.
+ */
+function orderPayload(options: ICreateOrderOptions): Record<string, unknown> {
   const payload: Record<string, unknown> = {
     b_start_address: `E2E pickup ${options.label}`,
     b_start_latitude: String(options.pickup.latitude),
@@ -192,8 +237,6 @@ export async function createVotingOrder(
     b_passengers_count: 1,
     b_payment_way: 1,
     b_max_waiting: 7200,
-    b_voting: 1,
-    b_services: [5],
     // [DRV:<id>] — механизм изоляции самого проекта: в режиме внешнего эмулятора
     // водитель видит только свои помеченные заказы (tools/emulatorMode.ts).
     b_custom_comment: `[E2E ${options.label}] [DRV:${options.driverId}]`,
@@ -205,18 +248,52 @@ export async function createVotingOrder(
   }
   if (options.carClassId)
     payload.b_car_class = options.carClassId
+  return payload
+}
 
+async function postDrive(
+  session: ISession,
+  payload: Record<string, unknown>,
+  what: string,
+): Promise<string> {
   const created = await post('/drive', authFields(session, { data: JSON.stringify(payload) }))
   const orderId = created?.data?.b_id ?? created?.b_id
   if (!orderId)
-    throw new BackendError(`не удалось создать голосовой заказ: ${created?.message ?? ''}`, created)
+    throw new BackendError(`не удалось создать ${what}: ${created?.message ?? ''}`, created)
+  return String(orderId)
+}
 
+/** Голосовой заказ от лица пассажира. Каждый прогон создаёт свой. */
+export async function createVotingOrder(
+  session: ISession,
+  options: ICreateOrderOptions,
+): Promise<string> {
+  const orderId = await postDrive(
+    session,
+    { ...orderPayload(options), b_voting: 1, b_services: [5] },
+    'голосовой заказ',
+  )
+
+  // Приложение подтверждает только голосовые заказы (API/order.ts).
   assertOk(
     await post(`/drive/get/${orderId}`, authFields(session, { action: 'set_confirm_state' })),
     'подтверждение заказа пассажиром',
   )
 
-  return String(orderId)
+  return orderId
+}
+
+/**
+ * Стандартный вызов — заказ А.1.1. Отличается от двух остальных типов ровно
+ * отсутствием их признаков: нет b_voting/b_services=[5] голосования и нет
+ * b_cars_count=0 предложения (pages/Passenger/VotingForm.tsx, mode='order').
+ * set_confirm_state приложение для такого заказа не шлёт — не шлём и мы.
+ */
+export async function createStandardOrder(
+  session: ISession,
+  options: ICreateOrderOptions,
+): Promise<string> {
+  return postDrive(session, orderPayload(options), 'стандартный заказ')
 }
 
 export async function readOrder(session: ISession, orderId: string): Promise<IOrderSnapshot> {
@@ -265,14 +342,59 @@ export async function cancelOrder(session: ISession, orderId: string): Promise<v
   )
 }
 
+/**
+ * Сколько раз перечитывать список активных заказов при уборке. Бэкенд отдаёт
+ * его порциями (на gruzvill — по 5), а на общей тестовой учётке от прерванных
+ * прогонов накапливаются десятки заказов.
+ */
+const ACTIVE_ORDERS_SWEEP_PASSES = 60
+
+async function listActiveOrders(session: ISession): Promise<Record<string, any>> {
+  const response = await post('/drive', authFields(session, { fields: '00000000u1' }))
+  return response?.data?.booking ?? {}
+}
+
+/**
+ * Уборка ВСЕХ активных заказов тестового пассажира перед прогоном.
+ *
+ * Аккаунт общий, и заказы, оставшиеся от прерванных прогонов, ломают
+ * повторяемость: голосовой заказ, у которого истекает ожидание, показывает
+ * пассажиру модальное окно поверх страницы и сбрасывает выбранный заказ
+ * (state/orders/sagas.ts). Учётка тестовая, других заказов на ней быть не
+ * должно, поэтому чистим список целиком.
+ */
+export async function cancelPassengerActiveOrders(passenger: ISession): Promise<number> {
+  let cancelled = 0
+
+  // Список активных заказов бэкенд отдаёт порциями, поэтому за один проход
+  // очередь не разобрать: повторяем, пока не останется пусто.
+  for (let pass = 0; pass < ACTIVE_ORDERS_SWEEP_PASSES; pass += 1) {
+    const orderIds = Object.keys(await listActiveOrders(passenger))
+    if (!orderIds.length)
+      return cancelled
+
+    for (const orderId of orderIds) {
+      await cancelOrder(passenger, orderId)
+      cancelled += 1
+    }
+  }
+
+  // Молча продолжать нельзя: непочищенный список ломает сценарий пассажира.
+  const left = Object.keys(await listActiveOrders(passenger))
+  if (left.length)
+    throw new BackendError(
+      `не удалось очистить активные заказы пассажира, осталось: ${left.join(', ')}`, left)
+
+  return cancelled
+}
+
 /** Активные заказы водителя — для уборки «зависших» прогонов. */
 export async function cancelDriverActiveOrders(
   passenger: ISession,
   driverId: string,
   keepOrderId?: string,
 ): Promise<number> {
-  const response = await post('/drive', authFields(passenger, { fields: '00000000u1' }))
-  const booking = response?.data?.booking ?? {}
+  const booking = await listActiveOrders(passenger)
   let cancelled = 0
   for (const [orderId, order] of Object.entries<any>(booking)) {
     if (orderId === keepOrderId)

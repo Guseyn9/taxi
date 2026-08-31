@@ -52,11 +52,20 @@ export default defineConfig({
     },
     {
       name: 'driver-boarding',
+      testMatch: /driver-boarding\.spec\.ts/,
       dependencies: ['setup'],
       use: {
         ...devices['Desktop Chrome'],
         storageState: 'e2e/.auth/driver.json',
       },
+    },
+    {
+      // А.1.1: в сценарии участвуют две роли, поэтому storageState здесь не
+      // задаётся — тест сам открывает по контексту на пассажира и на водителя.
+      name: 'standard-order',
+      testMatch: /standard-order\.spec\.ts/,
+      dependencies: ['setup'],
+      use: devices['Desktop Chrome'],
     },
   ],
 

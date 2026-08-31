@@ -1,10 +1,10 @@
-import { test as setup, expect, Page } from '@playwright/test'
+import { test as setup, expect, Page, BrowserContext } from '@playwright/test'
 import fs from 'fs'
 import path from 'path'
-import { driverAccount } from './fixtures/accounts'
-import { DRIVER_PAGE, PICKUP, openDriverMap } from './fixtures/driverUi'
-
-const STORAGE = path.resolve(__dirname, '.auth/driver.json')
+import { IAccount, driverAccount, passengerAccount } from './fixtures/accounts'
+import { expectAppBooted, stubMapTiles } from './fixtures/appShell'
+import { DRIVER_PAGE, DRIVER_STORAGE, PICKUP } from './fixtures/driverUi'
+import { PASSENGER_PAGE, PASSENGER_STORAGE } from './fixtures/passengerUi'
 
 /**
  * Почему форма не пускает дальше. Значения полей не раскрываются — только их
@@ -27,15 +27,22 @@ async function describeLoginState(page: Page): Promise<string> {
 }
 
 /**
- * Авторизация — через настоящую форму входа приложения, а не подстановкой
- * Redux/localStorage (§6 ТЗ). Результат сохраняется в storageState, чтобы
- * каждый тест не проходил форму заново.
+ * Вход через настоящую форму приложения, а не подстановкой Redux/localStorage
+ * (§6 ТЗ). Результат сохраняется в storageState, чтобы каждый тест не проходил
+ * форму заново.
  */
-setup('водитель входит через форму приложения', async({ page, context }) => {
-  const account = driverAccount()
-
+async function signIn(
+  page: Page,
+  context: BrowserContext,
+  account: IAccount,
+  entryPage: string,
+  storage: string,
+): Promise<void> {
   await context.setGeolocation(PICKUP)
-  await page.goto(DRIVER_PAGE)
+  await stubMapTiles(context)
+  await page.goto(entryPage)
+
+  await expectAppBooted(page)
 
   // Вход открывается аватаром в шапке (components/Header/index.tsx).
   await page.locator('header .avatar').first().click()
@@ -43,7 +50,7 @@ setup('водитель входит через форму приложения'
   const login = page.locator('input[name="login"]')
   await expect(login).toBeVisible()
   const password = page.locator('input[name="password"]')
-  const signIn = page.getByRole('button', { name: /^sign in$/i })
+  const signInButton = page.getByRole('button', { name: /^sign in$/i })
 
   // Кнопка включается только при чистой валидации формы
   // (`disabled={!!Object.values(errors).length}` в LoginModal/Login.tsx), а поле
@@ -55,7 +62,7 @@ setup('водитель входит через форму приложения'
     await expect(async() => {
       await login.fill(account.login)
       await password.fill(account.password)
-      await expect(signIn).toBeEnabled({ timeout: 2_000 })
+      await expect(signInButton).toBeEnabled({ timeout: 2_000 })
     }).toPass({ timeout: 60_000, intervals: [500, 1_000, 2_000] })
   } catch {
     // Иначе падение выглядит как глухой таймаут клика по disabled-кнопке и не
@@ -65,7 +72,7 @@ setup('водитель входит через форму приложения'
       `заблокированной. ${await describeLoginState(page)}`)
   }
 
-  await signIn.click()
+  await signInButton.click()
 
   // Приложение хранит токены здесь (state/user/sagas.ts) — ждём именно их,
   // а не таймер.
@@ -73,8 +80,17 @@ setup('водитель входит через форму приложения'
     .poll(() => page.evaluate(() => localStorage.getItem('state.user.tokens')), { timeout: 60_000 })
     .toBeTruthy()
 
-  await openDriverMap(page)
+  fs.mkdirSync(path.dirname(storage), { recursive: true })
+  await context.storageState({ path: storage })
+}
 
-  fs.mkdirSync(path.dirname(STORAGE), { recursive: true })
-  await context.storageState({ path: STORAGE })
+// Вход выполняется на «своей» странице роли, поэтому и режим внешнего
+// эмулятора (driverEmulator=1), и токены сессии оказываются в storageState уже
+// к моменту сохранения — перезагружать страницу ещё раз незачем.
+setup('водитель входит через форму приложения', async({ page, context }) => {
+  await signIn(page, context, driverAccount(), DRIVER_PAGE, DRIVER_STORAGE)
+})
+
+setup('пассажир входит через форму приложения', async({ page, context }) => {
+  await signIn(page, context, passengerAccount(), PASSENGER_PAGE, PASSENGER_STORAGE)
 })

@@ -298,6 +298,10 @@ function OrderCard({
         className,
       )}
       style={style}
+      // Контракт для E2E: карточку конкретного заказа в списке водителя иначе
+      // не отличить — ни href, ни идентификатора в разметке нет.
+      data-testid="driver-order-card"
+      data-order-id={order.b_id}
       // onClick={onClick}
       onClick={() => {
         onSelect?.(order.b_id)

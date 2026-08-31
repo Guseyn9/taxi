@@ -1285,7 +1285,14 @@ const VotingForm = function VotingForm({
   ].includes(selectedDriver.c_state))
 
   const lockedDriverPanel = locked && lockedOrder && selectedDriver && showLockedDriverPanel ? (
-    <div className={`passenger-voting-form__driver-panel passenger-voting-form__driver-panel--${getLockedDriverStatusKey(selectedDriver)}`}>
+    <div
+      className={`passenger-voting-form__driver-panel passenger-voting-form__driver-panel--${getLockedDriverStatusKey(selectedDriver)}`}
+      // Контракт для E2E, тот же, что у кнопки основного действия водителя
+      // (pages/Driver/Map.tsx): состояние читается числом, а не переводом
+      // подписи, — подписи приходят из конфигурации бэкенда и зависят от языка.
+      data-testid="passenger-driver-panel"
+      data-driver-state={selectedDriver.c_state}
+    >
       <div className="passenger-voting-form__driver-status-row">
         <span className="passenger-voting-form__driver-status-icon" aria-hidden="true">
           <DriverMiniStatusIcon state={selectedDriver.c_state} />
