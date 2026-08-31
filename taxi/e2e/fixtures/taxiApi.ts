@@ -144,7 +144,9 @@ export async function login(account: IAccount, label: string): Promise<ISession>
   const token = tokens?.data?.token
   const uHash = tokens?.data?.u_hash
   if (!token || !uHash)
-    throw new BackendError(`${label}: не получен токен`, tokens)
+    throw new BackendError(
+      `${label}: не получен токен — бэкенд ответил ` +
+      `status=${tokens?.status ?? 'нет'}, message=${tokens?.message ?? 'нет'}`, tokens)
 
   return { token, uHash, userId: String(auth.auth_user?.u_id ?? '') }
 }
