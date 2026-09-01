@@ -2670,7 +2670,7 @@ function DriverOrderMapModeContent({
 
   // Temporary test controls (DriverEmulatorPanel → command bus): drive the route
   // emulator's PUBLIC API directly so its mutation methods can be exercised on a
-  // real map. The model never decides anything here — the button says what to do,
+  // real map.. The model never decides anything here - the button says what to do,
   // the model just does it, and the marker/polyline reflect the new state. This
   // is the same shape a future FSM/event handler will use to call the model.
   useEffect(() => subscribeDriverRouteEmulatorCommand(command => {
