@@ -155,6 +155,7 @@ export async function submitBoardingCode(page: Page, code: string): Promise<void
 
 export const STATE_NAMES: Record<number, string> = {
   [DRIVER_STATE.Considering]: 'Considering',
+  [DRIVER_STATE.Canceled]: 'Canceled',
   [DRIVER_STATE.Performer]: 'Performer',
   [DRIVER_STATE.Arrived]: 'Arrived',
   [DRIVER_STATE.Started]: 'Started',

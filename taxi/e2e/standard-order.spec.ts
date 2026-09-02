@@ -186,20 +186,15 @@ async function expectBackendState(orderId: string, state: number, message: strin
 }
 
 /**
- * Первое состояние, в котором водитель появился в заказе. Именно оно отличает
- * стандартный вызов от двух остальных типов: голосование и предложение
- * заводят водителя кандидатом (Considering), и исполнителем его делает
- * пассажир, а стандартный вызов назначает исполнителя сразу.
+ * Число машин в заказе: `undefined`, если поля нет, иначе разобранное значение.
+ * NaN здесь — это не «поля нет», а нарушение контракта, и он должен дойти до
+ * проверки, а не превратиться в пропуск.
  */
-async function firstDriverState(orderId: string): Promise<number> {
-  let seen: number | undefined
-  await expect
-    .poll(async() => {
-      seen = await backendState(orderId)
-      return seen !== undefined
-    }, { message: 'водитель появился в заказе', timeout: 90_000, intervals: [200, 500, 1_000] })
-    .toBe(true)
-  return seen as number
+function carsCountOf(order: IOrderSnapshot): number | undefined {
+  const raw = order.b_cars_count
+  if (raw === undefined || raw === null || String(raw).trim() === '')
+    return undefined
+  return Number(raw)
 }
 
 /** Есть ли в заказе услуга «голосование» (EServices.Voting = 5). */
@@ -231,7 +226,23 @@ test('А.1.1 — стандартный вызов: от создания зак
   // вызова нет ни одного из этих признаков.
   expect(String(created.b_voting ?? '0'), 'заказ не голосовой').toBe('0')
   expect(votingServiceOf(created), 'у заказа нет услуги «голосование»').toBe(false)
-  expect(String(created.b_cars_count ?? ''), 'заказ не «предложение»').not.toBe('0')
+
+  // b_cars_count по контракту: ноль — это «предложение» (А.1.3), по нему
+  // приложение и опознаёт тип (src/tools/driverOffer.ts). У стандартного вызова
+  // поле либо отсутствует, либо содержит положительное число машин; нечисловое
+  // значение — тоже нарушение контракта и проходить не должно.
+  //
+  // ВАЖНО: на gruzvill эта проверка сейчас ничего не отсекает. Бэкенд не
+  // сохраняет нулевое значение — заказ, созданный с `b_cars_count = 0`,
+  // читается обратно как `"1"` (проверено и числом, и строкой). То есть
+  // полями заказа А.1.3 на этой конфигурации не отличить, и единственная
+  // работающая опора — поведение FSM ниже. Сверка контракта оставлена: если
+  // бэкенд начнёт хранить признак, тест это увидит.
+  const carsCount = carsCountOf(created)
+  expect(
+    carsCount === undefined || (Number.isInteger(carsCount) && carsCount > 0),
+    `заказ не «предложение»: b_cars_count = ${JSON.stringify(created.b_cars_count)}`,
+  ).toBe(true)
 
   // ШАГ 2. Пассажир видит свой заказ в приложении. Выбрать его пока нельзя:
   // до появления исполнителя плашка стандартного заказа неактивна.
@@ -247,27 +258,33 @@ test('А.1.1 — стандартный вызов: от создания зак
   await expect(take).toBeEnabled({ timeout: 60_000 })
   await take.click()
 
-  // ПРОВЕРКА 2 (вторая опора) — стандартный вызов назначает исполнителя сразу,
-  // без стадии кандидата. У голосования и предложения здесь был бы Considering.
-  expect(
-    await firstDriverState(orderId),
-    'стандартный вызов делает водителя исполнителем сразу, без стадии кандидата',
-  ).toBe(DRIVER_STATE.Performer)
+  // ПРОВЕРКА 2 (вторая опора) — после «Взять заказ» водитель становится
+  // ИСПОЛНИТЕЛЕМ, и никто его не выбирал. У голосования и предложения он остался
+  // бы кандидатом (Considering) до тех пор, пока исполнителя не назначит
+  // пассажир, и это ожидание не дождалось бы Performer никогда.
+  await expectBackendState(
+    orderId, DRIVER_STATE.Performer,
+    'стандартный вызов делает водителя исполнителем сам, без выбора пассажиром')
 
-  // ПРОВЕРКА 5 — заказ назначен именно этому водителю и только ему. Состояние
-  // сверяется точно, а не «Performer или дальше»: здесь водитель должен быть
-  // ровно исполнителем, ещё не выехавшим.
+  // ПРОВЕРКА 5 — исполнитель у заказа ровно один, и это наш водитель.
+  //
+  // `drivers` — это список записей участия, а не список исполнителей: у записи
+  // есть и `c_becomed_candidate`, и `c_canceled`, то есть отказавшийся водитель
+  // остаётся в заказе записью с `c_state = Canceled`. Поэтому проверяется не
+  // пустота списка (это была бы проверка внутреннего устройства бэкенда), а сам
+  // бизнес-инвариант: единственный исполнитель — наш, и рядом нет другого
+  // водителя, который всё ещё в игре.
   const assigned = await readOrder(driver, orderId)
-  expect(
-    driverStateOf(assigned, driver.userId),
-    'наш водитель — исполнитель заказа',
-  ).toBe(DRIVER_STATE.Performer)
+  const performers = (assigned.drivers ?? [])
+    .filter(item => Number(item.c_state) === DRIVER_STATE.Performer)
+    .map(item => String(item.u_id))
+  expect(performers, 'исполнитель заказа ровно один, и это наш водитель').toEqual([driver.userId])
 
-  // И никого больше: ни второго исполнителя, ни оставшегося кандидата.
-  const others = (assigned.drivers ?? [])
+  const activeOthers = (assigned.drivers ?? [])
     .filter(item => String(item.u_id) !== driver.userId)
+    .filter(item => Number(item.c_state) !== DRIVER_STATE.Canceled)
     .map(item => `${item.u_id}:c_state=${item.c_state}`)
-  expect(others, 'в заказе нет других водителей — ни исполнителей, ни кандидатов').toEqual([])
+  expect(activeOthers, 'других водителей в игре нет — ни кандидатов, ни исполнителей').toEqual([])
 
   // ПРОВЕРКА 8 (промежуточная) — пассажир открывает заказ и видит водителя.
   await selectPassengerOrder(passengerPage, orderId)

@@ -46,6 +46,7 @@ export interface IOrderSnapshot {
 /** Состояния водителя в заказе — те же числа, что и в types/types.ts. */
 export const DRIVER_STATE = {
   Considering: 1,
+  Canceled: 2,
   Performer: 3,
   Arrived: 4,
   Started: 5,
