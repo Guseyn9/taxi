@@ -106,9 +106,13 @@ test.afterAll(async() => {
   if (!passenger || !driver)
     return
   try {
-    const cancelled = await cancelDriverActiveOrders(passenger, driver.userId)
+    const { cancelled, skipped } = await cancelDriverActiveOrders(passenger, driver.userId)
     if (cancelled)
-      console.log(`E2E sweep: отменено зависших заказов — ${cancelled}`)
+      console.log(`E2E sweep: отменено зависших тестовых заказов — ${cancelled}`)
+    if (skipped.length)
+      console.warn(
+        `E2E sweep: не тронуто заказов — ${skipped.length} (${skipped.join(', ')}). ` +
+        'Уборка отменяет только заказы с тестовыми метками.')
   } catch (error) {
     console.error(`E2E SWEEP FAILED: ${reason(error)}`)
   }

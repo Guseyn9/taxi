@@ -12,6 +12,13 @@
  * Через API делается только подготовка предусловия (водитель на линии, заказ
  * создан) и НЕЗАВИСИМАЯ от интерфейса проверка состояния заказа. Все действия
  * сценария выполняются кликами в браузере.
+ *
+ * ОБЪЁМ ТЕСТА — осознанное решение, а не упущение. Создание заказа здесь
+ * является fixture/предусловием, и покрытием пассажирской формы создания
+ * заказа НЕ считается: шаг «пассажир заполнил форму и нажал „Заказать“» этим
+ * тестом не проверяется. Форма создания заказа заслуживает отдельного E2E — с
+ * выбором точек, класса авто и цены, — и раздувать им первый сквозной сценарий
+ * не стоит. Подробности и обоснование: e2e/README.md.
  */
 
 import { Browser, BrowserContext, Page, devices, expect, test } from '@playwright/test'
@@ -20,7 +27,7 @@ import { stubMapTiles } from './fixtures/appShell'
 import {
   cancelDriverActiveOrders,
   cancelOrder,
-  cancelPassengerActiveOrders,
+  cancelPassengerTestOrders,
   createStandardOrder,
   driverStateOf,
   DRIVER_STATE,
@@ -29,6 +36,7 @@ import {
   ICar,
   IOrderSnapshot,
   ISession,
+  ISweepResult,
   login,
   readOrder,
 } from './fixtures/taxiApi'
@@ -68,6 +76,20 @@ const createdOrders: string[] = []
 const reason = (error: unknown) => (error as Error)?.message ?? String(error)
 
 /**
+ * Что сделала уборка. Пропущенные заказы обязаны попасть в лог: уборка трогает
+ * только заказы с тестовыми метками, и всё остальное на учётке остаётся —
+ * если из-за него потом упадёт сценарий, причина должна быть видна сразу.
+ */
+function reportSweep(when: string, result: ISweepResult): void {
+  if (result.cancelled)
+    console.log(`E2E sweep (${when}): отменено тестовых заказов — ${result.cancelled}`)
+  if (result.skipped.length)
+    console.warn(
+      `E2E sweep (${when}): не тронуто заказов — ${result.skipped.length} ` +
+      `(${result.skipped.join(', ')}). Уборка отменяет только заказы с тестовыми метками.`)
+}
+
+/**
  * Отдельная сессия пользователя. Пассажир и водитель — два разных контекста с
  * разными storageState: одной сессией двух пользователей не изображаем.
  */
@@ -96,12 +118,10 @@ test.beforeAll(async({ browser }) => {
   car = await getDriverCar(driver)
   await goOnline(driver, car, PICKUP)
 
-  // Прогон начинается с чистого списка. Заказ, оставшийся от прерванного
+  // Прогон начинается без тестового мусора. Заказ, оставшийся от прерванного
   // прогона, у пассажира не просто лишний: истёкшее ожидание голосового заказа
   // открывает модальное окно поверх страницы и сбрасывает выбранный заказ.
-  const swept = await cancelPassengerActiveOrders(passenger)
-  if (swept)
-    console.log(`E2E sweep: перед прогоном отменено заказов пассажира — ${swept}`)
+  reportSweep('перед прогоном', await cancelPassengerTestOrders(passenger))
 
   passengerContext = await openSession(browser, PASSENGER_STORAGE)
   driverContext = await openSession(browser, DRIVER_STORAGE)
@@ -149,9 +169,7 @@ test.afterAll(async() => {
   if (!passenger || !driver)
     return
   try {
-    const cancelled = await cancelDriverActiveOrders(passenger, driver.userId)
-    if (cancelled)
-      console.log(`E2E sweep: отменено зависших заказов — ${cancelled}`)
+    reportSweep('после прогона', await cancelDriverActiveOrders(passenger, driver.userId))
   } catch (error) {
     console.error(`E2E SWEEP FAILED: ${reason(error)}`)
   }
@@ -236,12 +254,20 @@ test('А.1.1 — стандартный вызов: от создания зак
     'стандартный вызов делает водителя исполнителем сразу, без стадии кандидата',
   ).toBe(DRIVER_STATE.Performer)
 
-  // ПРОВЕРКА 5 — заказ назначен именно этому водителю и только ему.
+  // ПРОВЕРКА 5 — заказ назначен именно этому водителю и только ему. Состояние
+  // сверяется точно, а не «Performer или дальше»: здесь водитель должен быть
+  // ровно исполнителем, ещё не выехавшим.
   const assigned = await readOrder(driver, orderId)
-  const performers = (assigned.drivers ?? [])
-    .filter(item => Number(item.c_state) >= DRIVER_STATE.Performer)
-    .map(item => String(item.u_id))
-  expect(performers, 'исполнитель заказа — ровно один, и это наш водитель').toEqual([driver.userId])
+  expect(
+    driverStateOf(assigned, driver.userId),
+    'наш водитель — исполнитель заказа',
+  ).toBe(DRIVER_STATE.Performer)
+
+  // И никого больше: ни второго исполнителя, ни оставшегося кандидата.
+  const others = (assigned.drivers ?? [])
+    .filter(item => String(item.u_id) !== driver.userId)
+    .map(item => `${item.u_id}:c_state=${item.c_state}`)
+  expect(others, 'в заказе нет других водителей — ни исполнителей, ни кандидатов').toEqual([])
 
   // ПРОВЕРКА 8 (промежуточная) — пассажир открывает заказ и видит водителя.
   await selectPassengerOrder(passengerPage, orderId)

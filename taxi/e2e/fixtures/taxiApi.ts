@@ -357,62 +357,100 @@ async function listActiveOrders(session: ISession): Promise<Record<string, any>>
 }
 
 /**
- * Уборка ВСЕХ активных заказов тестового пассажира перед прогоном.
+ * Метки, по которым заказ опознаётся как тестовый:
  *
- * Аккаунт общий, и заказы, оставшиеся от прерванных прогонов, ломают
- * повторяемость: голосовой заказ, у которого истекает ожидание, показывает
- * пассажиру модальное окно поверх страницы и сбрасывает выбранный заказ
- * (state/orders/sagas.ts). Учётка тестовая, других заказов на ней быть не
- * должно, поэтому чистим список целиком.
+ * * `[E2E <label>]` — метка этих тестов;
+ * * `[DRV:<id>]` и `[CASE] <имя>` — метки самого проекта, их ставит
+ *   driver-emulator и читает приложение (src/tools/emulatorMode.ts).
+ *
+ * У настоящего заказа настоящего пассажира ни одной из них быть не может.
  */
-export async function cancelPassengerActiveOrders(passenger: ISession): Promise<number> {
-  let cancelled = 0
+const TEST_ORDER_MARKERS = [/\[E2E\b/i, /\[DRV:\s*\d+\]/i, /\[CASE\]/i]
 
-  // Список активных заказов бэкенд отдаёт порциями, поэтому за один проход
-  // очередь не разобрать: повторяем, пока не останется пусто.
-  for (let pass = 0; pass < ACTIVE_ORDERS_SWEEP_PASSES; pass += 1) {
-    const orderIds = Object.keys(await listActiveOrders(passenger))
-    if (!orderIds.length)
-      return cancelled
+const orderMarkerText = (order: any): string =>
+  [order?.b_custom_comment, order?.b_comments].map(value => String(value ?? '')).join(' ')
 
-    for (const orderId of orderIds) {
-      await cancelOrder(passenger, orderId)
-      cancelled += 1
-    }
-  }
+/** Заказ создан тестовой оснасткой — этого проекта или его эмулятора. */
+export const isTestOrder = (order: any): boolean =>
+  TEST_ORDER_MARKERS.some(marker => marker.test(orderMarkerText(order)))
 
-  // Молча продолжать нельзя: непочищенный список ломает сценарий пассажира.
-  const left = Object.keys(await listActiveOrders(passenger))
-  if (left.length)
-    throw new BackendError(
-      `не удалось очистить активные заказы пассажира, осталось: ${left.join(', ')}`, left)
+const driverParticipates = (order: any, driverId: string): boolean =>
+  (order?.drivers ?? []).some((item: any) => String(item.u_id) === String(driverId))
 
-  return cancelled
+export interface ISweepResult {
+  /** Сколько заказов отменено. */
+  readonly cancelled: number
+  /** Заказы, которые уборка сознательно не тронула или не смогла отменить. */
+  readonly skipped: string[]
 }
 
-/** Активные заказы водителя — для уборки «зависших» прогонов. */
-export async function cancelDriverActiveOrders(
+/**
+ * Уборка активных заказов пассажира.
+ *
+ * Отменяется ТОЛЬКО то, что опознано как тестовое: чужой заказ на чужой учётке
+ * (например, если в окружении оказался не тот `E2E_PASSENGER_LOGIN`) уборка не
+ * тронет — она его пропустит и назовёт в логе прогона.
+ *
+ * Список бэкенд отдаёт порциями, поэтому он перечитывается, пока порция
+ * приносит хоть один отменяемый заказ. Порция целиком из неопознанных заказов
+ * означает, что дальше не продвинуться: сдвинуть окно списка нечем, параметра
+ * смещения у endpoint нет.
+ */
+async function sweepActiveOrders(
+  passenger: ISession,
+  shouldCancel: (orderId: string, order: any) => boolean,
+): Promise<ISweepResult> {
+  let cancelled = 0
+  const skipped = new Set<string>()
+
+  for (let pass = 0; pass < ACTIVE_ORDERS_SWEEP_PASSES; pass += 1) {
+    const entries = Object.entries<any>(await listActiveOrders(passenger))
+    if (!entries.length)
+      break
+
+    let cancelledInPass = 0
+    for (const [orderId, order] of entries) {
+      if (!shouldCancel(orderId, order)) {
+        skipped.add(orderId)
+        continue
+      }
+      try {
+        await cancelOrder(passenger, orderId)
+        cancelled += 1
+        cancelledInPass += 1
+      } catch (error) {
+        // Один упрямый заказ не должен обрывать уборку остальных, но и
+        // потеряться он не должен: его номер уходит в лог прогона.
+        skipped.add(orderId)
+        console.error(
+          `E2E SWEEP: не удалось отменить orderId=${orderId} — ${(error as Error)?.message ?? error}`)
+      }
+    }
+
+    if (!cancelledInPass)
+      break
+  }
+
+  return { cancelled, skipped: [...skipped] }
+}
+
+/**
+ * Подготовка предусловия: у пассажира не должно остаться тестовых заказов от
+ * прерванных прогонов. Голосовой заказ с истёкшим ожиданием открывает
+ * пассажиру модальное окно поверх страницы и сбрасывает выбранный заказ
+ * (state/orders/sagas.ts), то есть ломает сценарий.
+ */
+export const cancelPassengerTestOrders = (passenger: ISession): Promise<ISweepResult> =>
+  sweepActiveOrders(passenger, (_orderId, order) => isTestOrder(order))
+
+/**
+ * Уборка после прогона: тестовые заказы и заказы, в которых участвует наш
+ * тестовый водитель, — чтобы следующий прогон не начинался с занятым водителем.
+ */
+export const cancelDriverActiveOrders = (
   passenger: ISession,
   driverId: string,
   keepOrderId?: string,
-): Promise<number> {
-  const booking = await listActiveOrders(passenger)
-  let cancelled = 0
-  for (const [orderId, order] of Object.entries<any>(booking)) {
-    if (orderId === keepOrderId)
-      continue
-    const mine = (order?.drivers ?? []).some((item: any) => String(item.u_id) === String(driverId))
-    const label = String(order?.b_custom_comment ?? '')
-    if (!mine && !label.includes('[E2E'))
-      continue
-    try {
-      await cancelOrder(passenger, orderId)
-      cancelled += 1
-    } catch (error) {
-      // Один упрямый заказ не должен обрывать уборку остальных, но и потеряться
-      // он не должен: его номер уходит в лог прогона.
-      console.error(`E2E SWEEP: не удалось отменить orderId=${orderId} — ${(error as Error)?.message ?? error}`)
-    }
-  }
-  return cancelled
-}
+): Promise<ISweepResult> =>
+  sweepActiveOrders(passenger, (orderId, order) =>
+    orderId !== keepOrderId && (isTestOrder(order) || driverParticipates(order, driverId)))
