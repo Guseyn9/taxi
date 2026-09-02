@@ -275,7 +275,7 @@ function getActiveDriver(order: IOrder) {
     return startedDriver
 
   // Пока идёт подбор/кандидаты, верхняя плашка обязана оставаться в статусе
-  // «Поиск водителя». Backend и эмулятор могут отдавать Performer уже на этапе
+  // «Поиск водителя».. Backend и эмулятор могут отдавать Performer уже на этапе
   // отклика, но это ещё не означает, что водитель выбран пассажиром.
   if (isChoiceOrder(order) || (candidateMode(order) && !isStoredSimpleOrderMode(order))) {
     return null
