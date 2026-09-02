@@ -357,6 +357,11 @@ async function listActiveOrders(session: ISession): Promise<Record<string, any>>
   return response?.data?.booking ?? {}
 }
 
+/** Виден ли заказ в списке активных заказов пассажира — том самом, который опрашивает приложение. */
+export async function isOrderActiveFor(session: ISession, orderId: string): Promise<boolean> {
+  return Boolean((await listActiveOrders(session))[orderId])
+}
+
 /**
  * Метки, по которым заказ опознаётся как тестовый:
  *

@@ -13,6 +13,7 @@
 
 import { expect, test } from '@playwright/test'
 import { driverAccount, passengerAccount } from './fixtures/accounts'
+import { expectAppBooted } from './fixtures/appShell'
 import {
   boardingCodeOf,
   cancelDriverActiveOrders,
@@ -147,6 +148,10 @@ async function expectBackendState(orderId: string, state: number, message: strin
  */
 async function driveToBoarding(page: import('@playwright/test').Page, orderId: string): Promise<void> {
   await page.goto(`/driver-order/${orderId}?driverEmulator=1`)
+  // Без этой проверки сбой загрузки конфигурации приложения выглядит как
+  // «кнопка отклика не появилась»: на экране «Database is unavailable» её и
+  // правда нет. См. e2e/fixtures/appShell.ts.
+  await expectAppBooted(page)
 
   // STEP 3 — отклик на голосовой заказ через интерфейс.
   const take = page.getByTestId('driver-order-take')

@@ -33,6 +33,7 @@ import {
   DRIVER_STATE,
   getDriverCar,
   goOnline,
+  isOrderActiveFor,
   ICar,
   IOrderSnapshot,
   ISession,
@@ -137,8 +138,15 @@ test.afterEach(async({}, testInfo) => {
   if (failed) {
     for (const orderId of createdOrders) {
       const state = await backendState(orderId).catch(() => undefined)
+      // Отдельно — то, что отвечает на вопрос «это интерфейс не показал заказ
+      // или бэкенд его не отдал»: подтверждён ли заказ и виден ли он в том же
+      // списке активных, который опрашивает приложение.
+      const order = await readOrder(passenger, orderId).catch(() => undefined)
+      const active = await isOrderActiveFor(passenger, orderId).catch(() => undefined)
       const diagnostics = `orderId=${orderId} driverId=${driver?.userId} ` +
-        `carId=${car?.c_id} c_state=${state ?? 'unknown'}`
+        `carId=${car?.c_id} c_state=${state ?? 'unknown'} ` +
+        `b_state=${order?.b_state ?? 'unknown'} b_confirm_state=${order?.b_confirm_state ?? 'unknown'} ` +
+        `в списке активных пассажира: ${active ?? 'unknown'}`
       console.error(`E2E FAILURE DIAGNOSTICS: ${diagnostics}`)
       testInfo.annotations.push({ type: 'backend', description: diagnostics })
     }
