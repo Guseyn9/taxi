@@ -13,10 +13,11 @@
 
 import { expect, test } from '@playwright/test'
 import { driverAccount, passengerAccount } from './fixtures/accounts'
+import { expectAppBooted } from './fixtures/appShell'
 import {
   boardingCodeOf,
-  cancelDriverActiveOrders,
   cancelOrder,
+  cancelTestOrders,
   choosePerformer,
   createVotingOrder,
   driverStateOf,
@@ -101,14 +102,18 @@ test.afterEach(async({}, testInfo) => {
 })
 
 test.afterAll(async() => {
-  // Подмести то, что осталось от прерванных прогонов: следующий прогон не
-  // должен начинаться с водителем, занятым чужим заказом.
-  if (!passenger || !driver)
+  // Подмести тестовые заказы, оставшиеся от прерванных прогонов: следующий
+  // прогон не должен начинаться с водителем, занятым таким заказом.
+  if (!passenger)
     return
   try {
-    const cancelled = await cancelDriverActiveOrders(passenger, driver.userId)
+    const { cancelled, skipped } = await cancelTestOrders(passenger)
     if (cancelled)
-      console.log(`E2E sweep: отменено зависших заказов — ${cancelled}`)
+      console.log(`E2E sweep: отменено зависших тестовых заказов — ${cancelled}`)
+    if (skipped.length)
+      console.warn(
+        `E2E sweep: не тронуто заказов — ${skipped.length} (${skipped.join(', ')}). ` +
+        'Уборка отменяет только заказы с тестовыми метками.')
   } catch (error) {
     console.error(`E2E SWEEP FAILED: ${reason(error)}`)
   }
@@ -143,6 +148,10 @@ async function expectBackendState(orderId: string, state: number, message: strin
  */
 async function driveToBoarding(page: import('@playwright/test').Page, orderId: string): Promise<void> {
   await page.goto(`/driver-order/${orderId}?driverEmulator=1`)
+  // Без этой проверки сбой загрузки конфигурации приложения выглядит как
+  // «кнопка отклика не появилась»: на экране «Database is unavailable» её и
+  // правда нет. См. e2e/fixtures/appShell.ts.
+  await expectAppBooted(page)
 
   // STEP 3 — отклик на голосовой заказ через интерфейс.
   const take = page.getByTestId('driver-order-take')

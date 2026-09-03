@@ -32,6 +32,9 @@ export interface IOrderSnapshot {
   readonly b_id: string
   readonly b_state?: string | number
   readonly b_voting?: string | number
+  readonly b_cars_count?: string | number
+  readonly b_services?: unknown
+  readonly b_confirm_state?: string | number
   readonly b_driver_code?: string
   readonly drivers?: IOrderDriver[] | null
   readonly b_start_latitude?: string
@@ -43,6 +46,7 @@ export interface IOrderSnapshot {
 /** Состояния водителя в заказе — те же числа, что и в types/types.ts. */
 export const DRIVER_STATE = {
   Considering: 1,
+  Canceled: 2,
   Performer: 3,
   Arrived: 4,
   Started: 5,
@@ -65,9 +69,46 @@ function encode(fields: Record<string, unknown>): URLSearchParams {
   return params
 }
 
+/**
+ * Коды, которые означают, что соединение так и не установилось: запрос до
+ * бэкенда не дошёл и повторить его безопасно. Всё остальное — включая обрыв
+ * уже отправленного запроса — не повторяется: там нельзя утверждать, что
+ * заказ не создался.
+ */
+const CONNECT_FAILURE_CODES = new Set([
+  'UND_ERR_CONNECT_TIMEOUT',
+  'ECONNREFUSED',
+  'ENOTFOUND',
+  'EAI_AGAIN',
+])
+
+const CONNECT_ATTEMPTS = 3
+
+const connectFailureCode = (error: unknown): string | undefined => {
+  const code = String((error as any)?.cause?.code ?? (error as any)?.code ?? '')
+  return CONNECT_FAILURE_CODES.has(code) ? code : undefined
+}
+
+async function fetchWithConnectRetry(url: string, init: RequestInit): Promise<Response> {
+  let lastCode = ''
+  for (let attempt = 1; attempt <= CONNECT_ATTEMPTS; attempt += 1) {
+    try {
+      return await fetch(url, init)
+    } catch (error) {
+      const code = connectFailureCode(error)
+      if (!code)
+        throw error
+      lastCode = code
+    }
+  }
+  throw new BackendError(
+    `нет соединения с ${url}: ${CONNECT_ATTEMPTS} попытки подряд не установили ` +
+    `соединение (${lastCode})`, lastCode)
+}
+
 async function post(endpoint: string, fields: Record<string, unknown>): Promise<any> {
   const url = `${apiBase()}${endpoint}`
-  const response = await fetch(url, {
+  const response = await fetchWithConnectRetry(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
     body: encode(fields),
@@ -104,7 +145,9 @@ export async function login(account: IAccount, label: string): Promise<ISession>
   const token = tokens?.data?.token
   const uHash = tokens?.data?.u_hash
   if (!token || !uHash)
-    throw new BackendError(`${label}: не получен токен`, tokens)
+    throw new BackendError(
+      `${label}: не получен токен — бэкенд ответил ` +
+      `status=${tokens?.status ?? 'нет'}, message=${tokens?.message ?? 'нет'}`, tokens)
 
   return { token, uHash, userId: String(auth.auth_user?.u_id ?? '') }
 }
@@ -166,7 +209,7 @@ function startDatetime(offsetMinutes: number): string {
     `${sign}${pad(Math.floor(absolute / 60))}:${pad(absolute % 60)}`
 }
 
-export interface ICreateVotingOrderOptions {
+export interface ICreateOrderOptions {
   readonly pickup: { latitude: number; longitude: number }
   readonly destination: { latitude: number; longitude: number }
   /** Заказ помечается для конкретного водителя — чужие прогоны друг друга не видят. */
@@ -175,11 +218,16 @@ export interface ICreateVotingOrderOptions {
   readonly label: string
 }
 
-/** Голосовой заказ от лица пассажира. Каждый прогон создаёт свой. */
-export async function createVotingOrder(
-  session: ISession,
-  options: ICreateVotingOrderOptions,
-): Promise<string> {
+/** Совпадает с ICreateOrderOptions; имя оставлено ради прежних вызовов. */
+export type ICreateVotingOrderOptions = ICreateOrderOptions
+
+/**
+ * Общая часть заказа — те же поля, что собирает форма пассажира
+ * (pages/Passenger/VotingForm.tsx). Тип заказа задаётся НЕ здесь: голосование
+ * добавляет b_voting/b_services, предложение — b_cars_count=0, а стандартный
+ * вызов не добавляет ничего.
+ */
+function orderPayload(options: ICreateOrderOptions): Record<string, unknown> {
   const payload: Record<string, unknown> = {
     b_start_address: `E2E pickup ${options.label}`,
     b_start_latitude: String(options.pickup.latitude),
@@ -192,8 +240,6 @@ export async function createVotingOrder(
     b_passengers_count: 1,
     b_payment_way: 1,
     b_max_waiting: 7200,
-    b_voting: 1,
-    b_services: [5],
     // [DRV:<id>] — механизм изоляции самого проекта: в режиме внешнего эмулятора
     // водитель видит только свои помеченные заказы (tools/emulatorMode.ts).
     b_custom_comment: `[E2E ${options.label}] [DRV:${options.driverId}]`,
@@ -205,18 +251,52 @@ export async function createVotingOrder(
   }
   if (options.carClassId)
     payload.b_car_class = options.carClassId
+  return payload
+}
 
+async function postDrive(
+  session: ISession,
+  payload: Record<string, unknown>,
+  what: string,
+): Promise<string> {
   const created = await post('/drive', authFields(session, { data: JSON.stringify(payload) }))
   const orderId = created?.data?.b_id ?? created?.b_id
   if (!orderId)
-    throw new BackendError(`не удалось создать голосовой заказ: ${created?.message ?? ''}`, created)
+    throw new BackendError(`не удалось создать ${what}: ${created?.message ?? ''}`, created)
+  return String(orderId)
+}
 
+/** Голосовой заказ от лица пассажира. Каждый прогон создаёт свой. */
+export async function createVotingOrder(
+  session: ISession,
+  options: ICreateOrderOptions,
+): Promise<string> {
+  const orderId = await postDrive(
+    session,
+    { ...orderPayload(options), b_voting: 1, b_services: [5] },
+    'голосовой заказ',
+  )
+
+  // Приложение подтверждает только голосовые заказы (API/order.ts).
   assertOk(
     await post(`/drive/get/${orderId}`, authFields(session, { action: 'set_confirm_state' })),
     'подтверждение заказа пассажиром',
   )
 
-  return String(orderId)
+  return orderId
+}
+
+/**
+ * Стандартный вызов — заказ А.1.1. Отличается от двух остальных типов ровно
+ * отсутствием их признаков: нет b_voting/b_services=[5] голосования и нет
+ * b_cars_count=0 предложения (pages/Passenger/VotingForm.tsx, mode='order').
+ * set_confirm_state приложение для такого заказа не шлёт — не шлём и мы.
+ */
+export async function createStandardOrder(
+  session: ISession,
+  options: ICreateOrderOptions,
+): Promise<string> {
+  return postDrive(session, orderPayload(options), 'стандартный заказ')
 }
 
 export async function readOrder(session: ISession, orderId: string): Promise<IOrderSnapshot> {
@@ -265,30 +345,117 @@ export async function cancelOrder(session: ISession, orderId: string): Promise<v
   )
 }
 
-/** Активные заказы водителя — для уборки «зависших» прогонов. */
-export async function cancelDriverActiveOrders(
-  passenger: ISession,
-  driverId: string,
-  keepOrderId?: string,
-): Promise<number> {
-  const response = await post('/drive', authFields(passenger, { fields: '00000000u1' }))
-  const booking = response?.data?.booking ?? {}
-  let cancelled = 0
-  for (const [orderId, order] of Object.entries<any>(booking)) {
-    if (orderId === keepOrderId)
-      continue
-    const mine = (order?.drivers ?? []).some((item: any) => String(item.u_id) === String(driverId))
-    const label = String(order?.b_custom_comment ?? '')
-    if (!mine && !label.includes('[E2E'))
-      continue
-    try {
-      await cancelOrder(passenger, orderId)
-      cancelled += 1
-    } catch (error) {
-      // Один упрямый заказ не должен обрывать уборку остальных, но и потеряться
-      // он не должен: его номер уходит в лог прогона.
-      console.error(`E2E SWEEP: не удалось отменить orderId=${orderId} — ${(error as Error)?.message ?? error}`)
-    }
-  }
-  return cancelled
+/**
+ * Сколько раз перечитывать список активных заказов при уборке. Бэкенд отдаёт
+ * его порциями (на gruzvill — по 5), а на общей тестовой учётке от прерванных
+ * прогонов накапливаются десятки заказов.
+ */
+const ACTIVE_ORDERS_SWEEP_PASSES = 60
+
+async function listActiveOrders(session: ISession): Promise<Record<string, any>> {
+  const response = await post('/drive', authFields(session, { fields: '00000000u1' }))
+  return response?.data?.booking ?? {}
 }
+
+/** Виден ли заказ в списке активных заказов пассажира — том самом, который опрашивает приложение. */
+export async function isOrderActiveFor(session: ISession, orderId: string): Promise<boolean> {
+  return Boolean((await listActiveOrders(session))[orderId])
+}
+
+/**
+ * Метки, по которым заказ опознаётся как тестовый:
+ *
+ * * `[E2E <label>]` — метка этих тестов;
+ * * `[DRV:<id>]` и `[CASE] <имя>` — метки самого проекта, их ставит
+ *   driver-emulator и читает приложение (src/tools/emulatorMode.ts).
+ *
+ * У настоящего заказа настоящего пассажира ни одной из них быть не может.
+ */
+const TEST_ORDER_MARKERS = [/\[E2E\b/i, /\[DRV:\s*\d+\]/i, /\[CASE\]/i]
+
+const orderMarkerText = (order: any): string =>
+  [order?.b_custom_comment, order?.b_comments].map(value => String(value ?? '')).join(' ')
+
+/** Заказ создан тестовой оснасткой — этого проекта или его эмулятора. */
+export const isTestOrder = (order: any): boolean =>
+  TEST_ORDER_MARKERS.some(marker => marker.test(orderMarkerText(order)))
+
+export interface ISweepResult {
+  /** Сколько заказов отменено. */
+  readonly cancelled: number
+  /** Заказы, которые уборка сознательно не тронула или не смогла отменить. */
+  readonly skipped: string[]
+}
+
+/**
+ * Уборка активных заказов пассажира.
+ *
+ * Отменяется ТОЛЬКО то, что опознано как тестовое: чужой заказ на чужой учётке
+ * (например, если в окружении оказался не тот `E2E_PASSENGER_LOGIN`) уборка не
+ * тронет — она его пропустит и назовёт в логе прогона.
+ *
+ * Список бэкенд отдаёт порциями, поэтому он перечитывается, пока порция
+ * приносит хоть один отменяемый заказ. Порция целиком из неопознанных заказов
+ * означает, что дальше не продвинуться: сдвинуть окно списка нечем, параметра
+ * смещения у endpoint нет.
+ */
+async function sweepActiveOrders(
+  passenger: ISession,
+  shouldCancel: (orderId: string, order: any) => boolean,
+): Promise<ISweepResult> {
+  let cancelled = 0
+  const skipped = new Set<string>()
+
+  for (let pass = 0; pass < ACTIVE_ORDERS_SWEEP_PASSES; pass += 1) {
+    const entries = Object.entries<any>(await listActiveOrders(passenger))
+    if (!entries.length)
+      break
+
+    let cancelledInPass = 0
+    for (const [orderId, order] of entries) {
+      if (!shouldCancel(orderId, order)) {
+        skipped.add(orderId)
+        continue
+      }
+      try {
+        await cancelOrder(passenger, orderId)
+        cancelled += 1
+        cancelledInPass += 1
+      } catch (error) {
+        // Один упрямый заказ не должен обрывать уборку остальных, но и
+        // потеряться он не должен: его номер уходит в лог прогона.
+        skipped.add(orderId)
+        console.error(
+          `E2E SWEEP: не удалось отменить orderId=${orderId} — ${(error as Error)?.message ?? error}`)
+      }
+    }
+
+    if (!cancelledInPass)
+      break
+  }
+
+  return { cancelled, skipped: [...skipped] }
+}
+
+/**
+ * Уборка тестовых заказов пассажира — единственный критерий отмены во всём
+ * прогоне: тестовая метка на заказе.
+ *
+ * Перед прогоном это подготовка предусловия: голосовой заказ с истёкшим
+ * ожиданием открывает пассажиру модальное окно поверх страницы и сбрасывает
+ * выбранный заказ (state/orders/sagas.ts), то есть ломает сценарий. После
+ * прогона — освобождение тестового водителя, занятого заказом прерванного
+ * прогона.
+ *
+ * Участие тестового водителя в заказе критерием отмены сознательно НЕ является:
+ * непомеченный заказ — это заказ настоящего пассажира, и права отменять его у
+ * уборки нет ни при каком составе участников.
+ *
+ * `keepOrderId` — заказ текущего теста, его уборка не трогает.
+ */
+export const cancelTestOrders = (
+  passenger: ISession,
+  keepOrderId?: string,
+): Promise<ISweepResult> =>
+  sweepActiveOrders(passenger, (orderId, order) =>
+    orderId !== keepOrderId && isTestOrder(order))

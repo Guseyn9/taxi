@@ -5,8 +5,13 @@
  * из теста не вызываем, backend-команды вместо клика не отправляем (§20 ТЗ).
  */
 
+import path from 'path'
 import { expect, Page } from '@playwright/test'
+import { expectAppBooted } from './appShell'
 import { DRIVER_STATE } from './taxiApi'
+
+/** Сессия водителя, сохранённая проектом `setup`. */
+export const DRIVER_STORAGE = path.resolve(__dirname, '../.auth/driver.json')
 
 /** Точка подачи и назначения тестового заказа. Ростов-на-Дону, как у эмулятора. */
 export const PICKUP = { latitude: 47.2216, longitude: 39.6343 }
@@ -18,13 +23,18 @@ export const DESTINATION = { latitude: 47.2239, longitude: 39.6366 }
  * Это режим приложения, а не мок API.
  */
 export const DRIVER_PAGE = '/driver-order?tab=map&driverEmulator=1'
-export const DRIVER_LIST_PAGE = '/driver-order?tab=all&driverEmulator=1'
+/**
+ * Вкладка «Все». Значение именно `detailed`: вкладок у водителя три —
+ * map/lite/detailed (EDriverTabs в pages/Driver/index.tsx), и при неизвестном
+ * значении не отрисовывается ни один список заказов.
+ */
+export const DRIVER_LIST_PAGE = '/driver-order?tab=detailed&driverEmulator=1'
 
 const primaryAction = (page: Page) => page.getByTestId('driver-map-primary-action')
 
 export async function openDriverMap(page: Page): Promise<void> {
   await page.goto(DRIVER_PAGE)
-  await expect(page.locator('header')).toBeVisible()
+  await expectAppBooted(page)
 }
 
 /**
@@ -65,12 +75,36 @@ export async function measureUiStateDelay(page: Page, state: number, timeout: nu
   return Date.now() - startedAt
 }
 
-/** Дождаться, пока заказ появится в списке водителя, и открыть его карточку. */
+/** Карточка конкретного заказа в списке водителя. */
+export const orderCard = (page: Page, orderId: string) =>
+  page.locator(`[data-testid="driver-order-card"][data-order-id="${orderId}"]`)
+
+/**
+ * Дождаться, пока заказ появится в списке водителя, и открыть его карточку.
+ * Клик по карточке открывает модальную карточку заказа
+ * (components/Card/OrderCard.tsx → setOrderCardModal), а не отдельную страницу.
+ */
 export async function openOrderCard(page: Page, orderId: string): Promise<void> {
   await page.goto(DRIVER_LIST_PAGE)
-  const card = page.locator(`[href*="/driver-order/${orderId}"], [data-order-id="${orderId}"]`).first()
-  await expect(card).toBeVisible({ timeout: 120_000 })
+  await expectAppBooted(page)
+  const card = orderCard(page, orderId)
+  await expect(card, `заказ ${orderId} появился в списке водителя`).toBeVisible({ timeout: 120_000 })
   await card.click()
+}
+
+/** Кнопка «Взять заказ» в карточке заказа. */
+export const takeOrderButton = (page: Page) => page.getByTestId('driver-order-take')
+
+/**
+ * Перейти на карту вкладкой, как это делает водитель. В отличие от goto,
+ * страница не перезагружается: приложение заново тянет конфигурацию с сервера
+ * при каждой перезагрузке (src/config.ts), и лишние перезагрузки — лишний риск
+ * на ровном месте.
+ */
+export async function switchToDriverMap(page: Page): Promise<void> {
+  await page.getByTestId('driver-tab-map').click()
+  await expect(primaryAction(page).first(), 'карта показала основное действие')
+    .toBeVisible({ timeout: 120_000 })
 }
 
 /** Нажать основное действие карты («Поехал», «Приехал», «Код посадки»). */
@@ -121,6 +155,7 @@ export async function submitBoardingCode(page: Page, code: string): Promise<void
 
 export const STATE_NAMES: Record<number, string> = {
   [DRIVER_STATE.Considering]: 'Considering',
+  [DRIVER_STATE.Canceled]: 'Canceled',
   [DRIVER_STATE.Performer]: 'Performer',
   [DRIVER_STATE.Arrived]: 'Arrived',
   [DRIVER_STATE.Started]: 'Started',

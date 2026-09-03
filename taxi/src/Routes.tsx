@@ -39,12 +39,19 @@ const AppRoutesWrapper: React.FC<IProps> = ({ status, user, language }) => {
 
   return status === EStatuses.Success ?
     <Suspense fallback={null}><AppRoutes user={user} languageIso={languageIso}/></Suspense> :
-    <UnavailableBase/>
+    <UnavailableBase status={status}/>
 }
 
-const UnavailableBase = () => {
+const UnavailableBase = ({ status }: { status: EStatuses }) => {
   return <PageSection>
-    <div className="loading-frame">
+    {/* Контракт для E2E: этот экран показывается и пока конфигурация ещё
+        грузится, и когда её загрузить не удалось, — отличать одно от другого
+        нужно по состоянию, а не по переводу подписи. */}
+    <div
+      className="loading-frame"
+      data-testid="app-config-unavailable"
+      data-config-status={EStatuses[status]}
+    >
       <img src={images.error} alt={t(TRANSLATION.ERROR)}/>
       <div className="loading-frame__title">{t(TRANSLATION.DATABASE_IS_UNAVAILABLE)}</div>
     </div>
