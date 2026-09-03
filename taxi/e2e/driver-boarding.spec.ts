@@ -16,8 +16,8 @@ import { driverAccount, passengerAccount } from './fixtures/accounts'
 import { expectAppBooted } from './fixtures/appShell'
 import {
   boardingCodeOf,
-  cancelDriverActiveOrders,
   cancelOrder,
+  cancelTestOrders,
   choosePerformer,
   createVotingOrder,
   driverStateOf,
@@ -102,12 +102,12 @@ test.afterEach(async({}, testInfo) => {
 })
 
 test.afterAll(async() => {
-  // Подмести то, что осталось от прерванных прогонов: следующий прогон не
-  // должен начинаться с водителем, занятым чужим заказом.
-  if (!passenger || !driver)
+  // Подмести тестовые заказы, оставшиеся от прерванных прогонов: следующий
+  // прогон не должен начинаться с водителем, занятым таким заказом.
+  if (!passenger)
     return
   try {
-    const { cancelled, skipped } = await cancelDriverActiveOrders(passenger, driver.userId)
+    const { cancelled, skipped } = await cancelTestOrders(passenger)
     if (cancelled)
       console.log(`E2E sweep: отменено зависших тестовых заказов — ${cancelled}`)
     if (skipped.length)

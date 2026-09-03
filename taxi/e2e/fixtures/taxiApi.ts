@@ -380,9 +380,6 @@ const orderMarkerText = (order: any): string =>
 export const isTestOrder = (order: any): boolean =>
   TEST_ORDER_MARKERS.some(marker => marker.test(orderMarkerText(order)))
 
-const driverParticipates = (order: any, driverId: string): boolean =>
-  (order?.drivers ?? []).some((item: any) => String(item.u_id) === String(driverId))
-
 export interface ISweepResult {
   /** Сколько заказов отменено. */
   readonly cancelled: number
@@ -441,22 +438,24 @@ async function sweepActiveOrders(
 }
 
 /**
- * Подготовка предусловия: у пассажира не должно остаться тестовых заказов от
- * прерванных прогонов. Голосовой заказ с истёкшим ожиданием открывает
- * пассажиру модальное окно поверх страницы и сбрасывает выбранный заказ
- * (state/orders/sagas.ts), то есть ломает сценарий.
+ * Уборка тестовых заказов пассажира — единственный критерий отмены во всём
+ * прогоне: тестовая метка на заказе.
+ *
+ * Перед прогоном это подготовка предусловия: голосовой заказ с истёкшим
+ * ожиданием открывает пассажиру модальное окно поверх страницы и сбрасывает
+ * выбранный заказ (state/orders/sagas.ts), то есть ломает сценарий. После
+ * прогона — освобождение тестового водителя, занятого заказом прерванного
+ * прогона.
+ *
+ * Участие тестового водителя в заказе критерием отмены сознательно НЕ является:
+ * непомеченный заказ — это заказ настоящего пассажира, и права отменять его у
+ * уборки нет ни при каком составе участников.
+ *
+ * `keepOrderId` — заказ текущего теста, его уборка не трогает.
  */
-export const cancelPassengerTestOrders = (passenger: ISession): Promise<ISweepResult> =>
-  sweepActiveOrders(passenger, (_orderId, order) => isTestOrder(order))
-
-/**
- * Уборка после прогона: тестовые заказы и заказы, в которых участвует наш
- * тестовый водитель, — чтобы следующий прогон не начинался с занятым водителем.
- */
-export const cancelDriverActiveOrders = (
+export const cancelTestOrders = (
   passenger: ISession,
-  driverId: string,
   keepOrderId?: string,
 ): Promise<ISweepResult> =>
   sweepActiveOrders(passenger, (orderId, order) =>
-    orderId !== keepOrderId && (isTestOrder(order) || driverParticipates(order, driverId)))
+    orderId !== keepOrderId && isTestOrder(order))

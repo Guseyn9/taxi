@@ -25,9 +25,8 @@ import { Browser, BrowserContext, Page, devices, expect, test } from '@playwrigh
 import { appUrl, driverAccount, passengerAccount } from './fixtures/accounts'
 import { stubMapTiles } from './fixtures/appShell'
 import {
-  cancelDriverActiveOrders,
   cancelOrder,
-  cancelPassengerTestOrders,
+  cancelTestOrders,
   createStandardOrder,
   driverStateOf,
   DRIVER_STATE,
@@ -122,7 +121,7 @@ test.beforeAll(async({ browser }) => {
   // Прогон начинается без тестового мусора. Заказ, оставшийся от прерванного
   // прогона, у пассажира не просто лишний: истёкшее ожидание голосового заказа
   // открывает модальное окно поверх страницы и сбрасывает выбранный заказ.
-  reportSweep('перед прогоном', await cancelPassengerTestOrders(passenger))
+  reportSweep('перед прогоном', await cancelTestOrders(passenger))
 
   passengerContext = await openSession(browser, PASSENGER_STORAGE)
   driverContext = await openSession(browser, DRIVER_STORAGE)
@@ -172,12 +171,12 @@ test.afterAll(async() => {
   await passengerContext?.close()
   await driverContext?.close()
 
-  // Подмести то, что осталось от прерванных прогонов: следующий прогон не
-  // должен начинаться с водителем, занятым чужим заказом.
-  if (!passenger || !driver)
+  // Подмести тестовые заказы, оставшиеся от прерванных прогонов: следующий
+  // прогон не должен начинаться с водителем, занятым таким заказом.
+  if (!passenger)
     return
   try {
-    reportSweep('после прогона', await cancelDriverActiveOrders(passenger, driver.userId))
+    reportSweep('после прогона', await cancelTestOrders(passenger))
   } catch (error) {
     console.error(`E2E SWEEP FAILED: ${reason(error)}`)
   }
