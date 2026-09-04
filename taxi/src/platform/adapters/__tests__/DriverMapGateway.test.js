@@ -7,6 +7,7 @@ import {
 jest.mock('../LegacyBackendGateway', () => ({
   backendGateway: {
     arrivedVotingOrder: jest.fn().mockResolvedValue({ status: 'ok' }),
+    cancelDrive: jest.fn().mockResolvedValue({ status: 'ok' }),
     confirmVotingCode: jest.fn().mockResolvedValue({ status: 'ok' }),
     makeRoutePoints: jest.fn(),
     reverseGeocode: jest.fn(),
@@ -124,6 +125,56 @@ describe('DriverMapGateway', () => {
       DRIVER_MAP_EVENTS.CardOpened,
       DRIVER_MAP_EVENTS.AreasRequested,
     ])
+  })
+
+  it('routes driver cancellation through the legacy PI boundary', async() => {
+    const runtime = createRuntime()
+    const gateway = new DriverMapGateway(runtime)
+    const listener = jest.fn()
+    gateway.mount()
+    gateway.subscribe(listener)
+
+    await gateway.cancel('42', 'Vehicle issue')
+
+    expect(backendGateway.cancelDrive).toHaveBeenCalledWith('42', 'Vehicle issue')
+    expect(listener).toHaveBeenCalledWith(expect.objectContaining({
+      type: DRIVER_MAP_EVENTS.Cancelled,
+      payload: { orderId: '42' },
+    }))
+  })
+
+  it('sends driver cancellation through Command API when it is configured', async() => {
+    const runtime = createRuntime()
+    const commandTransport = { send: jest.fn().mockResolvedValue({
+      accepted: true,
+      duplicate: false,
+      instanceId: 104,
+      status: 'PENDING',
+      intent: 'cancel_requested',
+    }) }
+    const completionWaiter = {
+      captureBaseline: jest.fn().mockReturnValue({ state: 'order_in_ride' }),
+      wait: jest.fn().mockResolvedValue({ status: 'COMPLETED', instanceId: 104 }),
+      fail: jest.fn(),
+      cancelAll: jest.fn(),
+    }
+    const gateway = new DriverMapGateway(runtime, commandTransport, 60000, completionWaiter)
+    gateway.mount()
+
+    await gateway.cancel('42', 'Vehicle issue')
+
+    expect(commandTransport.send).toHaveBeenCalledWith(
+      '42',
+      'cancel_requested',
+      { reason: 'Vehicle issue' },
+      expect.objectContaining({ source: 'driver.interface' }),
+    )
+    expect(completionWaiter.wait).toHaveBeenCalledWith(expect.objectContaining({
+      actionType: 'driver.order.cancel',
+      orderId: '42',
+      instanceId: 104,
+    }))
+    expect(backendGateway.cancelDrive).not.toHaveBeenCalled()
   })
 
   it('publishes command accepted without claiming an asynchronous transition completed', async() => {

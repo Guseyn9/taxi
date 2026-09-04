@@ -1,6 +1,6 @@
 # TASK-FE-002: Подготовка Command Completion
 
-**Статус:** Выполнено
+**Статус:** Выполнено, нормативный transport подключён после TASK-CORE-001
 **Дата:** 2026-08-17
 **Область:** внутренняя реализация Driver Channel
 
@@ -45,16 +45,15 @@ DriverMapGateway
 - Interaction Contract;
 - Surface Model;
 - серверные endpoint;
-- временная Snapshot-based completion-семантика;
 - legacy fallback.
 
-Новый `GET /api/commands/{instanceId}` не эмулируется и не предполагается
-существующим.
+Snapshot-based completion сохранён только как fallback для окружений без
+настроенного FSM API.
 
-## Следующая замена
+## Реализация после TASK-CORE-001
 
-После реализации `TASK-CORE-001` нужно добавить `CommandStatusTransport` и заменить
-только реализацию `DriverCommandCompletionWaiter`:
+После реализации `TASK-CORE-001` добавлены `FsmCommandStatusTransport` и
+`CommandStatusDriverCommandCompletionWaiter`:
 
 ```text
 CommandAccepted(instanceId)
@@ -63,7 +62,15 @@ CommandAccepted(instanceId)
     -> COMPLETED / FAILED
 ```
 
-`DriverMapGateway`, Interaction Action и UI при этой замене меняться не должны.
+`DriverMapGateway`, Interaction Action и UI при этой замене не изменились.
+Нормативный waiter включается только при одновременной конфигурации
+`REACT_APP_FSM_API_URL` и `REACT_APP_FSM_COMMAND_STATUS_ENABLED=true`.
+Это позволяет выкатывать Query/Command и Command Status независимо; до включения
+флага сохраняется Snapshot-based fallback.
+
+`TASK-CORE-001 §8` определяет `404` как неизвестный `instanceId`, а не временную
+ошибку сервера. Внутренний result различает серверный execution `FAILED` и ошибку
+чтения Command Status через `failureKind=EXECUTION|STATUS_LOOKUP`.
 
 ## Проверка
 
@@ -72,6 +79,9 @@ CommandAccepted(instanceId)
 - Accepted передаёт `instanceId` waiter-у;
 - duplicate использует тот же pending completion path;
 - Snapshot completion;
+- Command Status polling `PENDING / PROCESSING -> COMPLETED / FAILED`;
+- HTTP и protocol errors Command Status;
+- retry после временной ошибки `5xx`;
 - timeout;
 - failed completion;
 - target state до команды не считается completion;

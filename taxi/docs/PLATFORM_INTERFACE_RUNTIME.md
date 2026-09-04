@@ -59,6 +59,8 @@ Composition root использует `SwitchableSnapshotProvider`. Если с�
 | `REACT_APP_FSM_WS_TOKEN_QUERY_PARAM` | Имя query-параметра токена, только если его поддерживает gateway |
 | `REACT_APP_FSM_DRIVER_USER_ID` | Необязательная подмена id авторизованного водителя для теста |
 | `REACT_APP_FSM_DRIVER_POLL_MS` | Recovery polling Driver Snapshot, по умолчанию 5000 мс; 0 отключает polling |
+| `REACT_APP_FSM_COMMAND_STATUS_ENABLED` | `true` включает Command Status после его развёртывания |
+| `REACT_APP_FSM_COMMAND_STATUS_POLL_MS` | Интервал polling `GET /api/commands/{instanceId}`, по умолчанию 1000 мс |
 
 Используемые серверные маршруты:
 
@@ -68,6 +70,7 @@ WS  /api/realtime/ws/taxi/order/{orderId}
 GET /api/realtime/snapshot/taxi/driver/{userId}
 WS  /api/realtime/ws/taxi/driver/{userId}
 POST /api/commands/taxi/order/{orderId}
+GET /api/commands/{instanceId}
 ```
 
 Серверный order snapshot сохраняется в `state.domainOrder`; `availableActions` передаются
@@ -82,6 +85,11 @@ POST /api/commands/taxi/order/{orderId}
 `REACT_APP_FSM_API_URL` lifecycle-обработчик `DriverMapGateway` использует Command
 API; без конфигурации сохраняется legacy fallback.
 
+Наличие общего `REACT_APP_FSM_API_URL` не означает, что Command Status уже
+развёрнут. Нормативный status waiter включается только при
+`REACT_APP_FSM_COMMAND_STATUS_ENABLED=true`; до этого продолжает работать
+Snapshot-based completion.
+
 Ответ `202 Accepted` публикуется как `driver.order.command.accepted` и означает
 только постановку trigger/instance в очередь. Он не порождает `arrived`, `started`,
 `boarding_confirmed` или `finished`: выполнение перехода подтверждается изменением
@@ -93,9 +101,10 @@ Driver Snapshot после обработки команды worker-ом. Promis
 Временная completion-логика изолирована от `DriverMapGateway` внутренним
 `DriverCommandCompletionWaiter`. Gateway передаёт ему `instanceId`, полученный в
 `CommandAccepted`, и обрабатывает единый результат `COMPLETED/FAILED/TIMEOUT`.
-Текущая реализация waiter наблюдает Snapshot; после появления утверждённого
-Command Status API заменяется только waiter, без изменения Interaction Action,
-публичного PI API и UI.
+При включённом Command Status waiter опрашивает execution по `instanceId`.
+Серверный `FAILED` помечается как execution failure, а HTTP/protocol error — как
+status lookup failure; это не меняет публичный PI API или UI. Snapshot-based
+waiter остаётся временным rollout fallback.
 
 Command adapter принимает только `202` для новой команды и `200` для duplicate,
 а также проверяет обязательные поля Accepted response. Некорректный успешный HTTP

@@ -3,6 +3,11 @@ import type {
   PlatformInterfaceRuntime,
   PlatformSnapshot,
 } from '../platform-interface'
+import { BackendInteractionError, normalizeBackendError } from './backendError'
+import {
+  CommandStatusTransport,
+  FSM_COMMAND_EXECUTION_STATUSES,
+} from './FsmCommandStatusTransport'
 
 export const COMMAND_COMPLETION_STATUSES = {
   Completed: 'COMPLETED',
@@ -12,6 +17,14 @@ export const COMMAND_COMPLETION_STATUSES = {
 
 export type CommandCompletionStatus =
   typeof COMMAND_COMPLETION_STATUSES[keyof typeof COMMAND_COMPLETION_STATUSES]
+
+export const COMMAND_COMPLETION_FAILURE_KINDS = {
+  Execution: 'EXECUTION',
+  StatusLookup: 'STATUS_LOOKUP',
+} as const
+
+export type CommandCompletionFailureKind =
+  typeof COMMAND_COMPLETION_FAILURE_KINDS[keyof typeof COMMAND_COMPLETION_FAILURE_KINDS]
 
 export interface CommandCompletionBaseline {
   readonly state: string | null
@@ -29,6 +42,7 @@ export interface CommandCompletionResult {
   readonly instanceId: number
   readonly errorCode?: string
   readonly message?: string
+  readonly failureKind?: CommandCompletionFailureKind
 }
 
 export interface DriverCommandCompletionWaiter {
@@ -36,6 +50,152 @@ export interface DriverCommandCompletionWaiter {
   wait(request: CommandCompletionRequest): Promise<CommandCompletionResult>
   fail(instanceId: number, errorCode: string, message: string): void
   cancelAll(): void
+}
+
+interface PendingStatusCompletion {
+  readonly promise: Promise<CommandCompletionResult>
+  readonly request: CommandCompletionRequest
+  readonly startedAt: number
+  resolve(result: CommandCompletionResult): void
+  timer: ReturnType<typeof setTimeout> | null
+}
+
+/** Normative TASK-CORE-001 completion by execution instanceId. */
+export class CommandStatusDriverCommandCompletionWaiter implements DriverCommandCompletionWaiter {
+  private readonly transport: CommandStatusTransport
+  private readonly timeoutMs: number
+  private readonly pollIntervalMs: number
+  private readonly pending = new Map<number, PendingStatusCompletion>()
+
+  constructor(
+    transport: CommandStatusTransport,
+    timeoutMs = 60000,
+    pollIntervalMs = 1000,
+  ) {
+    this.transport = transport
+    this.timeoutMs = Math.max(0, timeoutMs)
+    this.pollIntervalMs = Math.max(0, pollIntervalMs)
+  }
+
+  captureBaseline(): CommandCompletionBaseline {
+    return { state: null }
+  }
+
+  wait(request: CommandCompletionRequest): Promise<CommandCompletionResult> {
+    const existing = this.pending.get(request.instanceId)
+    if (existing)
+      return existing.promise
+
+    let resolvePromise: (result: CommandCompletionResult) => void = () => undefined
+    const promise = new Promise<CommandCompletionResult>(resolve => {
+      resolvePromise = resolve
+    })
+    const completion: PendingStatusCompletion = {
+      promise,
+      request,
+      startedAt: Date.now(),
+      resolve: resolvePromise,
+      timer: null,
+    }
+    this.pending.set(request.instanceId, completion)
+    void this.poll(completion)
+    return promise
+  }
+
+  fail(instanceId: number, errorCode: string, message: string): void {
+    const completion = this.pending.get(instanceId)
+    if (completion) {
+      this.settle(completion, {
+        status: COMMAND_COMPLETION_STATUSES.Failed,
+        instanceId,
+        errorCode,
+        message,
+        failureKind: COMMAND_COMPLETION_FAILURE_KINDS.Execution,
+      })
+    }
+  }
+
+  cancelAll(): void {
+    for (const completion of Array.from(this.pending.values())) {
+      this.settle(completion, {
+        status: COMMAND_COMPLETION_STATUSES.Failed,
+        instanceId: completion.request.instanceId,
+        errorCode: 'FSM_COMMAND_COMPLETION_CANCELLED',
+        message: 'FSM command completion wait was cancelled',
+      })
+    }
+  }
+
+  private async poll(completion: PendingStatusCompletion): Promise<void> {
+    if (this.pending.get(completion.request.instanceId) !== completion)
+      return
+
+    try {
+      const result = await this.transport.getStatus(completion.request.instanceId)
+      if (result.status === FSM_COMMAND_EXECUTION_STATUSES.Completed) {
+        this.settle(completion, {
+          status: COMMAND_COMPLETION_STATUSES.Completed,
+          instanceId: completion.request.instanceId,
+        })
+        return
+      }
+      if (result.status === FSM_COMMAND_EXECUTION_STATUSES.Failed) {
+        this.settle(completion, {
+          status: COMMAND_COMPLETION_STATUSES.Failed,
+          instanceId: completion.request.instanceId,
+          errorCode: result.errorCode,
+          message: result.errorMessage,
+          failureKind: COMMAND_COMPLETION_FAILURE_KINDS.Execution,
+        })
+        return
+      }
+    } catch (error) {
+      const normalized = normalizeBackendError(error)
+      if (isTerminalStatusReadError(normalized)) {
+        this.settle(completion, {
+          status: COMMAND_COMPLETION_STATUSES.Failed,
+          instanceId: completion.request.instanceId,
+          errorCode: normalized.code,
+          message: normalized.message,
+          failureKind: COMMAND_COMPLETION_FAILURE_KINDS.StatusLookup,
+        })
+        return
+      }
+    }
+
+    if (this.timeoutMs > 0 && Date.now() - completion.startedAt >= this.timeoutMs) {
+      this.settle(completion, {
+        status: COMMAND_COMPLETION_STATUSES.Timeout,
+        instanceId: completion.request.instanceId,
+        errorCode: 'FSM_COMMAND_COMPLETION_TIMEOUT',
+        message: `FSM command ${completion.request.actionType} did not reach a terminal status`,
+      })
+      return
+    }
+
+    completion.timer = setTimeout(() => {
+      completion.timer = null
+      void this.poll(completion)
+    }, this.pollIntervalMs)
+  }
+
+  private settle(
+    completion: PendingStatusCompletion,
+    result: CommandCompletionResult,
+  ): void {
+    if (this.pending.get(completion.request.instanceId) !== completion)
+      return
+    this.pending.delete(completion.request.instanceId)
+    if (completion.timer)
+      clearTimeout(completion.timer)
+    completion.timer = null
+    completion.resolve(result)
+  }
+}
+
+function isTerminalStatusReadError(error: BackendInteractionError): boolean {
+  return /^FSM_COMMAND_STATUS_HTTP_4\d\d$/.test(error.code) ||
+    error.code === 'FSM_COMMAND_STATUS_PROTOCOL_ERROR'
 }
 
 interface PendingCompletion {
@@ -51,8 +211,8 @@ interface PendingCompletion {
 /**
  * Temporary Snapshot-based completion mechanism.
  *
- * TASK-CORE-001 will replace this implementation with Command Status polling;
- * callers depend only on DriverCommandCompletionWaiter and instanceId.
+ * Kept only for environments where the FSM API is not configured. Production
+ * completion uses CommandStatusDriverCommandCompletionWaiter.
  */
 export class SnapshotDriverCommandCompletionWaiter implements DriverCommandCompletionWaiter {
   private readonly runtime: PlatformInterfaceRuntime
@@ -118,6 +278,7 @@ export class SnapshotDriverCommandCompletionWaiter implements DriverCommandCompl
       instanceId,
       errorCode,
       message,
+      failureKind: COMMAND_COMPLETION_FAILURE_KINDS.Execution,
     })
   }
 
@@ -171,6 +332,8 @@ function getCompletedStates(actionType: string): readonly string[] {
       return ['order_in_ride', 'order_completed']
     case 'driver.order.finish':
       return ['order_completed']
+    case 'driver.order.cancel':
+      return ['order_cancelled', 'ride_interrupted']
     default:
       throw new Error(`Unsupported Driver lifecycle action: ${actionType}`)
   }
