@@ -36,5 +36,7 @@ cancel проходят через PI. При настроенном Command API
 4. Command Completion использует `GET /api/commands/{instanceId}` при включённом
    `REACT_APP_FSM_COMMAND_STATUS_ENABLED=true`; Snapshot-based реализация
    сохранена как rollout/legacy fallback.
+5. После полного rollout Command Status необходимо удалить Snapshot-based
+   completion fallback; он не является второй постоянной реализацией контракта.
 
 Новых публичных контрактов PI в рамках этой инвентаризации не вводилось.

@@ -106,6 +106,12 @@ Driver Snapshot после обработки команды worker-ом. Promis
 status lookup failure; это не меняет публичный PI API или UI. Snapshot-based
 waiter остаётся временным rollout fallback.
 
+Оба результата отклоняют lifecycle Promise, поскольку успешное выполнение не
+подтверждено. При этом `failureKind=EXECUTION` утверждает, что FSM завершил
+команду ошибкой, а `failureKind=STATUS_LOOKUP` означает только невозможность
+получить completion. Gateway сохраняет этот признак в `BackendInteractionError`
+и `driver.order.action.failed`; success event для lookup failure не публикуется.
+
 Command adapter принимает только `202` для новой команды и `200` для duplicate,
 а также проверяет обязательные поля Accepted response. Некорректный успешный HTTP
 ответ преобразуется в `FSM_COMMAND_PROTOCOL_ERROR` на adapter boundary.

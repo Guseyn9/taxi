@@ -72,6 +72,12 @@ CommandAccepted(instanceId)
 ошибку сервера. Внутренний result различает серверный execution `FAILED` и ошибку
 чтения Command Status через `failureKind=EXECUTION|STATUS_LOOKUP`.
 
+`DriverMapGateway` отклоняет Promise в обоих случаях, потому что ни execution
+failure, ни lookup failure не подтверждают успех команды. Различие сохраняется
+в `BackendInteractionError.details` и payload события
+`driver.order.action.failed`: `STATUS_LOOKUP` означает неизвестный completion, а
+не утверждение о неуспешном FSM transition.
+
 ## Проверка
 
 Покрыты сценарии:

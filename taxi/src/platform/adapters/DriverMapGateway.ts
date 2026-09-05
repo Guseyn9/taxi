@@ -27,6 +27,7 @@ import {
 } from './FsmTaxiCommandTransport'
 import {
   COMMAND_COMPLETION_STATUSES,
+  CommandCompletionFailureKind,
   CommandStatusDriverCommandCompletionWaiter,
   DriverCommandCompletionWaiter,
   SnapshotDriverCommandCompletionWaiter,
@@ -82,6 +83,7 @@ export interface DriverMapFailurePayload {
   readonly orderId?: IOrder['b_id']
   readonly code: string
   readonly message: string
+  readonly failureKind?: CommandCompletionFailureKind
 }
 
 export interface DriverCommandAcceptedPayload {
@@ -299,6 +301,7 @@ export class DriverMapGateway {
       orderId: payload.orderId,
       code: error.code,
       message: error.message,
+      failureKind: result.failureKind,
     } satisfies DriverMapFailurePayload)
     throw error
   }
