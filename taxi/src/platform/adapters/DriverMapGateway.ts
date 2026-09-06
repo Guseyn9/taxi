@@ -27,15 +27,22 @@ import {
 } from './FsmTaxiCommandTransport'
 import {
   COMMAND_COMPLETION_STATUSES,
+  CommandCompletionFailureKind,
+  CommandStatusDriverCommandCompletionWaiter,
   DriverCommandCompletionWaiter,
   SnapshotDriverCommandCompletionWaiter,
 } from './DriverCommandCompletionWaiter'
+import {
+  configuredCommandStatusPollInterval,
+  createConfiguredFsmCommandStatusTransport,
+} from './FsmCommandStatusTransport'
 
 export const DRIVER_MAP_ACTIONS = {
   Arrive: 'driver.order.arrive',
   Start: 'driver.order.start',
   ConfirmBoarding: 'driver.order.confirm_boarding',
   Finish: 'driver.order.finish',
+  Cancel: 'driver.order.cancel',
   OpenCard: 'driver.order.card.open',
   RequestAreas: 'driver.route.areas.request',
 } as const
@@ -46,6 +53,7 @@ export const DRIVER_MAP_EVENTS = {
   Started: 'driver.order.started',
   BoardingConfirmed: 'driver.order.boarding_confirmed',
   Finished: 'driver.order.finished',
+  Cancelled: 'driver.order.cancelled',
   CardOpened: 'driver.order.card.opened',
   AreasRequested: 'driver.route.areas.requested',
   Failed: 'driver.order.action.failed',
@@ -57,6 +65,7 @@ interface DriverOrderActionPayload {
   readonly updateState?: boolean
   readonly tolerateNotAppointed?: boolean
   readonly boardingCode?: string
+  readonly reason?: string
 }
 
 export interface DriverArriveOptions {
@@ -74,6 +83,7 @@ export interface DriverMapFailurePayload {
   readonly orderId?: IOrder['b_id']
   readonly code: string
   readonly message: string
+  readonly failureKind?: CommandCompletionFailureKind
 }
 
 export interface DriverCommandAcceptedPayload {
@@ -104,8 +114,10 @@ export class DriverMapGateway {
   ) {
     this.runtime = runtime
     this.commandTransport = commandTransport
-    this.completionWaiter = completionWaiter ??
-      new SnapshotDriverCommandCompletionWaiter(runtime, completionTimeoutMs)
+    this.completionWaiter = completionWaiter ?? createDefaultCompletionWaiter(
+      runtime,
+      completionTimeoutMs,
+    )
   }
 
   mount(): Unsubscribe {
@@ -160,6 +172,10 @@ export class DriverMapGateway {
 
   finish(orderId: IOrder['b_id']): Promise<void> {
     return this.dispatch(DRIVER_MAP_ACTIONS.Finish, { orderId })
+  }
+
+  cancel(orderId: IOrder['b_id'], reason?: string): Promise<void> {
+    return this.dispatch(DRIVER_MAP_ACTIONS.Cancel, { orderId, reason })
   }
 
   openCard(orderId: IOrder['b_id']): Promise<void> {
@@ -273,13 +289,19 @@ export class DriverMapGateway {
     const error = new BackendInteractionError(
       result.errorCode ?? 'FSM_COMMAND_COMPLETION_FAILED',
       result.message ?? `FSM command ${action.type} did not complete`,
-      { actionType: action.type, orderId: payload.orderId, instanceId: accepted.instanceId },
+      {
+        actionType: action.type,
+        orderId: payload.orderId,
+        instanceId: accepted.instanceId,
+        failureKind: result.failureKind,
+      },
     )
     this.publish(action, DRIVER_MAP_EVENTS.Failed, {
       actionType: action.type,
       orderId: payload.orderId,
       code: error.code,
       message: error.message,
+      failureKind: result.failureKind,
     } satisfies DriverMapFailurePayload)
     throw error
   }
@@ -295,6 +317,7 @@ export class DriverMapGateway {
       case DRIVER_MAP_ACTIONS.Start: return DRIVER_MAP_EVENTS.Started
       case DRIVER_MAP_ACTIONS.ConfirmBoarding: return DRIVER_MAP_EVENTS.BoardingConfirmed
       case DRIVER_MAP_ACTIONS.Finish: return DRIVER_MAP_EVENTS.Finished
+      case DRIVER_MAP_ACTIONS.Cancel: return DRIVER_MAP_EVENTS.Cancelled
       case DRIVER_MAP_ACTIONS.OpenCard: return DRIVER_MAP_EVENTS.CardOpened
       case DRIVER_MAP_ACTIONS.RequestAreas: return DRIVER_MAP_EVENTS.AreasRequested
       default: throw new Error(`Unsupported Driver Map action: ${actionType}`)
@@ -310,10 +333,12 @@ export class DriverMapGateway {
         const payload = action.payload as DriverOrderActionPayload
         const commandPayload = action.type === DRIVER_MAP_ACTIONS.ConfirmBoarding ?
           { boardingCode: payload.boardingCode ?? '' } :
-          {}
+          action.type === DRIVER_MAP_ACTIONS.Cancel ?
+            { reason: payload.reason ?? '' } :
+            {}
         const accepted = await this.commandTransport.send(
           payload.orderId,
-          action.type,
+          serverIntentFor(action.type),
           commandPayload,
           action.metadata,
         )
@@ -387,6 +412,14 @@ export class DriverMapGateway {
           this.publish(action, DRIVER_MAP_EVENTS.Finished, { orderId: payload.orderId })
           break
         }
+        case DRIVER_MAP_ACTIONS.Cancel: {
+          const payload = action.payload as DriverOrderActionPayload
+          assertSuccessfulBackendResponse(
+            await backendGateway.cancelDrive(payload.orderId, payload.reason),
+          )
+          this.publish(action, DRIVER_MAP_EVENTS.Cancelled, { orderId: payload.orderId })
+          break
+        }
         case DRIVER_MAP_ACTIONS.OpenCard: {
           const payload = action.payload as DriverOrderActionPayload
           this.publish(action, DRIVER_MAP_EVENTS.CardOpened, { orderId: payload.orderId })
@@ -433,8 +466,27 @@ function isDriverLifecycleAction(type: string): boolean {
     DRIVER_MAP_ACTIONS.Start,
     DRIVER_MAP_ACTIONS.ConfirmBoarding,
     DRIVER_MAP_ACTIONS.Finish,
+    DRIVER_MAP_ACTIONS.Cancel,
   ]
   return lifecycleActions.includes(type)
+}
+
+function createDefaultCompletionWaiter(
+  runtime: PlatformInterfaceRuntime,
+  timeoutMs: number,
+): DriverCommandCompletionWaiter {
+  const statusTransport = createConfiguredFsmCommandStatusTransport()
+  return statusTransport ?
+    new CommandStatusDriverCommandCompletionWaiter(
+      statusTransport,
+      timeoutMs,
+      configuredCommandStatusPollInterval(),
+    ) :
+    new SnapshotDriverCommandCompletionWaiter(runtime, timeoutMs)
+}
+
+function serverIntentFor(actionType: string): string {
+  return actionType === DRIVER_MAP_ACTIONS.Cancel ? 'cancel_requested' : actionType
 }
 
 function createCorrelationId(): string {

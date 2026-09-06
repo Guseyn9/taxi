@@ -11,7 +11,7 @@ import { userSelectors } from '../../state/user'
 import { clearOrderCancelledByDriver, markOrderCancelledByDriver } from '../../tools/driverSelfCancel'
 import { IRootState } from '../../state'
 import { EStatuses } from '../../types/types'
-import * as API from '../../API'
+import { driverMapGateway } from '../../platform/adapters/DriverMapGateway'
 import Button from '../Button'
 import OrderId from '../OrderId'
 import Overlay from './Overlay'
@@ -74,7 +74,7 @@ const DriverTripCancelModal: React.FC<IProps> = ({
     // Метку ставим до запроса: опрос активных заказов может увидеть отмену
     // раньше, чем вернётся ответ, и показать «Клиент отменил заказ».
     markOrderCancelledByDriver(orderId, user?.u_id)
-    API.cancelDrive(orderId, reasons.find(item => item.id === reason)?.label)
+    driverMapGateway.cancel(orderId, reasons.find(item => item.id === reason)?.label)
       .then(() => {
         setDriverTripCancelModal({ isOpen: false })
         setMessageModal({

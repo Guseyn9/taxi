@@ -1,6 +1,6 @@
 # TASK-FE-002: Подготовка Command Completion
 
-**Статус:** Выполнено
+**Статус:** Выполнено, нормативный transport подключён после TASK-CORE-001
 **Дата:** 2026-08-17
 **Область:** внутренняя реализация Driver Channel
 
@@ -18,7 +18,7 @@ Completion-логика вынесена из `DriverMapGateway` в отдель
 DriverMapGateway
     -> CommandAccepted(instanceId)
     -> DriverCommandCompletionWaiter
-    -> COMPLETED / FAILED / TIMEOUT
+    -> COMPLETED / FAILED / TIMEOUT / CANCELLED
 ```
 
 Текущая реализация `SnapshotDriverCommandCompletionWaiter`:
@@ -27,7 +27,8 @@ DriverMapGateway
 - временно наблюдает Driver/Order Snapshot;
 - не считает target state, существовавший до команды, новым completion;
 - использует один pending waiter для повторного `instanceId`;
-- возвращает единый внутренний результат `COMPLETED`, `FAILED` или `TIMEOUT`;
+- возвращает единый внутренний результат `COMPLETED`, `FAILED`, `TIMEOUT` или
+  `CANCELLED`;
 - удаляет runtime-подписку и timeout после terminal result;
 - отменяет незавершённые ожидания при unmount последнего Gateway consumer.
 
@@ -45,16 +46,15 @@ DriverMapGateway
 - Interaction Contract;
 - Surface Model;
 - серверные endpoint;
-- временная Snapshot-based completion-семантика;
 - legacy fallback.
 
-Новый `GET /api/commands/{instanceId}` не эмулируется и не предполагается
-существующим.
+Snapshot-based completion сохранён только как fallback для окружений без
+настроенного FSM API.
 
-## Следующая замена
+## Реализация после TASK-CORE-001
 
-После реализации `TASK-CORE-001` нужно добавить `CommandStatusTransport` и заменить
-только реализацию `DriverCommandCompletionWaiter`:
+После реализации `TASK-CORE-001` добавлены `FsmCommandStatusTransport` и
+`CommandStatusDriverCommandCompletionWaiter`:
 
 ```text
 CommandAccepted(instanceId)
@@ -63,7 +63,28 @@ CommandAccepted(instanceId)
     -> COMPLETED / FAILED
 ```
 
-`DriverMapGateway`, Interaction Action и UI при этой замене меняться не должны.
+`DriverMapGateway`, Interaction Action и UI при этой замене не изменились.
+Нормативный waiter включается только при одновременной конфигурации
+`REACT_APP_FSM_API_URL` и `REACT_APP_FSM_COMMAND_STATUS_ENABLED=true`.
+Это позволяет выкатывать Query/Command и Command Status независимо; до включения
+флага сохраняется Snapshot-based fallback.
+
+`TASK-CORE-001 §8` определяет `404` как неизвестный `instanceId`, а не временную
+ошибку сервера. Внутренний result различает серверный execution `FAILED` и ошибку
+чтения Command Status через `failureKind=EXECUTION|STATUS_LOOKUP`.
+
+`DriverMapGateway` отклоняет Promise в обоих случаях, потому что ни execution
+failure, ни lookup failure не подтверждают успех команды. Различие сохраняется
+в `BackendInteractionError.details` и payload события
+`driver.order.action.failed`: `STATUS_LOOKUP` означает неизвестный completion, а
+не утверждение о неуспешном FSM transition.
+
+Timeout Command Status является общим deadline ожидания: он не зависит от того,
+завершился ли текущий `GET /api/commands/{instanceId}`. Поздний ответ после
+terminal result игнорируется. Остановка Runtime возвращает отдельный внутренний
+результат `CANCELLED`, а не серверный execution `FAILED`. Интервал status polling
+нормализуется до минимальных 100 мс, поэтому нулевая конфигурация не создаёт
+tight loop.
 
 ## Проверка
 
@@ -72,7 +93,11 @@ CommandAccepted(instanceId)
 - Accepted передаёт `instanceId` waiter-у;
 - duplicate использует тот же pending completion path;
 - Snapshot completion;
-- timeout;
+- Command Status polling `PENDING / PROCESSING -> COMPLETED / FAILED`;
+- HTTP и protocol errors Command Status;
+- retry после временной ошибки `5xx`;
+- timeout при non-terminal ответах и при зависшем status request;
+- cancellation при остановке waiter-а;
 - failed completion;
 - target state до команды не считается completion;
 - cleanup подписки после terminal result.
