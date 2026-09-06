@@ -60,7 +60,7 @@ Composition root использует `SwitchableSnapshotProvider`. Если с�
 | `REACT_APP_FSM_DRIVER_USER_ID` | Необязательная подмена id авторизованного водителя для теста |
 | `REACT_APP_FSM_DRIVER_POLL_MS` | Recovery polling Driver Snapshot, по умолчанию 5000 мс; 0 отключает polling |
 | `REACT_APP_FSM_COMMAND_STATUS_ENABLED` | `true` включает Command Status после его развёртывания |
-| `REACT_APP_FSM_COMMAND_STATUS_POLL_MS` | Интервал polling `GET /api/commands/{instanceId}`, по умолчанию 1000 мс |
+| `REACT_APP_FSM_COMMAND_STATUS_POLL_MS` | Интервал polling `GET /api/commands/{instanceId}`, по умолчанию 1000 мс, минимум 100 мс |
 
 Используемые серверные маршруты:
 
@@ -100,11 +100,17 @@ Driver Snapshot после обработки команды worker-ом. Promis
 
 Временная completion-логика изолирована от `DriverMapGateway` внутренним
 `DriverCommandCompletionWaiter`. Gateway передаёт ему `instanceId`, полученный в
-`CommandAccepted`, и обрабатывает единый результат `COMPLETED/FAILED/TIMEOUT`.
+`CommandAccepted`, и обрабатывает единый результат
+`COMPLETED/FAILED/TIMEOUT/CANCELLED`.
 При включённом Command Status waiter опрашивает execution по `instanceId`.
 Серверный `FAILED` помечается как execution failure, а HTTP/protocol error — как
 status lookup failure; это не меняет публичный PI API или UI. Snapshot-based
 waiter остаётся временным rollout fallback.
+
+`TIMEOUT` задаёт общий deadline ожидания и срабатывает даже тогда, когда текущий
+HTTP-запрос Command Status не завершился. Ответ такого запроса после timeout
+игнорируется и не запускает новый polling. `CANCELLED` означает остановку waiter-а
+при завершении Runtime и не трактуется как серверный `FAILED`.
 
 Оба результата отклоняют lifecycle Promise, поскольку успешное выполнение не
 подтверждено. При этом `failureKind=EXECUTION` утверждает, что FSM завершил

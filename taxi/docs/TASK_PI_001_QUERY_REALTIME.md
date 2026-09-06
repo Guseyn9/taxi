@@ -25,7 +25,8 @@
 - `duplicate=true` использует тот же `instanceId`, а результат определяется
   Command Status, не текущим Snapshot;
 - completion-логика изолирована в `DriverCommandCompletionWaiter`, который
-  возвращает `COMPLETED/FAILED/TIMEOUT` без изменения публичного PI-контракта;
+  возвращает `COMPLETED/FAILED/TIMEOUT/CANCELLED` без изменения публичного
+  PI-контракта;
 - временный recovery polling Driver Snapshot, пока события заказа не проецируются
   в realtime-канал водителя.
 - защита от перезаписи свежего WS Snapshot устаревшим polling-ответом по серверным

@@ -18,7 +18,7 @@ Completion-логика вынесена из `DriverMapGateway` в отдель
 DriverMapGateway
     -> CommandAccepted(instanceId)
     -> DriverCommandCompletionWaiter
-    -> COMPLETED / FAILED / TIMEOUT
+    -> COMPLETED / FAILED / TIMEOUT / CANCELLED
 ```
 
 Текущая реализация `SnapshotDriverCommandCompletionWaiter`:
@@ -27,7 +27,8 @@ DriverMapGateway
 - временно наблюдает Driver/Order Snapshot;
 - не считает target state, существовавший до команды, новым completion;
 - использует один pending waiter для повторного `instanceId`;
-- возвращает единый внутренний результат `COMPLETED`, `FAILED` или `TIMEOUT`;
+- возвращает единый внутренний результат `COMPLETED`, `FAILED`, `TIMEOUT` или
+  `CANCELLED`;
 - удаляет runtime-подписку и timeout после terminal result;
 - отменяет незавершённые ожидания при unmount последнего Gateway consumer.
 
@@ -78,6 +79,13 @@ failure, ни lookup failure не подтверждают успех коман
 `driver.order.action.failed`: `STATUS_LOOKUP` означает неизвестный completion, а
 не утверждение о неуспешном FSM transition.
 
+Timeout Command Status является общим deadline ожидания: он не зависит от того,
+завершился ли текущий `GET /api/commands/{instanceId}`. Поздний ответ после
+terminal result игнорируется. Остановка Runtime возвращает отдельный внутренний
+результат `CANCELLED`, а не серверный execution `FAILED`. Интервал status polling
+нормализуется до минимальных 100 мс, поэтому нулевая конфигурация не создаёт
+tight loop.
+
 ## Проверка
 
 Покрыты сценарии:
@@ -88,7 +96,8 @@ failure, ни lookup failure не подтверждают успех коман
 - Command Status polling `PENDING / PROCESSING -> COMPLETED / FAILED`;
 - HTTP и protocol errors Command Status;
 - retry после временной ошибки `5xx`;
-- timeout;
+- timeout при non-terminal ответах и при зависшем status request;
+- cancellation при остановке waiter-а;
 - failed completion;
 - target state до команды не считается completion;
 - cleanup подписки после terminal result.

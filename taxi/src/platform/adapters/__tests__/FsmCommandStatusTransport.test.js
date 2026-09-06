@@ -1,6 +1,8 @@
 import {
+  configuredCommandStatusPollInterval,
   createConfiguredFsmCommandStatusTransport,
   FsmCommandStatusTransport,
+  MIN_COMMAND_STATUS_POLL_INTERVAL_MS,
 } from '../FsmCommandStatusTransport'
 
 function createResponse(body, status = 200) {
@@ -66,5 +68,17 @@ describe('FsmCommandStatusTransport', () => {
       REACT_APP_FSM_API_URL: 'https://fsm.example.test',
       REACT_APP_FSM_COMMAND_STATUS_ENABLED: 'true',
     })).toBeInstanceOf(FsmCommandStatusTransport)
+  })
+
+  it('prevents zero or negative command status polling intervals', () => {
+    expect(configuredCommandStatusPollInterval({
+      REACT_APP_FSM_COMMAND_STATUS_POLL_MS: '0',
+    })).toBe(MIN_COMMAND_STATUS_POLL_INTERVAL_MS)
+    expect(configuredCommandStatusPollInterval({
+      REACT_APP_FSM_COMMAND_STATUS_POLL_MS: '-10',
+    })).toBe(MIN_COMMAND_STATUS_POLL_INTERVAL_MS)
+    expect(configuredCommandStatusPollInterval({
+      REACT_APP_FSM_COMMAND_STATUS_POLL_MS: '250',
+    })).toBe(250)
   })
 })

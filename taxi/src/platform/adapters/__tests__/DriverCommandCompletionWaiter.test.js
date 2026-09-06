@@ -128,12 +128,18 @@ describe('SnapshotDriverCommandCompletionWaiter', () => {
     const waiter = new SnapshotDriverCommandCompletionWaiter(runtime, 0)
     let completed = false
 
-    void waiter.wait(request(waiter, 104)).then(() => { completed = true })
+    const completion = waiter.wait(request(waiter, 104))
+    void completion.then(() => { completed = true })
     runtime.setSnapshot(driverSnapshot('order_in_ride'))
     await Promise.resolve()
 
     expect(completed).toBe(false)
     waiter.cancelAll()
+    await expect(completion).resolves.toEqual(expect.objectContaining({
+      status: COMMAND_COMPLETION_STATUSES.Cancelled,
+      instanceId: 104,
+      errorCode: 'FSM_COMMAND_COMPLETION_CANCELLED',
+    }))
     expect(runtime.listenerCount()).toBe(0)
   })
 
@@ -267,6 +273,48 @@ describe('CommandStatusDriverCommandCompletionWaiter', () => {
       instanceId: 205,
       errorCode: 'FSM_COMMAND_COMPLETION_TIMEOUT',
     }))
-    expect(transport.getStatus.mock.calls.length).toBeGreaterThan(1)
+    expect(transport.getStatus).toHaveBeenCalledTimes(1)
+  })
+
+  it('returns TIMEOUT even when the current status request never settles', async() => {
+    jest.useFakeTimers()
+    try {
+      let resolveStatus
+      const transport = {
+        getStatus: jest.fn(() => new Promise(resolve => { resolveStatus = resolve })),
+      }
+      const waiter = new CommandStatusDriverCommandCompletionWaiter(transport, 50, 100)
+      const completion = waiter.wait(statusRequest(waiter, 206))
+
+      jest.advanceTimersByTime(50)
+
+      await expect(completion).resolves.toEqual(expect.objectContaining({
+        status: COMMAND_COMPLETION_STATUSES.Timeout,
+        instanceId: 206,
+        errorCode: 'FSM_COMMAND_COMPLETION_TIMEOUT',
+      }))
+
+      resolveStatus({ instanceId: 206, status: 'PENDING' })
+      await Promise.resolve()
+      jest.advanceTimersByTime(1000)
+      expect(transport.getStatus).toHaveBeenCalledTimes(1)
+    } finally {
+      jest.useRealTimers()
+    }
+  })
+
+  it('reports waiter shutdown as CANCELLED instead of an FSM failure', async() => {
+    const transport = { getStatus: jest.fn(() => new Promise(() => undefined)) }
+    const waiter = new CommandStatusDriverCommandCompletionWaiter(transport, 0, 100)
+    const completion = waiter.wait(statusRequest(waiter, 208))
+
+    waiter.cancelAll()
+
+    await expect(completion).resolves.toEqual({
+      status: COMMAND_COMPLETION_STATUSES.Cancelled,
+      instanceId: 208,
+      errorCode: 'FSM_COMMAND_COMPLETION_CANCELLED',
+      message: 'FSM command completion wait was cancelled',
+    })
   })
 })

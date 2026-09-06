@@ -38,6 +38,15 @@ export const FSM_COMMAND_STATUS_ENV = {
   PollIntervalMs: 'REACT_APP_FSM_COMMAND_STATUS_POLL_MS',
 } as const
 
+export const DEFAULT_COMMAND_STATUS_POLL_INTERVAL_MS = 1000
+export const MIN_COMMAND_STATUS_POLL_INTERVAL_MS = 100
+
+export function normalizeCommandStatusPollInterval(value: number): number {
+  if (!Number.isFinite(value))
+    return DEFAULT_COMMAND_STATUS_POLL_INTERVAL_MS
+  return Math.max(MIN_COMMAND_STATUS_POLL_INTERVAL_MS, value)
+}
+
 /** HTTP adapter for the TASK-CORE-001 Command Completion contract. */
 export class FsmCommandStatusTransport implements CommandStatusTransport {
   private readonly config: FsmCommandStatusConfig
@@ -100,7 +109,7 @@ export function configuredCommandStatusPollInterval(
   env: Readonly<Record<string, string | undefined>> = process.env,
 ): number {
   const value = Number(env[FSM_COMMAND_STATUS_ENV.PollIntervalMs])
-  return Number.isFinite(value) && value >= 0 ? value : 1000
+  return normalizeCommandStatusPollInterval(value)
 }
 
 function validateCommandStatus(details: unknown, expectedInstanceId: number): FsmCommandStatus {

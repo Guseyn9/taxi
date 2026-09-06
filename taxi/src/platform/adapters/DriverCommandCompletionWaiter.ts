@@ -7,12 +7,14 @@ import { BackendInteractionError, normalizeBackendError } from './backendError'
 import {
   CommandStatusTransport,
   FSM_COMMAND_EXECUTION_STATUSES,
+  normalizeCommandStatusPollInterval,
 } from './FsmCommandStatusTransport'
 
 export const COMMAND_COMPLETION_STATUSES = {
   Completed: 'COMPLETED',
   Failed: 'FAILED',
   Timeout: 'TIMEOUT',
+  Cancelled: 'CANCELLED',
 } as const
 
 export type CommandCompletionStatus =
@@ -55,9 +57,9 @@ export interface DriverCommandCompletionWaiter {
 interface PendingStatusCompletion {
   readonly promise: Promise<CommandCompletionResult>
   readonly request: CommandCompletionRequest
-  readonly startedAt: number
   resolve(result: CommandCompletionResult): void
-  timer: ReturnType<typeof setTimeout> | null
+  pollTimer: ReturnType<typeof setTimeout> | null
+  deadlineTimer: ReturnType<typeof setTimeout> | null
 }
 
 /** Normative TASK-CORE-001 completion by execution instanceId. */
@@ -74,7 +76,7 @@ export class CommandStatusDriverCommandCompletionWaiter implements DriverCommand
   ) {
     this.transport = transport
     this.timeoutMs = Math.max(0, timeoutMs)
-    this.pollIntervalMs = Math.max(0, pollIntervalMs)
+    this.pollIntervalMs = normalizeCommandStatusPollInterval(pollIntervalMs)
   }
 
   captureBaseline(): CommandCompletionBaseline {
@@ -93,11 +95,21 @@ export class CommandStatusDriverCommandCompletionWaiter implements DriverCommand
     const completion: PendingStatusCompletion = {
       promise,
       request,
-      startedAt: Date.now(),
       resolve: resolvePromise,
-      timer: null,
+      pollTimer: null,
+      deadlineTimer: null,
     }
     this.pending.set(request.instanceId, completion)
+    if (this.timeoutMs > 0) {
+      completion.deadlineTimer = setTimeout(() => {
+        this.settle(completion, {
+          status: COMMAND_COMPLETION_STATUSES.Timeout,
+          instanceId: request.instanceId,
+          errorCode: 'FSM_COMMAND_COMPLETION_TIMEOUT',
+          message: `FSM command ${request.actionType} did not reach a terminal status`,
+        })
+      }, this.timeoutMs)
+    }
     void this.poll(completion)
     return promise
   }
@@ -118,7 +130,7 @@ export class CommandStatusDriverCommandCompletionWaiter implements DriverCommand
   cancelAll(): void {
     for (const completion of Array.from(this.pending.values())) {
       this.settle(completion, {
-        status: COMMAND_COMPLETION_STATUSES.Failed,
+        status: COMMAND_COMPLETION_STATUSES.Cancelled,
         instanceId: completion.request.instanceId,
         errorCode: 'FSM_COMMAND_COMPLETION_CANCELLED',
         message: 'FSM command completion wait was cancelled',
@@ -132,6 +144,8 @@ export class CommandStatusDriverCommandCompletionWaiter implements DriverCommand
 
     try {
       const result = await this.transport.getStatus(completion.request.instanceId)
+      if (this.pending.get(completion.request.instanceId) !== completion)
+        return
       if (result.status === FSM_COMMAND_EXECUTION_STATUSES.Completed) {
         this.settle(completion, {
           status: COMMAND_COMPLETION_STATUSES.Completed,
@@ -150,6 +164,8 @@ export class CommandStatusDriverCommandCompletionWaiter implements DriverCommand
         return
       }
     } catch (error) {
+      if (this.pending.get(completion.request.instanceId) !== completion)
+        return
       const normalized = normalizeBackendError(error)
       if (isTerminalStatusReadError(normalized)) {
         this.settle(completion, {
@@ -163,18 +179,11 @@ export class CommandStatusDriverCommandCompletionWaiter implements DriverCommand
       }
     }
 
-    if (this.timeoutMs > 0 && Date.now() - completion.startedAt >= this.timeoutMs) {
-      this.settle(completion, {
-        status: COMMAND_COMPLETION_STATUSES.Timeout,
-        instanceId: completion.request.instanceId,
-        errorCode: 'FSM_COMMAND_COMPLETION_TIMEOUT',
-        message: `FSM command ${completion.request.actionType} did not reach a terminal status`,
-      })
+    if (this.pending.get(completion.request.instanceId) !== completion)
       return
-    }
 
-    completion.timer = setTimeout(() => {
-      completion.timer = null
+    completion.pollTimer = setTimeout(() => {
+      completion.pollTimer = null
       void this.poll(completion)
     }, this.pollIntervalMs)
   }
@@ -186,9 +195,12 @@ export class CommandStatusDriverCommandCompletionWaiter implements DriverCommand
     if (this.pending.get(completion.request.instanceId) !== completion)
       return
     this.pending.delete(completion.request.instanceId)
-    if (completion.timer)
-      clearTimeout(completion.timer)
-    completion.timer = null
+    if (completion.pollTimer)
+      clearTimeout(completion.pollTimer)
+    if (completion.deadlineTimer)
+      clearTimeout(completion.deadlineTimer)
+    completion.pollTimer = null
+    completion.deadlineTimer = null
     completion.resolve(result)
   }
 }
@@ -285,7 +297,7 @@ export class SnapshotDriverCommandCompletionWaiter implements DriverCommandCompl
   cancelAll(): void {
     for (const completion of Array.from(this.pending.values())) {
       this.settle(completion, {
-        status: COMMAND_COMPLETION_STATUSES.Failed,
+        status: COMMAND_COMPLETION_STATUSES.Cancelled,
         instanceId: completion.request.instanceId,
         errorCode: 'FSM_COMMAND_COMPLETION_CANCELLED',
         message: 'FSM command completion wait was cancelled',
