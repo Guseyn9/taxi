@@ -67,6 +67,14 @@ export default defineConfig({
       dependencies: ['setup'],
       use: devices['Desktop Chrome'],
     },
+    {
+      // Три роли — пассажир и два водителя, у каждой своя сессия. Контексты
+      // тест открывает сам, поэтому storageState здесь не задаётся.
+      name: 'voting-order',
+      testMatch: /voting-order\.spec\.ts/,
+      dependencies: ['setup'],
+      use: devices['Desktop Chrome'],
+    },
   ],
 
   webServer: {

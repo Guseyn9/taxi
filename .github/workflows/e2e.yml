@@ -56,6 +56,11 @@ jobs:
           E2E_DRIVER_LOGIN: ${{ secrets.E2E_DRIVER_LOGIN }}
           E2E_DRIVER_PASSWORD: ${{ secrets.E2E_DRIVER_PASSWORD }}
           E2E_DRIVER_TYPE: ${{ secrets.E2E_DRIVER_TYPE }}
+          # Второй водитель нужен голосованию (A.1.2): один заказ должен быть
+          # одновременно доступен нескольким водителям.
+          E2E_DRIVER2_LOGIN: ${{ secrets.E2E_DRIVER2_LOGIN }}
+          E2E_DRIVER2_PASSWORD: ${{ secrets.E2E_DRIVER2_PASSWORD }}
+          E2E_DRIVER2_TYPE: ${{ secrets.E2E_DRIVER2_TYPE }}
           E2E_PASSENGER_LOGIN: ${{ secrets.E2E_PASSENGER_LOGIN }}
           E2E_PASSENGER_PASSWORD: ${{ secrets.E2E_PASSENGER_PASSWORD }}
           E2E_PASSENGER_TYPE: ${{ secrets.E2E_PASSENGER_TYPE }}

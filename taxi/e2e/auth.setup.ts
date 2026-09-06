@@ -1,9 +1,9 @@
 import { test as setup, expect, Page, BrowserContext } from '@playwright/test'
 import fs from 'fs'
 import path from 'path'
-import { IAccount, driverAccount, passengerAccount } from './fixtures/accounts'
+import { IAccount, driver2Account, driverAccount, hasDriver2Account, passengerAccount } from './fixtures/accounts'
 import { expectAppBooted, stubMapTiles } from './fixtures/appShell'
-import { DRIVER_PAGE, DRIVER_STORAGE, PICKUP } from './fixtures/driverUi'
+import { DRIVER2_STORAGE, DRIVER_PAGE, DRIVER_STORAGE, PICKUP } from './fixtures/driverUi'
 import { PASSENGER_PAGE, PASSENGER_STORAGE } from './fixtures/passengerUi'
 
 /**
@@ -93,4 +93,14 @@ setup('водитель входит через форму приложения'
 
 setup('пассажир входит через форму приложения', async({ page, context }) => {
   await signIn(page, context, passengerAccount(), PASSENGER_PAGE, PASSENGER_STORAGE)
+})
+
+// Второй водитель нужен только голосованию (A.1.2). Пропуск здесь не прячет
+// падение сценария: без этой сессии голосовой тест падает на первом же шаге,
+// где второй водитель обязателен, — а тесты, которым он не нужен, из-за
+// незаполненной учётки не ломаются.
+setup('второй водитель входит через форму приложения', async({ page, context }) => {
+  setup.skip(!hasDriver2Account(),
+    'E2E_DRIVER2_LOGIN/E2E_DRIVER2_PASSWORD не заданы — сессия второго водителя не создаётся')
+  await signIn(page, context, driver2Account(), DRIVER_PAGE, DRIVER2_STORAGE)
 })
