@@ -869,7 +869,11 @@ function CardModalContent({
     if (!active || !user?.u_id)
       return
 
-    if (DRIVER_DOOR_NUMBER_PATTERN.test(normalizeDriverDoorNumber(getValues('votingNumber'))))
+    // Свой номер подставляется только в ПУСТОЕ поле. Прежнее условие — «значение
+    // не является кодом» — перетирало набранное водителем: эффект перезапускается
+    // на каждом обновлении заказа (опрос раз в 5 с), и недобранный или намеренно
+    // другой код молча заменялся готовым, прямо под руками у водителя.
+    if (normalizeDriverDoorNumber(getValues('votingNumber')) !== '')
       return
 
     let cancelled = false
@@ -880,7 +884,9 @@ function CardModalContent({
           return
 
         const doorNumber = getDriverDoorNumber(userAsDriver, car)
-        if (doorNumber && !DRIVER_DOOR_NUMBER_PATTERN.test(normalizeDriverDoorNumber(getValues('votingNumber'))))
+        // Между запросом машины и ответом водитель мог начать набирать код —
+        // проверяем ещё раз, чтобы не перебить ввод ответом на свой же запрос.
+        if (doorNumber && normalizeDriverDoorNumber(getValues('votingNumber')) === '')
           setValue('votingNumber', doorNumber, { shouldValidate: false })
       })
       .catch(error => console.error(error))

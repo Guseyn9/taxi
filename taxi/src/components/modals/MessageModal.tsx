@@ -141,7 +141,14 @@ const MessageModal: React.FC<IProps> = ({
       isOpen={isOpen}
       onClick={closeModal}
     >
-      <div className={cn('modal', 'message-modal', `message-modal--${variant}`)}>
+      <div
+        className={cn('modal', 'message-modal', `message-modal--${variant}`)}
+        // Контракт для E2E: это окно и есть результат действия водителя
+        // (например, отклика на голосование). Исход читается атрибутом, а не
+        // заголовком, — заголовки приходят из перевода.
+        data-testid="message-modal"
+        data-message-status={variant}
+      >
         <button
           type="button"
           className="message-modal__close"
@@ -172,6 +179,7 @@ const MessageModal: React.FC<IProps> = ({
             className={cn('message-modal__action-button', 'message-modal__action-button--primary', {
               'message-modal__action-button--single': !supportLink || variant === 'success',
             })}
+            data-testid="message-modal-close"
             onClick={closeModal}
           >
             <span>{content.button}</span>

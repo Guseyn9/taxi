@@ -1292,6 +1292,10 @@ const VotingForm = function VotingForm({
       // подписи, — подписи приходят из конфигурации бэкенда и зависят от языка.
       data-testid="passenger-driver-panel"
       data-driver-state={selectedDriver.c_state}
+      // Голосованию мало состояния: проверяется, что пассажиру показан именно
+      // тот водитель, которого назначил бэкенд. Имя для этого не годится —
+      // оно не уникально и приходит из профиля.
+      data-driver-id={selectedDriver.u_id}
     >
       <div className="passenger-voting-form__driver-status-row">
         <span className="passenger-voting-form__driver-status-icon" aria-hidden="true">
@@ -1486,6 +1490,12 @@ const VotingForm = function VotingForm({
                 <div
                   key={candidate.u_id}
                   className={`passenger-voting-form__candidate${isActive ? ' is-active' : ''}${isExpandedCandidate ? ' is-held' : ''}`}
+                  // Контракт для E2E: голосование заканчивается выбором пассажира,
+                  // и выбрать надо конкретного водителя. В разметке кандидата нет
+                  // ни его id, ни устойчивого селектора, а подпись кнопки приходит
+                  // из перевода и зависит от языка.
+                  data-testid="passenger-voting-candidate"
+                  data-driver-id={candidate.u_id}
                   onClick={() => setActiveCandidate(prev => prev === candidate.u_id ? null : candidate.u_id)}
                   onPointerDown={() => setHeldCandidate(candidate.u_id)}
                   onPointerUp={() => setHeldCandidate(null)}
@@ -1557,6 +1567,7 @@ const VotingForm = function VotingForm({
                       <button
                         type="button"
                         className="passenger-voting-form__candidate-select"
+                        data-testid="passenger-voting-candidate-select"
                         disabled={submitting || canceling}
                         onPointerDown={event => event.stopPropagation()}
                         onMouseDown={event => event.stopPropagation()}

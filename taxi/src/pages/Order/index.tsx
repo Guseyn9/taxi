@@ -601,7 +601,10 @@ const Order: React.FC<IProps> = ({
     if (!user?.u_id)
       return
 
-    if (DRIVER_DOOR_NUMBER_PATTERN.test(normalizeDriverDoorNumber(getValues('votingNumber'))))
+    // Тот же контракт, что и в карточке заказа (components/modals/CardModal.tsx):
+    // свой номер подставляется только в ПУСТОЕ поле и никогда не перетирает то,
+    // что водитель уже набрал.
+    if (normalizeDriverDoorNumber(getValues('votingNumber')) !== '')
       return
 
     let cancelled = false
@@ -612,7 +615,7 @@ const Order: React.FC<IProps> = ({
           return
 
         const doorNumber = getDriverDoorNumber(userAsDriver, car)
-        if (doorNumber && !DRIVER_DOOR_NUMBER_PATTERN.test(normalizeDriverDoorNumber(getValues('votingNumber'))))
+        if (doorNumber && normalizeDriverDoorNumber(getValues('votingNumber')) === '')
           setValue('votingNumber', doorNumber, { shouldValidate: false })
       })
       .catch(error => console.error(error))

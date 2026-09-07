@@ -212,10 +212,23 @@ function startDatetime(offsetMinutes: number): string {
 export interface ICreateOrderOptions {
   readonly pickup: { latitude: number; longitude: number }
   readonly destination: { latitude: number; longitude: number }
-  /** Заказ помечается для конкретного водителя — чужие прогоны друг друга не видят. */
-  readonly driverId: string
+  /**
+   * Заказ помечается для конкретного водителя — чужие прогоны друг друга не видят.
+   * Не задан => заказ «общий»: его видят все тестовые водители. Так создаётся
+   * голосовой заказ A.1.2, где смысл сценария в том, что один заказ доступен
+   * нескольким водителям сразу (tools/emulatorMode.ts, state/orders/selectors.ts).
+   */
+  readonly driverId?: string
   readonly carClassId?: string
   readonly label: string
+  /**
+   * Сколько секунд заказ ждёт водителя. По умолчанию 7200, как у обычного заказа.
+   * Голосованию нужно значение из доверенного окна: пассажирский интерфейс
+   * доверяет b_max_waiting только при 0 < x ≤ 900 и иначе считает ожидание
+   * равным 180 с, после чего сам отменяет голосовой заказ
+   * (pages/Passenger/VotingForm.tsx, getChoiceOrderMaxWaitingSeconds).
+   */
+  readonly maxWaitingSeconds?: number
 }
 
 /** Совпадает с ICreateOrderOptions; имя оставлено ради прежних вызовов. */
@@ -239,10 +252,14 @@ function orderPayload(options: ICreateOrderOptions): Record<string, unknown> {
     b_start_datetime: startDatetime(2),
     b_passengers_count: 1,
     b_payment_way: 1,
-    b_max_waiting: 7200,
+    b_max_waiting: options.maxWaitingSeconds ?? 7200,
     // [DRV:<id>] — механизм изоляции самого проекта: в режиме внешнего эмулятора
     // водитель видит только свои помеченные заказы (tools/emulatorMode.ts).
-    b_custom_comment: `[E2E ${options.label}] [DRV:${options.driverId}]`,
+    // Без driverId метка не ставится, и заказ виден всем тестовым водителям.
+    // Метка [E2E <label>] остаётся в любом случае — по ней работает уборка.
+    b_custom_comment: options.driverId ?
+      `[E2E ${options.label}] [DRV:${options.driverId}]` :
+      `[E2E ${options.label}]`,
     b_options: {
       fromShortAddress: `E2E pickup ${options.label}`,
       toShortAddress: `E2E destination ${options.label}`,
@@ -312,6 +329,25 @@ export async function readOrder(session: ISession, orderId: string): Promise<IOr
 export function driverStateOf(order: IOrderSnapshot, driverId: string): number | undefined {
   const driver = (order.drivers ?? []).find(item => String(item.u_id) === String(driverId))
   return driver === undefined ? undefined : Number(driver.c_state)
+}
+
+/**
+ * Все участники заказа с их состояниями. Голосованию мало одного водителя:
+ * проверяется, что кандидатов несколько, что исполнитель ровно один и в каком
+ * состоянии остался проигравший.
+ */
+export function orderDriverStates(order: IOrderSnapshot): Array<{ userId: string; state: number }> {
+  return (order.drivers ?? []).map(item => ({
+    userId: String(item.u_id),
+    state: Number(item.c_state),
+  }))
+}
+
+/** Кто сейчас исполнитель заказа — именно Performer, без «Performer и выше». */
+export function performersOf(order: IOrderSnapshot): string[] {
+  return orderDriverStates(order)
+    .filter(item => item.state === DRIVER_STATE.Performer)
+    .map(item => item.userId)
 }
 
 /** Пассажир выбирает водителя из откликнувшихся кандидатов. */

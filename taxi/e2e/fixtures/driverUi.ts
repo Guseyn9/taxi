@@ -13,6 +13,9 @@ import { DRIVER_STATE } from './taxiApi'
 /** Сессия водителя, сохранённая проектом `setup`. */
 export const DRIVER_STORAGE = path.resolve(__dirname, '../.auth/driver.json')
 
+/** Сессия второго водителя — отдельный файл, общих cookies/localStorage у ролей нет. */
+export const DRIVER2_STORAGE = path.resolve(__dirname, '../.auth/driver2.json')
+
 /** Точка подачи и назначения тестового заказа. Ростов-на-Дону, как у эмулятора. */
 export const PICKUP = { latitude: 47.2216, longitude: 39.6343 }
 export const DESTINATION = { latitude: 47.2239, longitude: 39.6366 }
@@ -92,8 +95,31 @@ export async function openOrderCard(page: Page, orderId: string): Promise<void> 
   await card.click()
 }
 
-/** Кнопка «Взять заказ» в карточке заказа. */
+/** Кнопка «Взять заказ» в карточке заказа. У голосового заказа — «Готов поехать». */
 export const takeOrderButton = (page: Page) => page.getByTestId('driver-order-take')
+
+/**
+ * Результат действия, о котором приложение сообщило водителю
+ * (components/modals/MessageModal.tsx): 'success' | 'warning' | 'fail'.
+ * Отклик на голосование подтверждается именно этим окном.
+ */
+export async function messageModalStatus(page: Page): Promise<string | undefined> {
+  const modal = page.getByTestId('message-modal')
+  if (await modal.count() === 0)
+    return undefined
+  return (await modal.first().getAttribute('data-message-status')) ?? undefined
+}
+
+/**
+ * Дождаться подтверждения отклика и закрыть окно, как это делает водитель.
+ * Окно модальное: пока оно открыто, до карты и списка заказов не добраться.
+ */
+export async function confirmActionResult(page: Page, expectedStatus: string, message: string): Promise<void> {
+  await expect.poll(() => messageModalStatus(page), { message, timeout: 90_000 }).toBe(expectedStatus)
+  await page.getByTestId('message-modal-close').click()
+  await expect(page.getByTestId('message-modal'), 'окно с результатом закрылось')
+    .toBeHidden({ timeout: 30_000 })
+}
 
 /**
  * Перейти на карту вкладкой, как это делает водитель. В отличие от goto,
