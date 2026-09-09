@@ -303,6 +303,33 @@ describe('CommandStatusDriverCommandCompletionWaiter', () => {
     }
   })
 
+  it('allows a fresh wait for the same instanceId after timeout cleanup', async() => {
+    jest.useFakeTimers()
+    try {
+      const transport = { getStatus: jest.fn()
+        .mockImplementationOnce(() => new Promise(() => undefined))
+        .mockResolvedValueOnce({ instanceId: 207, status: 'COMPLETED' }) }
+      const waiter = new CommandStatusDriverCommandCompletionWaiter(transport, 50, 100)
+      const command = statusRequest(waiter, 207)
+      const timedOut = waiter.wait(command)
+
+      jest.advanceTimersByTime(50)
+      await expect(timedOut).resolves.toEqual(expect.objectContaining({
+        status: COMMAND_COMPLETION_STATUSES.Timeout,
+      }))
+
+      const retried = waiter.wait(command)
+      expect(retried).not.toBe(timedOut)
+      await expect(retried).resolves.toEqual({
+        status: COMMAND_COMPLETION_STATUSES.Completed,
+        instanceId: 207,
+      })
+      expect(transport.getStatus).toHaveBeenCalledTimes(2)
+    } finally {
+      jest.useRealTimers()
+    }
+  })
+
   it('reports waiter shutdown as CANCELLED instead of an FSM failure', async() => {
     const transport = { getStatus: jest.fn(() => new Promise(() => undefined)) }
     const waiter = new CommandStatusDriverCommandCompletionWaiter(transport, 0, 100)

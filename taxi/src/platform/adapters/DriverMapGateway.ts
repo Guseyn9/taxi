@@ -286,6 +286,19 @@ export class DriverMapGateway {
       return
     }
 
+    if (result.status === COMMAND_COMPLETION_STATUSES.Cancelled) {
+      throw new BackendInteractionError(
+        result.errorCode ?? 'FSM_COMMAND_COMPLETION_CANCELLED',
+        result.message ?? `FSM command ${action.type} completion wait was cancelled`,
+        {
+          actionType: action.type,
+          orderId: payload.orderId,
+          instanceId: accepted.instanceId,
+          cancelled: true,
+        },
+      )
+    }
+
     const error = new BackendInteractionError(
       result.errorCode ?? 'FSM_COMMAND_COMPLETION_FAILED',
       result.message ?? `FSM command ${action.type} did not complete`,

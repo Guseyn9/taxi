@@ -8,7 +8,7 @@ import { getLocalizedCancelReasons } from '../../tools/cancelReasons'
 import { modalsActionCreators, modalsSelectors } from '../../state/modals'
 import { ordersSelectors } from '../../state/orders'
 import { userSelectors } from '../../state/user'
-import { clearOrderCancelledByDriver, markOrderCancelledByDriver } from '../../tools/driverSelfCancel'
+import { runDriverSelfCancellation } from '../../tools/driverSelfCancel'
 import { IRootState } from '../../state'
 import { EStatuses } from '../../types/types'
 import { driverMapGateway } from '../../platform/adapters/DriverMapGateway'
@@ -73,8 +73,11 @@ const DriverTripCancelModal: React.FC<IProps> = ({
     setIsSubmitting(true)
     // Метку ставим до запроса: опрос активных заказов может увидеть отмену
     // раньше, чем вернётся ответ, и показать «Клиент отменил заказ».
-    markOrderCancelledByDriver(orderId, user?.u_id)
-    driverMapGateway.cancel(orderId, reasons.find(item => item.id === reason)?.label)
+    runDriverSelfCancellation(
+      orderId,
+      user?.u_id,
+      () => driverMapGateway.cancel(orderId, reasons.find(item => item.id === reason)?.label),
+    )
       .then(() => {
         setDriverTripCancelModal({ isOpen: false })
         setMessageModal({
@@ -87,7 +90,6 @@ const DriverTripCancelModal: React.FC<IProps> = ({
       })
       .catch(error => {
         console.error(error)
-        clearOrderCancelledByDriver(orderId, user?.u_id)
         setIsSubmitting(false)
         setMessageModal({
           isOpen: true,

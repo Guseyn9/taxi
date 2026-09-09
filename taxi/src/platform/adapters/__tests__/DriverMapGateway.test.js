@@ -284,6 +284,49 @@ describe('DriverMapGateway', () => {
     }))
   })
 
+  it('rejects waiter cancellation without publishing an action failure', async() => {
+    const runtime = createRuntime()
+    const commandTransport = { send: jest.fn().mockResolvedValue({
+      accepted: true,
+      duplicate: false,
+      instanceId: 107,
+      status: 'PENDING',
+      intent: 'ride_started',
+    }) }
+    const completionWaiter = {
+      captureBaseline: jest.fn().mockReturnValue({ state: null }),
+      wait: jest.fn().mockResolvedValue({
+        status: 'CANCELLED',
+        instanceId: 107,
+        errorCode: 'FSM_COMMAND_COMPLETION_CANCELLED',
+        message: 'FSM command completion wait was cancelled',
+      }),
+      fail: jest.fn(),
+      cancelAll: jest.fn(),
+    }
+    const gateway = new DriverMapGateway(runtime, commandTransport, 1000, completionWaiter)
+    const listener = jest.fn()
+    gateway.mount()
+    gateway.subscribe(listener)
+
+    await expect(gateway.start('42')).rejects.toEqual(expect.objectContaining({
+      code: 'FSM_COMMAND_COMPLETION_CANCELLED',
+      details: expect.objectContaining({
+        instanceId: 107,
+        cancelled: true,
+      }),
+    }))
+    expect(listener).toHaveBeenCalledWith(expect.objectContaining({
+      type: DRIVER_MAP_EVENTS.CommandAccepted,
+    }))
+    expect(listener).not.toHaveBeenCalledWith(expect.objectContaining({
+      type: DRIVER_MAP_EVENTS.Failed,
+    }))
+    expect(listener).not.toHaveBeenCalledWith(expect.objectContaining({
+      type: DRIVER_MAP_EVENTS.Started,
+    }))
+  })
+
   it('publishes command accepted without claiming an asynchronous transition completed', async() => {
     const runtime = createRuntime()
     const commandTransport = { send: jest.fn().mockResolvedValue({

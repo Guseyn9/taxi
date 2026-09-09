@@ -82,9 +82,10 @@ failure, ни lookup failure не подтверждают успех коман
 Timeout Command Status является общим deadline ожидания: он не зависит от того,
 завершился ли текущий `GET /api/commands/{instanceId}`. Поздний ответ после
 terminal result игнорируется. Остановка Runtime возвращает отдельный внутренний
-результат `CANCELLED`, а не серверный execution `FAILED`. Интервал status polling
-нормализуется до минимальных 100 мс, поэтому нулевая конфигурация не создаёт
-tight loop.
+результат `CANCELLED`, а не серверный execution `FAILED`. Gateway отклоняет
+ожидающий Promise без публикации `driver.order.action.failed`. Интервал status
+polling нормализуется до минимальных 100 мс, поэтому нулевая конфигурация не
+создаёт tight loop.
 
 ## Проверка
 
