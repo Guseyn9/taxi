@@ -86,6 +86,37 @@ export async function chooseVotingCandidate(page: Page, driverId: string): Promi
 }
 
 /**
+ * Цена предложения, которую пассажир ВИДИТ у конкретного водителя (А.1.3).
+ *
+ * Читается сырое значение из `data-offer-price`, а не показанная строка: та
+ * отформатирована и содержит валюту из конфигурации бэкенда. Сырое значение
+ * сравнимо с тем, что вернул backend (`offerPriceOf`, taxiApi.ts), — именно этим
+ * доказывается, что до пассажира дошло предложение того самого водителя и с той
+ * самой ценой.
+ */
+export async function candidateOfferPrice(page: Page, driverId: string): Promise<number | undefined> {
+  const value = votingCandidate(page, driverId).getByTestId('passenger-candidate-offer-price')
+  if (await value.count() === 0)
+    return undefined
+
+  const raw = await value.first().getAttribute('data-offer-price')
+  return raw === null || raw === '' ? undefined : Number(raw)
+}
+
+/** Дождаться, что пассажир видит у водителя именно эту цену предложения. */
+export async function expectCandidateOfferPrice(
+  page: Page,
+  driverId: string,
+  price: number,
+  message: string,
+  timeout = 90_000,
+): Promise<void> {
+  await expect
+    .poll(() => candidateOfferPrice(page, driverId), { message, timeout, intervals: [200, 500, 1000] })
+    .toBe(price)
+}
+
+/**
  * Состояние водителя, которое ПОКАЗЫВАЕТ интерфейс пассажира. Читается
  * атрибутом панели, а не переводом подписи: подписи зависят от языка,
  * состояние — нет. Тот же приём, что и на стороне водителя (driverUi.ts).

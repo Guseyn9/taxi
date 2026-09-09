@@ -179,6 +179,45 @@ export async function submitBoardingCode(page: Page, code: string): Promise<void
   await boardingConfirmButton(page).click()
 }
 
+/**
+ * Форма предложения водителя (А.1.3, components/modals/CardModal.tsx).
+ *
+ * Кнопок две, и подпись у них ОДНА И ТА ЖЕ (`DRIVER_OFFER_SEND`): первая только
+ * открывает форму, вторая отправляет предложение. Различить их можно лишь
+ * атрибутом, поэтому у каждой свой `data-testid`.
+ */
+export const offerOpenButton = (page: Page) => page.getByTestId('driver-offer-open')
+export const offerPriceInput = (page: Page) => page.getByTestId('driver-offer-price')
+export const offerSendButton = (page: Page) => page.getByTestId('driver-offer-send')
+
+/** Открыта ли форма предложения. */
+export async function isOfferFormVisible(page: Page): Promise<boolean> {
+  return offerPriceInput(page).isVisible().catch(() => false)
+}
+
+/** Открыть форму предложения в карточке заказа. */
+export async function openOfferForm(page: Page): Promise<void> {
+  if (await isOfferFormVisible(page))
+    return
+
+  const open = offerOpenButton(page)
+  await expect(open, 'в карточке заказа есть кнопка предложения').toBeVisible({ timeout: 90_000 })
+  await expect(open, 'кнопка предложения доступна').toBeEnabled({ timeout: 60_000 })
+  await open.click()
+  await expect(offerPriceInput(page), 'открылась форма предложения').toBeVisible({ timeout: 60_000 })
+}
+
+/**
+ * Водитель вводит свою цену и подтверждает предложение — оба действия кликом и
+ * вводом, как это делает человек. Endpoint предложения из теста не вызывается.
+ */
+export async function submitDriverOffer(page: Page, price: number): Promise<void> {
+  const input = offerPriceInput(page)
+  await expect(input, 'поле цены предложения доступно').toBeVisible({ timeout: 60_000 })
+  await input.fill(String(price))
+  await offerSendButton(page).click()
+}
+
 export const STATE_NAMES: Record<number, string> = {
   [DRIVER_STATE.Considering]: 'Considering',
   [DRIVER_STATE.Canceled]: 'Canceled',

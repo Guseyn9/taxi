@@ -75,6 +75,14 @@ export default defineConfig({
       dependencies: ['setup'],
       use: devices['Desktop Chrome'],
     },
+    {
+      // А.1.3: тоже три роли — на один заказ приходят два РАЗНЫХ предложения,
+      // и пассажир выбирает одно из них. Контексты тест открывает сам.
+      name: 'offer-order',
+      testMatch: /offer-order\.spec\.ts/,
+      dependencies: ['setup'],
+      use: devices['Desktop Chrome'],
+    },
   ],
 
   webServer: {
