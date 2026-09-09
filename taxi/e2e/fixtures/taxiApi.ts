@@ -26,6 +26,12 @@ export interface ICar {
 export interface IOrderDriver {
   readonly u_id: string
   readonly c_state: string | number
+  /**
+   * Условия, с которыми водитель участвует в заказе. Предложение А.1.3 живёт
+   * здесь: gruzvill сохраняет из него только `performers_price` (замерено, см.
+   * e2e/README.md, TEST-E2E-004). Может прийти объектом или JSON-строкой.
+   */
+  readonly c_options?: unknown
 }
 
 export interface IOrderSnapshot {
@@ -36,6 +42,11 @@ export interface IOrderSnapshot {
   readonly b_services?: unknown
   readonly b_confirm_state?: string | number
   readonly b_driver_code?: string
+  /** Класс поездки: `2` — межгородская. Признак режима «Предложение». */
+  readonly b_location_class?: string | number
+  readonly b_car_class?: string | number
+  /** Может прийти объектом или JSON-строкой — нормализуется `orderOptionsOf`. */
+  readonly b_options?: unknown
   readonly drivers?: IOrderDriver[] | null
   readonly b_start_latitude?: string
   readonly b_start_longitude?: string
@@ -316,6 +327,47 @@ export async function createStandardOrder(
   return postDrive(session, orderPayload(options), 'стандартный заказ')
 }
 
+/**
+ * Класс поездки «Межгородская» (`alias: countries_list`) в конфигурации
+ * gruzvill. Вместе с `b_options.customer_price` это ЕДИНСТВЕННЫЙ признак режима
+ * «Предложение», который переживает backend, — остальные замерены и отброшены
+ * (e2e/README.md, TEST-E2E-004).
+ *
+ * Идентификатор берётся из конфигурации приложения `booking_location_classes`;
+ * если он изменится, тест А.1.3 упадёт на проверке режима, а не молча уедет на
+ * стандартный вызов — `isOfferOrderSnapshot` сверяет именно это поле.
+ */
+export const INTERCITY_LOCATION_CLASS = '2'
+
+/**
+ * Заказ режима «Предложение» — А.1.3.
+ *
+ * Отличается от стандартного вызова межгородним классом поездки: в паре с
+ * `b_options.customer_price` (его добавляет `orderPayload`) приложение опознаёт
+ * такой заказ как OFFER (`isOfferOrder`, src/tools/driverOffer.ts).
+ *
+ * Чего здесь СОЗНАТЕЛЬНО нет:
+ *
+ * * `b_cars_count: 0` — легаси-признак, на gruzvill возвращается как `"1"`;
+ * * `b_only_offer: 1` — backend его принимает, но заказ уходит в другой поток:
+ *   пропадает из списка водителей и отбивает предложение «not selected driver»;
+ * * `set_confirm_state` — его требует только голосование.
+ *
+ * `b_car_class` задаётся классом машины тестового водителя (`carClassId`):
+ * межгородний класс авто увёл бы заказ от водителей, у которых машины городского
+ * класса.
+ */
+export async function createOfferOrder(
+  session: ISession,
+  options: ICreateOrderOptions,
+): Promise<string> {
+  return postDrive(
+    session,
+    { ...orderPayload(options), b_location_class: INTERCITY_LOCATION_CLASS },
+    'заказ-предложение',
+  )
+}
+
 export async function readOrder(session: ISession, orderId: string): Promise<IOrderSnapshot> {
   const response = await post(`/drive/get/${orderId}`, authFields(session))
   const booking = response?.data?.booking
@@ -348,6 +400,88 @@ export function performersOf(order: IOrderSnapshot): string[] {
   return orderDriverStates(order)
     .filter(item => item.state === DRIVER_STATE.Performer)
     .map(item => item.userId)
+}
+
+/**
+ * `b_options`/`c_options` приходят то объектом, то JSON-строкой — читаем и то, и
+ * другое, как это делает приложение (`normalizeOfferObject`, tools/driverOffer.ts).
+ */
+function normalizeOptions(value: unknown): Record<string, any> {
+  if (!value)
+    return {}
+
+  if (typeof value === 'string') {
+    try {
+      const parsed = JSON.parse(value)
+      return parsed && typeof parsed === 'object' ? parsed : {}
+    } catch {
+      return {}
+    }
+  }
+
+  return typeof value === 'object' ? value as Record<string, any> : {}
+}
+
+const numberOrUndefined = (value: unknown): number | undefined => {
+  if (value === null || value === undefined || value === '')
+    return undefined
+
+  const number = Number(value)
+  return Number.isFinite(number) ? number : undefined
+}
+
+/** Опции заказа целиком — в них лежит цена заказчика. */
+export const orderOptionsOf = (order: IOrderSnapshot): Record<string, any> =>
+  normalizeOptions(order.b_options)
+
+/** Цена, которую назначил пассажир (`b_options.customer_price`). */
+export const customerPriceOf = (order: IOrderSnapshot): number | undefined =>
+  numberOrUndefined(orderOptionsOf(order).customer_price)
+
+/**
+ * Опознаёт ли приложение этот заказ как режим «Предложение» (А.1.3).
+ *
+ * Повторяет ту ветку `isOfferOrder()` (src/tools/driverOffer.ts), которая
+ * работает от данных заказа: цена заказчика + межгородний класс поездки.
+ * Ветки на localStorage сюда не входят — заказ создан через API, и у ролей в
+ * браузере ничего не сохранено.
+ *
+ * Проверяется контракт, а не одно поле: заказ, у которого пропал любой из двух
+ * признаков, приложением как «Предложение» уже не считается, и водительской
+ * формы предложения в интерфейсе не будет.
+ */
+export function isOfferOrderSnapshot(order: IOrderSnapshot): boolean {
+  const isVoting = String(order.b_voting ?? '0') === '1'
+  return !isVoting &&
+    customerPriceOf(order) !== undefined &&
+    String(order.b_location_class) === INTERCITY_LOCATION_CLASS
+}
+
+/**
+ * Цена предложения конкретного водителя — единственное значение предложения,
+ * которое gruzvill возвращает (замерено, e2e/README.md TEST-E2E-004). ETA и
+ * комментарий backend не отдаёт, и проверять их независимо от UI нечем.
+ */
+export function offerPriceOf(order: IOrderSnapshot, driverId: string): number | undefined {
+  const driver = (order.drivers ?? []).find(item => String(item.u_id) === String(driverId))
+  return driver === undefined ?
+    undefined :
+    numberOrUndefined(normalizeOptions(driver.c_options).performers_price)
+}
+
+/**
+ * Все предложения заказа: чьё, за сколько и в каком состоянии участия.
+ * Нужно там, где проверяется именно множественность — что предложений два и что
+ * они не перепутались между водителями.
+ */
+export function offersOf(
+  order: IOrderSnapshot,
+): Array<{ userId: string; price: number | undefined; state: number }> {
+  return (order.drivers ?? []).map(item => ({
+    userId: String(item.u_id),
+    price: numberOrUndefined(normalizeOptions(item.c_options).performers_price),
+    state: Number(item.c_state),
+  }))
 }
 
 /** Пассажир выбирает водителя из откликнувшихся кандидатов. */

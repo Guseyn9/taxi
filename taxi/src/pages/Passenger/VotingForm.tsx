@@ -1548,7 +1548,16 @@ const VotingForm = function VotingForm({
                   </span>
                   <span className="passenger-voting-form__candidate-side">
                     {sideValue ? (
-                      <span className={`passenger-voting-form__candidate-side-value${requestIsOffer ? ' passenger-voting-form__candidate-side-value--price' : ' passenger-voting-form__candidate-side-value--eta'}`}>
+                      <span
+                        className={`passenger-voting-form__candidate-side-value${requestIsOffer ? ' passenger-voting-form__candidate-side-value--price' : ' passenger-voting-form__candidate-side-value--eta'}`}
+                        // Контракт для E2E (А.1.3): пассажиру надо доказать, что он
+                        // получил предложение ИМЕННО этого водителя и с той ценой,
+                        // которую тот отправил. Показанная строка отформатирована и
+                        // содержит валюту из конфигурации, поэтому рядом отдаётся
+                        // сырое значение — его и сверяют с backend.
+                        data-testid={requestIsOffer ? 'passenger-candidate-offer-price' : undefined}
+                        data-offer-price={requestIsOffer ? offer.price : undefined}
+                      >
                         <strong>{sideValue}</strong>
                         {sideLabel ? <small>{sideLabel}</small> : null}
                       </span>
