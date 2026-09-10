@@ -1672,7 +1672,11 @@ function CardModalContent({
               type: 'number',
               min: 0,
               defaultValue: getOfferDesiredPrice(order, paymentAmount),
-            }}
+              // Контракт для E2E (А.1.3): цену предложения водитель вводит сам,
+              // и тесту нужно попасть именно в это поле. Подпись приходит из
+              // перевода, а класс — оформление.
+              'data-testid': 'driver-offer-price',
+            } as any}
             error={errors?.offerPrice?.message}
             label={t(TRANSLATION.DRIVER_OFFER_PRICE)}
             fieldWrapperClassName="order__driver-offer-field"
@@ -1702,6 +1706,10 @@ function CardModalContent({
           </div>
           <Button
             {...submitButtonProps}
+            // Подтверждение предложения. Отдельный атрибут обязателен: подпись у
+            // этой кнопки и у кнопки открытия формы ниже одна и та же
+            // (DRIVER_OFFER_SEND), различить их по тексту нельзя.
+            data-testid="driver-offer-send"
             text={t(TRANSLATION.DRIVER_OFFER_SEND)}
           />
           {renderHideOrderButton()}
@@ -1710,6 +1718,9 @@ function CardModalContent({
       return <>
         <Button
           {...actionButtonProps}
+          // Первый шаг: кнопка только открывает форму предложения, ничего не
+          // отправляя (см. handleSubmit — offerFormOpen).
+          data-testid="driver-offer-open"
           text={t(TRANSLATION.DRIVER_OFFER_SEND)}
           onClick={() => setOfferFormOpen(true)}
         />
