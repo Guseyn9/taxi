@@ -67,6 +67,10 @@ const CancelDriverOrderModal: React.FC<IProps> = ({
             <div className="status">
               <span>{t(TRANSLATION.CANCEL_ORDER_CONFIRMATION)}</span>
               <Button
+                // Контракт для E2E (A.1.4): подтверждение отказа водителя от
+                // назначенного заказа. Подпись — «OK», по ней окно не отличить
+                // от других подтверждений.
+                data-testid="driver-order-cancel-confirm"
                 text={t(TRANSLATION.OK)}
                 className="ok-btn"
                 onClick={onCancel}

@@ -34,7 +34,7 @@ const OrderModeSubModeModal: React.FC<IProps> = ({ onSelect }) => {
     onSelectRef.current(subMode)
   }, [])
 
-  // Молчание водителя — это «Реалистичный +»..
+  // Молчание водителя — это «Реалистичный +».
   useEffect(() => {
     if (!AUTO_SELECT_ENABLED)
       return
