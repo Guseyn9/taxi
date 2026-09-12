@@ -21,6 +21,30 @@ export const miniOrderCard = (page: Page, orderId: string) =>
 
 const driverPanel = (page: Page) => page.getByTestId('passenger-driver-panel')
 
+/**
+ * Панель водителя с КОНКРЕТНЫМ водителем — локатор, а не чтение атрибута.
+ *
+ * Нужен там, где панель в этот момент появляется или исчезает: после отказа
+ * выбранного водителя (А.1.4) она пропадает, и раздельные «есть ли элемент» и
+ * «прочитать атрибут» гоняются между собой — `passengerDriverId` в такой момент
+ * зависает на своём таймауте. Утверждение о локаторе Playwright перепроверяет
+ * сам, поэтому гонки здесь нет по построению.
+ */
+export const passengerDriverPanelFor = (page: Page, driverId: string) =>
+  page.locator(`[data-testid="passenger-driver-panel"][data-driver-id="${driverId}"]`)
+
+/**
+ * Панель водителя в состоянии выполняемой поездки — `Performer` и дальше.
+ *
+ * Состояния перечислены явно: `data-driver-state` — атрибут, и сравнить его как
+ * число селектором нельзя. Зато так видно, какие именно состояния считаются
+ * начавшейся поездкой.
+ */
+export const passengerDriverPanelInTrip = (page: Page) =>
+  page.locator([3, 4, 5, 6]
+    .map(state => `[data-testid="passenger-driver-panel"][data-driver-state="${state}"]`)
+    .join(', '))
+
 /** Открыть экран заказа пассажира и дождаться, пока в списке появится свой заказ. */
 export async function expectOrderVisibleToPassenger(page: Page, orderId: string): Promise<void> {
   await page.goto(PASSENGER_PAGE)

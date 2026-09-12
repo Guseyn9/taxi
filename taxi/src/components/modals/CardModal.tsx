@@ -1815,6 +1815,11 @@ function CardModalContent({
         />
         <Button
           {...actionButtonProps}
+          // Контракт для E2E (A.1.4): все три кнопки этой ветки имеют один
+          // класс, у иконок нет опознавательных атрибутов, а подписи у этой
+          // кнопки нет вовсе — отличить её от кнопки чата можно только
+          // позицией. Отказ от назначенного заказа идёт именно здесь.
+          data-testid="driver-order-cancel-open"
           svg={<Icon src="chat" width="20" height="20" fill="white" />}
           onClick={() => setCancelDriverOrderModal(true)}
           wrapperProps={{ style: { maxWidth: '20%' } }}
