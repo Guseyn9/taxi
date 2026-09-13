@@ -83,6 +83,14 @@ export default defineConfig({
       dependencies: ['setup'],
       use: devices['Desktop Chrome'],
     },
+    {
+      // А.1.4: негативная ветка предложения. Три роли — пассажир, отказавшийся
+      // водитель и второй водитель, которым проверяется возврат заказа в поиск.
+      name: 'offer-driver-decline',
+      testMatch: /offer-driver-decline\.spec\.ts/,
+      dependencies: ['setup'],
+      use: devices['Desktop Chrome'],
+    },
   ],
 
   webServer: {
