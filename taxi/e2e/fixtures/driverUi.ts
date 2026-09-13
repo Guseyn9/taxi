@@ -83,16 +83,6 @@ export const orderCard = (page: Page, orderId: string) =>
   page.locator(`[data-testid="driver-order-card"][data-order-id="${orderId}"]`)
 
 /**
- * Сколько раз перезагружать список заказов, если карточка не появилась.
- *
- * Не «на всякий случай»: опрос списка у водителя может встать навсегда на
- * первой же загрузке страницы (дефект приложения, подробности у самой функции и
- * в e2e/README.md). Перезагрузка — единственное, что его оживляет. Предел
- * жёсткий: после последней попытки падение остаётся падением.
- */
-const LIST_ATTEMPTS = 3
-
-/**
  * Открыть список заказов водителя и дождаться в нём конкретного заказа — БЕЗ
  * клика по карточке.
  *
@@ -100,37 +90,16 @@ const LIST_ATTEMPTS = 3
  * страница открыта, приложение опрашивает список, и карточка появляется и
  * исчезает по состоянию заказа. Сценарию А.1.4 это нужно, чтобы дождаться
  * ВОЗВРАЩЕНИЯ заказа в живом списке, а не грузить страницу заново.
+ *
+ * Страница загружается один раз и не перезагружается: список обязан обновиться
+ * сам, опросом приложения. Если карточка не появилась — это падение, а не повод
+ * перезагрузить.
  */
 export async function expectOrderInDriverList(page: Page, orderId: string): Promise<void> {
-  for (let attempt = 1; attempt <= LIST_ATTEMPTS; attempt += 1) {
-    await page.goto(DRIVER_LIST_PAGE)
-    await expectAppBooted(page)
-
-    const card = orderCard(page, orderId)
-    const last = attempt === LIST_ATTEMPTS
-    try {
-      await expect(card, `заказ ${orderId} появился в списке водителя`)
-        .toBeVisible({ timeout: last ? 120_000 : 45_000 })
-    } catch (error) {
-      if (last)
-        throw error
-      // Обход ДЕФЕКТА ПРИЛОЖЕНИЯ, а не «селектор на всякий случай»: селектор тот
-      // же, повторяется только загрузка страницы. Опрос списка заказов у
-      // водителя умирает навсегда, если на момент первого запроса машина
-      // водителя ещё не загружена: `getReadyOrdersSaga` выходит молча, не
-      // отправив ни GET_READY_ORDERS_SUCCESS, ни ..._FAIL, а
-      // `watchReadyOrdersSaga` ждёт именно их и больше не просыпается
-      // (state/orders/sagas.ts). Список остаётся пустым до перезагрузки.
-      // Лечится перезагрузкой; чинить надо приложение — см. e2e/README.md.
-      console.warn(
-        `E2E DRIVER LIST STALLED: заказ ${orderId} не появился в списке за 45 с ` +
-        `(попытка ${attempt} из ${LIST_ATTEMPTS}) — перезагружаю страницу. ` +
-        'Причина — дефект опроса списка заказов, см. e2e/README.md.')
-      continue
-    }
-
-    return
-  }
+  await page.goto(DRIVER_LIST_PAGE)
+  await expectAppBooted(page)
+  await expect(orderCard(page, orderId), `заказ ${orderId} появился в списке водителя`)
+    .toBeVisible({ timeout: 120_000 })
 }
 
 /**
