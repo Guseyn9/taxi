@@ -835,6 +835,27 @@ function* getActiveOrdersSaga() {
   }
 }
 
+/**
+ * Для каких водителей уже была автоматическая попытка взять машину в рейс в
+ * ответ на `used_car_not_found`.
+ *
+ * Попытка делается не чаще одного раза, пока выборка списка не пройдёт успешно.
+ * Опрос идёт каждые несколько секунд: без этого ограничения неудачный рейс
+ * повторялся бы на каждом цикле вместе с окном предупреждения, а удачный — при
+ * всё ещё недоступном списке — зацикливал бы «запрос → рейс → запрос» без
+ * всякой задержки. Ключ — водитель, чтобы другая учётка на той же странице не
+ * унаследовала чужую попытку.
+ */
+const readyOrdersAutoDriveAttempted: Record<string, true> = {}
+
+/**
+ * Каждый выход отсюда обязан завершить цикл опроса сигналом
+ * GET_READY_ORDERS_SUCCESS или GET_READY_ORDERS_FAIL: watchReadyOrdersSaga ждёт
+ * именно их, и цикл без сигнала останавливает опрос навсегда — до перезагрузки
+ * страницы. Где выборки не было, отправляется FAIL: редьюсер его не
+ * обрабатывает, поэтому список заказов остаётся прежним, а опрос переходит к
+ * следующему циклу.
+ */
 function* getReadyOrdersSaga() {
   const prev = (yield* select(readyOrders)) ?? []
   const currentUserAtStart = yield* select(userSelector)
@@ -844,8 +865,17 @@ function* getReadyOrdersSaga() {
     return
   }
 
-  if ((yield* select(userPrimaryCarSelector)) === null)
+  // Машин у водителя нет. Когда основная машина появится, следующий цикл сам
+  // пойдёт в API.
+  if ((yield* select(userPrimaryCarSelector)) === null) {
+    yield put({
+      type: ActionTypes.GET_READY_ORDERS_FAIL,
+      payload: { detail: 'primary_car_missing' },
+    })
     return
+  }
+
+  const autoDriveKey = String(currentUserAtStart?.u_id)
 
   try {
     const response = yield* call(API.getOrders, EOrderTypes.Ready)
@@ -855,16 +885,26 @@ function* getReadyOrdersSaga() {
       responseData.code === '404' &&
       responseData.data?.detail === 'used_car_not_found'
     ) {
-      yield fork(function*() {
-        const success = yield* drivePrimaryCarSaga()
-        if (success)
-          yield put({ type: ActionTypes.GET_READY_ORDERS_REQUEST })
+      // Попытка рейса идёт в фоне: она может ждать загрузки машин, и опрос не
+      // должен стоять вместе с ней.
+      if (!readyOrdersAutoDriveAttempted[autoDriveKey]) {
+        readyOrdersAutoDriveAttempted[autoDriveKey] = true
+        yield fork(function*() {
+          const success = yield* drivePrimaryCarSaga()
+          if (success)
+            yield put({ type: ActionTypes.GET_READY_ORDERS_REQUEST })
+        })
+      }
+      yield put({
+        type: ActionTypes.GET_READY_ORDERS_FAIL,
+        payload: { detail: 'used_car_not_found' },
       })
       return
     }
 
     if ((response as any).code !== '200')
       throw response
+    delete readyOrdersAutoDriveAttempted[autoDriveKey]
     const orders: IOrder[] = ((response as any).data?.booking ?? []).map(updateCompletedOrderDuration)
     yield put({ type: ActionTypes.GET_READY_ORDERS_SUCCESS, payload: orders })
 
