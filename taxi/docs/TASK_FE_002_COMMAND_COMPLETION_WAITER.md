@@ -60,7 +60,7 @@ Snapshot-based completion сохранён только как fallback для �
 CommandAccepted(instanceId)
     -> GET /api/commands/{instanceId}
     -> PENDING / PROCESSING
-    -> COMPLETED / FAILED
+    -> COMPLETED / FAILED / TIMEOUT / CANCELLED
 ```
 
 `DriverMapGateway`, Interaction Action и UI при этой замене не изменились.
