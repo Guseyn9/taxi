@@ -103,3 +103,21 @@ export function clearOrderCancelledByDriver(orderId?: IOrder['b_id'] | null, use
   delete marks[key]
   writeMarks(marks)
 }
+
+/**
+ * Сохраняет защитную метку на время асинхронной отмены и гарантированно
+ * откатывает её, если сервер не подтвердил выполнение команды.
+ */
+export async function runDriverSelfCancellation<T>(
+  orderId: IOrder['b_id'],
+  userId: IUser['u_id'] | null | undefined,
+  cancel: () => Promise<T>,
+): Promise<T> {
+  markOrderCancelledByDriver(orderId, userId)
+  try {
+    return await cancel()
+  } catch (error) {
+    clearOrderCancelledByDriver(orderId, userId)
+    throw error
+  }
+}

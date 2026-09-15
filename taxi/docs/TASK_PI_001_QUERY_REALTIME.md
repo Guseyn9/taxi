@@ -1,6 +1,6 @@
 # TASK-PI-001: Query и Realtime
 
-**Статус:** В работе — Query/Realtime и Command transport подключены; утверждённый Command Completion ещё не реализован сервером
+**Статус:** В работе — Query/Realtime, Command и Command Completion transport подключены; требуется живой интеграционный прогон
 **Дата:** 2026-08-16
 
 ## Что реализовано
@@ -19,17 +19,14 @@
 - `schemaVersion`, `commandId`, `correlationId` и `Idempotency-Key` для каждой команды;
 - отдельное событие `driver.order.command.accepted`: ответ `202` не публикует
   ложное событие завершённого FSM-перехода;
-- единая Promise-семантика lifecycle gateway: до появления нормативного Command
-  Completion контракт Promise завершается только после наблюдения ожидаемого
-  FSM-состояния в Snapshot; это временная integration-семантика и не является
-  доказательством выполнения конкретного `instanceId`;
+- нормативный Command Completion через `GET /api/commands/{instanceId}`;
+- polling `PENDING / PROCESSING` до терминального `COMPLETED / FAILED`;
 - runtime-проверка `202 new / 200 duplicate` и обязательных полей Command response;
-- уже достигнутое целевое состояние не подтверждает lifecycle-команду даже при
-  `duplicate=true`: текущий duplicate означает повторную выдачу Accepted response,
-  а не успешное завершение worker;
-- временная completion-логика изолирована в `DriverCommandCompletionWaiter`,
-  который сохраняет `instanceId` и возвращает внутренний результат
-  `COMPLETED/FAILED/TIMEOUT` без изменения публичного PI-контракта;
+- `duplicate=true` использует тот же `instanceId`, а результат определяется
+  Command Status, не текущим Snapshot;
+- completion-логика изолирована в `DriverCommandCompletionWaiter`, который
+  возвращает `COMPLETED/FAILED/TIMEOUT/CANCELLED` без изменения публичного
+  PI-контракта;
 - временный recovery polling Driver Snapshot, пока события заказа не проецируются
   в realtime-канал водителя.
 - защита от перезаписи свежего WS Snapshot устаревшим polling-ответом по серверным
@@ -59,12 +56,18 @@ REACT_APP_FSM_WS_URL=wss://fsm.example.test
 REACT_APP_FSM_WS_TOKEN_QUERY_PARAM=access_token
 REACT_APP_FSM_DRIVER_USER_ID=205
 REACT_APP_FSM_DRIVER_POLL_MS=5000
+REACT_APP_FSM_COMMAND_STATUS_ENABLED=true
+REACT_APP_FSM_COMMAND_STATUS_POLL_MS=1000
 ```
 
-Последний параметр используется только при наличии gateway, который официально
-принимает токен в query string. Текущая серверная реализация такого механизма не
-содержит. Токен в React environment является публичным для пользователя сборки и
-не подходит для production-секрета.
+`REACT_APP_FSM_WS_TOKEN_QUERY_PARAM` используется только при наличии gateway,
+который официально принимает токен в query string. Текущая серверная реализация
+такого механизма не содержит. Токен в React environment является публичным для
+пользователя сборки и не подходит для production-секрета.
+
+`REACT_APP_FSM_COMMAND_STATUS_ENABLED` является rollout-флагом. Один только
+`REACT_APP_FSM_API_URL` не включает status waiter, поскольку Query и Command API
+могут быть развёрнуты раньше `GET /api/commands/{instanceId}`.
 
 ## Что пока не закрыто
 
@@ -84,7 +87,7 @@ TASK-PI-001 пока нельзя принять полностью:
 
 ## Локальная проверка
 
-- 28 test suites, 133 tests — пройдены, включая сквозной тест
+- 29 test suites, 150 tests — пройдены, включая сквозной тест
   Query/Realtime → Backend Adapter → Platform Runtime → Surface cleanup;
 - TypeScript `--noEmit` — пройден;
 - lint новых Platform Interface и Backend Adapter файлов — пройден;
@@ -95,31 +98,29 @@ TASK-PI-001 пока нельзя принять полностью:
 совместимая браузерная авторизация, API key и тестовый водитель с заказами.
 
 
-## Архитектурное ограничение: Command Completion
+## Command Completion
 
-Текущий `POST /api/commands/taxi/order/{orderId}` подтверждает приём/enqueue команды,
-но не предоставляет нормативного подтверждения завершения конкретного asynchronous
-`instanceId`.
+`POST /api/commands/taxi/order/{orderId}` подтверждает только приём/enqueue.
+Результат конкретного execution frontend получает через нормативный endpoint:
 
-Поэтому текущая реализация не должна интерпретироваться как окончательно решённая
-семантика Command Completion.
+```http
+GET /api/commands/{instanceId}
+```
 
 ### Текущее поведение frontend
 
-После `202 Accepted` frontend получает `instanceId` и может ожидать наблюдаемое
-изменение Snapshot.
+После `202 Accepted` frontend получает `instanceId` и опрашивает Command Status.
 
 При этом:
 
 - `202 Accepted` не считается `COMPLETED`;
 - `200 duplicate` не считается `COMPLETED`;
 - уже существующее target state не считается доказательством выполнения команды;
-- Snapshot используется только как временный механизм наблюдения состояния;
-- конкретный `instanceId` не считается достоверно завершённым без нормативного
-  серверного completion-контракта.
+- только серверный `COMPLETED` подтверждает выполнение конкретного `instanceId`;
+- `FAILED` возвращается с машинным `errorCode`;
+- Snapshot-based waiter используется только при отсутствии настройки FSM API.
 
-Таким образом, текущий lifecycle gateway обеспечивает практическое ожидание
-изменения состояния, но не утверждает причинную связь:
+Таким образом, lifecycle gateway использует причинную связь:
 
 ```text
 instanceId → конкретный FSM transition → COMPLETED
@@ -138,9 +139,6 @@ GET /api/commands/{instanceId}
 execution. Realtime completion event может использоваться как ускоритель, но не
 как нормативный источник результата.
 
-До серверной реализации Command Status API временное наблюдение Snapshot не
-должно становиться частью публичного completion-контракта Platform Interface.
-
 См. [AQ-PLATFORM-002](migration/AQ_PLATFORM_002.md) и
 [TASK-CORE-001](TASK_CORE_001_COMMAND_COMPLETION.md).
 
@@ -152,9 +150,9 @@ execution. Realtime completion event может использоваться к�
 Platform Interface должен потреблять утверждённый контракт Platform Core, а не
 выводить completion команды из наблюдаемого target state.
 
-## Что можно продолжать до реализации Command Status API
+## Что остаётся проверить на живом сервере
 
-Не блокируются:
+Локально уже реализованы:
 
 - Query transport;
 - Driver Snapshot transport;
@@ -168,8 +166,8 @@ Platform Interface должен потреблять утверждённый к
 - интеграционные тесты транспорта и Runtime;
 - рефакторинг Channel на публичный API Platform Interface.
 
-Блокируется только окончательное подтверждение конкретного asynchronous
-`instanceId` как `COMPLETED/FAILED`.
+Нужно подтвердить полный путь `POST -> worker -> GET Command Status -> Snapshot /
+Realtime -> Surface` на тестовом окружении.
 
 ## Условия полного закрытия TASK-PI-001
 
