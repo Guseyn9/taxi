@@ -209,7 +209,7 @@ export class DriverMapGateway {
         correlationId: createCorrelationId(),
       },
     }
-    if (this.commandTransport && isDriverLifecycleAction(type)) {
+    if (this.commandTransport && isCommandApiDriverAction(type)) {
       return this.dispatchServerLifecycle(
         action,
         payload as unknown as DriverOrderActionPayload,
@@ -342,12 +342,10 @@ export class DriverMapGateway {
       return
 
     try {
-      if (this.commandTransport && isDriverLifecycleAction(action.type)) {
+      if (this.commandTransport && isCommandApiDriverAction(action.type)) {
         const payload = action.payload as DriverOrderActionPayload
         const commandPayload = action.type === DRIVER_MAP_ACTIONS.ConfirmBoarding ?
           { boardingCode: payload.boardingCode ?? '' } :
-          action.type === DRIVER_MAP_ACTIONS.Cancel ?
-            { reason: payload.reason ?? '' } :
             {}
         const accepted = await this.commandTransport.send(
           payload.orderId,
@@ -473,13 +471,14 @@ export class DriverMapGateway {
   }
 }
 
-function isDriverLifecycleAction(type: string): boolean {
+function isCommandApiDriverAction(type: string): boolean {
+  // Driver cancellation stays on the legacy path until the backend exposes a
+  // driver-authorized intent. Sending cancel_requested here currently returns 403.
   const lifecycleActions: readonly string[] = [
     DRIVER_MAP_ACTIONS.Arrive,
     DRIVER_MAP_ACTIONS.Start,
     DRIVER_MAP_ACTIONS.ConfirmBoarding,
     DRIVER_MAP_ACTIONS.Finish,
-    DRIVER_MAP_ACTIONS.Cancel,
   ]
   return lifecycleActions.includes(type)
 }
@@ -499,7 +498,7 @@ function createDefaultCompletionWaiter(
 }
 
 function serverIntentFor(actionType: string): string {
-  return actionType === DRIVER_MAP_ACTIONS.Cancel ? 'cancel_requested' : actionType
+  return actionType
 }
 
 function createCorrelationId(): string {
