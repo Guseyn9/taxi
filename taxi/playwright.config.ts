@@ -91,6 +91,15 @@ export default defineConfig({
       dependencies: ['setup'],
       use: devices['Desktop Chrome'],
     },
+    {
+      // А.1.5: негативная ветка предложения, зеркальная A.1.4 — здесь заказ
+      // отменяет пассажир. Второй водитель не нужен: возврата в поиск нет
+      // (замерено при разведке, e2e/README.md).
+      name: 'offer-passenger-cancel',
+      testMatch: /offer-passenger-cancel\.spec\.ts/,
+      dependencies: ['setup'],
+      use: devices['Desktop Chrome'],
+    },
   ],
 
   webServer: {
