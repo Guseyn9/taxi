@@ -136,6 +136,12 @@ const CancelOrderModal: React.FC<IProps> = ({
         }
         <div className="modal__buttons-block">
           <Button
+            // Контракт для E2E (A.1.5): подтверждение отмены заказа пассажиром.
+            // Обе кнопки этого окна используют один компонент без различающего
+            // класса — по подписи их не отличить (голосовой заказ показывает
+            // тот же CANCEL/CANCEL_ORDER набор), а порядок как локатор
+            // запрещён ТЗ.
+            data-testid="passenger-order-cancel-confirm"
             text={isSubmitting ? t(TRANSLATION.LOADING) : t(TRANSLATION.CANCEL_ORDER)}
             onClick={onDenial}
             disabled={isSubmitting}

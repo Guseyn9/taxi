@@ -172,3 +172,31 @@ export async function expectPassengerDriverState(
     .poll(() => passengerDriverState(page), { message, timeout, intervals: [100, 200, 500] })
     .toBe(state)
 }
+
+/**
+ * Отмена ЗАКАЗА пассажиром (А.1.5) — основная кнопка "Cancel" внизу панели.
+ *
+ * Не путать с инлайн-кнопкой "Отменить" у аватара водителя
+ * (`passenger-voting-form__driver-cancel`): та лишь снимает кандидата
+ * (`releaseCandidate`), и backend её отклоняет для уже назначенного `Performer`
+ * (`wrong booking state`, замерено при разведке TEST-E2E-006). Различить их можно
+ * только атрибутом — обе кнопки называются/выглядят как «отмена».
+ */
+export const orderCancelOpenButton = (page: Page) => page.getByTestId('passenger-order-cancel-open')
+export const orderCancelConfirmButton = (page: Page) => page.getByTestId('passenger-order-cancel-confirm')
+
+/**
+ * Пассажир отменяет уже назначенный заказ — два клика, как это делает человек:
+ * основная кнопка "Cancel", затем подтверждение в модалке причины. Endpoint
+ * отмены (`set_cancel_state`) из теста не вызывается.
+ */
+export async function cancelAssignedOrder(page: Page): Promise<void> {
+  const open = orderCancelOpenButton(page)
+  await expect(open, 'пассажиру доступна кнопка отмены заказа').toBeVisible({ timeout: 90_000 })
+  await expect(open, 'кнопка отмены заказа доступна').toBeEnabled({ timeout: 60_000 })
+  await open.click()
+
+  const confirm = orderCancelConfirmButton(page)
+  await expect(confirm, 'открылась модалка подтверждения отмены').toBeVisible({ timeout: 60_000 })
+  await confirm.click()
+}

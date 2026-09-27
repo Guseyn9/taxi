@@ -1418,6 +1418,12 @@ const VotingForm = function VotingForm({
     <div className="passenger-voting-form__order-button-wrapper passenger-voting-form__order-button-wrapper--locked">
       {(!activeUiConfig ? !isLockedTripStarted : activeUiConfig.showCancel) && (
         <Button
+          // Контракт для E2E (A.1.5): единственная кнопка, которая реально
+          // отменяет весь заказ (set_cancel_state) — рядом есть ещё одна кнопка
+          // "Отменить" у панели водителя, но та лишь снимает кандидата
+          // (releaseCandidate) и backend её отклоняет для уже назначенного
+          // Performer. Различить их можно только атрибутом.
+          data-testid="passenger-order-cancel-open"
           wrapperProps={{ className: 'passenger-voting-form__order-button passenger-voting-form__order-button--cancel' }}
           buttonStyle={EButtonStyles.RedDesign}
           type="button"
