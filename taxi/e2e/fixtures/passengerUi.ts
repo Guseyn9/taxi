@@ -200,3 +200,48 @@ export async function cancelAssignedOrder(page: Page): Promise<void> {
   await expect(confirm, 'открылась модалка подтверждения отмены').toBeVisible({ timeout: 60_000 })
   await confirm.click()
 }
+
+/**
+ * Открыть плашку заказа кликом — БЕЗ ожидания `passenger-driver-panel`
+ * (`selectPassengerOrder` выше). Разведка TEST-E2E-007 (e2e/README.md)
+ * показала, что для голосового заказа в `Started` этот узел не рендерится —
+ * вероятно, VotingForm.tsx на этом шаге уже уступает место
+ * PassengerLiveOrder. Подходит там, где важна сама раскрытая карточка
+ * (например, чтобы увидеть SOS/Finish), а не конкретно панель водителя.
+ */
+export async function openPassengerOrderCard(page: Page, orderId: string): Promise<void> {
+  const card = miniOrderCard(page, orderId)
+  await expect(card, `плашка заказа ${orderId} видна и активна`)
+    .not.toHaveClass(/(^|\s)disabled(\s|$)/, { timeout: 120_000 })
+  await card.click()
+}
+
+/**
+ * SOS после Started (TEST-E2E-007). Один и тот же `data-testid` стоит на
+ * ДВУХ разных кнопках — `MiniOrders/index.tsx` (компактная карточка) и
+ * `PassengerLiveOrder/index.tsx` (развёрнутая панель); обе вызывают один и
+ * тот же `setAlarmModal({isOpen:true})`, поэтому какая из них попадёт под
+ * клик — не важно.
+ */
+export const sosOpenButton = (page: Page) => page.getByTestId('passenger-sos-open').first()
+
+/**
+ * Модал, который реально открывается по SOS (`components/modals/AlarmModal.tsx`).
+ *
+ * Измеренный контракт (e2e/README.md, TEST-E2E-007) — это НЕ «причина +
+ * подтверждение»: чисто клиентский 60-секундный таймер без списка причин и
+ * без единого обращения к backend. Имя `sosAlarmModal`, а не `sosModal`, —
+ * чтобы будущий тест на реальный reason-flow (если он появится) не спутал
+ * его с этим.
+ */
+export const sosAlarmModal = (page: Page) => page.getByTestId('sos-alarm-modal')
+export const sosAlarmCancelButton = (page: Page) => page.getByTestId('sos-alarm-cancel')
+
+/** Есть ли внутри SOS-модала хоть один элемент выбора причины. */
+export async function sosAlarmReasonElementCount(page: Page): Promise<number> {
+  const modal = sosAlarmModal(page)
+  if (await modal.count() === 0)
+    return 0
+  return modal.evaluate(el =>
+    el.querySelectorAll('input[type=radio], input[type=checkbox], select, li').length)
+}
