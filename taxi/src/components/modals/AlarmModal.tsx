@@ -66,7 +66,6 @@ const AlarmModal: React.FC<IProps> = ({
               <Button
                 text={t(TRANSLATION.CANCEL_ALARM)}
                 className="vote-modal-btn"
-                data-testid="sos-alarm-cancel"
                 onClick={() => {
                   setAlarmModal({ ...defaultAlarmModal })
                 }}

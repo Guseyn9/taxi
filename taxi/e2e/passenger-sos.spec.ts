@@ -1,55 +1,56 @@
 /**
  * TEST-E2E-007 — А.1.6, Passenger SOS after Started. Живой backend.
  *
- * Цепочка: создание заказа → Performer → Arrived → Started → Passenger SOS →
- * проверка результата у обеих ролей → backend → reload → persistence.
+ * Требуемая цепочка (Task Contract, tasks/Playwright-E2E-007.txt):
+ * создание заказа → Performer → Arrived → Started → Passenger SOS →
+ * причина → подтверждение → backend mutation → реакция Driver → persistence.
  *
- * ═══ КОНТРАКТ SOS ЗАМЕРЕН ДО НАПИСАНИЯ ТЕСТА ═══════════════════════════════
+ * ═══ ЭТОТ ТЕСТ ПРОВЕРЯЕТ ТРЕБУЕМЫЙ КОНТРАКТ, А НЕ ИЗМЕРЕННУЮ РЕАЛЬНОСТЬ ═════
  *
- * Разведка (2 независимых прогона на живом gruzvill, временная оснастка
- * `e2e/_recon-sos.spec.ts`, из репозитория удалена — см. e2e/README.md,
- * TEST-E2E-007) установила: то, что описывает Task Contract как
- * `SOS → причина → подтверждение`, в текущей реализации НЕ существует.
- * Фактический контракт:
+ * Разведка (2 независимых прогона на живом gruzvill, e2e/README.md,
+ * TEST-E2E-007) установила фактическое поведение live SOS:
  *
  *   Passenger нажимает SOS (доступен только при c_state=Started)
  *           ↓
  *   открывается `AlarmModal` (`components/modals/AlarmModal.tsx`) — ЧИСТО
- *   КЛИЕНТСКИЙ 60-секундный таймер: заголовок "Alarm", "Estimate 60 Seconds",
- *   ОДНА кнопка "Cancel Alarm". Списка причин НЕТ (ни radio/checkbox/select/li
- *   — измерено 0 на обоих прогонах), отдельной confirm-кнопки нет.
- *           ↓
- *   Network: НИ ОДНОГО запроса к backend, специфичного клику. Единственный
- *   API-трафик за время наблюдения — штатный опрос активных заказов
- *   (`POST /drive?fields=00000000u1`, ~раз в 5с), идущий независимо от SOS.
- *   `POST /drive/get/{b_id}` с любым `action` НЕ вызывается.
- *           ↓
- *   b_state / c_state / performer / active — НЕ МЕНЯЮТСЯ.
+ *   КЛИЕНТСКИЙ 60-секундный таймер. Списка причин НЕТ (ни radio/checkbox/
+ *   select/li — измерено 0 на обоих прогонах), confirm-кнопки нет, backend НЕ
+ *   вызывается ни разу, `b_state`/`c_state`/`performer`/`active` не меняются.
  *
- * Отсюда главные особенности этого теста, отличающие его от A.1.1–A.1.6:
+ * ЭТО GAP, А НЕ КОНТРАКТ. Первая версия этого теста ошибочно проверяла
+ * измеренное поведение как ожидаемое (тест был зелёным именно потому, что
+ * требуемая функция отсутствует, — противоположность назначению
+ * регрессионного E2E). Исправлено по прямому замечанию ревью
+ * (tasks/Playwright-E2E-007.txt, "Правки по задаче"):
  *
- * 1. **Это тест ОТСУТСТВИЯ эффекта, а не перехода состояния.** SOS в текущей
- *    реализации не мутирует ни заказ, ни участие водителя — тест проверяет
- *    именно это (закрытая, воспроизводимая на двух прогонах разведки форма
- *    контракта), а не «превращает» его в отмену или что-то ещё.
- * 2. **"select reason" / "confirm SOS" из исходного Task Contract заменены**
- *    на явную проверку ОТСУТСТВИЯ списка причин (`sosAlarmReasonElementCount
- *    === 0`) и на закрытие единственной доступной кнопкой "Cancel Alarm".
- *    Если однажды появится настоящий reason-flow — эта проверка на 0
- *    провалится первой и явно, а не будет молча обойдена.
- * 3. **Таймер не дожидается автозакрытия.** Разведка показала, что 60-секундный
- *    countdown тикает медленнее реального времени под автоматизацией
- *    (вероятный троттлинг фонового `setInterval`, см. e2e/README.md, раздел
- *    GAP) — ждать его в CI ненадёжно по длительности. Тест закрывает модал
- *    явным кликом "Cancel Alarm", как и было измерено в разведке (прогон 1).
- * 4. **`data-testid` на SOS/AlarmModal добавлены этим же изменением**
- *    (`passenger-sos-open`, `sos-alarm-modal`, `sos-alarm-cancel`) — до этого
- *    их не было (единственная кнопка сценариев A.1.1–A.1.6 без стабильного
- *    локатора). Разметка — не поведение: обработчики и вёрстка не менялись.
+ *   A.1.6 GAP: текущая реализация Passenger SOS после Started представляет
+ *   собой локальный 60-секундный AlarmModal без выбора причины,
+ *   подтверждения и backend mutation. Требуемый сценарий
+ *   `SOS → причина → подтверждение` не реализован.
+ *
+ * Поэтому тест ниже проверяет ТРЕБУЕМЫЙ бизнес-контракт (после клика SOS
+ * пассажиру должна быть доступна хотя бы одна причина для выбора) и
+ * ЗАКОНОМЕРНО ПАДАЕТ на живом backend, пока эта функциональность не будет
+ * реализована. Это ожидаемо и намеренно — красный результат здесь означает
+ * «функция A.1.6 не реализована», а не «тест сломан». Дальнейшие шаги
+ * требуемого сценария (выбор конкретной причины, подтверждение, проверка
+ * backend-мутации, реакция Driver UI, persistence) не написаны как код:
+ * до появления хотя бы одного реального элемента выбора причины у них не
+ * было бы настоящих селекторов, а выдумывать их — то же самое, что
+ * подменять реальный SOS фиктивным поведением (прямо запрещено ТЗ, см.
+ * Out of Scope). Они дописываются по мере реализации причины/подтверждения,
+ * тем же приёмом, что и `chooseVotingCandidate`/`cancelAssignedOrder`
+ * (passengerUi.ts) — реальный клик, а не API и не мок.
+ *
+ * Второе исправление по тому же ревью: бизнес-переход в `Performer`
+ * выполняется ЧЕРЕЗ UI ПАССАЖИРА (`chooseVotingCandidate`), а не вызовом API
+ * `choosePerformer`, как было в первой версии. API в этом тесте — только для
+ * подготовки заказа, чтения состояния и уборки, как и требует общее правило
+ * проекта (см. A.1.2, voting-order.spec.ts).
  */
 
 import { Browser, BrowserContext, Page, devices, expect, test } from '@playwright/test'
-import { apiBase, appUrl, driverAccount, passengerAccount } from './fixtures/accounts'
+import { appUrl, driverAccount, passengerAccount } from './fixtures/accounts'
 import { expectAppBooted, stubMapTiles } from './fixtures/appShell'
 import {
   DRIVER_STATE,
@@ -58,7 +59,6 @@ import {
   boardingCodeOf,
   cancelOrder,
   cancelTestOrders,
-  choosePerformer,
   createVotingOrder,
   driverStateOf,
   getDriverCar,
@@ -75,19 +75,21 @@ import {
   STATE_NAMES,
   clickPrimaryAction,
   confirmActionResult,
+  expectUiDriverState,
   openBoardingForm,
   openDriverMap,
   openOrderCard,
   submitBoardingCode,
   takeOrderButton,
-  uiDriverState,
 } from './fixtures/driverUi'
 import {
   PASSENGER_PAGE,
   PASSENGER_STORAGE,
+  chooseVotingCandidate,
+  expectPassengerDriverState,
+  expectVotingCandidates,
   miniOrderCard,
-  openPassengerOrderCard,
-  sosAlarmCancelButton,
+  openPassengerVotingOrder,
   sosAlarmModal,
   sosAlarmReasonElementCount,
   sosOpenButton,
@@ -182,10 +184,8 @@ test.afterEach(async({}, testInfo) => {
     }
   }
 
-  // Уборка. SOS не переводит заказ в терминальное состояние (измеренный
-  // контракт) — в отличие от A.1.5, здесь отмена в конце ВСЕГДА нужна и
-  // ожидаемо успешна, а не «падает предсказуемо, потому что заказ уже
-  // терминален».
+  // Уборка — не часть проверяемого сценария, выполняется независимо от того,
+  // на каком шаге тест остановился.
   while (createdOrders.length) {
     const orderId = createdOrders.pop() as string
     try {
@@ -224,12 +224,13 @@ async function backendDriverState(orderId: string): Promise<number | undefined> 
 }
 
 /**
- * Довести голосовой заказ до `Started` — тот же путь, что и посадка по коду
- * (driver-boarding.spec.ts): отклик кликом → пассажир выбирает водителя через
- * API (как и в остальных тестах — это действие ПАССАЖИРА, а не водителя) →
- * «Поехал»/«Приехал» кликом → код посадки кликом.
+ * Довести голосовой заказ до `Started` — целиком через UI обеих ролей, тем же
+ * путём, что и A.1.2 (voting-order.spec.ts): отклик водителя кликом →
+ * пассажир выбирает исполнителя кликом "Выбрать" в своём списке откликов
+ * (`chooseVotingCandidate`, НЕ API `choosePerformer`) → «Поехал»/«Приехал»
+ * кликом → код посадки кликом.
  */
-async function driveToStarted(orderId: string): Promise<void> {
+async function driveOrderToStarted(orderId: string): Promise<void> {
   await openOrderCard(driver.page, orderId)
   const take = takeOrderButton(driver.page)
   await expect(take, 'в карточке заказа есть кнопка отклика').toBeVisible({ timeout: 60_000 })
@@ -241,30 +242,39 @@ async function driveToStarted(orderId: string): Promise<void> {
   await confirmActionResult(driver.page, 'success', 'водитель уведомлён, что отклик принят')
 
   await expect
-    .poll(() => backendDriverState(orderId), { message: 'водитель стал кандидатом', timeout: 90_000 })
+    .poll(() => backendDriverState(orderId), { message: 'водитель стал кандидатом (Considering)', timeout: 90_000 })
     .toBe(DRIVER_STATE.Considering)
 
-  await choosePerformer(passenger, orderId, driver.session.userId)
+  // Бизнес-переход в Performer — ТОЛЬКО через UI пассажира.
+  await openPassengerVotingOrder(passengerPage, orderId)
+  await expectVotingCandidates(passengerPage, [driver.session.userId])
+  await chooseVotingCandidate(passengerPage, driver.session.userId)
+
   await expect
-    .poll(() => backendDriverState(orderId), { message: 'пассажир выбрал водителя', timeout: 90_000 })
+    .poll(() => backendDriverState(orderId), { message: 'пассажир выбрал водителя (Performer)', timeout: 90_000 })
     .toBe(DRIVER_STATE.Performer)
+  await expectPassengerDriverState(passengerPage, DRIVER_STATE.Performer, 'пассажир видит назначенного водителя')
 
   await openDriverMap(driver.page)
+  await expectUiDriverState(driver.page, DRIVER_STATE.Performer, 'карта водителя показывает принятый заказ')
   await clickPrimaryAction(driver.page)
   await expect
     .poll(() => backendDriverState(orderId), { message: 'водитель выехал/прибыл (Arrived)', timeout: 90_000 })
     .toBe(DRIVER_STATE.Arrived)
+  await expectUiDriverState(driver.page, DRIVER_STATE.Arrived, 'карта показывает прибытие')
+  await expectPassengerDriverState(passengerPage, DRIVER_STATE.Arrived, 'пассажир видит, что водитель прибыл')
 
   await openBoardingForm(driver.page)
   await submitBoardingCode(driver.page, boardingCode)
   await expect
     .poll(() => backendDriverState(orderId), { message: 'заказ перешёл в Started', timeout: 90_000 })
     .toBe(DRIVER_STATE.Started)
+  await expectUiDriverState(driver.page, DRIVER_STATE.Started, 'карта показывает начатую поездку')
+  await expectPassengerDriverState(passengerPage, DRIVER_STATE.Started, 'пассажир видит, что поездка началась')
 }
 
-test('А.1.6 — Passenger SOS после Started: клиентский таймер без изменения состояния заказа', async() => {
-  // ШАГ 1-2 (Create order). Предусловие — голосовой заказ, проверенный
-  // контракт (тот же, что у A.1.2/посадки по коду).
+test('А.1.6 — Passenger SOS после Started: причина и подтверждение (GAP — не реализовано, тест намеренно красный)', async() => {
+  // Предусловие — голосовой заказ, проверенный контракт (тот же, что у A.1.2).
   const orderId = await createVotingOrder(passenger, {
     pickup: PICKUP,
     destination: DESTINATION,
@@ -282,12 +292,13 @@ test('А.1.6 — Passenger SOS после Started: клиентский тайм
   await expect(miniOrderCard(passengerPage, orderId), `заказ ${orderId} виден пассажиру`)
     .toBeVisible({ timeout: 120_000 })
 
-  // ШАГИ 3-6 (Driver Performer → Arrived → Started) — целиком через UI водителя.
-  await driveToStarted(orderId)
+  // Create order → Driver Performer → Driver Arrived → Driver Started —
+  // целиком через UI обеих ролей.
+  await driveOrderToStarted(orderId)
 
-  // Точка входа перед SOS (ТЗ, §1): b_state=Approved, c_state=Started,
-  // единственный performer — наш водитель, заказ активен — ОДНОВРЕМЕННО, а не
-  // по отдельности (иначе есть риск поймать промежуточное состояние перехода).
+  // Точка входа перед SOS: b_state=Approved, c_state=Started, единственный
+  // исполнитель — наш водитель, заказ активен — ОДНОВРЕМЕННО, а не по
+  // отдельности (иначе есть риск поймать промежуточное состояние перехода).
   await expect
     .poll(
       async() => {
@@ -307,96 +318,35 @@ test('А.1.6 — Passenger SOS после Started: клиентский тайм
     )
     .toBe(true)
 
-  // ШАГ 7 (Passenger clicks SOS) — раскрыть карточку заказа пассажира. Не
-  // через `selectPassengerOrder`: тот хелпер ждёт `passenger-driver-panel`,
-  // который для голосового заказа в Started не рендерится (см.
-  // `openPassengerOrderCard`, fixtures/passengerUi.ts, и e2e/README.md).
-  await openPassengerOrderCard(passengerPage, orderId)
-
+  // Passenger clicks SOS.
   const sosButton = sosOpenButton(passengerPage)
   await expect(sosButton, 'пассажиру доступна кнопка SOS после Started').toBeVisible({ timeout: 60_000 })
-
-  // Отследить сетевой обмен пассажирской страницы вокруг клика SOS — именно
-  // из браузерного контекста, а не вызовом API из теста (§ "проверить, что
-  // тест действительно выполняет SOS через UI").
-  const apiRequestsDuringSos: string[] = []
-  const onRequest = (request: Parameters<Parameters<Page['on']>[1]>[0]) => {
-    const url = (request as any).url()
-    if (url.startsWith(apiBase()))
-      apiRequestsDuringSos.push(`${(request as any).method()} ${url}`)
-  }
-  passengerPage.on('request', onRequest as any)
-
   await sosButton.click()
 
   const modal = sosAlarmModal(passengerPage)
-  await expect(modal, 'после клика SOS открылся AlarmModal').toBeVisible({ timeout: 10_000 })
-  await expect(modal, 'модал SOS показывает измеренный заголовок "Alarm"').toContainText('Alarm')
+  await expect(modal, 'после клика SOS открылся диалог подтверждения').toBeVisible({ timeout: 10_000 })
 
-  // ШАГ 8 (select reason) — измеренный контракт: причин выбирать НЕЧЕГО.
-  expect(
-    await sosAlarmReasonElementCount(passengerPage),
-    'в SOS-модале нет элементов выбора причины (измеренный контракт, e2e/README.md, TEST-E2E-007)',
-  ).toBe(0)
-
-  // ШАГ 9 (confirm SOS) — единственное доступное действие: закрыть таймер
-  // явным кликом (разведка показала, что ждать автозакрытия в CI ненадёжно).
-  const cancelButton = sosAlarmCancelButton(passengerPage)
-  await expect(cancelButton, 'кнопка закрытия SOS-таймера видна').toBeVisible({ timeout: 10_000 })
-  await cancelButton.click()
-  await expect(modal, 'SOS-модал закрылся').toBeHidden({ timeout: 10_000 })
-
-  passengerPage.off('request', onRequest as any)
-
-  // Ни один запрос к apiBase() за время SOS не должен быть мутирующим —
-  // измеренный контракт: единственный трафик — штатный опрос активных
-  // заказов (`/drive?fields=...`), а не `/drive/get/{id}` с каким-либо `action`.
-  const mutatingRequests = apiRequestsDuringSos.filter(entry =>
-    /\/drive\/get\//.test(entry) || /[?&]action=/.test(entry))
-  expect(
-    mutatingRequests,
-    `SOS не должен вызывать мутирующие backend-запросы (измерено: клиентский таймер без API); ` +
-    `весь трафик за время SOS: ${JSON.stringify(apiRequestsDuringSos)}`,
-  ).toEqual([])
-
-  // ШАГ 10 (verify backend state) — независимая проверка: ничего не изменилось.
-  const afterSos = await readOrder(passenger, orderId)
-  expect(Number(afterSos.b_state), 'после SOS b_state не меняется (измеренный контракт)')
-    .toBe(ORDER_STATE.Approved)
-  expect(driverStateOf(afterSos, driver.session.userId), 'после SOS c_state водителя остаётся Started')
-    .toBe(DRIVER_STATE.Started)
-  expect(await isOrderActiveFor(passenger, orderId), 'после SOS заказ остаётся активным')
-    .toBe(true)
-
-  // ШАГ 11 (verify Driver result) — SOS не обращается к backend, поэтому
-  // водитель не должен быть ни уведомлён, ни ограничен в действиях.
-  const notificationVisible = await driver.page
-    .locator('[data-testid="message-modal"]').filter({ visible: true }).count()
-  expect(notificationVisible, 'SOS не уведомляет водителя (backend в действии не участвует)').toBe(0)
-  expect(await uiDriverState(driver.page), 'состояние водителя на карте не изменилось')
-    .toBe(DRIVER_STATE.Started)
-
-  // ШАГ 12-13 (reload → verify persistence). Backend — решающая проверка
-  // постоянства; UI-список пассажира тоже проверяется, но с запасом по
-  // времени (разведка видела задержку синхронизации карточки после reload,
-  // не связанную с самим SOS, — см. GAP в e2e/README.md).
-  await passengerPage.reload()
-  await expectAppBooted(passengerPage)
-  await expect(
-    miniOrderCard(passengerPage, orderId),
-    'после reload заказ остаётся в списке активных заказов пассажира',
-  ).toBeVisible({ timeout: 120_000 })
-
-  await openDriverMap(driver.page)
+  // ТРЕБУЕМЫЙ КОНТРАКТ A.1.6 (Task Contract, §Expected Behavior, п.2-3):
+  // диалог должен предложить пассажиру хотя бы одну причину для выбора.
+  //
+  // GAP: фактическая реализация (AlarmModal.tsx) не содержит ни одного
+  // элемента выбора причины — эта проверка ПАДАЕТ на живом backend, пока
+  // функциональность не реализована. Это ожидаемый, намеренный результат:
+  // тест проверяет требуемый бизнес-сценарий A.1.6, а не измеренный GAP, и
+  // не должен становиться зелёным до тех пор, пока причина/подтверждение/
+  // backend-мутация не появятся на самом деле (см. заголовок файла).
   await expect
-    .poll(() => uiDriverState(driver.page), { message: 'после reload водитель по-прежнему в Started', timeout: 90_000 })
-    .toBe(DRIVER_STATE.Started)
+    .poll(() => sosAlarmReasonElementCount(passengerPage), {
+      message: 'A.1.6 GAP: диалог SOS должен предлагать хотя бы одну причину для выбора — см. e2e/README.md, TEST-E2E-007',
+      timeout: 10_000,
+    })
+    .toBeGreaterThan(0)
 
-  const persisted = await readOrder(passenger, orderId)
-  expect(Number(persisted.b_state), 'backend после reload по-прежнему Approved')
-    .toBe(ORDER_STATE.Approved)
-  expect(driverStateOf(persisted, driver.session.userId), 'backend после reload по-прежнему Started')
-    .toBe(DRIVER_STATE.Started)
-  expect(await isOrderActiveFor(passenger, orderId), 'после reload заказ по-прежнему активен')
-    .toBe(true)
+  // Дальше по требуемому сценарию: select reason → confirm SOS → verify
+  // backend mutation → verify Driver result → reload → verify persistence.
+  // Не реализовано намеренно (см. заголовок файла) — до появления реального
+  // элемента выбора причины у этих шагов нет настоящих селекторов/контракта,
+  // а сочинять их означало бы то же самое, что подменять SOS фиктивным
+  // поведением. Дописать по образцу chooseVotingCandidate/cancelAssignedOrder
+  // (passengerUi.ts) сразу, как только причина/подтверждение появятся в UI.
 })
