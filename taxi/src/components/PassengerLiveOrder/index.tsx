@@ -795,6 +795,7 @@ function PassengerLiveOrder({
                 type="button"
                 className="passenger-live-order__action passenger-live-order__action--sos"
                 onClick={handleSosClick}
+                data-testid="passenger-sos-open"
               >
                 <SosIcon />
                 SOS

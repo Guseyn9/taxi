@@ -200,3 +200,33 @@ export async function cancelAssignedOrder(page: Page): Promise<void> {
   await expect(confirm, 'открылась модалка подтверждения отмены').toBeVisible({ timeout: 60_000 })
   await confirm.click()
 }
+
+/**
+ * SOS после Started (TEST-E2E-007). Один и тот же `data-testid` стоит на
+ * ДВУХ разных кнопках — `MiniOrders/index.tsx` (компактная карточка) и
+ * `PassengerLiveOrder/index.tsx` (развёрнутая панель); обе вызывают один и
+ * тот же `setAlarmModal({isOpen:true})`, поэтому какая из них попадёт под
+ * клик — не важно.
+ */
+export const sosOpenButton = (page: Page) => page.getByTestId('passenger-sos-open').first()
+
+/**
+ * Диалог, который реально открывается по SOS (`components/modals/AlarmModal.tsx`).
+ *
+ * Разведка (e2e/README.md, TEST-E2E-007) зафиксировала GAP: фактическая
+ * реализация — это клиентский 60-секундный таймер без списка причин и без
+ * единого обращения к backend, а не «причина + подтверждение», как того
+ * требует Task Contract. Имя `sosAlarmModal`, а не `sosModal`/`sosDialog`, —
+ * чтобы явно указывать на ТЕКУЩУЮ (AlarmModal) реализацию, а не на требуемый
+ * контракт.
+ */
+export const sosAlarmModal = (page: Page) => page.getByTestId('sos-alarm-modal')
+
+/** Есть ли внутри SOS-модала хоть один элемент выбора причины. */
+export async function sosAlarmReasonElementCount(page: Page): Promise<number> {
+  const modal = sosAlarmModal(page)
+  if (await modal.count() === 0)
+    return 0
+  return modal.evaluate(el =>
+    el.querySelectorAll('input[type=radio], input[type=checkbox], select, li').length)
+}

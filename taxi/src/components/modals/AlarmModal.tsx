@@ -50,6 +50,7 @@ const AlarmModal: React.FC<IProps> = ({
     >
       <div
         className="modal vote-modal"
+        data-testid="sos-alarm-modal"
       >
         <form>
           <fieldset>

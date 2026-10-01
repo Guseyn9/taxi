@@ -664,6 +664,7 @@ function MiniOrders({
                     className="mini-orders__sos"
                     onClick={handleSosClick}
                     aria-label="SOS"
+                    data-testid="passenger-sos-open"
                   >
                     <SosIcon />
                     SOS

@@ -100,6 +100,15 @@ export default defineConfig({
       dependencies: ['setup'],
       use: devices['Desktop Chrome'],
     },
+    {
+      // А.1.6: Passenger SOS после Started. Контракт замерен разведкой перед
+      // написанием теста (e2e/README.md, TEST-E2E-007) — SOS не обращается к
+      // backend, тест проверяет отсутствие эффекта, а не переход состояния.
+      name: 'passenger-sos',
+      testMatch: /passenger-sos\.spec\.ts/,
+      dependencies: ['setup'],
+      use: devices['Desktop Chrome'],
+    },
   ],
 
   webServer: {
