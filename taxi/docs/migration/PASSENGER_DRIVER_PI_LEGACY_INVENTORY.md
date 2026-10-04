@@ -8,9 +8,10 @@ Passenger Web поднят на маршруте `/passenger-order`. Основ�
 границе Passenger Channel нет.
 
 Driver использует `DriverHudSurface`, `DriverListSurface`, `MapSurface` и
-`DriverMapGateway`. Lifecycle-команды arrive, start, confirm boarding, finish и
-cancel проходят через PI. При настроенном Command API шлюз отправляет intent и
-ждёт completion; без него сохраняется legacy fallback.
+`DriverMapGateway`. Lifecycle-команды arrive, start, confirm boarding и finish
+проходят через PI. Отмена водителем пока остаётся на legacy transport: серверный
+`cancel_requested` для роли водителя ещё не поддержан, поэтому переводить её на
+Command API сейчас означало бы гарантированный 403.
 
 ## Инвентаризация зависимостей
 
@@ -19,7 +20,7 @@ cancel проходят через PI. При настроенном Command API
 | Passenger order flow | `LegacyPassengerGateway` | Passenger Action/Surface | Оставить migration adapter до готовности пассажирского Command API |
 | Passenger read model | `LegacyPassengerChannelStoreAdapter` | Passenger Surface/Snapshot | Оставить до появления полного Passenger Snapshot |
 | Driver arrive/start/boarding/finish | `DriverMapGateway` | Driver Action + Command/Query/Realtime | Переведено |
-| Driver cancel/interruption | прямой `API.cancelDrive` | `DriverMapGateway` + `cancel_requested` | Переведено в этой итерации |
+| Driver cancel/interruption | прямой `API.cancelDrive` | `cancel_requested` для водителя пока не разрешён | Оставить legacy до серверной задачи |
 | Driver accept DIRECT/VOTE/OFFER | `LegacyBackendGateway` | Нет подтверждённого набора intent и completion states | Не переносить, server/PI gap |
 | Driver profile, car, geocoding and routing | `LegacyBackendGateway` | Соответствующих PI capabilities нет | Оставить как инфраструктурный migration adapter |
 | Driver lists fallback | Redux polling | Driver Snapshot/Realtime | Оставить fallback до доступности серверного Driver Snapshot во всех окружениях |
