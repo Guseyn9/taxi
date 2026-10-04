@@ -32,7 +32,7 @@ describe('FsmTaxiCommandTransport', () => {
 
     await expect(transport.send(
       42,
-      'driver.order.arrive',
+      'driver_arrived',
       {},
       { source: 'driver.interface', correlationId: 'corr-100' },
     )).resolves.toEqual(accepted)
@@ -51,7 +51,7 @@ describe('FsmTaxiCommandTransport', () => {
       schemaVersion: '1.0',
       commandId: 'cmd-100',
       correlationId: 'corr-100',
-      intent: 'driver.order.arrive',
+      intent: 'driver_arrived',
       payload: {},
     })
   })

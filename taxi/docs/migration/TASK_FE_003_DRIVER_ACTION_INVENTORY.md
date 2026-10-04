@@ -33,6 +33,12 @@ DriverMapGateway
   -> COMPLETED / FAILED / TIMEOUT / CANCELLED
 ```
 
+UI actions преобразуются в канонические серверные intents в `DriverMapGateway`:
+`driver.order.arrive` -> `driver_arrived`, `driver.order.start` и
+`driver.order.confirm_boarding` -> `ride_started`, `driver.order.finish` ->
+`ride_finished`. `FsmTaxiCommandTransport` отправляет полученный intent без
+дополнительного преобразования.
+
 `202 Accepted` не считается завершением перехода. Успешное событие Driver
 публикуется только после `COMPLETED`. При недоступном rollout-контракте
 сохраняется существующий Snapshot-based completion, а при отсутствии Command
@@ -40,10 +46,10 @@ API остаётся legacy путь.
 
 ## Почему cancel не переводится сейчас
 
-Серверный каталог intent разрешает `cancel_requested` пассажиру, но не роли
-водителя. Поэтому отправка водительской отмены через Command API сейчас даёт
-403 `Role cannot execute intent cancel_requested`. В рамках TASK-FE-003 нельзя
-обходить это изменением backend, подменой intent или новым adapter'ом.
+В текущей серверной версии роль водителя не авторизована для `cancel_requested`:
+отправка водительской отмены через Command API даёт 403. Серверная задача должна
+определить и реализовать утверждённый водительский intent для отмены; нынешнее
+ограничение роли не определяет постоянную семантику `cancel_requested`.
 
 После появления утверждённого водительского intent и его completion semantics
 отмену можно будет перевести отдельной задачей, не меняя общий completion
@@ -52,7 +58,8 @@ API остаётся legacy путь.
 ## Проверки
 
 - Command API path проверен для arrive, start, confirm boarding и finish через
-  общий `DriverMapGateway`.
+  общий `DriverMapGateway` и реальные HTTP transport-классы. Проверяются
+  фактические POST body, `instanceId` в GET и событие после `COMPLETED`.
 - Проверено, что `202` и duplicate не считаются завершением сами по себе.
 - Проверено, что driver cancel при настроенном Command API не отправляется в
   неподдержанный серверный intent и использует legacy fallback.

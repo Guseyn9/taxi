@@ -5,7 +5,10 @@ import {
 } from '../DriverMapGateway'
 import {
   COMMAND_COMPLETION_FAILURE_KINDS,
+  CommandStatusDriverCommandCompletionWaiter,
 } from '../DriverCommandCompletionWaiter'
+import { FsmCommandStatusTransport } from '../FsmCommandStatusTransport'
+import { FsmTaxiCommandTransport } from '../FsmTaxiCommandTransport'
 
 jest.mock('../LegacyBackendGateway', () => ({
   backendGateway: {
@@ -49,6 +52,23 @@ function createRuntime() {
   }
 }
 
+function createResponse(body, status = 200) {
+  return {
+    ok: status >= 200 && status < 300,
+    status,
+    json: jest.fn().mockResolvedValue(body),
+    text: jest.fn().mockResolvedValue(JSON.stringify(body)),
+  }
+}
+
+const commandCases = [
+  ['arrive', gateway => gateway.arrive('42'), 'driver_arrived', {}, DRIVER_MAP_EVENTS.Arrived],
+  ['start', gateway => gateway.start('42'), 'ride_started', {}, DRIVER_MAP_EVENTS.Started],
+  ['confirm boarding', gateway => gateway.confirmBoarding('42', '1234'), 'ride_started',
+    { boardingCode: '1234' }, DRIVER_MAP_EVENTS.BoardingConfirmed],
+  ['finish', gateway => gateway.finish('42'), 'ride_finished', {}, DRIVER_MAP_EVENTS.Finished],
+]
+
 describe('DriverMapGateway', () => {
   beforeEach(() => jest.clearAllMocks())
 
@@ -77,7 +97,7 @@ describe('DriverMapGateway', () => {
       duplicate: false,
       instanceId: 108,
       status: 'PENDING',
-      intent: 'driver.order.arrive',
+      intent: 'driver_arrived',
     }) }
     const completionWaiter = {
       captureBaseline: jest.fn().mockReturnValue({ state: 'order_driver_assigned' }),
@@ -92,7 +112,7 @@ describe('DriverMapGateway', () => {
 
     expect(commandTransport.send).toHaveBeenCalledWith(
       '42',
-      'driver.order.arrive',
+      'driver_arrived',
       {},
       expect.objectContaining({ source: 'driver.interface' }),
     )
@@ -103,6 +123,80 @@ describe('DriverMapGateway', () => {
     }))
     expect(backendGateway.setOrderState).not.toHaveBeenCalled()
   })
+
+  it.each(commandCases)(
+    '%s sends the canonical intent and waits for its Command Status result',
+    async(_name, run, intent, payload, successEvent) => {
+      const runtime = createRuntime()
+      const listener = jest.fn()
+      let completeStatusRequest
+      const fetchRequest = jest.fn((url) => {
+        if (url === 'https://fsm.example.test/api/commands/taxi/order/42')
+          return Promise.resolve(createResponse({
+            accepted: true,
+            duplicate: false,
+            instanceId: 151,
+            status: 'PENDING',
+            intent,
+          }, 202))
+        if (url === 'https://fsm.example.test/api/commands/151')
+          return new Promise(resolve => { completeStatusRequest = resolve })
+        throw new Error(`Unexpected request: ${url}`)
+      })
+      const config = { apiUrl: 'https://fsm.example.test', apiToken: 'driver-token' }
+      const commandTransport = new FsmTaxiCommandTransport(config, {
+        fetch: fetchRequest,
+        createId: () => 'cmd-151',
+      })
+      const statusTransport = new FsmCommandStatusTransport(config, { fetch: fetchRequest })
+      const waiter = new CommandStatusDriverCommandCompletionWaiter(statusTransport, 1000, 100)
+      const gateway = new DriverMapGateway(runtime, commandTransport, 1000, waiter)
+      const unmount = gateway.mount()
+      gateway.subscribe(listener)
+
+      let completed = false
+      const completion = run(gateway).then(() => { completed = true })
+      for (let index = 0; index < 12 && !completeStatusRequest; index += 1)
+        await Promise.resolve()
+
+      expect(completeStatusRequest).toEqual(expect.any(Function))
+      expect(fetchRequest.mock.calls.map(([url]) => url)).toEqual([
+        'https://fsm.example.test/api/commands/taxi/order/42',
+        'https://fsm.example.test/api/commands/151',
+      ])
+      expect(JSON.parse(fetchRequest.mock.calls[0][1].body)).toEqual({
+        schemaVersion: '1.0',
+        commandId: 'cmd-151',
+        correlationId: expect.any(String),
+        intent,
+        payload,
+      })
+      expect(fetchRequest.mock.calls[0][1].headers).toEqual(expect.objectContaining({
+        Authorization: 'Bearer driver-token',
+        'Idempotency-Key': 'cmd-151',
+      }))
+      expect(fetchRequest.mock.calls[1][1].headers).toEqual(expect.objectContaining({
+        Authorization: 'Bearer driver-token',
+      }))
+      expect(listener).toHaveBeenCalledWith(expect.objectContaining({
+        type: DRIVER_MAP_EVENTS.CommandAccepted,
+        payload: expect.objectContaining({ instanceId: 151, intent, status: 'PENDING' }),
+      }))
+      expect(listener).not.toHaveBeenCalledWith(expect.objectContaining({ type: successEvent }))
+      expect(completed).toBe(false)
+
+      completeStatusRequest(createResponse({ instanceId: 151, status: 'COMPLETED' }))
+      await completion
+
+      expect(listener).toHaveBeenCalledWith(expect.objectContaining({
+        type: successEvent,
+        payload: { orderId: '42' },
+      }))
+      expect(backendGateway.setOrderState).not.toHaveBeenCalled()
+      expect(backendGateway.confirmVotingCode).not.toHaveBeenCalled()
+      unmount()
+    },
+  )
 
   it('normalizes backend rejection and publishes a failure event', async() => {
     backendGateway.setOrderState.mockResolvedValueOnce({
@@ -321,7 +415,7 @@ describe('DriverMapGateway', () => {
 
     expect(commandTransport.send).toHaveBeenCalledWith(
       '42',
-      'driver.order.confirm_boarding',
+      'ride_started',
       { boardingCode: '1234' },
       expect.objectContaining({
         source: 'driver.interface',

@@ -498,7 +498,13 @@ function createDefaultCompletionWaiter(
 }
 
 function serverIntentFor(actionType: string): string {
-  return actionType
+  switch (actionType) {
+    case DRIVER_MAP_ACTIONS.Arrive: return 'driver_arrived'
+    case DRIVER_MAP_ACTIONS.Start:
+    case DRIVER_MAP_ACTIONS.ConfirmBoarding: return 'ride_started'
+    case DRIVER_MAP_ACTIONS.Finish: return 'ride_finished'
+    default: throw new Error(`Unsupported Driver Command API action: ${actionType}`)
+  }
 }
 
 function createCorrelationId(): string {
