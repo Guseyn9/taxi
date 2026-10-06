@@ -82,7 +82,7 @@ export const passengerLiveOrderConnector = connect(
   }),
   {
     setActiveChat: modalsActionCreators.setActiveChat,
-    setAlarmModal: modalsActionCreators.setAlarmModal,
+    setSosModal: modalsActionCreators.setSosModal,
     setCancelModal: modalsActionCreators.setCancelModal,
     setMessageModal: modalsActionCreators.setMessageModal,
     setRatingModal: modalsActionCreators.setRatingModal,

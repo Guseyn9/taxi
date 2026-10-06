@@ -406,6 +406,21 @@
     margin-bottom: 12px;
   }
 
+  &.passenger-sos-modal {
+    .passenger-sos-modal__description {
+      margin: 0 0 10px;
+      text-align: center;
+      font-size: 14px;
+      line-height: 18px;
+      color: #686868;
+    }
+
+    .reason-item:focus-visible {
+      outline: 2px solid currentColor;
+      outline-offset: -2px;
+    }
+  }
+
   @media (max-width: 420px), (max-height: 620px) {
     width: calc(100vw - 16px);
     max-height: calc(100vh - 20px);

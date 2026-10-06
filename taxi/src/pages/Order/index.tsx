@@ -1841,6 +1841,7 @@ const Order: React.FC<IProps> = ({
       <Button
         text={`${t(TRANSLATION.ALARM)}`}
         className="order_alarm-btn"
+        data-testid="driver-alarm-open"
         onClick={onAlarmClick}
         colorType={EColorTypes.Accent}
         label={message}

@@ -202,31 +202,66 @@ export async function cancelAssignedOrder(page: Page): Promise<void> {
 }
 
 /**
- * SOS после Started (TEST-E2E-007). Один и тот же `data-testid` стоит на
- * ДВУХ разных кнопках — `MiniOrders/index.tsx` (компактная карточка) и
- * `PassengerLiveOrder/index.tsx` (развёрнутая панель); обе вызывают один и
- * тот же `setAlarmModal({isOpen:true})`, поэтому какая из них попадёт под
- * клик — не важно.
+ * SOS после Started (TEST-E2E-007, ТЗ Passenger SOS).
+ *
+ * Кнопка в UI достижима ТОЛЬКО в плашке `MiniOrders` (внутри
+ * `passenger-mini-order`): `PassengerLiveOrder` (`showLiveOrderPanel = false`
+ * в pages/Passenger) и `OnTheWayModal` (нет ни одного вызова
+ * `setOnTheWayModal(true)`) через интерфейс недостижимы — см. e2e/README.md.
+ * Локатор привязан к конкретному заказу, а не к порядку кнопок на странице.
  */
-export const sosOpenButton = (page: Page) => page.getByTestId('passenger-sos-open').first()
+export const sosOpenButton = (page: Page, orderId: string) =>
+  miniOrderCard(page, orderId).getByTestId('passenger-sos-open')
+
+/** Passenger SOS-модал (`components/modals/PassengerSosModal.tsx`). */
+export const sosModal = (page: Page) => page.getByTestId('sos-alarm-modal')
+
+/** Все причины SOS-модала — по префиксу testid, а не по порядку в DOM. */
+export const sosReasonOptions = (page: Page) => page.locator('[data-testid^="sos-reason-"]')
+
+/** Одна причина по её стабильному индексу (`sos-reason-0`, `sos-reason-1`, ...). */
+export const sosReason = (page: Page, index: number) => page.getByTestId(`sos-reason-${index}`)
+
+/** Выбранные причины (radio `aria-checked="true"`) — их должно быть ровно 0 или 1. */
+export const sosSelectedReasons = (page: Page) =>
+  page.locator('[data-testid^="sos-reason-"][aria-checked="true"]')
+
+export const sosConfirmButton = (page: Page) => page.getByTestId('sos-confirm')
+
+export const sosCloseButton = (page: Page) => page.getByTestId('sos-close')
 
 /**
- * Диалог, который реально открывается по SOS (`components/modals/AlarmModal.tsx`).
- *
- * Разведка (e2e/README.md, TEST-E2E-007) зафиксировала GAP: фактическая
- * реализация — это клиентский 60-секундный таймер без списка причин и без
- * единого обращения к backend, а не «причина + подтверждение», как того
- * требует Task Contract. Имя `sosAlarmModal`, а не `sosModal`/`sosDialog`, —
- * чтобы явно указывать на ТЕКУЩУЮ (AlarmModal) реализацию, а не на требуемый
- * контракт.
+ * Запросы `set_cancel_state` по заказу, наблюдаемые из браузера пассажира.
+ * Подписка ставится ДО действий пользователя: так видно и то, что Close не
+ * отправил отмену, и то, что Confirm отправил её ровно один раз. Тело запроса —
+ * multipart (`API.cancelDrive`), поэтому поля читаются из `postData()`.
  */
-export const sosAlarmModal = (page: Page) => page.getByTestId('sos-alarm-modal')
+export interface ICancelRequest {
+  readonly action: string
+  readonly reason: string | undefined
+  readonly hasToken: boolean
+}
 
-/** Есть ли внутри SOS-модала хоть один элемент выбора причины. */
-export async function sosAlarmReasonElementCount(page: Page): Promise<number> {
-  const modal = sosAlarmModal(page)
-  if (await modal.count() === 0)
-    return 0
-  return modal.evaluate(el =>
-    el.querySelectorAll('input[type=radio], input[type=checkbox], select, li').length)
+export function watchCancelRequests(page: Page, orderId: string): ICancelRequest[] {
+  const seen: ICancelRequest[] = []
+  page.on('request', request => {
+    if (request.method() !== 'POST' || !request.url().includes(`/drive/get/${orderId}`))
+      return
+    const body = request.postData() ?? ''
+    const field = (name: string) =>
+      new RegExp(`name="${name}"\\r?\\n\\r?\\n([^\\r\\n]*)`).exec(body)?.[1]
+    if (field('action') !== 'set_cancel_state')
+      return
+    seen.push({ action: 'set_cancel_state', reason: field('reason'), hasToken: Boolean(field('token')) })
+  })
+  return seen
+}
+
+/** Ответ на `set_cancel_state`: HTTP-статус и тело (бизнес-ошибка приходит в теле, а не в HTTP). */
+export async function waitForCancelResponse(page: Page, orderId: string) {
+  const response = await page.waitForResponse(item =>
+    item.request().method() === 'POST' &&
+    item.url().includes(`/drive/get/${orderId}`) &&
+    (item.request().postData() ?? '').includes('set_cancel_state'))
+  return { status: response.status(), body: await response.json().catch(() => undefined) }
 }

@@ -38,7 +38,7 @@ const mapDispatchToProps = {
   setSelectedOrder: clientOrderActionCreators.setSelectedOrder,
   setRatingModal: modalsActionCreators.setRatingModal,
   setMessageModal: modalsActionCreators.setMessageModal,
-  setAlarmModal: modalsActionCreators.setAlarmModal,
+  setSosModal: modalsActionCreators.setSosModal,
   refreshActiveOrders: ordersActionCreators.refreshActiveOrders,
 }
 
@@ -459,7 +459,7 @@ function MiniOrders({
   setSelectedOrder,
   setRatingModal,
   setMessageModal,
-  setAlarmModal,
+  setSosModal,
   refreshActiveOrders,
   className,
   handleOrderClick,
@@ -499,10 +499,10 @@ function MiniOrders({
       })
   }
 
-  const handleSosClick = (event: React.MouseEvent) => {
+  const handleSosClick = (event: React.MouseEvent, order: IOrder) => {
     event.preventDefault()
     event.stopPropagation()
-    setAlarmModal({ isOpen: true })
+    setSosModal({ isOpen: true, orderId: order.b_id })
   }
 
   React.useEffect(() => {
@@ -662,7 +662,7 @@ function MiniOrders({
                   <button
                     type="button"
                     className="mini-orders__sos"
-                    onClick={handleSosClick}
+                    onClick={event => handleSosClick(event, order)}
                     aria-label="SOS"
                     data-testid="passenger-sos-open"
                   >

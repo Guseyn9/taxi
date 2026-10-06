@@ -25,7 +25,7 @@ const mapDispatchToProps = {
   setOnTheWayModal: modalsActionCreators.setOnTheWayModal,
   setRatingModal: modalsActionCreators.setRatingModal,
   setMessageModal: modalsActionCreators.setMessageModal,
-  setAlarmModal: modalsActionCreators.setAlarmModal,
+  setSosModal: modalsActionCreators.setSosModal,
 }
 
 const connector = connect(mapStateToProps, mapDispatchToProps)
@@ -40,7 +40,7 @@ const OnTheWayModal: React.FC<IProps> = ({
   setOnTheWayModal,
   setRatingModal,
   setMessageModal,
-  setAlarmModal,
+  setSosModal,
 }) => {
   const [seconds, setSeconds] = useState(0)
   const order = activeOrders?.find(item => item.b_id === selectedOrder)
@@ -90,7 +90,7 @@ const OnTheWayModal: React.FC<IProps> = ({
             <Button
               text={t(TRANSLATION.ALARM)}
               colorType={EColorTypes.Accent}
-              onClick={() => setAlarmModal({ isOpen: true })}
+              onClick={() => selectedOrder && setSosModal({ isOpen: true, orderId: selectedOrder })}
             />
           </fieldset>
         </form>

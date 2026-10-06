@@ -1855,6 +1855,7 @@ function CardModalContent({
         <Button
           {...actionButtonProps}
           className="order_alarm-btn"
+          data-testid="driver-alarm-open"
           text={`${t(TRANSLATION.ALARM)}`}
           onClick={onAlarmClick}
           colorType={EColorTypes.Accent}
