@@ -1579,12 +1579,13 @@ UI-хелперы: `orderCancelOpenButton`, `orderCancelConfirmButton`,
 > |---|---|
 > | Backend-контракт `Started → set_cancel_state → Canceled` | **ПОДТВЕРЖДЁН** на live (2 независимых заказа, разведка Этапа 1) |
 > | Passenger SOS в UI (`PassengerSosModal`: причина → подтверждение → отмена) | **реализован** (Этап 2) |
-> | E2E A.1.6 через реальный UI | **зелёный**: 3 валидных изолированных прогона подряд (Этап 3) |
-> | Регрессия A.1.1–A.1.6 | **единым прогоном не получена** (live нестабилен); каждый из A.1.1–A.1.6 зелёный по отдельности на этом коде, подробности и оговорки — в разделе «Регрессия» ниже |
+> | E2E A.1.6 через реальный UI | **зелёный**: 3 валидных изолированных локальных прогона подряд + прогон в CI (Этап 3) |
+> | Регрессия A.1.1–A.1.6 | **зелёная**: единый прогон в GitHub Actions — 14/14 tests passed ([run 37657829329](https://github.com/Guseyn9/taxi/actions/runs/37657829329), коммит `aebcd3c`) |
 >
 > Прежняя версия этого раздела описывала GAP («SOS = локальный таймер
 > `AlarmModal`, тест намеренно красный»). GAP закрыт реализацией; историческая
-> разведка сохранена ниже как архив и **не описывает текущее поведение**.
+> разведка вынесена в конец раздела («Архив (HISTORICAL)») и **не описывает
+> текущее поведение**.
 > Отдельный backend-контракт для SOS не нужен: используется существующий
 > `set_cancel_state`.
 
@@ -1695,12 +1696,142 @@ b_state = Canceled(3), active = false, b_cancel_reason = <label>
 > Backend gruzvill — внешний (исходников нет ни в этом репозитории, ни в
 > связанном `taxi-platform-interface`); backend-изменения не требовались.
 
-## Архив: разведка до реализации (на тот момент SOS был локальным `AlarmModal`)
+## E2E A.1.6 — как устроен тест и что подтверждено (ТЗ Passenger SOS, Этап 3)
 
-> Ниже — исторические данные разведки, сделанной **до** реализации Passenger SOS.
-> Они описывают прежнее поведение (`AlarmModal` без причин и backend-вызова) и
-> **не отражают текущее приложение**; актуальный контракт — в разделах выше.
+Запуск:
 
+```bash
+cd taxi
+npm run test:e2e -- --project=passenger-sos
+```
+
+Нужны учётки водителя и пассажира (раздел «Учётные данные»); второй водитель
+не требуется. Файл содержит два теста.
+
+### Тест 1 — основной сценарий (голосовой заказ)
+
+Всё бизнес-состояние переходит через UI; API — только fixture (создание заказа),
+readback, диагностика и уборка. Отмена выполняется кликом по `sos-confirm`.
+
+| Шаг | Действие | Проверка |
+|---|---|---|
+| fixture | голосовой заказ создан через API | `b_state = Processing(1)`, виден пассажиру |
+| UI | водитель откликается → **пассажир** выбирает водителя (`chooseVotingCandidate`) → «Поехал»/«Приехал» → код посадки | `Considering → Performer → Arrived → Started`, обе роли согласованы |
+| entry point | — | `Approved(2)` + `Started(5)` + единственный performer + `active=true` — одновременно |
+| AC-1/2/3/5 | клик `passenger-sos-open` | виден `sos-alarm-modal` (не `alarm-timer-modal`), ≥1 причина, причина не предвыбрана, `sos-confirm` disabled, `set_cancel_state` не отправлялся |
+| Close | клик `sos-close` | модал закрыт, **`set_cancel_state` не отправлен**, заказ по-прежнему `Approved` + `Started` + `active` |
+| сброс | выбрать причину → Close → открыть снова | причина не выбрана, Confirm снова disabled (состояние не «протекает») |
+| AC-4/6/10 | выбрать причину `sos-reason-1`, клик `sos-confirm` | из браузера пассажира ушёл ровно один `set_cancel_state` с выбранной причиной (текст как в UI), ответ HTTP 200, `code 200`, не `status:"error"` |
+| AC-7/10 | readback | `b_state = Canceled(3)`, `active=false`, `b_cancel_reason` = выбранная причина |
+| AC-8 | Passenger UI | модал закрыт, плашка заказа и SOS исчезли; после reload заказ не вернулся, backend по-прежнему `Canceled` |
+| AC-9 | Driver UI | уведомление «отменил заказ» (`warning`), основного действия карты нет, заказа нет в списке, после reload то же |
+
+Запрещённого в тесте нет: ни `set_cancel_state` вместо клика Confirm, ни
+подмены Redux/localStorage, ни моков, ни `waitForTimeout`, ни `nth()`/
+позиционных селекторов (причины — по `data-testid`).
+
+### Тест 2 — Driver Alarm остаётся прежним `AlarmModal` (обычный заказ)
+
+Alarm на странице заказа водителя (`/driver-order/:id`, `pages/Order`) есть
+только у **обычного** заказа при `Started`: у голосового та же страница
+показывает голосовую ветку («Going to the call» / «Hide order»), поэтому тест 1
+её не видит. Стандартный заказ доводится до `Started` одним водителем через UI
+(как в A.1.1). Проверка: `driver-alarm-open` → открывается `alarm-timer-modal`,
+Passenger SOS-модала и списка причин у водителя нет, `AlarmModal` закрывается
+своей кнопкой, заказ остаётся `Approved` + `Started` + `active`.
+
+### Какие точки входа реально достижимы в UI
+
+Проверено по коду, а не по предположению:
+
+| Точка входа | Куда ведёт | Достижима в UI | Чем проверена маршрутизация |
+|---|---|---|---|
+| Passenger: `MiniOrders` (плашка заказа) | `PassengerSosModal` | **да** | E2E (тест 1) + unit |
+| Passenger: `PassengerLiveOrder` | `PassengerSosModal` | **нет** — `showLiveOrderPanel = false` в `pages/Passenger` (мёртвый код) | unit |
+| Passenger: `OnTheWayModal` | `PassengerSosModal` | **нет** — нет ни одного вызова `setOnTheWayModal(true)` (мёртвый код) | unit |
+| Driver: `pages/Order` | `AlarmModal` | да, у обычного заказа при `Started` | E2E (тест 2) + unit |
+| Driver: `CardModal` | `AlarmModal` | да, но тот же `driver-alarm-open`, что у `pages/Order`, — E2E их не различает | unit |
+
+Unit-тест маршрутизации: `src/tools/__tests__/passengerSos.test.js` — Passenger-
+точки используют `setSosModal` и не используют `setAlarmModal`, Driver-точки —
+наоборот; `data-testid="sos-alarm-modal"` есть только у `PassengerSosModal`.
+
+### `status:"error"` и AC-11
+
+Ошибка backend (HTTP 200 + `status:"error"`) на live **безопасно не
+воспроизводится**: пришлось бы отменить заказ через API за спиной интерфейса,
+то есть обойти UI. Поэтому AC-11 покрыт unit-тестом `submitPassengerSos`
+(бизнес-ошибка и сетевая ошибка → отказ, повторная отправка возможна). Контракт
+`CancelModal` не менялся.
+
+### Атрибуты, добавленные в приложение
+
+| Файл | Атрибут |
+|---|---|
+| `components/MiniOrders/index.tsx`, `components/PassengerLiveOrder/index.tsx` | `data-testid="passenger-sos-open"` (SOS-кнопка) |
+| `components/modals/PassengerSosModal.tsx` | `sos-alarm-modal`, `sos-reason-{index}` (`role="radio"`, `aria-checked`), `sos-confirm`, `sos-close` |
+| `components/modals/AlarmModal.tsx` | `alarm-timer-modal` (тестid `sos-alarm-modal` с него убран — он у Passenger SOS) |
+| `pages/Order/index.tsx`, `components/modals/CardModal.tsx` | `driver-alarm-open` (кнопка Alarm водителя) |
+
+UI-хелперы (`fixtures/passengerUi.ts`): `sosOpenButton(page, orderId)`,
+`sosModal`, `sosReasonOptions`, `sosReason`, `sosSelectedReasons`,
+`sosConfirmButton`, `sosCloseButton`, `watchCancelRequests`,
+`waitForCancelResponse` (запрос и ответ `set_cancel_state` из браузера
+пассажира). Устаревшие `sosAlarmModal`/`sosAlarmReasonElementCount` удалены.
+
+### Прогоны на live (2026-10-05, `--project=passenger-sos --no-deps --retries=0`)
+
+Критерий ТЗ: 3 последовательных изолированных запуска. Live-хост
+`ibronevik.ru` в эти дни отвечал нестабильно (до 50–70% соединений
+обрывались: `UND_ERR_CONNECT_TIMEOUT`, «Database is unavailable»,
+`unauthorized access` на `/token`). Сетевой сбой, при котором тело теста не
+выполнялось, **не засчитывался ни как успех, ни как провал**; любой другой
+провал останавливал серию.
+
+| Попытка | Результат |
+|---|---|
+| 1–3 | сетевой сбой (`/auth`, `/token`, список заказов) — не засчитаны |
+| 4 | **2 passed** (57,6 с) — засчитана (1/3) |
+| 5 | **2 passed** (1,1 мин) — засчитана (2/3) |
+| 6 | **2 passed** (55,4 с) — засчитана (3/3) |
+
+Ни одного провала по существу (UI/контракт/тест) за всё время не было.
+
+### Регрессия A.1.1–A.1.6 (GitHub Actions)
+
+**Единый зелёный прогон получен в CI.** Workflow `E2E`, job `Playwright E2E`,
+[run 37657829329](https://github.com/Guseyn9/taxi/actions/runs/37657829329)
+(коммит `aebcd3c`, 2026-10-07): `completed / success`, **14/14 tests passed** —
+A.1.1, A.1.2, A.1.3, A.1.4, A.1.5 и A.1.6 вместе, одним запуском. Изменения
+этой задачи не повлияли на ранее сделанные сценарии A.1.1–A.1.5.
+
+Локальные попытки того же полного прогона (2026-10-06, `--no-deps --retries=0`)
+единого зелёного результата не дали из-за нестабильности live-хоста
+`ibronevik.ru` (до 50–70% соединений обрывались: `UND_ERR_CONNECT_TIMEOUT`,
+«Database is unavailable», `unauthorized access` на `/token`), при этом каждый
+сценарий по отдельности был зелёным на том же коде (лучший локальный прогон:
+6 passed, 1 failed — A.1.2 упал на «Database is unavailable»). Нестабильность
+A.1.5 на деградировавшем live (2 из 6 локальных прогонов: список заказов
+водителя не синхронизировался) в CI не воспроизвелась.
+
+### Что НЕ проверено
+
+* Driver `CardModal` отдельно от `pages/Order` и две недостижимые Passenger-точки
+  (`PassengerLiveOrder`, `OnTheWayModal`) — только unit (см. таблицу выше).
+* CI выполнен один раз (run 37657829329 на `aebcd3c`); стабильность результата
+  во времени (повторные CI-прогоны) не оценивалась.
+* c_state водителя после отмены остаётся `Started(5)` (контракт backend, как
+  `Performer` в A.1.5). Критерий «поездка не продолжается» — `b_state=3` +
+  `active=false` и отсутствие у водителя действий в UI, а не смена `c_state`.
+
+## Архив (HISTORICAL): разведка до реализации Passenger SOS
+
+> **HISTORICAL — не описывает текущее состояние.** Всё ниже — данные разведки и
+> решения, сделанные **до** реализации Passenger SOS, когда SOS был локальным
+> 60-секундным `AlarmModal` без причин и backend-вызова. Упоминания GAP, «теста,
+> намеренно красного», issue #24 и Draft-статуса PR #23 относятся к тому
+> состоянию и **сейчас неактуальны**: функция реализована, E2E A.1.6 зелёный.
+> Актуальные контракт, реализация и результаты — в разделах выше.
 
 Измерено временной оснасткой (`e2e/_recon-sos.spec.ts`, в репозитории не
 осталась — удалена вместе с временным project'ом `sos-recon` из
@@ -2020,153 +2151,9 @@ backend-контракта. Решение — всё равно за backend/pr
 `Cancel` при `!isTripStarted`, `SOS` при `isTripStarted` — взаимоисключающие
 условия, увидеть причины именно по клику SOS физически невозможно). Вывод
 Этапа 1 не меняется: Passenger SOS backend-контракта не имеет, подтверждено
-трижды. Решение — оставить как есть: `passenger-sos.spec.ts` намеренно
-красный, PR #23 в Draft, до ответа backend/product-команды в issue #24.
-
-## E2E A.1.6 — как устроен тест и что подтверждено (ТЗ Passenger SOS, Этап 3)
-
-Запуск:
-
-```bash
-cd taxi
-npm run test:e2e -- --project=passenger-sos
-```
-
-Нужны учётки водителя и пассажира (раздел «Учётные данные»); второй водитель
-не требуется. Файл содержит два теста.
-
-### Тест 1 — основной сценарий (голосовой заказ)
-
-Всё бизнес-состояние переходит через UI; API — только fixture (создание заказа),
-readback, диагностика и уборка. Отмена выполняется кликом по `sos-confirm`.
-
-| Шаг | Действие | Проверка |
-|---|---|---|
-| fixture | голосовой заказ создан через API | `b_state = Processing(1)`, виден пассажиру |
-| UI | водитель откликается → **пассажир** выбирает водителя (`chooseVotingCandidate`) → «Поехал»/«Приехал» → код посадки | `Considering → Performer → Arrived → Started`, обе роли согласованы |
-| entry point | — | `Approved(2)` + `Started(5)` + единственный performer + `active=true` — одновременно |
-| AC-1/2/3/5 | клик `passenger-sos-open` | виден `sos-alarm-modal` (не `alarm-timer-modal`), ≥1 причина, причина не предвыбрана, `sos-confirm` disabled, `set_cancel_state` не отправлялся |
-| Close | клик `sos-close` | модал закрыт, **`set_cancel_state` не отправлен**, заказ по-прежнему `Approved` + `Started` + `active` |
-| сброс | выбрать причину → Close → открыть снова | причина не выбрана, Confirm снова disabled (состояние не «протекает») |
-| AC-4/6/10 | выбрать причину `sos-reason-1`, клик `sos-confirm` | из браузера пассажира ушёл ровно один `set_cancel_state` с выбранной причиной (текст как в UI), ответ HTTP 200, `code 200`, не `status:"error"` |
-| AC-7/10 | readback | `b_state = Canceled(3)`, `active=false`, `b_cancel_reason` = выбранная причина |
-| AC-8 | Passenger UI | модал закрыт, плашка заказа и SOS исчезли; после reload заказ не вернулся, backend по-прежнему `Canceled` |
-| AC-9 | Driver UI | уведомление «отменил заказ» (`warning`), основного действия карты нет, заказа нет в списке, после reload то же |
-
-Запрещённого в тесте нет: ни `set_cancel_state` вместо клика Confirm, ни
-подмены Redux/localStorage, ни моков, ни `waitForTimeout`, ни `nth()`/
-позиционных селекторов (причины — по `data-testid`).
-
-### Тест 2 — Driver Alarm остаётся прежним `AlarmModal` (обычный заказ)
-
-Alarm на странице заказа водителя (`/driver-order/:id`, `pages/Order`) есть
-только у **обычного** заказа при `Started`: у голосового та же страница
-показывает голосовую ветку («Going to the call» / «Hide order»), поэтому тест 1
-её не видит. Стандартный заказ доводится до `Started` одним водителем через UI
-(как в A.1.1). Проверка: `driver-alarm-open` → открывается `alarm-timer-modal`,
-Passenger SOS-модала и списка причин у водителя нет, `AlarmModal` закрывается
-своей кнопкой, заказ остаётся `Approved` + `Started` + `active`.
-
-### Какие точки входа реально достижимы в UI
-
-Проверено по коду, а не по предположению:
-
-| Точка входа | Куда ведёт | Достижима в UI | Чем проверена маршрутизация |
-|---|---|---|---|
-| Passenger: `MiniOrders` (плашка заказа) | `PassengerSosModal` | **да** | E2E (тест 1) + unit |
-| Passenger: `PassengerLiveOrder` | `PassengerSosModal` | **нет** — `showLiveOrderPanel = false` в `pages/Passenger` (мёртвый код) | unit |
-| Passenger: `OnTheWayModal` | `PassengerSosModal` | **нет** — нет ни одного вызова `setOnTheWayModal(true)` (мёртвый код) | unit |
-| Driver: `pages/Order` | `AlarmModal` | да, у обычного заказа при `Started` | E2E (тест 2) + unit |
-| Driver: `CardModal` | `AlarmModal` | да, но тот же `driver-alarm-open`, что у `pages/Order`, — E2E их не различает | unit |
-
-Unit-тест маршрутизации: `src/tools/__tests__/passengerSos.test.js` — Passenger-
-точки используют `setSosModal` и не используют `setAlarmModal`, Driver-точки —
-наоборот; `data-testid="sos-alarm-modal"` есть только у `PassengerSosModal`.
-
-### `status:"error"` и AC-11
-
-Ошибка backend (HTTP 200 + `status:"error"`) на live **безопасно не
-воспроизводится**: пришлось бы отменить заказ через API за спиной интерфейса,
-то есть обойти UI. Поэтому AC-11 покрыт unit-тестом `submitPassengerSos`
-(бизнес-ошибка и сетевая ошибка → отказ, повторная отправка возможна). Контракт
-`CancelModal` не менялся.
-
-### Атрибуты, добавленные в приложение
-
-| Файл | Атрибут |
-|---|---|
-| `components/MiniOrders/index.tsx`, `components/PassengerLiveOrder/index.tsx` | `data-testid="passenger-sos-open"` (SOS-кнопка) |
-| `components/modals/PassengerSosModal.tsx` | `sos-alarm-modal`, `sos-reason-{index}` (`role="radio"`, `aria-checked`), `sos-confirm`, `sos-close` |
-| `components/modals/AlarmModal.tsx` | `alarm-timer-modal` (тестid `sos-alarm-modal` с него убран — он у Passenger SOS) |
-| `pages/Order/index.tsx`, `components/modals/CardModal.tsx` | `driver-alarm-open` (кнопка Alarm водителя) |
-
-UI-хелперы (`fixtures/passengerUi.ts`): `sosOpenButton(page, orderId)`,
-`sosModal`, `sosReasonOptions`, `sosReason`, `sosSelectedReasons`,
-`sosConfirmButton`, `sosCloseButton`, `watchCancelRequests`,
-`waitForCancelResponse` (запрос и ответ `set_cancel_state` из браузера
-пассажира). Устаревшие `sosAlarmModal`/`sosAlarmReasonElementCount` удалены.
-
-### Прогоны на live (2026-10-05, `--project=passenger-sos --no-deps --retries=0`)
-
-Критерий ТЗ: 3 последовательных изолированных запуска. Live-хост
-`ibronevik.ru` в эти дни отвечал нестабильно (до 50–70% соединений
-обрывались: `UND_ERR_CONNECT_TIMEOUT`, «Database is unavailable»,
-`unauthorized access` на `/token`). Сетевой сбой, при котором тело теста не
-выполнялось, **не засчитывался ни как успех, ни как провал**; любой другой
-провал останавливал серию.
-
-| Попытка | Результат |
-|---|---|
-| 1–3 | сетевой сбой (`/auth`, `/token`, список заказов) — не засчитаны |
-| 4 | **2 passed** (57,6 с) — засчитана (1/3) |
-| 5 | **2 passed** (1,1 мин) — засчитана (2/3) |
-| 6 | **2 passed** (55,4 с) — засчитана (3/3) |
-
-Ни одного провала по существу (UI/контракт/тест) за всё время не было.
-
-### Регрессия A.1.1–A.1.6
-
-Проверено 2026-10-06 на одном и том же коде (после реализации SOS), `--no-deps --retries=0`.
-
-**Единым прогоном все шесть проектов не прошли**: сделано 11 попыток полного
-прогона (8 + 3), ни одна не дала полностью зелёный результат — каждый раз хотя бы
-один тест падал на сетевом сбое live (`UND_ERR_CONNECT_TIMEOUT`,
-«Database is unavailable», `unauthorized access` на `/token`; такой тест часто
-падал за 0 мс — не доходил до тела). Лучшая попытка: **6 passed, 1 failed** —
-A.1.1, A.1.3, A.1.4, A.1.5, A.1.6 (оба теста) зелёные, A.1.2 упал на «Database is
-unavailable».
-
-Поэтому ниже — не «регрессия зелёная», а **поэлементное подтверждение**: каждый
-сценарий хотя бы по два раза зелёный на этом коде.
-
-| Сценарий | Зелёных прогонов на этом коде |
-|---|---|
-| A.1.1 стандартный вызов | 2 |
-| A.1.2 голосование | 3 |
-| A.1.3 предложение | 3 |
-| A.1.4 отказ выбранного водителя | 2 |
-| A.1.5 отмена заказа пассажиром | 4 (в т.ч. 3 изолированных) |
-| A.1.6 Passenger SOS (оба теста) | 2 в составе полного прогона + 3 валидных изолированных (см. выше) |
-
-**A.1.5 нестабилен на деградировавшем live.** Из 6 прогонов на этом коде 2 упали
-на синхронизации списка заказов водителя: «заказ не появился в списке водителя за
-120 с» и «отменённый заказ не пропал из списка водителя за 30 с». Оба раза рядом
-шли сетевые ошибки live. Изменения этой задачи не затрагивают ни список
-водителя, ни пассажирскую отмену (`CancelModal`, `VotingForm`, driver-страницы
-не менялись; из Driver-кода тронуты только `data-testid` у кнопок Alarm), поэтому
-причиной считается нестабильность live, но это **не доказано** — рекомендуется
-перепрогнать A.1.1–A.1.6 в CI при здоровом backend. Полный зелёный прогон
-единым запуском остаётся открытым пунктом.
-
-### Что НЕ проверено
-
-* Driver `CardModal` отдельно от `pages/Order` и две недостижимые Passenger-точки
-  (`PassengerLiveOrder`, `OnTheWayModal`) — только unit (см. таблицу выше).
-* `GitHub Actions` на этом PR после реализации не запускались: статус CI нужно
-  смотреть на самом PR.
-* c_state водителя после отмены остаётся `Started(5)` (контракт backend, как
-  `Performer` в A.1.5). Критерий «поездка не продолжается» — `b_state=3` +
-  `active=false` и отсутствие у водителя действий в UI, а не смена `c_state`.
+трижды. [historical] Решение на тот момент — оставить как есть: `passenger-sos.spec.ts`
+намеренно красный, PR #23 в Draft, до ответа backend/product-команды в issue #24
+(сейчас неактуально: SOS реализован, тест зелёный).
 
 # Общее для всех тестов
 
