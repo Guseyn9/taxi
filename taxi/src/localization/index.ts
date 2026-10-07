@@ -928,6 +928,24 @@ const FALLBACK_TRANSLATIONS: Record<string, Record<string, string>> = {
     fr: 'Le trajet a ete interrompu',
     ar: 'تم إيقاف الرحلة',
   },
+  passenger_sos_title: {
+    ru: 'SOS: прервать поездку',
+    en: 'SOS: stop the trip',
+    fr: 'SOS : interrompre le trajet',
+    ar: 'SOS: إيقاف الرحلة',
+  },
+  passenger_sos_description: {
+    ru: 'Выберите причину. После подтверждения поездка будет отменена.',
+    en: 'Choose a reason. The trip will be cancelled once you confirm.',
+    fr: 'Choisissez un motif. Le trajet sera annule apres confirmation.',
+    ar: 'اختر السبب. ستُلغى الرحلة بعد التأكيد.',
+  },
+  passenger_sos_confirm: {
+    ru: 'Подтвердить',
+    en: 'Confirm',
+    fr: 'Confirmer',
+    ar: 'تأكيد',
+  },
   driver_trip_cancel_reason_passenger_request: {
     ru: 'Пассажир попросил прекратить поездку',
     en: 'The passenger asked to stop the trip',

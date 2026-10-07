@@ -52,3 +52,7 @@ export const driverTripCancelModal = (state: IRootState) =>
   moduleSelector(state).driverTripCancelModal
 export const isDriverTripCancelModalOpen = (state: IRootState) =>
   driverTripCancelModal(state).isOpen
+export const sosModal = (state: IRootState) =>
+  moduleSelector(state).sosModal
+export const isSosModalOpen = (state: IRootState) =>
+  sosModal(state).isOpen

@@ -88,3 +88,6 @@ export const setOrderCardModal = (
 export const setDriverTripCancelModal = (
   payload: IModalsState['driverTripCancelModal'],
 ): TAction => ({ type: ActionTypes.SET_DRIVER_TRIP_CANCEL_MODAL, payload })
+export const setSosModal = (
+  payload: IModalsState['sosModal'],
+): TAction => ({ type: ActionTypes.SET_SOS_MODAL, payload })

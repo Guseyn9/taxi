@@ -38,6 +38,7 @@ export const ActionTypes = {
   SET_SHOW_SWITCHERS_MENU: `${prefix}/SET_SHOW_SWITCHERS_MENU`,
   SET_ORDER_CARD_MODAL: `${prefix}/SET_ORDER_CARD_MODAL`,
   SET_DRIVER_TRIP_CANCEL_MODAL: `${prefix}/SET_DRIVER_TRIP_CANCEL_MODAL`,
+  SET_SOS_MODAL: `${prefix}/SET_SOS_MODAL`,
 } as const
 
 export enum EMapModalTypes {
@@ -118,6 +119,14 @@ export interface IModalsState {
     orderId?: undefined
   }
   driverTripCancelModal: {
+    isOpen: boolean
+    orderId: IOrder['b_id']
+  } | {
+    isOpen: false
+    orderId?: undefined
+  }
+  /** Passenger SOS после Started. Выбранная причина и loading живут в самом модале. */
+  sosModal: {
     isOpen: boolean
     orderId: IOrder['b_id']
   } | {

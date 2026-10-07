@@ -200,3 +200,68 @@ export async function cancelAssignedOrder(page: Page): Promise<void> {
   await expect(confirm, 'открылась модалка подтверждения отмены').toBeVisible({ timeout: 60_000 })
   await confirm.click()
 }
+
+/**
+ * SOS после Started (TEST-E2E-007, ТЗ Passenger SOS).
+ *
+ * Кнопка в UI достижима ТОЛЬКО в плашке `MiniOrders` (внутри
+ * `passenger-mini-order`): `PassengerLiveOrder` (`showLiveOrderPanel = false`
+ * в pages/Passenger) и `OnTheWayModal` (нет ни одного вызова
+ * `setOnTheWayModal(true)`) через интерфейс недостижимы — см. e2e/README.md.
+ * Локатор привязан к конкретному заказу, а не к порядку кнопок на странице.
+ */
+export const sosOpenButton = (page: Page, orderId: string) =>
+  miniOrderCard(page, orderId).getByTestId('passenger-sos-open')
+
+/** Passenger SOS-модал (`components/modals/PassengerSosModal.tsx`). */
+export const sosModal = (page: Page) => page.getByTestId('sos-alarm-modal')
+
+/** Все причины SOS-модала — по префиксу testid, а не по порядку в DOM. */
+export const sosReasonOptions = (page: Page) => page.locator('[data-testid^="sos-reason-"]')
+
+/** Одна причина по её стабильному индексу (`sos-reason-0`, `sos-reason-1`, ...). */
+export const sosReason = (page: Page, index: number) => page.getByTestId(`sos-reason-${index}`)
+
+/** Выбранные причины (radio `aria-checked="true"`) — их должно быть ровно 0 или 1. */
+export const sosSelectedReasons = (page: Page) =>
+  page.locator('[data-testid^="sos-reason-"][aria-checked="true"]')
+
+export const sosConfirmButton = (page: Page) => page.getByTestId('sos-confirm')
+
+export const sosCloseButton = (page: Page) => page.getByTestId('sos-close')
+
+/**
+ * Запросы `set_cancel_state` по заказу, наблюдаемые из браузера пассажира.
+ * Подписка ставится ДО действий пользователя: так видно и то, что Close не
+ * отправил отмену, и то, что Confirm отправил её ровно один раз. Тело запроса —
+ * multipart (`API.cancelDrive`), поэтому поля читаются из `postData()`.
+ */
+export interface ICancelRequest {
+  readonly action: string
+  readonly reason: string | undefined
+  readonly hasToken: boolean
+}
+
+export function watchCancelRequests(page: Page, orderId: string): ICancelRequest[] {
+  const seen: ICancelRequest[] = []
+  page.on('request', request => {
+    if (request.method() !== 'POST' || !request.url().includes(`/drive/get/${orderId}`))
+      return
+    const body = request.postData() ?? ''
+    const field = (name: string) =>
+      new RegExp(`name="${name}"\\r?\\n\\r?\\n([^\\r\\n]*)`).exec(body)?.[1]
+    if (field('action') !== 'set_cancel_state')
+      return
+    seen.push({ action: 'set_cancel_state', reason: field('reason'), hasToken: Boolean(field('token')) })
+  })
+  return seen
+}
+
+/** Ответ на `set_cancel_state`: HTTP-статус и тело (бизнес-ошибка приходит в теле, а не в HTTP). */
+export async function waitForCancelResponse(page: Page, orderId: string) {
+  const response = await page.waitForResponse(item =>
+    item.request().method() === 'POST' &&
+    item.url().includes(`/drive/get/${orderId}`) &&
+    (item.request().postData() ?? '').includes('set_cancel_state'))
+  return { status: response.status(), body: await response.json().catch(() => undefined) }
+}

@@ -100,6 +100,15 @@ export default defineConfig({
       dependencies: ['setup'],
       use: devices['Desktop Chrome'],
     },
+    {
+      // А.1.6: Passenger SOS после Started → причина → подтверждение →
+      // set_cancel_state → Canceled. Две роли, контексты тест открывает сам.
+      // Контракт backend замерен разведкой (e2e/README.md, TEST-E2E-007).
+      name: 'passenger-sos',
+      testMatch: /passenger-sos\.spec\.ts/,
+      dependencies: ['setup'],
+      use: devices['Desktop Chrome'],
+    },
   ],
 
   webServer: {

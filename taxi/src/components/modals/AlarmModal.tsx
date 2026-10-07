@@ -48,9 +48,8 @@ const AlarmModal: React.FC<IProps> = ({
       isOpen={isOpen}
       onClick={() => setAlarmModal({ ...defaultAlarmModal })}
     >
-      <div
-        className="modal vote-modal"
-      >
+      {/* Driver-only таймер. Passenger SOS — это PassengerSosModal, а не этот компонент. */}
+      <div className="modal vote-modal" data-testid="alarm-timer-modal">
         <form>
           <fieldset>
             <legend>

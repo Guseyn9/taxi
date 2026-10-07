@@ -56,7 +56,7 @@ function PassengerLiveOrder({
   activeChat,
   language,
   setActiveChat,
-  setAlarmModal,
+  setSosModal,
   setCancelModal,
   setMessageModal,
   setRatingModal,
@@ -365,7 +365,7 @@ function PassengerLiveOrder({
   const handleSosClick = (event: React.MouseEvent) => {
     event.preventDefault()
     event.stopPropagation()
-    setAlarmModal({ isOpen: true })
+    setSosModal({ isOpen: true, orderId: order.b_id })
   }
 
   const handleChooseCandidate = async(event: React.MouseEvent) => {
@@ -795,6 +795,7 @@ function PassengerLiveOrder({
                 type="button"
                 className="passenger-live-order__action passenger-live-order__action--sos"
                 onClick={handleSosClick}
+                data-testid="passenger-sos-open"
               >
                 <SosIcon />
                 SOS
