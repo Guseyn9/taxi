@@ -34,6 +34,8 @@ import {
   PASSENGER_STORAGE,
   TPassengerOrderMode,
   expandPassengerOrderForm,
+  pressPassengerOrderModeAgain,
+  slowPassengerNetwork,
   expectPassengerLocationClass,
   expectPassengerOrderCreated,
   fillPassengerOrderPoints,
@@ -52,6 +54,7 @@ import {
   cancelTestOrders,
   customerPriceOf,
   isOfferOrderSnapshot,
+  listActiveOrders,
   login,
   readOrder,
 } from './fixtures/taxiApi'
@@ -64,6 +67,16 @@ const POINT_TOLERANCE_M = 150
 /** Межгородское назначение (Таганрог, Петровская 10): замерено 47.2069, 38.9426. */
 const INTERCITY_DESTINATION = { latitude: 47.2069, longitude: 38.9426 }
 const INTERCITY_TOLERANCE_M = 1000
+
+/**
+ * Защита от двойного создания (AC-12). Первый запрос растягивается замедлением
+ * сети браузера — запрос и ответ настоящие, просто идут дольше, — а за это время
+ * пассажир нажимает кнопку режима ещё несколько раз.
+ */
+const DOUBLE_PRESS_LATENCY_MS = 2_000
+const REPEATED_PRESSES = 3
+/** Заказы одного сценария создаются в пределах этого окна; всё, что старше, — чужое. */
+const SAME_SCENARIO_WINDOW_MS = 60_000
 
 let passenger: ISession
 let context: BrowserContext
@@ -139,9 +152,17 @@ test.afterEach(async({}, testInfo) => {
     testInfo.annotations.push({ type: 'backend', description: diagnostics })
   }
 
+  // Если из-за дефекта создалось несколько заказов, уборка должна убрать каждый,
+  // а не только первый: ждём ответы на все отправленные создающие запросы.
+  if (watch) {
+    await expect.poll(() => watch!.settled(), { timeout: 15_000 }).toBe(true).catch(() => undefined)
+    for (const orderId of watch.orderIds())
+      if (!createdOrders.includes(orderId))
+        createdOrders.push(orderId)
+  }
   watch?.dispose()
 
-  // Каждый сценарий убирает ровно СВОЙ заказ. Чужие и немеченые заказы пассажира
+  // Каждый сценарий убирает ровно СВОЙ заказ (все, что создал он сам). Чужие и немеченые заказы пассажира
   // не трогаем. Не вышло — заказ остался живым, его номер обязан попасть в лог.
   while (createdOrders.length) {
     const orderId = createdOrders.pop() as string
@@ -222,7 +243,18 @@ async function enterOrderForm(destination: IPassengerOrderPoint, locationClass: 
  */
 async function clickCreate(mode: TPassengerOrderMode): Promise<IOrderCreation> {
   watch = watchOrderCreationRequest(page)
-  await submitPassengerOrder(page, mode)
+
+  // Первое нажатие и сразу повторные — пока первый запрос ещё обрабатывается.
+  // Что именно они пришлись на это время, проверяется: ответа ещё нет.
+  const restoreNetwork = await slowPassengerNetwork(page, DOUBLE_PRESS_LATENCY_MS)
+  try {
+    await submitPassengerOrder(page, mode)
+    await pressPassengerOrderModeAgain(page, mode, REPEATED_PRESSES)
+    expect(watch.responded(), 'повторные нажатия пришлись на обработку первого запроса').toBe(false)
+  } finally {
+    await restoreNetwork()
+  }
+
   const created = await watch.waitForCreated()
   state.orderId = created.orderId
   state.httpStatus = created.status
@@ -263,10 +295,43 @@ async function readCreatedOrder(created: IOrderCreation): Promise<IOrderSnapshot
 
   expect(order.b_id, 'backend отдаёт именно созданный заказ').toBe(created.orderId)
   // Backend округляет координаты до 6 знаков — сверяем с этой точностью.
-  expect(Math.abs(Number(order.b_start_latitude) - Number(payload.b_start_latitude)), 'старт сохранён как в запросе').toBeLessThan(1e-5)
-  expect(Math.abs(Number(order.b_destination_longitude) - Number(payload.b_destination_longitude)), 'назначение сохранено как в запросе').toBeLessThan(1e-5)
+  // Сверяются ВСЕ четыре координаты: ошибка в любой из них не должна пройти незамеченной.
+  const coordinates: Array<[string, unknown, unknown]> = [
+    ['широта старта', order.b_start_latitude, payload.b_start_latitude],
+    ['долгота старта', order.b_start_longitude, payload.b_start_longitude],
+    ['широта назначения', order.b_destination_latitude, payload.b_destination_latitude],
+    ['долгота назначения', order.b_destination_longitude, payload.b_destination_longitude],
+  ]
+  for (const [name, saved, sent] of coordinates) {
+    expect(Number.isFinite(Number(saved)), `backend вернул ${name}`).toBe(true)
+    expect(Math.abs(Number(saved) - Number(sent)), `${name} сохранена как в запросе`).toBeLessThan(1e-5)
+  }
   expect(digitsOf(order.b_contact), 'контакт сохранён как в запросе').toBe(passengerPhone())
   return order
+}
+
+/**
+ * Один сценарий — один созданный заказ (AC-12). Повторные нажатия не должны ни
+ * породить второй создающий запрос, ни второй заказ на backend. Заказ-дубль был бы
+ * неотличим от оригинала по содержимому, поэтому ищем в активных заказах
+ * пассажира всё, что совпадает адресами и контактом и создано в окне сценария.
+ */
+async function expectSingleOrder(created: IOrderCreation, order: IOrderSnapshot): Promise<void> {
+  expect(watch?.requests.length, 'повторные нажатия не породили второй создающий запрос').toBe(1)
+
+  const createdAt = Date.parse(String(order.b_created))
+  expect(Number.isFinite(createdAt), 'у заказа есть время создания').toBe(true)
+
+  const active = Object.values(await listActiveOrders(passenger))
+  const sameScenario = active
+    .filter(item =>
+      item.b_start_address === order.b_start_address &&
+      item.b_destination_address === order.b_destination_address &&
+      digitsOf(item.b_contact) === digitsOf(order.b_contact) &&
+      Math.abs(Date.parse(String(item.b_created)) - createdAt) < SAME_SCENARIO_WINDOW_MS)
+    .map(item => String(item.b_id))
+
+  expect(sameScenario, 'на backend один сценарий — один созданный заказ').toEqual([created.orderId])
 }
 
 // ─────────────────────────────── сценарии ──────────────────────────────────
@@ -300,7 +365,8 @@ test.describe('TEST-E2E-008 — создание заказа через UI па
     await test.step('UI: пассажир видит именно этот заказ', () =>
       expectPassengerOrderCreated(page, order.b_id))
 
-    expect(watch?.requests.length, 'после создания не ушёл второй запрос создания').toBe(1)
+    await test.step('Двойное нажатие: один сценарий — один заказ', () =>
+      expectSingleOrder(created, order))
   })
 
   test('008-B Voting: форма → POST /drive (голосование) → backend подтверждает Voting → заказ в UI', async() => {
@@ -332,7 +398,8 @@ test.describe('TEST-E2E-008 — создание заказа через UI па
       expectPassengerOrderCreated(page, order.b_id))
 
     // Отклик водителей и сам выбор исполнителя — TEST-E2E-003, здесь не проверяются.
-    expect(watch?.requests.length, 'после создания не ушёл второй запрос создания').toBe(1)
+    await test.step('Двойное нажатие: один сценарий — один заказ', () =>
+      expectSingleOrder(created, order))
   })
 
   test('008-C Offer: форма → цена → POST /drive → контракт Offer на backend → заказ в UI', async() => {
@@ -369,6 +436,7 @@ test.describe('TEST-E2E-008 — создание заказа через UI па
     await test.step('UI: пассажир видит именно этот заказ', () =>
       expectPassengerOrderCreated(page, order.b_id))
 
-    expect(watch?.requests.length, 'после создания не ушёл второй запрос создания').toBe(1)
+    await test.step('Двойное нажатие: один сценарий — один заказ', () =>
+      expectSingleOrder(created, order))
   })
 })

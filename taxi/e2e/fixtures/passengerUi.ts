@@ -499,6 +499,12 @@ function creationPayloadOf(request: Request): Record<string, any> | undefined {
 export interface IOrderCreationWatch {
   /** Все запросы СОЗДАНИЯ, которые ушли из браузера (опрос списка заказов сюда не входит). */
   readonly requests: readonly IOrderCreationRequest[]
+  /** Получил ли хоть один создающий запрос ответ — нужно, чтобы доказать, что повторное нажатие шло ДО него. */
+  responded(): boolean
+  /** Все ли отправленные создающие запросы получили ответ (дубль приходит позже первого). */
+  settled(): boolean
+  /** `b_id` ВСЕХ созданных заказов — не только первого: при двойном создании уборка должна убрать каждый. */
+  orderIds(): string[]
   /** Дождаться ответа на запрос создания и достать из него `b_id`. Падает, если `b_id` нет. */
   waitForCreated(timeout?: number): Promise<IOrderCreation>
   /** Короткое описание без токенов — для диагностики падения. */
@@ -545,6 +551,12 @@ export function watchOrderCreationRequest(page: Page): IOrderCreationWatch {
   return {
     requests,
     describe: summarize,
+    responded: () => responses.size > 0,
+    settled: () => requests.every(entry => responses.has(entry)),
+    orderIds: () => requests
+      .map(entry => responses.get(entry)?.body?.data?.b_id)
+      .filter(id => id !== undefined && id !== null && id !== '')
+      .map(String),
     dispose() {
       page.off('request', onRequest)
       page.off('response', onResponse)
@@ -576,4 +588,47 @@ export async function expectPassengerOrderCreated(page: Page, orderId: string): 
     .toBeVisible({ timeout: 120_000 })
   await expect(passengerOrderForm(page), 'форма перешла в состояние созданного заказа')
     .toHaveAttribute('data-locked', 'true', { timeout: 60_000 })
+}
+
+/**
+ * Растянуть обработку запроса создания, чтобы повторное нажатие гарантированно
+ * пришлось на время, пока первый запрос ещё «в пути». Это замедление сети самого
+ * браузера (CDP `Network.emulateNetworkConditions`), а не перехват `/drive`:
+ * запрос уходит на настоящий backend и возвращается настоящий ответ — он просто
+ * приходит позже. Подмены ответа и мока здесь нет.
+ *
+ * Возвращает функцию, которая снимает замедление; вызывать её нужно в `finally`.
+ */
+export async function slowPassengerNetwork(page: Page, latencyMs: number): Promise<() => Promise<void>> {
+  const cdp = await page.context().newCDPSession(page)
+  await cdp.send('Network.enable')
+  const emulate = (latency: number) => cdp.send('Network.emulateNetworkConditions', {
+    offline: false,
+    latency,
+    downloadThroughput: -1,
+    uploadThroughput: -1,
+  })
+  await emulate(latencyMs)
+
+  return async() => {
+    await emulate(0).catch(() => undefined)
+    await cdp.detach().catch(() => undefined)
+  }
+}
+
+/**
+ * Повторное пользовательское нажатие кнопки режима, пока первое ещё обрабатывается.
+ * Настоящий клик мышью по кнопке: `force` лишь отключает ожидание «кнопка доступна»
+ * (приложение может заблокировать её на время запроса — это допустимая защита, и
+ * ждать её снятия нельзя), клик при этом всё равно доставляется браузером как
+ * обычное нажатие. Если кнопка исчезла, клик упадёт по таймауту, а не уйдёт мимо.
+ */
+export async function pressPassengerOrderModeAgain(
+  page: Page,
+  mode: TPassengerOrderMode,
+  presses: number,
+): Promise<void> {
+  const button = passengerOrderModeButton(page, mode)
+  for (let press = 0; press < presses; press += 1)
+    await button.click({ force: true, timeout: 5_000 })
 }
