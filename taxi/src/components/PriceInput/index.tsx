@@ -406,6 +406,9 @@ function PriceInputItem({
         'price-input__container--compact': !active,
       })}
       onClick={handleActivate}
+      // Контракт для E2E: сегмент цены (estimated | pickup | customer).
+      data-testid="passenger-order-price-segment"
+      data-price-key={item.key}
       role="button"
       tabIndex={0}
       onKeyDown={event => {
@@ -429,6 +432,8 @@ function PriceInputItem({
             <input
               ref={inputRef}
               className="price-input__segment-input"
+              data-testid="passenger-order-price"
+              data-price-key={item.key}
               inputMode="numeric"
               value={item.value}
               placeholder={item.placeholder}

@@ -85,6 +85,14 @@ export const hasDriver2Account = () =>
 /** Пассажир: создаёт голосовой заказ и выбирает водителя. */
 export const passengerAccount = () => readAccount('E2E_PASSENGER', 'пассажир')
 
+/**
+ * Телефон, который тест вводит в форму заказа пассажира (TEST-E2E-008). Только
+ * цифры маски gruzvill (`+233(___)-___-___`); задать другой можно через
+ * `E2E_PASSENGER_PHONE`. В production-код номер не попадает.
+ */
+export const passengerPhone = () =>
+  readValue('E2E_PASSENGER_PHONE').replace(/\D/g, '') || '233555000111'
+
 export const apiBase = () =>
   readValue('E2E_API_BASE') || 'https://ibronevik.ru/taxi/c/gruzvill/api/v1'
 

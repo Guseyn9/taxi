@@ -48,6 +48,12 @@ export interface IOrderSnapshot {
   /** Может прийти объектом или JSON-строкой — нормализуется `orderOptionsOf`. */
   readonly b_options?: unknown
   readonly drivers?: IOrderDriver[] | null
+  readonly b_contact?: string | number
+  readonly b_created?: string
+  readonly b_start_address?: string
+  readonly b_destination_address?: string
+  readonly b_max_waiting?: string | number
+  readonly b_passengers_count?: string | number
   readonly b_start_latitude?: string
   readonly b_start_longitude?: string
   readonly b_destination_latitude?: string
@@ -522,7 +528,7 @@ export async function cancelOrder(session: ISession, orderId: string): Promise<v
  */
 const ACTIVE_ORDERS_SWEEP_PASSES = 60
 
-async function listActiveOrders(session: ISession): Promise<Record<string, any>> {
+export async function listActiveOrders(session: ISession): Promise<Record<string, any>> {
   const response = await post('/drive', authFields(session, { fields: '00000000u1' }))
   return response?.data?.booking ?? {}
 }

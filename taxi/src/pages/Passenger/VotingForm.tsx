@@ -1257,6 +1257,8 @@ const VotingForm = function VotingForm({
             text={text}
             title={button.text}
             aria-label={button.text}
+            // Контракт для E2E: клик по кнопке режима и есть создание заказа.
+            data-testid={`passenger-order-mode-${button.mode}`}
             onClick={() => {
               setSelectedMode(button.mode)
               submit(button.mode)
@@ -1610,6 +1612,10 @@ const VotingForm = function VotingForm({
     <>
       <form
       className={`passenger-voting-form${locked ? ' passenger-voting-form--locked' : ''}`}
+      // Контракт для E2E: состояние формы читается атрибутами, а не классами.
+      data-testid="passenger-order-form"
+      data-locked={locked ? 'true' : 'false'}
+      data-expanded={isExpanded ? 'true' : 'false'}
       data-ui-state={activeUiConfig?.state}
       data-ui-sheet={activeUiConfig?.bottomSheet}
       onSubmit={event => {
@@ -1755,6 +1761,8 @@ const VotingForm = function VotingForm({
           fieldWrapperClassName="passenger-voting-form__input"
           inputProps={{
             value: phone ?? '',
+            // Контракт для E2E: поле телефона формы заказа.
+            ...({ 'data-testid': 'passenger-order-phone' } as React.ComponentProps<'input'>),
           }}
           inputType={EInputTypes.MaskedPhone}
           style={EInputStyles.RedDesign}

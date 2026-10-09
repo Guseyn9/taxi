@@ -109,6 +109,15 @@ export default defineConfig({
       dependencies: ['setup'],
       use: devices['Desktop Chrome'],
     },
+    {
+      // TEST-E2E-008: создание заказа через форму пассажира (Standard / Voting /
+      // Offer). Одна роль — пассажир, контекст тест открывает сам. Контракт
+      // замерен разведкой (e2e/README.md, TEST-E2E-008).
+      name: 'passenger-order-creation',
+      testMatch: /passenger-order-creation\.spec\.ts/,
+      dependencies: ['setup'],
+      use: devices['Desktop Chrome'],
+    },
   ],
 
   webServer: {
