@@ -48,6 +48,9 @@ export interface IOrderSnapshot {
   /** Может прийти объектом или JSON-строкой — нормализуется `orderOptionsOf`. */
   readonly b_options?: unknown
   readonly drivers?: IOrderDriver[] | null
+  readonly b_contact?: string | number
+  readonly b_max_waiting?: string | number
+  readonly b_passengers_count?: string | number
   readonly b_start_latitude?: string
   readonly b_start_longitude?: string
   readonly b_destination_latitude?: string

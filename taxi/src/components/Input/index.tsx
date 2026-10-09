@@ -394,6 +394,9 @@ export default function Input({
     return result
   }, [suggestions])
 
+  const inputTestId = (inputProps as Record<string, unknown>)['data-testid']
+  const suggestionTestId = typeof inputTestId === 'string' ? `${inputTestId}-suggestion` : undefined
+
   const handleSuggestionClick = (item: ISuggestion) => {
     setIsFocused(false)
     onSuggestionClick && onSuggestionClick(item)
@@ -541,6 +544,10 @@ export default function Input({
                       key={index}
                       onClick={() => handleSuggestionClick(item)}
                       className={cn('input__suggestion', `input__suggestion--${getSuggestionClass(item.type)}`)}
+                      // Контракт для E2E: подсказка привязана к своему полю, а источник
+                      // (official/unofficial/user-top) не зависит от языка интерфейса.
+                      data-testid={suggestionTestId}
+                      data-suggestion-source={getSuggestionClass(item.type)}
                     >
                       <span className='input__suggestion-source'>{getSuggestionSourceLabel(item.type)}</span>
                       <span

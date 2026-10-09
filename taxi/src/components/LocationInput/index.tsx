@@ -150,6 +150,10 @@ function LocationInput({
         value: getPointDisplayValue(),
         disabled,
         readOnly: disabled,
+        // Контракт для E2E: поля точек формы заказа пассажира.
+        ...({
+          'data-testid': type === EPointType.From ? 'passenger-order-from' : 'passenger-order-to',
+        } as React.ComponentProps<'input'>),
         onChange: (e: React.ChangeEvent<HTMLInputElement>) => {
           if (disabled) return
           setPoint({ address: e.target.value })

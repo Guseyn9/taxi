@@ -116,6 +116,10 @@ function BoundaryButtons({
             className={cn('boundary-buttons__item', {
               'boundary-buttons__item--active': selected,
             })}
+            // Контракт для E2E: класс поездки, выбранный алгоритмом или пассажиром.
+            data-testid="passenger-order-location-class"
+            data-location-class={id}
+            data-active={selected ? 'true' : 'false'}
             onClick={() => handleLocationClassClick(id)}
           >
             <div className="boundary-buttons__icon">

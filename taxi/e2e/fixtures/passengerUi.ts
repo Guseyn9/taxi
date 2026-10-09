@@ -7,7 +7,7 @@
  */
 
 import path from 'path'
-import { expect, Page } from '@playwright/test'
+import { expect, Page, Request, Response } from '@playwright/test'
 import { expectAppBooted } from './appShell'
 
 export const PASSENGER_PAGE = '/passenger-order'
@@ -264,4 +264,316 @@ export async function waitForCancelResponse(page: Page, orderId: string) {
     item.url().includes(`/drive/get/${orderId}`) &&
     (item.request().postData() ?? '').includes('set_cancel_state'))
   return { status: response.status(), body: await response.json().catch(() => undefined) }
+}
+
+/**
+ * Создание заказа через форму пассажира (TEST-E2E-008).
+ *
+ * Хелперы ниже моделируют ДЕЙСТВИЯ ПОЛЬЗОВАТЕЛЯ: ввод адреса, выбор подсказки,
+ * свайп, ввод телефона и цены, клик по кнопке режима. Redux, localStorage и
+ * page.evaluate() для бизнес-состояния не используются, `/drive` не мокается и из
+ * теста не вызывается. Контракт, на котором они построены, замерен разведкой
+ * (e2e/README.md, TEST-E2E-008).
+ */
+
+export type TPassengerOrderMode = 'order' | 'vote' | 'offer'
+
+/** Точка, которую пассажир вводит текстом и подтверждает подсказкой. */
+export interface IPassengerOrderPoint {
+  /** Что набирается в поле. */
+  readonly query: string
+  /**
+   * Что должно быть в тексте нужной подсказки. Подсказку выбирают по тексту, а не
+   * по порядку: список зависит от истории пассажира («Личный»/«Общий» пункты).
+   */
+  readonly match: string
+}
+
+/** Точки, замеренные разведкой на живом gruzvill. */
+export const PASSENGER_ORDER_POINTS: Readonly<Record<'pickup' | 'destination' | 'intercityDestination', IPassengerOrderPoint>> = {
+  // Standard и Voting идут PICKUP → DESTINATION (город), Offer — на межгородское назначение.
+  pickup: { query: 'улица Содружества 35 Ростов-на-Дону', match: 'Содружества' },
+  destination: { query: 'Акмолинская улица 79 Ростов-на-Дону', match: 'Акмолинская' },
+  // Таганрог, 52 км: единственный маршрут, на котором UI сам выставляет класс поездки «2».
+  intercityDestination: { query: 'Таганрог, Петровская улица 10', match: 'Bogudoniya' },
+}
+
+const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+
+export const passengerOrderForm = (page: Page) => page.getByTestId('passenger-order-form')
+
+const pointInput = (page: Page, which: 'from' | 'to') => page.getByTestId(`passenger-order-${which}`)
+
+/**
+ * Подсказка нужной точки: источник «Карта» (`official`) и текст адреса. Источник
+ * читается атрибутом, а не подписью — подписи «Карта/Личный/Общий» зависят от языка.
+ */
+const pointSuggestion = (page: Page, which: 'from' | 'to', point: IPassengerOrderPoint) =>
+  page.locator(`[data-testid="passenger-order-${which}-suggestion"][data-suggestion-source="official"]`)
+    .filter({ hasText: point.match })
+
+/** Открыть форму заказа пассажира: приложение поднялось, форма свободна для ввода. */
+export async function openPassengerOrderForm(page: Page): Promise<void> {
+  await page.goto(PASSENGER_PAGE)
+  await expectAppBooted(page)
+  await expect(passengerOrderForm(page), 'форма заказа пассажира открыта и не заблокирована')
+    .toHaveAttribute('data-locked', 'false', { timeout: 60_000 })
+}
+
+/**
+ * Ввести одну точку так, как это делает пассажир: набрать адрес и выбрать
+ * подсказку. Список обновляется с задержкой, поэтому ждём именно ту подсказку,
+ * что подходит по тексту, — устаревший список её не содержит.
+ */
+export async function pickPassengerPoint(
+  page: Page,
+  which: 'from' | 'to',
+  point: IPassengerOrderPoint,
+): Promise<void> {
+  const input = pointInput(page, which)
+  await input.click()
+  await input.fill('')
+  await input.pressSequentially(point.query, { delay: 30 })
+
+  const suggestion = pointSuggestion(page, which, point)
+  await expect(suggestion, `подсказка «${point.match}» появилась в поле ${which}`)
+    .toBeVisible({ timeout: 60_000 })
+  await suggestion.click()
+
+  await expect(input, `поле ${which} содержит выбранную точку`)
+    .toHaveValue(new RegExp(escapeRegExp(point.match)), { timeout: 30_000 })
+}
+
+/** FROM и TO — по очереди, как вводит пассажир. */
+export async function fillPassengerOrderPoints(
+  page: Page,
+  from: IPassengerOrderPoint,
+  to: IPassengerOrderPoint,
+): Promise<void> {
+  await pickPassengerPoint(page, 'from', from)
+  await pickPassengerPoint(page, 'to', to)
+}
+
+/** Кнопки класса поездки: класс, который приложение выбрало для маршрута. */
+const locationClassButton = (page: Page, id: string) =>
+  page.locator(`[data-testid="passenger-order-location-class"][data-location-class="${id}"]`)
+
+/**
+ * Дождаться, что приложение само определило класс поездки по маршруту. Без этого
+ * Offer можно отправить раньше расчёта маршрута: в payload уйдёт класс по умолчанию.
+ * Класс не выбирается — проверяется то, что пассажир ВИДИТ.
+ */
+export async function expectPassengerLocationClass(page: Page, id: string): Promise<void> {
+  await expect(locationClassButton(page, id), `маршрут определён, класс поездки ${id} выбран`)
+    .toHaveAttribute('data-active', 'true', { timeout: 60_000 })
+}
+
+/**
+ * Раскрыть форму настоящим touch-жестом. Раскрывается она только свайпом
+ * (tools/swipe.ts, события touchstart/move/end), клика нет. Жест шлётся браузеру
+ * через CDP `Input.dispatchTouchEvent` — это обычный ввод пользователя, а не
+ * подмена состояния.
+ */
+export async function expandPassengerOrderForm(page: Page): Promise<void> {
+  const form = passengerOrderForm(page)
+  if (await form.getAttribute('data-expanded') === 'true')
+    return
+
+  await expect(async() => {
+    const box = await form.boundingBox()
+    if (!box)
+      throw new Error('форма заказа не отрисована')
+
+    const x = Math.round(box.x + box.width / 2)
+    const fromY = Math.round(box.y + 40)
+    const toY = Math.max(60, fromY - 450)
+    const cdp = await page.context().newCDPSession(page)
+    try {
+      const touch = (type: 'touchStart' | 'touchMove' | 'touchEnd', y?: number) => cdp.send('Input.dispatchTouchEvent', {
+        type,
+        touchPoints: y === undefined ? [] : [{ x, y }],
+      })
+      await touch('touchStart', fromY)
+      for (let step = 1; step <= 8; step += 1) {
+        await touch('touchMove', fromY + ((toY - fromY) * step) / 8)
+        await page.waitForTimeout(40)
+      }
+      await touch('touchEnd')
+    } finally {
+      await cdp.detach().catch(() => undefined)
+    }
+    await expect(form).toHaveAttribute('data-expanded', 'true', { timeout: 3_000 })
+  }, 'форма заказа раскрылась свайпом').toPass({ timeout: 30_000, intervals: [500, 1_000] })
+}
+
+/**
+ * Ввести телефон в поле формы: выделить содержимое и набрать цифры. Поле
+ * предзаполнено телефоном профиля, поэтому тест задаёт номер явно. Маска
+ * форматирует ввод сама — сверяются только цифры.
+ */
+export async function fillPassengerPhone(page: Page, phone: string): Promise<void> {
+  const digits = phone.replace(/\D/g, '')
+  const input = page.getByTestId('passenger-order-phone')
+  await expect(input, 'поле телефона видно в раскрытой форме').toBeVisible({ timeout: 30_000 })
+  await input.click()
+  await input.press('Control+A')
+  await input.press('Backspace')
+
+  // Маска (`+233(___)-___-___`) сама показывает код страны. Если набрать номер
+  // целиком, часть цифр совпадёт с этим префиксом, и результат зависит от
+  // положения каретки (замерено: `233335550001` вместо `233555000111`). Поэтому
+  // после очистки набирается только то, чего в маске ещё нет.
+  const shown = (await input.inputValue()).replace(/\D/g, '')
+  const rest = digits.startsWith(shown) ? digits.slice(shown.length) : digits
+  await input.pressSequentially(rest, { delay: 40 })
+
+  await expect
+    .poll(async() => (await input.inputValue()).replace(/\D/g, ''), {
+      message: 'поле телефона содержит введённый номер',
+      timeout: 15_000,
+    })
+    .toBe(digits)
+}
+
+/**
+ * Цена заказчика в режиме «Предложение»: третий сегмент блока цены. Редактируется,
+ * пока режим не выбран (после клика по Vote/Order он становится неактивным).
+ */
+export async function setPassengerOfferPrice(page: Page, price: number): Promise<void> {
+  const segment = page.locator('[data-testid="passenger-order-price-segment"][data-price-key="customer"]')
+  const input = page.locator('[data-testid="passenger-order-price"][data-price-key="customer"]')
+  await expect(segment, 'сегмент цены заказчика виден в раскрытой форме').toBeVisible({ timeout: 30_000 })
+  await segment.click()
+  await expect(input, 'поле цены заказчика доступно для ввода').toBeEditable({ timeout: 15_000 })
+  await input.fill(String(price))
+  await input.blur()
+  await expect(input, 'поле цены содержит введённое значение').toHaveValue(String(price))
+}
+
+/** Кнопка режима — она же создание заказа: отдельной кнопки «Создать» в форме нет. */
+export const passengerOrderModeButton = (page: Page, mode: TPassengerOrderMode) =>
+  page.getByTestId(`passenger-order-mode-${mode}`)
+
+/**
+ * Нажать кнопку режима. Один клик = создание заказа выбранного режима
+ * (`setSelectedMode(mode); submit(mode)` в pages/Passenger/VotingForm.tsx), поэтому
+ * «выбрать режим» и «создать» в UI — одно действие.
+ */
+export async function submitPassengerOrder(page: Page, mode: TPassengerOrderMode): Promise<void> {
+  const button = passengerOrderModeButton(page, mode)
+  await expect(button, `кнопка режима «${mode}» доступна`).toBeEnabled({ timeout: 30_000 })
+  await button.click()
+}
+
+/** Что браузер отправил, создавая заказ. Токены в эту структуру не попадают. */
+export interface IOrderCreationRequest {
+  readonly payload: Record<string, any>
+}
+
+export interface IOrderCreation {
+  readonly request: IOrderCreationRequest
+  readonly status: number
+  /** Ответ backend целиком: токенов там нет. */
+  readonly body: any
+  /** `b_id` из ответа — строкой (backend отдаёт число). */
+  readonly orderId: string
+}
+
+/** Поле `data` multipart-тела: его нет у опроса списка заказов, который идёт тем же `POST /drive`. */
+function creationPayloadOf(request: Request): Record<string, any> | undefined {
+  if (request.method() !== 'POST' || !/\/drive$/.test(new URL(request.url()).pathname))
+    return undefined
+
+  const match = /name="data"\r?\n\r?\n([\s\S]*?)\r?\n--/.exec(request.postData() ?? '')
+  if (!match)
+    return undefined
+
+  try {
+    const payload = JSON.parse(match[1])
+    return payload && typeof payload === 'object' && 'b_start_latitude' in payload ? payload : undefined
+  } catch {
+    return undefined
+  }
+}
+
+export interface IOrderCreationWatch {
+  /** Все запросы СОЗДАНИЯ, которые ушли из браузера (опрос списка заказов сюда не входит). */
+  readonly requests: readonly IOrderCreationRequest[]
+  /** Дождаться ответа на запрос создания и достать из него `b_id`. Падает, если `b_id` нет. */
+  waitForCreated(timeout?: number): Promise<IOrderCreation>
+  /** Короткое описание без токенов — для диагностики падения. */
+  describe(): string
+  dispose(): void
+}
+
+/**
+ * Наблюдать запрос создания заказа. Подписку надо ставить ДО клика: так видно
+ * ровно один запрос и не пропускается быстрый ответ. `POST /drive` — не только
+ * создание (им же опрашивается список активных заказов), поэтому создание
+ * узнаётся по полю `data` с `b_start_latitude`.
+ */
+export function watchOrderCreationRequest(page: Page): IOrderCreationWatch {
+  const requests: IOrderCreationRequest[] = []
+  const responses = new Map<IOrderCreationRequest, { status: number; body: any }>()
+  const byRequest = new Map<Request, IOrderCreationRequest>()
+
+  const onRequest = (request: Request) => {
+    const payload = creationPayloadOf(request)
+    if (!payload)
+      return
+    const entry: IOrderCreationRequest = { payload }
+    requests.push(entry)
+    byRequest.set(request, entry)
+  }
+  const onResponse = async(response: Response) => {
+    const entry = byRequest.get(response.request())
+    if (!entry)
+      return
+    responses.set(entry, { status: response.status(), body: await response.json().catch(() => undefined) })
+  }
+
+  page.on('request', onRequest)
+  page.on('response', onResponse)
+
+  const summarize = () => requests.map((entry, index) => {
+    const response = responses.get(entry)
+    return `#${index + 1}: HTTP ${response?.status ?? 'нет ответа'}, ` +
+      `status=${response?.body?.status ?? '?'}, b_id=${response?.body?.data?.b_id ?? 'нет'}, ` +
+      `message=${response?.body?.message ?? response?.body?.data?.message ?? '—'}`
+  }).join('; ') || 'запросов создания не было'
+
+  return {
+    requests,
+    describe: summarize,
+    dispose() {
+      page.off('request', onRequest)
+      page.off('response', onResponse)
+    },
+    async waitForCreated(timeout = 60_000) {
+      await expect
+        .poll(() => requests.some(entry => responses.has(entry)), {
+          message: 'создающий POST /drive получил ответ',
+          timeout,
+        })
+        .toBe(true)
+
+      const request = requests.find(entry => responses.has(entry))!
+      const { status, body } = responses.get(request)!
+      const orderId = body?.data?.b_id
+      if (orderId === undefined || orderId === null || orderId === '')
+        throw new Error(
+          `E2E: форма отправила создание заказа, но b_id в ответе нет — HTTP ${status}, ` +
+          `status=${body?.status ?? '?'}, message=${body?.message ?? '—'}`)
+
+      return { request, status, body, orderId: String(orderId) }
+    },
+  }
+}
+
+/** После создания пассажир видит ИМЕННО этот заказ, а форма перешла в состояние созданного заказа. */
+export async function expectPassengerOrderCreated(page: Page, orderId: string): Promise<void> {
+  await expect(miniOrderCard(page, orderId), `в списке пассажира есть заказ ${orderId}`)
+    .toBeVisible({ timeout: 120_000 })
+  await expect(passengerOrderForm(page), 'форма перешла в состояние созданного заказа')
+    .toHaveAttribute('data-locked', 'true', { timeout: 60_000 })
 }
