@@ -233,7 +233,7 @@ Finished (`set_complete_state`) требует позиции водителя �
 
 ## 12. Этап 2 — реализация и контролируемый прогон (2026-10-13)
 
-Тест: `passenger-driver-standard-order.spec.ts`, проект Playwright `passenger-driver-standard-order`.
+Тест: `passenger-driver-flow.spec.ts`, проект Playwright `passenger-driver-flow`.
 
 ### Реализовано
 
@@ -253,7 +253,7 @@ Finished (`set_complete_state`) требует позиции водителя �
 | `taxi/src/pages/Passenger/VotingForm.tsx` | один атрибут `data-order-id={lockedOrder.b_id}` на `passenger-driver-panel` (иначе панель нельзя привязать к `b_id`); поведение не менялось |
 | `taxi/e2e/fixtures/driverUi.ts` | `driverMapAction`, `expectDriverMapState`, `watchOrderActions` |
 | `taxi/e2e/fixtures/passengerUi.ts` | `passengerDriverPanelOfOrder`, `expectPassengerDriverPanel` |
-| `taxi/playwright.config.ts` | проект `passenger-driver-standard-order` |
+| `taxi/playwright.config.ts` | проект `passenger-driver-flow` |
 
 ### Разбор по исходникам
 

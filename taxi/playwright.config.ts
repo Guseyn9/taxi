@@ -121,8 +121,8 @@ export default defineConfig({
     {
       // TEST-E2E-009: Standard-заказ от формы пассажира до Started у водителя на
       // одном b_id. Две роли, контексты тест открывает сам.
-      name: 'passenger-driver-standard-order',
-      testMatch: /passenger-driver-standard-order\.spec\.ts/,
+      name: 'passenger-driver-flow',
+      testMatch: /passenger-driver-flow\.spec\.ts/,
       dependencies: ['setup'],
       // trace здесь выключен намеренно: замерено, что trace.zip этого сценария
       // хранит токены сессий пассажира и водителя и значения паролей (запросы,
