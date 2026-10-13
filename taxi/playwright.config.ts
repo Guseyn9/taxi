@@ -118,6 +118,14 @@ export default defineConfig({
       dependencies: ['setup'],
       use: devices['Desktop Chrome'],
     },
+    {
+      // TEST-E2E-009: Standard-заказ от формы пассажира до Started у водителя на
+      // одном b_id. Две роли, контексты тест открывает сам.
+      name: 'passenger-driver-standard-order',
+      testMatch: /passenger-driver-standard-order\.spec\.ts/,
+      dependencies: ['setup'],
+      use: devices['Desktop Chrome'],
+    },
   ],
 
   webServer: {

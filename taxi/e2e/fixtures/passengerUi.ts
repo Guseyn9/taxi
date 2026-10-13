@@ -34,6 +34,31 @@ export const passengerDriverPanelFor = (page: Page, driverId: string) =>
   page.locator(`[data-testid="passenger-driver-panel"][data-driver-id="${driverId}"]`)
 
 /**
+ * Панель водителя, принадлежащая КОНКРЕТНОМУ заказу: `data-order-id` ставит
+ * приложение (pages/Passenger/VotingForm.tsx). Без номера заказа панель на экране
+ * не доказывает, что это водитель именно проверяемого заказа.
+ */
+export const passengerDriverPanelOfOrder = (page: Page, orderId: string) =>
+  page.locator(`[data-testid="passenger-driver-panel"][data-order-id="${orderId}"]`)
+
+/**
+ * Дождаться, что пассажир видит у этого заказа этого водителя в этом состоянии.
+ * Выбирать заказ кликом не нужно: после создания приложение выбирает его само
+ * (pages/Passenger/index.tsx), и тест не подменяет это своим кликом.
+ */
+export async function expectPassengerDriverPanel(
+  page: Page,
+  orderId: string,
+  expected: { state: number; driverId: string },
+  message: string,
+  timeout = 90_000,
+): Promise<void> {
+  const panel = passengerDriverPanelOfOrder(page, orderId)
+  await expect(panel, `${message}: состояние`).toHaveAttribute('data-driver-state', String(expected.state), { timeout })
+  await expect(panel, `${message}: водитель`).toHaveAttribute('data-driver-id', expected.driverId, { timeout: 10_000 })
+}
+
+/**
  * Панель водителя в состоянии выполняемой поездки — `Performer` и дальше.
  *
  * Состояния перечислены явно: `data-driver-state` — атрибут, и сравнить его как
