@@ -124,7 +124,12 @@ export default defineConfig({
       name: 'passenger-driver-standard-order',
       testMatch: /passenger-driver-standard-order\.spec\.ts/,
       dependencies: ['setup'],
-      use: devices['Desktop Chrome'],
+      // trace здесь выключен намеренно: замерено, что trace.zip этого сценария
+      // хранит токены сессий пассажира и водителя и значения паролей (запросы,
+      // тела ответов и снимки страниц), а артефакты CI лежат 7 дней. Диагностика
+      // падения — скриншоты, error-context.md и строки `E2E FAILURE DIAGNOSTICS`
+      // (этап, b_id, состояние backend и обоих интерфейсов) без секретов.
+      use: { ...devices['Desktop Chrome'], trace: 'off' },
     },
   ],
 

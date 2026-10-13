@@ -259,7 +259,9 @@ export function watchOrderActions(page: Page): IOrderActionWatch {
       .filter(item => orderId === undefined || item.orderId === orderId)
       .map(item =>
         `${item.action}${item.performer === undefined ? '' : `(performer=${item.performer})`}` +
-        `→HTTP ${item.httpStatus ?? 'нет ответа'} status=${item.status ?? '?'} code=${item.code ?? '?'}`)
+        `→HTTP ${item.httpStatus ?? 'нет ответа'} status=${item.status ?? '?'} code=${item.code ?? '?'}` +
+        // Текст отказа backend нужен, чтобы по логу отличить «отклонён» от «оборван».
+        (item.status === 'error' && item.message ? ` message="${item.message}"` : ''))
       .join('; ') || 'действий не было',
     dispose() {
       page.off('request', onRequest)
