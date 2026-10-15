@@ -118,6 +118,19 @@ export default defineConfig({
       dependencies: ['setup'],
       use: devices['Desktop Chrome'],
     },
+    {
+      // TEST-E2E-009: Standard-заказ от формы пассажира до Started у водителя на
+      // одном b_id. Две роли, контексты тест открывает сам.
+      name: 'passenger-driver-flow',
+      testMatch: /passenger-driver-flow\.spec\.ts/,
+      dependencies: ['setup'],
+      // trace здесь выключен намеренно: замерено, что trace.zip этого сценария
+      // хранит токены сессий пассажира и водителя (запросы, тела ответов и снимки
+      // страниц), а артефакты CI лежат 7 дней. Диагностика падения — скриншоты,
+      // error-context.md и строки `E2E FAILURE DIAGNOSTICS` (этап, b_id, состояние
+      // backend и обоих интерфейсов) без секретов.
+      use: { ...devices['Desktop Chrome'], trace: 'off' },
+    },
   ],
 
   webServer: {

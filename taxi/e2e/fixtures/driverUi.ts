@@ -6,7 +6,7 @@
  */
 
 import path from 'path'
-import { expect, Page } from '@playwright/test'
+import { expect, Page, Request, Response } from '@playwright/test'
 import { expectAppBooted } from './appShell'
 import { DRIVER_STATE } from './taxiApi'
 
@@ -162,6 +162,112 @@ export async function switchToDriverMap(page: Page): Promise<void> {
   await page.getByTestId('driver-tab-map').click()
   await expect(primaryAction(page).first(), 'карта показала основное действие')
     .toBeVisible({ timeout: 120_000 })
+}
+
+/**
+ * Кнопка основного действия карты именно ЭТОГО заказа. У водителя может быть
+ * несколько заказов, и «кнопка в состоянии 4» без номера заказа ничего не
+ * доказывает: атрибут `data-order-id` ставит приложение (pages/Driver/Map.tsx).
+ */
+export const driverMapAction = (page: Page, orderId: string) =>
+  page.locator(`[data-testid="driver-map-primary-action"][data-order-id="${orderId}"]`)
+
+/**
+ * Состояние, которое карта ПОКАЗЫВАЕТ водителю для заказа. Это не доказательство
+ * того, что backend перевёл заказ: сразу после клика приложение выставляет
+ * оптимистичное состояние (pages/Driver/Map.tsx, rememberOptimisticState), и
+ * лишь потом его заменяет опрос backend. Backend проверяется независимо.
+ */
+export async function expectDriverMapState(
+  page: Page,
+  orderId: string,
+  state: number,
+  message: string,
+  timeout = 90_000,
+): Promise<void> {
+  await expect(driverMapAction(page, orderId), message)
+    .toHaveAttribute('data-driver-state', String(state), { timeout })
+}
+
+/** Одно действие над заказом, которое браузер отправил на `POST /drive/get/{b_id}`. */
+export interface IOrderActionRecord {
+  readonly orderId: string
+  readonly action: string
+  readonly performer?: string
+  httpStatus?: number
+  /** `status` и `code` из тела ответа: HTTP 200 оборачивает и бизнес-ошибки. */
+  status?: string
+  code?: string
+  message?: string
+}
+
+export interface IOrderActionWatch {
+  readonly records: readonly IOrderActionRecord[]
+  /** Запросы с таким действием по такому заказу — в порядке отправки. */
+  of(orderId: string, action: string): IOrderActionRecord[]
+  /** Короткое описание без токенов — для диагностики. */
+  describe(orderId?: string): string
+  dispose(): void
+}
+
+/**
+ * Наблюдать действия над заказом, которые приложение отправляет само
+ * (`set_performer`, `set_arrive_state`, `set_start_state`…). Это наблюдение за
+ * реальными запросами, а не их подмена: ничего не перехватывается и не
+ * отвечается из теста. Из тела читаются только `action`, `performer` и итог
+ * ответа — токены и `u_hash` в запись не попадают.
+ */
+export function watchOrderActions(page: Page): IOrderActionWatch {
+  const records: IOrderActionRecord[] = []
+  const byRequest = new Map<Request, IOrderActionRecord>()
+
+  const field = (body: string, name: string): string | undefined =>
+    new RegExp(`name="${name}"\\r?\\n\\r?\\n([^\\r\\n]*)`).exec(body)?.[1]
+
+  const onRequest = (request: Request) => {
+    if (request.method() !== 'POST')
+      return
+    const orderId = /\/drive\/get\/(\d+)$/.exec(new URL(request.url()).pathname)?.[1]
+    if (!orderId)
+      return
+    const body = request.postData() ?? ''
+    const action = field(body, 'action')
+    if (!action)
+      return
+    const record: IOrderActionRecord = { orderId, action, performer: field(body, 'performer') }
+    records.push(record)
+    byRequest.set(request, record)
+  }
+  const onResponse = async(response: Response) => {
+    const record = byRequest.get(response.request())
+    if (!record)
+      return
+    const body = await response.json().catch(() => undefined)
+    record.httpStatus = response.status()
+    record.status = body?.status === undefined ? undefined : String(body.status)
+    record.code = body?.code === undefined ? undefined : String(body.code)
+    record.message = body?.message === undefined ? undefined : String(body.message)
+  }
+
+  page.on('request', onRequest)
+  page.on('response', onResponse)
+
+  return {
+    records,
+    of: (orderId, action) => records.filter(item => item.orderId === orderId && item.action === action),
+    describe: orderId => records
+      .filter(item => orderId === undefined || item.orderId === orderId)
+      .map(item =>
+        `${item.action}${item.performer === undefined ? '' : `(performer=${item.performer})`}` +
+        `→HTTP ${item.httpStatus ?? 'нет ответа'} status=${item.status ?? '?'} code=${item.code ?? '?'}` +
+        // Текст отказа backend нужен, чтобы по логу отличить «отклонён» от «оборван».
+        (item.status === 'error' && item.message ? ` message="${item.message}"` : ''))
+      .join('; ') || 'действий не было',
+    dispose() {
+      page.off('request', onRequest)
+      page.off('response', onResponse)
+    },
+  }
 }
 
 /** Нажать основное действие карты («Поехал», «Приехал», «Код посадки»). */
