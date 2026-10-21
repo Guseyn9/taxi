@@ -32,7 +32,6 @@ import {
   switchToDriverMap,
   takeOrderButton,
 } from './fixtures/driverUi'
-import { PASSENGER_STORAGE } from './fixtures/passengerUi'
 
 test.describe.configure({ timeout: 8 * 60 * 1000 })
 
@@ -42,7 +41,6 @@ let driver: ISession
 let passenger: ISession
 let car: ICar
 let driverContext: BrowserContext
-let passengerContext: BrowserContext
 let driverPage: Page
 const createdOrders: string[] = []
 
@@ -78,7 +76,6 @@ test.beforeAll(async({ browser }) => {
   await goOnline(driver, car, PICKUP)
   await cancelTestOrders(passenger)
 
-  passengerContext = await openSession(browser, PASSENGER_STORAGE)
   driverContext = await openSession(browser, DRIVER_STORAGE)
   driverPage = await driverContext.newPage()
 })
@@ -111,7 +108,6 @@ test.afterEach(async({}, testInfo) => {
 })
 
 test.afterAll(async() => {
-  await passengerContext?.close()
   await driverContext?.close()
   if (passenger)
     await cancelTestOrders(passenger).catch(error => console.error(`TEST-E2E-010 sweep failed: ${reason(error)}`))
