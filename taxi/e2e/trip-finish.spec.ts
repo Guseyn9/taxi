@@ -148,18 +148,10 @@ test('штатное завершение: Started → Finished через кн�
   await clickPrimaryAction(driverPage)
   await expectBackendState(orderId, DRIVER_STATE.Arrived, 'водитель выехал')
   await expectDriverMapState(driverPage, orderId, DRIVER_STATE.Arrived, 'карта показывает Arrived')
-  await clickPrimaryAction(driverPage)
-  await expectBackendState(orderId, DRIVER_STATE.Started, 'поездка началась')
-  await expectDriverMapState(driverPage, orderId, DRIVER_STATE.Started, 'карта показывает Started')
-
-  const finishAction = driverMapAction(driverPage, orderId)
-  await expect(finishAction).toBeVisible()
-  await expect(finishAction, 'до прибытия к назначению кнопка ведёт к прерыванию, а не к завершению')
-    .toHaveClass(/finish-drive-button--interrupted/)
-
-  // Use the application's existing manual route controls through their real UI.
-  // This moves only the route-emulator marker; it does not mutate order/FSM state.
-  // The fixture destination matches the endpoint of the built-in Replace route.
+  // Prepare the test route while the driver is still at the pickup point.
+  // The manual route endpoint is relative to the model's current position; if
+  // configured after Started, the model may already have moved and the endpoint
+  // no longer matches this order's fixed destination.
   await driverPage.locator('button.burger-button').click()
   const clientEmulatorMenuItem = driverPage.locator('.menu__button').filter({ hasText: /клиент|client/i })
   await expect(clientEmulatorMenuItem, 'меню содержит действие открытия панели эмулятора клиентов').toHaveCount(1)
@@ -171,6 +163,15 @@ test('штатное завершение: Started → Finished через кн�
   await replaceRoute.click()
   // The panel has no close button; its backdrop is the documented close surface.
   await driverPage.locator('.driver-emulator-panel__backdrop').click({ position: { x: 5, y: 5 } })
+
+  await clickPrimaryAction(driverPage)
+  await expectBackendState(orderId, DRIVER_STATE.Started, 'поездка началась')
+  await expectDriverMapState(driverPage, orderId, DRIVER_STATE.Started, 'карта показывает Started')
+
+  const finishAction = driverMapAction(driverPage, orderId)
+  await expect(finishAction).toBeVisible()
+  await expect(finishAction, 'до прибытия к назначению кнопка ведёт к прерыванию, а не к завершению')
+    .toHaveClass(/finish-drive-button--interrupted/)
 
   await expect(finishAction, 'после прибытия по тестовому маршруту доступно штатное завершение')
     .not.toHaveClass(/finish-drive-button--interrupted/, { timeout: 120_000 })
