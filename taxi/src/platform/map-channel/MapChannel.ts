@@ -48,7 +48,7 @@ export class MapChannel {
   }
 
   /** Карта → приложение: водитель выбрал заказ. */
-  selectOrder(orderId: string): void {
+  selectOrder(orderId: unknown): void {
     const action = mapOrderSelectToAction(orderId, this.now(), this.newId())
     // Невалидный orderId: Action не создан — молча выходим. Ни исключения, ни
     // лишней строки лога в пути клика.

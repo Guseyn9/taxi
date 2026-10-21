@@ -10,7 +10,7 @@
  */
 
 import type { InteractionAction } from '../interaction-contract'
-import type { IOrderSelectPayload } from './map-channel-protocol'
+import type { IOrderSelectPayload, TMapOrderId } from './map-channel-protocol'
 import { DRIVER_ORDER_SELECT_ACTION, MAP_CHANNEL_SOURCE } from './map-channel-protocol'
 
 /**
@@ -19,23 +19,23 @@ import { DRIVER_ORDER_SELECT_ACTION, MAP_CHANNEL_SOURCE } from './map-channel-pr
  * timestamp и correlationId приходят извне (их порождает транспорт — см.
  * MapChannel), чтобы функция оставалась детерминированной и тестируемой.
  *
- * Невалидный orderId (undefined / пустая строка / одни пробелы) → null: Action
- * не создаётся, вызывающая сторона молча выходит. Исключений в пути клика нет
- * по построению.
+ * Принимаются непустые строки и конечные числа. Сырой ID сохраняется без
+ * преобразования типа; невалидное значение даёт null, без исключений.
  */
 export function mapOrderSelectToAction(
-  orderId: string,
+  orderId: unknown,
   timestamp: string,
   correlationId: string,
 ): InteractionAction<IOrderSelectPayload> | null {
-  // Сознательно без сужения типа: значение уходит в payload сырым, ровно таким,
-  // каким пришло из заказа (заказы в сторе кэшируются по сырому b_id).
-  if (!orderId || !String(orderId).trim())
+  const validString = typeof orderId === 'string' && orderId.trim().length > 0
+  const validNumber = typeof orderId === 'number' && Number.isFinite(orderId)
+
+  if (!validString && !validNumber)
     return null
 
   return {
     type: DRIVER_ORDER_SELECT_ACTION,
-    payload: { orderId },
+    payload: { orderId: orderId as TMapOrderId },
     metadata: {
       source: MAP_CHANNEL_SOURCE,
       timestamp,

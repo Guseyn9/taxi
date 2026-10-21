@@ -43,7 +43,9 @@ export function registerMapApplicationHandler(contract: IApplicationContract): U
     const orderId = payload ? payload.orderId : ''
     // Тот же контроль, что и в Mapper: до Event'а доходит только валидное
     // действие. Молча выходим — никаких исключений на стороне Application.
-    if (!orderId)
+    const validString = typeof orderId === 'string' && orderId.trim().length > 0
+    const validNumber = typeof orderId === 'number' && Number.isFinite(orderId)
+    if (!validString && !validNumber)
       return
 
     const event: InteractionEvent<IOrderSelectedPayload> = {

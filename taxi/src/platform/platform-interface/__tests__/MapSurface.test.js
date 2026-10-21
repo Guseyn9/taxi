@@ -112,3 +112,30 @@ describe('MapSurface lifecycle', () => {
     finalUnmount()
   })
 })
+
+
+it('preserves a numeric order ID through Action → Event → MapSurface binding', () => {
+  const { channel, surface } = createSubject()
+  const setOrderCardModal = jest.fn()
+  surface.setBindings({ mockEnabled: false, setOrderCardModal })
+  const unmount = surface.mount()
+
+  channel.selectOrder(12345)
+
+  expect(setOrderCardModal).toHaveBeenCalledTimes(1)
+  expect(setOrderCardModal).toHaveBeenCalledWith({ isOpen: true, orderId: 12345 })
+  expect(typeof setOrderCardModal.mock.calls[0][0].orderId).toBe('number')
+  unmount()
+})
+
+it('preserves numeric zero as a valid order ID', () => {
+  const { channel, surface } = createSubject()
+  const setOrderCardModal = jest.fn()
+  surface.setBindings({ mockEnabled: false, setOrderCardModal })
+  const unmount = surface.mount()
+
+  channel.selectOrder(0)
+
+  expect(setOrderCardModal).toHaveBeenCalledWith({ isOpen: true, orderId: 0 })
+  unmount()
+})

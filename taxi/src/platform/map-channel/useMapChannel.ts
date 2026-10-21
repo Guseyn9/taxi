@@ -66,7 +66,7 @@ export function useMapChannel(deps: IMapApplicationDeps): MapChannel {
       if (mockEnabled)
         return
       const { orderId } = event.payload as IOrderSelectedPayload
-      setOrderCardModal({ isOpen: true, orderId })
+      setOrderCardModal({ isOpen: true, orderId: String(orderId) })
     })
 
     return () => {

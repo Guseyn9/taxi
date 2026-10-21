@@ -26,13 +26,15 @@ export const DRIVER_ORDER_SELECTED_EVENT = 'driver.order.selected'
 export const MAP_CHANNEL_SOURCE = 'map'
 
 /** Payload Action'а driver.order.select. */
+export type TMapOrderId = string | number
+
 export interface IOrderSelectPayload {
-  readonly orderId: string
+  readonly orderId: TMapOrderId
 }
 
 /** Payload Event'а driver.order.selected. */
 export interface IOrderSelectedPayload {
-  readonly orderId: string
+  readonly orderId: TMapOrderId
 }
 
 /**

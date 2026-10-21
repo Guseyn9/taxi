@@ -643,7 +643,11 @@ function DriverOrderMapModeContent({
   // Map Surface управляет lifecycle Map Channel. mockEnabled = false: демо-режим
   // маркера (markerMock) в основной репозиторий не переносился, мок-режимом здесь
   // остаётся эмулятор водителя.
-  const mapChannel = useMapSurface({ mockEnabled: false, setOrderCardModal })
+  const mapChannel = useMapSurface({
+    mockEnabled: false,
+    // The modal state stores order IDs as strings; normalize only at this UI boundary.
+    setOrderCardModal: payload => setOrderCardModal({ ...payload, orderId: String(payload.orderId) }),
+  })
 
   // Platform Interface: монтирование Driver Map Gateway и подписка на его события.
   //
