@@ -148,22 +148,6 @@ test('штатное завершение: Started → Finished через кн�
   await clickPrimaryAction(driverPage)
   await expectBackendState(orderId, DRIVER_STATE.Arrived, 'водитель выехал')
   await expectDriverMapState(driverPage, orderId, DRIVER_STATE.Arrived, 'карта показывает Arrived')
-  // Prepare the test route while the driver is still at the pickup point.
-  // The manual route endpoint is relative to the model's current position; if
-  // configured after Started, the model may already have moved and the endpoint
-  // no longer matches this order's fixed destination.
-  await driverPage.locator('button.burger-button').click()
-  const clientEmulatorMenuItem = driverPage.locator('.menu__button').filter({ hasText: /клиент|client/i })
-  await expect(clientEmulatorMenuItem, 'меню содержит действие открытия панели эмулятора клиентов').toHaveCount(1)
-  await clientEmulatorMenuItem.click()
-  const routeTools = driverPage.locator('.driver-emulator-panel__route-tools')
-  await expect(routeTools).toBeVisible()
-  const replaceRoute = routeTools.locator('button').filter({ hasText: /заменить|replace/i })
-  await expect(replaceRoute, 'панель содержит команду замены тестового маршрута').toHaveCount(1)
-  await replaceRoute.click()
-  // The panel has no close button; its backdrop is the documented close surface.
-  await driverPage.locator('.driver-emulator-panel__backdrop').click({ position: { x: 5, y: 5 } })
-
   await clickPrimaryAction(driverPage)
   await expectBackendState(orderId, DRIVER_STATE.Started, 'поездка началась')
   await expectDriverMapState(driverPage, orderId, DRIVER_STATE.Started, 'карта показывает Started')
@@ -173,7 +157,12 @@ test('штатное завершение: Started → Finished через кн�
   await expect(finishAction, 'до прибытия к назначению кнопка ведёт к прерыванию, а не к завершению')
     .toHaveClass(/finish-drive-button--interrupted/)
 
-  await expect(finishAction, 'после прибытия по тестовому маршруту доступно штатное завершение')
+  // Move the real browser geolocation to the order destination. This exercises
+  // the live map's normal location pipeline; it does not mutate Redux, storage,
+  // FSM state, or call a business API from the test.
+  await driverContext.setGeolocation(ROUTE_DESTINATION)
+
+  await expect(finishAction, 'после обновления GPS до назначения доступно штатное завершение')
     .not.toHaveClass(/finish-drive-button--interrupted/, { timeout: 120_000 })
 
   const lifecycleRequests: Request[] = []
