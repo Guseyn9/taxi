@@ -11,6 +11,7 @@
 | `passenger-sos.spec.ts` | **TEST-E2E-007 — А.1.6, Passenger SOS after Started** (см. ниже) |
 | `passenger-order-creation.spec.ts` | **TEST-E2E-008 — создание заказа через UI пассажира** (Standard / Voting / Offer, см. ниже) |
 | `trip-finish.spec.ts` | **TEST-E2E-010 — штатное завершение поездки водителем** (Started → Finished) |
+| `trip-interruption.spec.ts` | **TEST-E2E-011 — прерывание поездки водителем до назначения** (Started → Canceled) |
 | `passenger-driver-flow.spec.ts` | **TEST-E2E-009 — Standard-заказ от формы пассажира до Started у водителя на одном `b_id`** (см. ниже) |
 
 **Создание заказа через UI и создание заказа как API-fixture — разные вещи.**
@@ -22,6 +23,30 @@ TEST-E2E-002…007 создают заказ через API (`createStandardOrde
 
 Все идут против **живого backend** (`https://ibronevik.ru/taxi/c/gruzvill/api/v1`).
 
+
+---
+
+# TEST-E2E-011 — прерывание поездки водителем до назначения
+
+Файл `trip-interruption.spec.ts` проверяет прерывание уже начатой поездки до
+достижения destination. Водитель открывает штатный диалог, выбирает причину и
+подтверждает действие через UI. Тест наблюдает настоящий браузерный lifecycle
+запрос и независимо читает backend-состояние; API не используется для отмены.
+
+Запуск:
+
+```bash
+npm run test:e2e -- --project=trip-interruption --retries=0
+```
+
+Проверяются: backend `Started (5)` до клика; класс кнопки прерывания; диалог
+причины; передача выбранной причины в настоящем запросе; backend
+`Canceled (2)`; исчезновение активного действия с карты. Если backend не
+подтверждает именно `Canceled (2)` или его readback не возвращает ожидаемое
+состояние, тест должен падать — целевое состояние нельзя подменять предположением.
+
+Перед merge обязательны три последовательных изолированных прогона без retry,
+полный E2E и зелёный CI.
 
 ---
 
