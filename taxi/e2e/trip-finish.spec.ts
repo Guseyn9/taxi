@@ -142,7 +142,7 @@ test('штатное завершение: Started → Finished через кн�
   // Leave the list-only driver emulator mode. The live map must consume browser
   // GPS and publish location updates; otherwise the backend's stale pickup point
   // would prevent the destination gate from opening.
-  await driverPage.goto('/driver-order?tab=map')
+  await driverPage.goto('/driver-order?tab=map&driverEmulator=1')
   await expectAppBooted(driverPage)
   await expectDriverMapState(driverPage, orderId, DRIVER_STATE.Performer, 'карта показывает назначенный заказ')
   await clickPrimaryAction(driverPage)
