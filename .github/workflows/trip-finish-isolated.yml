@@ -24,6 +24,7 @@ jobs:
     timeout-minutes: 20
     strategy:
       fail-fast: true
+      max-parallel: 1
       matrix:
         run: [1, 2, 3]
     defaults:
