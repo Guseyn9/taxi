@@ -7,7 +7,7 @@
  */
 import { BrowserContext, Page, Request, devices, expect, test } from '@playwright/test'
 import { appUrl, driverAccount, passengerAccount } from './fixtures/accounts'
-import { stubMapTiles } from './fixtures/appShell'
+import { expectAppBooted, stubMapTiles } from './fixtures/appShell'
 import {
   cancelOrder,
   cancelTestOrders,
@@ -29,7 +29,6 @@ import {
   driverMapAction,
   expectDriverMapState,
   openOrderCard,
-  switchToDriverMap,
   takeOrderButton,
 } from './fixtures/driverUi'
 
@@ -135,7 +134,11 @@ test('штатное завершение: Started → Finished через кн�
   await expectBackendState(orderId, DRIVER_STATE.Performer, 'водитель назначен исполнителем')
 
   // «Поехал» и «Приехал» — клики на карте. Стандартный заказ не требует кода посадки.
-  await switchToDriverMap(driverPage)
+  // Leave the list-only driver emulator mode. The live map must consume browser
+  // GPS and publish location updates; otherwise the backend's stale pickup point
+  // would prevent the destination gate from opening.
+  await driverPage.goto('/driver-order?tab=map')
+  await expectAppBooted(driverPage)
   await expectDriverMapState(driverPage, orderId, DRIVER_STATE.Performer, 'карта показывает назначенный заказ')
   await clickPrimaryAction(driverPage)
   await expectBackendState(orderId, DRIVER_STATE.Arrived, 'водитель выехал')
