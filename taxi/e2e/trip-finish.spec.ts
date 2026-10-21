@@ -34,8 +34,8 @@ import {
 test.describe.configure({ timeout: 8 * 60 * 1000 })
 
 const LABEL = 'E2E010_FINISH'
-// Endpoint of DriverEmulatorPanel's existing manual test route (Map.tsx: offset 0.012),
-// relative to the known goOnline(PICKUP) position.
+// Deterministic destination used by the order and by the browser GPS update below.
+// It is intentionally defined relative to PICKUP; no manual route is configured.
 const ROUTE_DESTINATION = {
   latitude: PICKUP.latitude + 0.0048,
   longitude: PICKUP.longitude + 0.0192,
