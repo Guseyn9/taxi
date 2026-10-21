@@ -13,7 +13,7 @@ import { useEffect, useRef } from 'react'
 import { AppInteractionContract } from './AppInteractionContract'
 import { MapChannel } from './MapChannel'
 import { registerMapApplicationHandler } from './MapApplicationHandler'
-import type { IApplicationContract, IOrderSelectedPayload, TMapOrderId } from './map-channel-protocol'
+import type { IApplicationContract, IOrderSelectedPayload } from './map-channel-protocol'
 import { DRIVER_ORDER_SELECTED_EVENT } from './map-channel-protocol'
 
 /**
@@ -28,7 +28,7 @@ export interface IMapApplicationDeps {
   readonly mockEnabled: boolean
 
   /** Тот же props-диспатч из connect(), что раньше вызывался прямо из карты. */
-  readonly setOrderCardModal: (payload: { isOpen: true, orderId: TMapOrderId }) => unknown
+  readonly setOrderCardModal: (payload: { isOpen: true, orderId: string }) => unknown
 }
 
 // Тип синглтона — интерфейс, а не класс: регистрация и подписка зависят от
@@ -66,7 +66,7 @@ export function useMapChannel(deps: IMapApplicationDeps): MapChannel {
       if (mockEnabled)
         return
       const { orderId } = event.payload as IOrderSelectedPayload
-      setOrderCardModal({ isOpen: true, orderId })
+      setOrderCardModal({ isOpen: true, orderId: String(orderId) })
     })
 
     return () => {
