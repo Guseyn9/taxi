@@ -1,4 +1,4 @@
-name: TEST-E2E-010 isolated stability
+name: TEST-E2E-010/011 isolated stability
 
 on:
   pull_request:
@@ -6,6 +6,7 @@ on:
       - main
     paths:
       - 'taxi/e2e/trip-finish.spec.ts'
+      - 'taxi/e2e/trip-interruption.spec.ts'
       - 'taxi/playwright.config.ts'
       - 'taxi/e2e/fixtures/**'
       - '.github/workflows/trip-finish-isolated.yml'
@@ -47,6 +48,49 @@ jobs:
 
       - name: Run TEST-E2E-010 once, without retry
         run: npm run test:e2e -- --project=trip-finish --retries=0
+        env:
+          E2E_APP_URL: http://localhost:3000
+          E2E_API_BASE: ${{ secrets.E2E_API_BASE }}
+          E2E_DRIVER_LOGIN: ${{ secrets.E2E_DRIVER_LOGIN }}
+          E2E_DRIVER_PASSWORD: ${{ secrets.E2E_DRIVER_PASSWORD }}
+          E2E_DRIVER_TYPE: ${{ secrets.E2E_DRIVER_TYPE }}
+          E2E_DRIVER2_LOGIN: ${{ secrets.E2E_DRIVER2_LOGIN }}
+          E2E_DRIVER2_PASSWORD: ${{ secrets.E2E_DRIVER2_PASSWORD }}
+          E2E_DRIVER2_TYPE: ${{ secrets.E2E_DRIVER2_TYPE }}
+          E2E_PASSENGER_LOGIN: ${{ secrets.E2E_PASSENGER_LOGIN }}
+          E2E_PASSENGER_PASSWORD: ${{ secrets.E2E_PASSENGER_PASSWORD }}
+          E2E_PASSENGER_TYPE: ${{ secrets.E2E_PASSENGER_TYPE }}
+
+  trip-interruption:
+    name: TEST-E2E-011 isolated run ${{ matrix.run }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: trip-finish
+    strategy:
+      fail-fast: true
+      max-parallel: 1
+      matrix:
+        run: [1, 2, 3]
+    defaults:
+      run:
+        working-directory: taxi
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: taxi/package.json
+          cache: npm
+          cache-dependency-path: taxi/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Run TEST-E2E-011 once, without retry
+        run: npm run test:e2e -- --project=trip-interruption --retries=0
         env:
           E2E_APP_URL: http://localhost:3000
           E2E_API_BASE: ${{ secrets.E2E_API_BASE }}
