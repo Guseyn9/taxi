@@ -4,6 +4,7 @@ import { registerMapApplicationHandler } from '../../../map-channel/MapApplicati
 import type {
   IApplicationContract,
   IOrderSelectedPayload,
+  TMapOrderId,
 } from '../../../map-channel/map-channel-protocol'
 import { DRIVER_ORDER_SELECTED_EVENT } from '../../../map-channel/map-channel-protocol'
 import type { Surface } from '../../Surface'
@@ -15,7 +16,7 @@ export const DRIVER_MAP_SURFACE_ID = 'driver.map'
 /** UI bindings supplied by the Web Driver channel. */
 export interface MapSurfaceBindings {
   readonly mockEnabled: boolean
-  readonly setOrderCardModal: (payload: { isOpen: true, orderId: string }) => unknown
+  readonly setOrderCardModal: (payload: { isOpen: true, orderId: TMapOrderId }) => unknown
 }
 
 /**
