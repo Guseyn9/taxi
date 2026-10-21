@@ -7,7 +7,7 @@
  */
 import { BrowserContext, Page, devices, expect, test } from '@playwright/test'
 import { appUrl, driverAccount, passengerAccount } from './fixtures/accounts'
-import { stubMapTiles, expectAppBooted } from './fixtures/appShell'
+import { stubMapTiles } from './fixtures/appShell'
 import {
   cancelOrder,
   cancelTestOrders,
@@ -24,7 +24,6 @@ import {
 import {
   DESTINATION,
   DRIVER_LIST_PAGE,
-  DRIVER_PAGE,
   DRIVER_STORAGE,
   PICKUP,
   clickPrimaryAction,
@@ -47,7 +46,6 @@ let car: ICar
 let driverContext: BrowserContext
 let passengerContext: BrowserContext
 let driverPage: Page
-let passengerPage: Page
 const createdOrders: string[] = []
 
 const reason = (error: unknown) => (error as Error)?.message ?? String(error)
@@ -84,7 +82,6 @@ test.beforeAll(async({ browser }) => {
 
   passengerContext = await openSession(browser, PASSENGER_STORAGE)
   driverContext = await openSession(browser, DRIVER_STORAGE)
-  passengerPage = await passengerContext.newPage()
   driverPage = await driverContext.newPage()
 })
 
@@ -136,8 +133,6 @@ test('штатное завершение: Started → Finished через кн�
   expect(created.b_id, 'backend вернул созданный заказ').toBe(orderId)
 
   // Назначение — настоящее действие водителя через UI.
-  await driverPage.goto(DRIVER_LIST_PAGE)
-  await expectAppBooted(driverPage)
   await openOrderCard(driverPage, orderId)
   const take = takeOrderButton(driverPage)
   await expect(take).toBeVisible({ timeout: 90_000 })
