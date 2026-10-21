@@ -10,6 +10,7 @@
 | `offer-passenger-cancel.spec.ts` | **TEST-E2E-006 — А.1.5, отмена заказа пассажиром** (см. ниже) |
 | `passenger-sos.spec.ts` | **TEST-E2E-007 — А.1.6, Passenger SOS after Started** (см. ниже) |
 | `passenger-order-creation.spec.ts` | **TEST-E2E-008 — создание заказа через UI пассажира** (Standard / Voting / Offer, см. ниже) |
+| `trip-finish.spec.ts` | **TEST-E2E-010 — штатное завершение поездки водителем** (Started → Finished) |
 | `passenger-driver-flow.spec.ts` | **TEST-E2E-009 — Standard-заказ от формы пассажира до Started у водителя на одном `b_id`** (см. ниже) |
 
 **Создание заказа через UI и создание заказа как API-fixture — разные вещи.**
@@ -20,6 +21,33 @@ TEST-E2E-002…007 создают заказ через API (`createStandardOrde
 подготовки водителя, независимого чтения заказа и уборки.
 
 Все идут против **живого backend** (`https://ibronevik.ru/taxi/c/gruzvill/api/v1`).
+
+
+---
+
+# TEST-E2E-010 — штатное завершение поездки водителем
+
+Файл `trip-finish.spec.ts` проверяет реальный переход `Started (5) → Finished (6)`.
+Заказ создаётся как предусловие через API; водитель принимает его, выполняет
+переходы на карте и завершает поездку только кликом по штатной кнопке.
+API используется для независимого readback, диагностики и уборки, но не для
+завершения заказа.
+
+После `Arrived` тест переводит поездку в `Started`, проверяет, что до достижения
+назначения доступно только прерывание, затем обновляет геолокацию браузерного контекста до
+destination заказа. Это проходит через штатный GPS-путь приложения и не меняет состояние
+FSM напрямую. Когда карта разрешает штатное завершение, тест кликает по кнопке водителя;
+далее проверяются запрос lifecycle (legacy API или Command API), backend `Finished (6)`
+и исчезновение активного действия на карте.
+
+Запуск:
+
+```bash
+npm run test:e2e -- --project=trip-finish
+```
+
+Единственный мок — тайлы карты. Перед merge обязательны три последовательных
+изолированных прогона, полный E2E и зелёный CI.
 
 ---
 
@@ -39,6 +67,7 @@ npm run test:e2e -- --project=standard-order  # только А.1.1
 npm run test:e2e -- --project=voting-order    # только А.1.2
 npm run test:e2e -- --project=driver-boarding # только посадка по коду
 npm run test:e2e -- --project=passenger-order-creation # TEST-E2E-008: создание заказа через UI
+npm run test:e2e -- --project=trip-finish # TEST-E2E-010: штатное завершение поездки
 npm run test:e2e -- --project=passenger-driver-flow --retries=0 # TEST-E2E-009: форма пассажира -> водитель -> Started
 npm run test:e2e:report                       # HTML-отчёт последнего прогона
 ```
