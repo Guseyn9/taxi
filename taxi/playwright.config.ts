@@ -131,6 +131,13 @@ export default defineConfig({
       // backend и обоих интерфейсов) без секретов.
       use: { ...devices['Desktop Chrome'], trace: 'off' },
     },
+    {
+      // TEST-E2E-010: штатное завершение поездки водителем, живой backend.
+      name: 'trip-finish',
+      testMatch: /trip-finish\\.spec\\.ts/,
+      dependencies: ['setup'],
+      use: devices['Desktop Chrome'],
+    },
   ],
 
   webServer: {
