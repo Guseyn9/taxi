@@ -134,7 +134,7 @@ export default defineConfig({
     {
       // TEST-E2E-010: штатное завершение поездки водителем, живой backend.
       name: 'trip-finish',
-      testMatch: /trip-finish\\.spec\\.ts/,
+      testMatch: /trip-finish\.spec\.ts/,
       dependencies: ['setup'],
       use: devices['Desktop Chrome'],
     },
