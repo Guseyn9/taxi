@@ -1,11 +1,8 @@
 /**
  * MapMapper — чистое преобразование намерения карты в Action контракта.
  *
- * Фиксируем: форму Action'а (type / payload / metadata) и то, что невалидный
- * orderId даёт null, а не исключение — в пути клика бросать нельзя.
- *
- * Тесты на .js — как и остальные тесты репозитория: @types/jest в проекте нет,
- * а .ts-файлы попадают под `tsc --noEmit` и падали бы на jest-глобалях.
+ * Фиксируем форму Action, сохранение сырого ID и безопасный отказ для
+ * невалидных значений — в пути клика исключения не должны возникать.
  */
 
 import { mapOrderSelectToAction } from '../MapMapper'
@@ -42,12 +39,15 @@ describe('MapMapper: валидный orderId', () => {
     expect(action.metadata.correlationId).toBe('map-abc-xyz')
   })
 
-  it('не приводит тип orderId: в payload уходит сырое значение', () => {
-    // b_id кэшируется в сторе сырым — приведение типа сломало бы паритет payload.
-    const raw = 12345
+  it.each([
+    ['числовой ID', 12345],
+    ['нулевой ID', 0],
+    ['строковый ID с ведущими нулями', '00123'],
+  ])('сохраняет исходный тип и значение: %s', (_name, raw) => {
     const action = mapOrderSelectToAction(raw, TIMESTAMP, CORRELATION_ID)
 
     expect(action.payload.orderId).toBe(raw)
+    expect(typeof action.payload.orderId).toBe(typeof raw)
   })
 
   it('детерминирован: одинаковый вход → одинаковый выход', () => {
@@ -65,6 +65,11 @@ describe('MapMapper: невалидный orderId', () => {
     ['undefined', undefined],
     ['null', null],
     ['одни пробелы', '   '],
+    ['NaN', Number.NaN],
+    ['Infinity', Number.POSITIVE_INFINITY],
+    ['минус Infinity', Number.NEGATIVE_INFINITY],
+    ['boolean', false],
+    ['объект', { id: 42 }],
   ]
 
   it.each(invalidCases)('%s → Action не создаётся, возвращается null', (_name, orderId) => {
