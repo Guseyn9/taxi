@@ -22,7 +22,6 @@ import {
   readOrder,
 } from './fixtures/taxiApi'
 import {
-  DESTINATION,
   DRIVER_STORAGE,
   PICKUP,
   clickPrimaryAction,
@@ -35,6 +34,12 @@ import {
 test.describe.configure({ timeout: 8 * 60 * 1000 })
 
 const LABEL = 'E2E010_FINISH'
+// Endpoint of DriverEmulatorPanel's existing manual test route (Map.tsx: offset 0.012),
+// relative to the known goOnline(PICKUP) position.
+const ROUTE_DESTINATION = {
+  latitude: PICKUP.latitude + 0.0048,
+  longitude: PICKUP.longitude + 0.0192,
+}
 
 let driver: ISession
 let passenger: ISession
@@ -115,7 +120,7 @@ test.afterAll(async() => {
 test('штатное завершение: Started → Finished через кнопку карты водителя', async() => {
   const orderId = await createStandardOrder(passenger, {
     pickup: PICKUP,
-    destination: DESTINATION,
+    destination: ROUTE_DESTINATION,
     driverId: driver.userId,
     carClassId: car.cc_id,
     label: LABEL,
@@ -152,10 +157,22 @@ test('штатное завершение: Started → Finished через кн�
   await expect(finishAction, 'до прибытия к назначению кнопка ведёт к прерыванию, а не к завершению')
     .toHaveClass(/finish-drive-button--interrupted/)
 
-  // Меняем геопозицию браузера через штатный Playwright geolocation provider.
-  // Это внешний GPS-вход приложения, не изменение состояния заказа/FSM.
-  await driverContext.setGeolocation(DESTINATION)
-  await expect(finishAction, 'после достижения назначения доступно штатное завершение')
+  // Use the application's existing manual route controls through their real UI.
+  // This moves only the route-emulator marker; it does not mutate order/FSM state.
+  // The fixture destination matches the endpoint of the built-in Replace route.
+  await driverPage.locator('button.burger-button').click()
+  const clientEmulatorMenuItem = driverPage.locator('.menu__button').filter({ hasText: /клиент|client/i })
+  await expect(clientEmulatorMenuItem, 'меню содержит действие открытия панели эмулятора клиентов').toHaveCount(1)
+  await clientEmulatorMenuItem.click()
+  const routeTools = driverPage.locator('.driver-emulator-panel__route-tools')
+  await expect(routeTools).toBeVisible()
+  const replaceRoute = routeTools.locator('button').filter({ hasText: /заменить|replace/i })
+  await expect(replaceRoute, 'панель содержит команду замены тестового маршрута').toHaveCount(1)
+  await replaceRoute.click()
+  // The panel has no close button; its backdrop is the documented close surface.
+  await driverPage.locator('.driver-emulator-panel__backdrop').click({ position: { x: 5, y: 5 } })
+
+  await expect(finishAction, 'после прибытия по тестовому маршруту доступно штатное завершение')
     .not.toHaveClass(/finish-drive-button--interrupted/, { timeout: 120_000 })
 
   const lifecycleRequests: Request[] = []
