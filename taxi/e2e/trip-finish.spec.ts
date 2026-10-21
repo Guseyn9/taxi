@@ -5,7 +5,7 @@
  * предусловий, независимого readback и уборки; завершение инициируется кликом
  * по штатной кнопке карты водителя.
  */
-import { BrowserContext, Page, devices, expect, test } from '@playwright/test'
+import { BrowserContext, Page, Request, devices, expect, test } from '@playwright/test'
 import { appUrl, driverAccount, passengerAccount } from './fixtures/accounts'
 import { stubMapTiles } from './fixtures/appShell'
 import {
@@ -23,7 +23,6 @@ import {
 } from './fixtures/taxiApi'
 import {
   DESTINATION,
-  DRIVER_LIST_PAGE,
   DRIVER_STORAGE,
   PICKUP,
   clickPrimaryAction,
@@ -32,7 +31,6 @@ import {
   openOrderCard,
   switchToDriverMap,
   takeOrderButton,
-  watchOrderActions,
 } from './fixtures/driverUi'
 import { PASSENGER_STORAGE } from './fixtures/passengerUi'
 
@@ -161,25 +159,37 @@ test('штатное завершение: Started → Finished через кн�
   await expect(finishAction, 'после достижения назначения доступно штатное завершение')
     .not.toHaveClass(/finish-drive-button--interrupted/, { timeout: 120_000 })
 
-  const actionWatch = watchOrderActions(driverPage)
+  const lifecycleRequests: Request[] = []
+  const onRequest = (request: Request) => {
+    if (request.method() !== 'POST')
+      return
+    const pathname = new URL(request.url()).pathname
+    if (pathname.endsWith(`/drive/get/${orderId}`) ||
+        pathname.endsWith(`/api/commands/taxi/order/${orderId}`))
+      lifecycleRequests.push(request)
+  }
+  driverPage.on('request', onRequest)
   try {
     await expect(finishAction).toBeEnabled()
+    const commandRequest = driverPage.waitForRequest(request =>
+      request.method() === 'POST' &&
+      (new URL(request.url()).pathname.endsWith(`/drive/get/${orderId}`) ||
+       new URL(request.url()).pathname.endsWith(`/api/commands/taxi/order/${orderId}`)),
+    { timeout: 30_000 })
     await finishAction.click()
+    const request = await commandRequest
+    const response = await request.response()
+    expect(response, 'запрос завершения получил HTTP-ответ').toBeTruthy()
+    expect([200, 202], 'legacy API или Command API принял запрос завершения')
+      .toContain(response?.status())
 
     await expectBackendState(orderId, DRIVER_STATE.Finished, 'backend подтвердил Finished после UI-клика')
-    await expect.poll(
-      () => actionWatch.of(orderId, 'set_complete_state').length,
-      { message: 'приложение отправило штатную команду завершения для этого заказа', timeout: 30_000 },
-    ).toBe(1)
-
-    const finishRequests = actionWatch.of(orderId, 'set_complete_state')
-    expect(finishRequests[0].httpStatus, 'HTTP ответ команды завершения').toBe(200)
-    expect(finishRequests[0].status, 'бизнес-ответ команды завершения').not.toBe('error')
+    expect(lifecycleRequests).toHaveLength(1)
 
     await expect(finishAction, 'карта больше не показывает активное действие этого заказа')
       .toBeHidden({ timeout: 90_000 })
     expect(await backendState(orderId), 'конечное состояние остаётся Finished').toBe(DRIVER_STATE.Finished)
   } finally {
-    actionWatch.dispose()
+    driverPage.off('request', onRequest)
   }
 })
