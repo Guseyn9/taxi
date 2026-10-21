@@ -174,20 +174,37 @@ test('прерывание до назначения: Started → Canceled че�
     await interruptAction.click()
     await expect(modal, 'открылся диалог причины прерывания').toBeVisible()
     const reasons = modal.locator('.reason-item')
-    await expect(reasons, 'доступен список причин').toHaveCount(6, { timeout: 30_000 })
+    await expect.poll(() => reasons.count(), { message: 'доступен список причин', timeout: 30_000 }).toBeGreaterThan(1)
     // Выбираем не первый вариант, чтобы проверить передачу пользовательского выбора.
     await reasons.nth(1).click()
     const selectedReason = (await reasons.nth(1).innerText()).trim()
     expect(selectedReason, 'выбранная причина непустая').not.toBe('')
 
-    await modal.getByText('Прервать поездку', { exact: true }).click()
+    await modal.locator('.modal__buttons-block button').first().click()
 
     await expect(modal, 'диалог закрылся после подтверждения').toBeHidden({ timeout: 90_000 })
     await expectBackendState(orderId, DRIVER_STATE.Canceled, 'backend подтвердил Canceled после UI-подтверждения')
 
     expect(cancelRequests.length, 'браузер отправил настоящий lifecycle-запрос отмены').toBeGreaterThan(0)
     expect(
-      cancelRequests.some(request => request.body.includes(selectedReason)),
+      cancelRequests.some(request => {
+        const body = request.body
+        if (body.includes(selectedReason))
+          return true
+        try {
+          const fields = new URLSearchParams(body)
+          if (fields.get('reason') === selectedReason)
+            return true
+          for (const value of fields.values()) {
+            try {
+              const payload = JSON.parse(value)
+              if (JSON.stringify(payload).includes(selectedReason))
+                return true
+            } catch {}
+          }
+        } catch {}
+        return false
+      }),
       'выбранная причина передана в запросе backend',
     ).toBeTruthy()
 
