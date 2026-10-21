@@ -1,5 +1,5 @@
 /**
- * TEST-E2E-011 — водитель прерывает поездку до назначения.
+ * TEST-E2E-011 — водитель прерывает поездку до точки назначения.
  *
  * Живые frontend/backend/FSM. Отмена выполняется только через UI карты и
  * диалог причины; API используется для предусловий, независимого readback и
@@ -120,7 +120,7 @@ test.afterAll(async() => {
     ))
 })
 
-test('прерывание до назначения: Started → Canceled через UI водителя с причиной', async() => {
+test('прерывание до точки назначения: Started → Canceled через UI водителя с причиной', async() => {
   const orderId = await createStandardOrder(passenger, {
     pickup: PICKUP,
     destination: ROUTE_DESTINATION,
