@@ -141,7 +141,7 @@ export default defineConfig({
     {
       // TEST-E2E-011: прерывание поездки водителем до destination через UI.
       name: 'trip-interruption',
-      testMatch: /trip-interruption\\.spec\\.ts/,
+      testMatch: /trip-interruption\.spec\.ts/,
       dependencies: ['setup'],
       use: devices['Desktop Chrome'],
     },
