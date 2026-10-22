@@ -12,7 +12,7 @@
 | `passenger-order-creation.spec.ts` | **TEST-E2E-008 — создание заказа через UI пассажира** (Standard / Voting / Offer, см. ниже) |
 | `trip-finish.spec.ts` | **TEST-E2E-010 — штатное завершение поездки водителем** (Started → Finished) |
 | `trip-interruption.spec.ts` | **TEST-E2E-011 — прерывание поездки водителем до точки назначения** (Started → Canceled) |
-| `standard-order-cancel-before-assignment.spec.ts` | **TEST-E2E-012 — пассажир отменяет Standard до назначения водителя** |
+| `standard-order-cancel-before-assignment.spec.ts` | **TEST-E2E-012 — создание Standard через форму пассажира и отмена до назначения водителя через UI** |
 | `passenger-driver-flow.spec.ts` | **TEST-E2E-009 — Standard-заказ от формы пассажира до Started у водителя на одном `b_id`** (см. ниже) |
 
 **Создание заказа через UI и создание заказа как API-fixture — разные вещи.**
