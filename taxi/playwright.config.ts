@@ -121,7 +121,7 @@ export default defineConfig({
     {
       // TEST-E2E-012: пассажир отменяет Standard до назначения водителя через UI.
       name: 'standard-order-cancel-before-assignment',
-      testMatch: /standard-order-cancel-before-assignment\\.spec\\.ts/,
+      testMatch: /standard-order-cancel-before-assignment\.spec\.ts/,
       dependencies: ['setup'],
       use: devices['Desktop Chrome'],
     },
