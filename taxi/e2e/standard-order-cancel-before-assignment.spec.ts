@@ -10,7 +10,6 @@ import { appUrl, passengerAccount, passengerPhone } from './fixtures/accounts'
 import { stubMapTiles } from './fixtures/appShell'
 import { PICKUP } from './fixtures/driverUi'
 import {
-  PASSENGER_PAGE,
   PASSENGER_STORAGE,
   PASSENGER_ORDER_POINTS,
   cancelAssignedOrder,
