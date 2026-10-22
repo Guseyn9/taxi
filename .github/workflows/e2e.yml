@@ -1,43 +1,64 @@
 name: E2E
 
-# Тот же Playwright-тест, что и локально (`npm run test:e2e`), но запускаемый
-# автоматически. Отдельной CI-реализации сценария нет — см. taxi/e2e/README.md
+# The same Playwright tests used locally, run automatically against the live backend.
 on:
   pull_request:
   push:
     branches:
       - main
 
-# Тесты идут против живого backend и делят одного тестового водителя и его
-# машину. Общая очередь на весь репозиторий не даёт двум прогонам встретиться
-# на одном аккаунте.
-concurrency:
-  group: playwright-e2e-live-backend
-  cancel-in-progress: false
+permissions:
+  actions: read
+  contents: read
 
 jobs:
   e2e:
     name: Playwright E2E
     runs-on: ubuntu-latest
-    # Потолок против зависания: 4 теста с ретраем плюс npm ci, установка
-    # Chromium и первая сборка dev-server.
+    # The live backend uses a shared test driver and vehicle. GitHub concurrency
+    # groups retain only one pending run and replace older pending runs, so they
+    # cannot provide a lossless queue. Each run instead waits for its turn below.
     timeout-minutes: 60
     defaults:
       run:
-        # Корневого package.json нет: весь Node-проект живёт в taxi/.
         working-directory: taxi
 
     steps:
+      - name: Wait for this run's turn against the shared backend
+        working-directory: .
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+          CURRENT_RUN_ID: ${{ github.run_id }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          api="repos/${REPOSITORY}/actions/workflows/e2e.yml/runs?per_page=100"
+          echo "Waiting for earlier E2E runs to finish; shared test accounts must not be used concurrently."
+          while true; do
+            runs="$(gh api "$api")"
+            earliest="$(jq -r '[.workflow_runs[] | select(.status != "completed") | .run_number] | min // empty' <<< "$runs")"
+            current_number="$(jq -r --arg id "$CURRENT_RUN_ID" '.workflow_runs[] | select((.id | tostring) == $id) | .run_number' <<< "$runs")"
+            if [[ -z "$current_number" ]]; then
+              echo "Could not find current workflow run in GitHub API response." >&2
+              exit 1
+            fi
+            if [[ "$current_number" == "$earliest" ]]; then
+              echo "Acquired E2E turn for run $CURRENT_RUN_ID (run number $current_number)."
+              break
+            fi
+            echo "Run $current_number is waiting; earliest unfinished run is $earliest. Checking again in 15 seconds."
+            sleep 15
+          done
+
       - uses: actions/checkout@v4
 
       - uses: actions/setup-node@v4
         with:
-          # Версия берётся из требований проекта: engines.node в taxi/package.json.
           node-version-file: taxi/package.json
           cache: npm
           cache-dependency-path: taxi/package-lock.json
 
-      # Воспроизводимая установка по lockfile, а не npm install.
       - name: Install dependencies
         run: npm ci
 
@@ -45,19 +66,13 @@ jobs:
         run: npx playwright install --with-deps chromium
 
       - name: Run Playwright E2E
-        # workers: 1 и retries: 1 приходят из playwright.config.ts по CI —
-        # флагами здесь не дублируются, чтобы источник правды был один.
         run: npm run test:e2e
         env:
-          # Приложение поднимает сам Playwright (webServer: npm start).
           E2E_APP_URL: http://localhost:3000
-          # Учётные данные только отсюда: ни одного значения в коде и в этом файле.
           E2E_API_BASE: ${{ secrets.E2E_API_BASE }}
           E2E_DRIVER_LOGIN: ${{ secrets.E2E_DRIVER_LOGIN }}
           E2E_DRIVER_PASSWORD: ${{ secrets.E2E_DRIVER_PASSWORD }}
           E2E_DRIVER_TYPE: ${{ secrets.E2E_DRIVER_TYPE }}
-          # Второй водитель нужен голосованию (A.1.2): один заказ должен быть
-          # одновременно доступен нескольким водителям.
           E2E_DRIVER2_LOGIN: ${{ secrets.E2E_DRIVER2_LOGIN }}
           E2E_DRIVER2_PASSWORD: ${{ secrets.E2E_DRIVER2_PASSWORD }}
           E2E_DRIVER2_TYPE: ${{ secrets.E2E_DRIVER2_TYPE }}
@@ -65,14 +80,11 @@ jobs:
           E2E_PASSENGER_PASSWORD: ${{ secrets.E2E_PASSENGER_PASSWORD }}
           E2E_PASSENGER_TYPE: ${{ secrets.E2E_PASSENGER_TYPE }}
 
-      # always() — чтобы был виден и прогон, прошедший только со второй попытки.
-      # На результат job не влияет: continue-on-error здесь нет нигде.
       - name: Upload Playwright artifacts
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: playwright-e2e-${{ github.run_id }}-${{ github.run_attempt }}
-          # taxi/e2e/.auth/ с токенами сессии сюда сознательно не входит.
           path: |
             taxi/playwright-report/
             taxi/e2e-results/

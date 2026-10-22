@@ -119,6 +119,13 @@ export default defineConfig({
       use: devices['Desktop Chrome'],
     },
     {
+      // TEST-E2E-012: пассажир отменяет Standard до назначения водителя через UI.
+      name: 'standard-order-cancel-before-assignment',
+      testMatch: /standard-order-cancel-before-assignment\.spec\.ts/,
+      dependencies: ['setup'],
+      use: devices['Desktop Chrome'],
+    },
+    {
       // TEST-E2E-009: Standard-заказ от формы пассажира до Started у водителя на
       // одном b_id. Две роли, контексты тест открывает сам.
       name: 'passenger-driver-flow',

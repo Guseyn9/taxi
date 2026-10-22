@@ -215,15 +215,20 @@ export const orderCancelConfirmButton = (page: Page) => page.getByTestId('passen
  * основная кнопка "Cancel", затем подтверждение в модалке причины. Endpoint
  * отмены (`set_cancel_state`) из теста не вызывается.
  */
-export async function cancelAssignedOrder(page: Page): Promise<void> {
+export async function cancelPassengerOrder(page: Page): Promise<void> {
   const open = orderCancelOpenButton(page)
-  await expect(open, 'пассажиру доступна кнопка отмены заказа').toBeVisible({ timeout: 90_000 })
-  await expect(open, 'кнопка отмены заказа доступна').toBeEnabled({ timeout: 60_000 })
+  await expect(open, 'пассажиру доступна кнопка отмены заказа').toBeVisible({ timeout: 15_000 })
+  await expect(open, 'кнопка отмены заказа доступна').toBeEnabled({ timeout: 5_000 })
   await open.click()
 
   const confirm = orderCancelConfirmButton(page)
-  await expect(confirm, 'открылась модалка подтверждения отмены').toBeVisible({ timeout: 60_000 })
+  await expect(confirm, 'открылась модалка подтверждения отмены').toBeVisible({ timeout: 10_000 })
   await confirm.click()
+}
+
+/** Совместимость со сценариями отмены уже назначенного заказа. */
+export async function cancelAssignedOrder(page: Page): Promise<void> {
+  await cancelPassengerOrder(page)
 }
 
 /**
