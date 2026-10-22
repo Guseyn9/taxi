@@ -61,6 +61,14 @@ function createResponse(body, status = 200) {
   }
 }
 
+const commandCases = [
+  ['arrive', gateway => gateway.arrive('42'), 'driver_arrived', {}, DRIVER_MAP_EVENTS.Arrived],
+  ['start', gateway => gateway.start('42'), 'ride_started', {}, DRIVER_MAP_EVENTS.Started],
+  ['confirm boarding', gateway => gateway.confirmBoarding('42', '1234'), 'ride_started',
+    { boardingCode: '1234' }, DRIVER_MAP_EVENTS.BoardingConfirmed],
+  ['finish', gateway => gateway.finish('42'), 'ride_finished', {}, DRIVER_MAP_EVENTS.Finished],
+]
+
 describe('DriverMapGateway', () => {
   beforeEach(() => jest.clearAllMocks())
 
@@ -81,6 +89,114 @@ describe('DriverMapGateway', () => {
     }))
     unmount()
   })
+
+  it('sends driver arrival through Command API when it is configured', async() => {
+    const runtime = createRuntime()
+    const commandTransport = { send: jest.fn().mockResolvedValue({
+      accepted: true,
+      duplicate: false,
+      instanceId: 108,
+      status: 'PENDING',
+      intent: 'driver_arrived',
+    }) }
+    const completionWaiter = {
+      captureBaseline: jest.fn().mockReturnValue({ state: 'order_driver_assigned' }),
+      wait: jest.fn().mockResolvedValue({ status: 'COMPLETED', instanceId: 108 }),
+      fail: jest.fn(),
+      cancelAll: jest.fn(),
+    }
+    const gateway = new DriverMapGateway(runtime, commandTransport, 60000, completionWaiter)
+    gateway.mount()
+
+    await gateway.arrive('42')
+
+    expect(commandTransport.send).toHaveBeenCalledWith(
+      '42',
+      'driver_arrived',
+      {},
+      expect.objectContaining({ source: 'driver.interface' }),
+    )
+    expect(completionWaiter.wait).toHaveBeenCalledWith(expect.objectContaining({
+      actionType: 'driver.order.arrive',
+      orderId: '42',
+      instanceId: 108,
+    }))
+    expect(backendGateway.setOrderState).not.toHaveBeenCalled()
+  })
+
+  it.each(commandCases)(
+    '%s sends the canonical intent and waits for its Command Status result',
+    async(_name, run, intent, payload, successEvent) => {
+      const runtime = createRuntime()
+      const listener = jest.fn()
+      let completeStatusRequest
+      const fetchRequest = jest.fn((url) => {
+        if (url === 'https://fsm.example.test/api/commands/taxi/order/42')
+          return Promise.resolve(createResponse({
+            accepted: true,
+            duplicate: false,
+            instanceId: 151,
+            status: 'PENDING',
+            intent,
+          }, 202))
+        if (url === 'https://fsm.example.test/api/commands/151')
+          return new Promise(resolve => { completeStatusRequest = resolve })
+        throw new Error(`Unexpected request: ${url}`)
+      })
+      const config = { apiUrl: 'https://fsm.example.test', apiToken: 'driver-token' }
+      const commandTransport = new FsmTaxiCommandTransport(config, {
+        fetch: fetchRequest,
+        createId: () => 'cmd-151',
+      })
+      const statusTransport = new FsmCommandStatusTransport(config, { fetch: fetchRequest })
+      const waiter = new CommandStatusDriverCommandCompletionWaiter(statusTransport, 1000, 100)
+      const gateway = new DriverMapGateway(runtime, commandTransport, 1000, waiter)
+      const unmount = gateway.mount()
+      gateway.subscribe(listener)
+
+      let completed = false
+      const completion = run(gateway).then(() => { completed = true })
+      for (let index = 0; index < 12 && !completeStatusRequest; index += 1)
+        await Promise.resolve()
+
+      expect(completeStatusRequest).toEqual(expect.any(Function))
+      expect(fetchRequest.mock.calls.map(([url]) => url)).toEqual([
+        'https://fsm.example.test/api/commands/taxi/order/42',
+        'https://fsm.example.test/api/commands/151',
+      ])
+      expect(JSON.parse(fetchRequest.mock.calls[0][1].body)).toEqual({
+        schemaVersion: '1.0',
+        commandId: 'cmd-151',
+        correlationId: expect.any(String),
+        intent,
+        payload,
+      })
+      expect(fetchRequest.mock.calls[0][1].headers).toEqual(expect.objectContaining({
+        Authorization: 'Bearer driver-token',
+        'Idempotency-Key': 'cmd-151',
+      }))
+      expect(fetchRequest.mock.calls[1][1].headers).toEqual(expect.objectContaining({
+        Authorization: 'Bearer driver-token',
+      }))
+      expect(listener).toHaveBeenCalledWith(expect.objectContaining({
+        type: DRIVER_MAP_EVENTS.CommandAccepted,
+        payload: expect.objectContaining({ instanceId: 151, intent, status: 'PENDING' }),
+      }))
+      expect(listener).not.toHaveBeenCalledWith(expect.objectContaining({ type: successEvent }))
+      expect(completed).toBe(false)
+
+      completeStatusRequest(createResponse({ instanceId: 151, status: 'COMPLETED' }))
+      await completion
+
+      expect(listener).toHaveBeenCalledWith(expect.objectContaining({
+        type: successEvent,
+        payload: { orderId: '42' },
+      }))
+      expect(backendGateway.setOrderState).not.toHaveBeenCalled()
+      expect(backendGateway.confirmVotingCode).not.toHaveBeenCalled()
+      unmount()
+    },
+  )
 
   it('normalizes backend rejection and publishes a failure event', async() => {
     backendGateway.setOrderState.mockResolvedValueOnce({
@@ -158,7 +274,7 @@ describe('DriverMapGateway', () => {
     }))
   })
 
-  it('sends driver cancellation through Command API when it is configured', async() => {
+  it('keeps driver cancellation on legacy transport until backend support exists', async() => {
     const runtime = createRuntime()
     const commandTransport = { send: jest.fn().mockResolvedValue({
       accepted: true,
@@ -174,69 +290,19 @@ describe('DriverMapGateway', () => {
       cancelAll: jest.fn(),
     }
     const gateway = new DriverMapGateway(runtime, commandTransport, 60000, completionWaiter)
-    gateway.mount()
-
-    await gateway.cancel('42', 'Vehicle issue')
-
-    expect(commandTransport.send).toHaveBeenCalledWith(
-      '42',
-      'cancel_requested',
-      { reason: 'Vehicle issue' },
-      expect.objectContaining({ source: 'driver.interface' }),
-    )
-    expect(completionWaiter.wait).toHaveBeenCalledWith(expect.objectContaining({
-      actionType: 'driver.order.cancel',
-      orderId: '42',
-      instanceId: 104,
-    }))
-    expect(backendGateway.cancelDrive).not.toHaveBeenCalled()
-  })
-
-  it('completes cancellation through POST, instance status lookup and Gateway event', async() => {
-    const fetchRequest = jest.fn()
-      .mockResolvedValueOnce(createResponse({
-        accepted: true,
-        duplicate: false,
-        instanceId: 105,
-        status: 'PENDING',
-        intent: 'cancel_requested',
-      }, 202))
-      .mockResolvedValueOnce(createResponse({
-        instanceId: 105,
-        status: 'COMPLETED',
-      }))
-    const commandTransport = new FsmTaxiCommandTransport({
-      apiUrl: 'https://fsm.example.test',
-    }, {
-      fetch: fetchRequest,
-      createId: () => 'cmd-cancel-105',
-    })
-    const statusTransport = new FsmCommandStatusTransport({
-      apiUrl: 'https://fsm.example.test',
-    }, { fetch: fetchRequest })
-    const completionWaiter = new CommandStatusDriverCommandCompletionWaiter(statusTransport, 1000, 0)
-    const runtime = createRuntime()
-    const gateway = new DriverMapGateway(runtime, commandTransport, 1000, completionWaiter)
     const listener = jest.fn()
     gateway.mount()
     gateway.subscribe(listener)
 
     await gateway.cancel('42', 'Vehicle issue')
 
-    expect(fetchRequest.mock.calls.map(([url]) => url)).toEqual([
-      'https://fsm.example.test/api/commands/taxi/order/42',
-      'https://fsm.example.test/api/commands/105',
-    ])
-    expect(JSON.parse(fetchRequest.mock.calls[0][1].body)).toEqual(expect.objectContaining({
-      commandId: 'cmd-cancel-105',
-      intent: 'cancel_requested',
-      payload: { reason: 'Vehicle issue' },
-    }))
+    expect(commandTransport.send).not.toHaveBeenCalled()
+    expect(completionWaiter.wait).not.toHaveBeenCalled()
+    expect(backendGateway.cancelDrive).toHaveBeenCalledWith('42', 'Vehicle issue')
     expect(listener).toHaveBeenCalledWith(expect.objectContaining({
       type: DRIVER_MAP_EVENTS.Cancelled,
       payload: { orderId: '42' },
     }))
-    expect(backendGateway.cancelDrive).not.toHaveBeenCalled()
   })
 
   it('preserves STATUS_LOOKUP through Gateway rejection and failure event', async() => {
@@ -349,7 +415,7 @@ describe('DriverMapGateway', () => {
 
     expect(commandTransport.send).toHaveBeenCalledWith(
       '42',
-      'driver.order.confirm_boarding',
+      'ride_started',
       { boardingCode: '1234' },
       expect.objectContaining({
         source: 'driver.interface',
