@@ -12,7 +12,7 @@ import { PICKUP } from './fixtures/driverUi'
 import {
   PASSENGER_STORAGE,
   PASSENGER_ORDER_POINTS,
-  cancelAssignedOrder,
+  cancelPassengerOrder,
   expandPassengerOrderForm,
   expectPassengerOrderCreated,
   fillPassengerOrderPoints,
@@ -111,7 +111,7 @@ test('пассажир отменяет Standard до назначения во�
 
     const requests = watchCancelRequests(page, orderId)
     const responsePromise = waitForCancelResponse(page, orderId)
-    await cancelAssignedOrder(page)
+    await cancelPassengerOrder(page)
     const response = await responsePromise
 
     expect(response.status, 'HTTP-ответ отмены').toBe(200)
