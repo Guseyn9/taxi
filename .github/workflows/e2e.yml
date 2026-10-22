@@ -25,6 +25,7 @@ jobs:
 
     steps:
       - name: Wait for this run's turn against the shared backend
+        working-directory: .
         env:
           GH_TOKEN: ${{ github.token }}
           REPOSITORY: ${{ github.repository }}
