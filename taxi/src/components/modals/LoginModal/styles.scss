@@ -13,7 +13,7 @@
     height: 36px;
     align-items: center;
     font-family: Roboto;
-    color: #6F1717;
+    color: #6f1717;
     font-size: 25px;
   }
 
@@ -40,7 +40,7 @@
   }
 
   .login-form {
-    color: #1D2A50;
+    color: #1d2a50;
 
     &__input {
       margin-bottom: 40px;
@@ -59,7 +59,7 @@
       font-size: 22px;
       line-height: 26px;
       text-align: center;
-      color: #A90000;
+      color: #a90000;
     }
 
     .login {
@@ -92,7 +92,7 @@
   &_login-btn {
     height: 50px;
     margin-bottom: 10px;
-    background: linear-gradient(90deg, #EC4C60 0%, #991B0E 100%);
+    background: linear-gradient(90deg, #ec4c60 0%, #991b0e 100%);
     text-transform: capitalize !important;
   }
 
@@ -117,7 +117,7 @@
     top: 1px;
     border-width: 0;
     right: 1px;
-    background-color: #EC4C60;
+    background-color: #ec4c60;
     opacity: .3;
     border-bottom-right-radius: 14px;
     z-index: 1;
@@ -129,7 +129,7 @@
     position: absolute;
     width: 24px;
     height: 54px;
-    color: #6F1717;
+    color: #6f1717;
     font-size: 18px;
     font-family: Roboto;
     line-height: 34px;
@@ -245,8 +245,8 @@
     padding: 0;
     border: 0;
     border-radius: 999px;
-    background: #F4F5F7;
-    color: #7A7F89;
+    background: #f4f5f7;
+    color: #7a7f89;
     font-size: 22px;
     line-height: 1;
     font-weight: 500;
@@ -257,7 +257,7 @@
     &:hover,
     &:focus,
     &:active {
-      background: #EBEDF0;
+      background: #ebedf0;
       color: #111827;
       outline: none;
       box-shadow: none;

@@ -41,11 +41,13 @@ const DeleteFileModal: React.FC<IProps> = ({
         <p className="delete-file-modal__text">Удалить фото?</p>
         <div className="delete-file-modal__buttons">
           <Button
+            intent="danger"
             text={t(TRANSLATION.ONE)}
             onClick={() => {handleDeleteFile(); setDeleteFilesModal({ ...defaultDeleteFilesModal })}}
             skipHandler
           />
           <Button
+            intent="danger"
             text={t(TRANSLATION.ALL)}
             onClick={() => {handleDeleteFiles(); setDeleteFilesModal({ ...defaultDeleteFilesModal })}}
             className="delete-file-modal__all-button"

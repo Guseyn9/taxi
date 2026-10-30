@@ -81,6 +81,7 @@ function CommentsModal({
       style={EModalStyles.RedDesign}
       className="comments-modal"
     >
+      <h2 className="rs-dialog-title">{t(TRANSLATION.COMMENT)}</h2>
       <form
         className="comments-modal__form"
         onSubmit={handleSubmit(onSubmit)}

@@ -23,6 +23,9 @@ import { useVisibility } from '../../../tools/hooks'
 import { ISelectOption } from '../../../types'
 import { normalizePhoneNumber } from '../../../tools/phoneUtils'
 import { Input } from './elements'
+import { Eye, EyeOff, Mail, Phone } from 'lucide-react'
+import { configSelectors } from '../../../state/config'
+import { dialogCopy } from '../dialogCopy'
 
 const mapStateToProps = (state: IRootState) => {
   return {
@@ -31,6 +34,7 @@ const mapStateToProps = (state: IRootState) => {
     tab: userSelectors.tab(state),
     message: userSelectors.message(state),
     response: userSelectors.registerResponse(state),
+    language: configSelectors.language(state),
   }
 }
 
@@ -96,7 +100,22 @@ const RegisterForm: React.FC<IProps> = ({
   tab,
   register,
   isOpen,
+  language,
 }) => {
+  const copy = dialogCopy(language?.iso)
+  const [passwordVisible,setPasswordVisible] = useState(false)
+  const [confirmVisible,setConfirmVisible] = useState(false)
+  useEffect(() => {
+    if (!isOpen) {setPasswordVisible(false);setConfirmVisible(false)}
+  }, [isOpen])
+  const passwordButtons = (visible:boolean,toggle:()=>void): NonNullable<React.ComponentProps<typeof Input>['buttons']> => [{
+    type:'button',checkLogin:false,className:'auth-password-toggle',
+    wrapperProps:{className:'auth-password-toggle-control'},
+    svg:visible ? <EyeOff size={20} aria-hidden="true"/> : <Eye size={20} aria-hidden="true"/>,
+    title:visible ? copy.hidePassword : copy.showPassword,
+    'aria-label':visible ? copy.hidePassword : copy.showPassword,
+    'aria-pressed':visible,onClick:toggle,
+  }]
   const requireFeildsMap: IRequiredFields = useMemo(() => {
     const requireFieldsStr = (window as any).data?.site_constants?.reg_driver?.value || ''
     return requireFieldsStr
@@ -335,7 +354,8 @@ const RegisterForm: React.FC<IProps> = ({
   if (isDriver && requireFeildsMap.driver_license_photo && !filesMap.driver_license_photo.length) isValidFrom = false
   if (isDriver && requireFeildsMap.license_photo && !filesMap.license_photo) isValidFrom = false
   return (
-    <form className="login-form sign-up-subform" onSubmit={handleSubmit(onSubmit)}>
+    <form className="login-form sign-up-subform" data-registration-role={isDriver ? 'driver' : 'passenger'} onSubmit={handleSubmit(onSubmit)}>
+     <div className="auth-register-fields">
       {isDriver &&
         <Input
           inputProps={{
@@ -352,6 +372,7 @@ const RegisterForm: React.FC<IProps> = ({
 
       <Input
         inputProps={{
+          autoComplete: 'name',
           ...formRegister('u_name', {
             required: t(TRANSLATION.REQUIRED_FIELD),
           }),
@@ -366,6 +387,8 @@ const RegisterForm: React.FC<IProps> = ({
       />
       <Input
         inputProps={{
+          autoComplete: 'tel',
+          inputMode: 'tel',
           ...formRegister('u_phone', {
             required: t(TRANSLATION.REQUIRED_FIELD),
           }),
@@ -392,6 +415,10 @@ const RegisterForm: React.FC<IProps> = ({
 
       <Input
         inputProps={{
+          autoComplete: 'email',
+          inputMode: 'email',
+          autoCapitalize: 'none',
+          spellCheck: false,
           ...formRegister('u_email', {
             required: t(TRANSLATION.REQUIRED_FIELD),
           }),
@@ -407,11 +434,12 @@ const RegisterForm: React.FC<IProps> = ({
             required: t(TRANSLATION.REQUIRED_FIELD),
           }),
           required: true,
-          type: 'password',
+          type: passwordVisible ? 'text' : 'password',
           autoComplete: 'new-password',
         }}
         label={t(TRANSLATION.PASSWORD)}
         error={errors.password?.message}
+        buttons={passwordButtons(passwordVisible,()=>setPasswordVisible(value=>!value))}
       />
 
       <Input
@@ -420,28 +448,22 @@ const RegisterForm: React.FC<IProps> = ({
             required: t(TRANSLATION.REQUIRED_FIELD),
           }),
           required: true,
-          type: 'password',
+          type: confirmVisible ? 'text' : 'password',
           autoComplete: 'new-password',
         }}
         label={t(TRANSLATION.PASSWORD_CONFIRM)}
         error={errors.password_confirm?.message}
+        buttons={passwordButtons(confirmVisible,()=>setConfirmVisible(value=>!value))}
       />
 
-      <Checkbox
-        {...formRegister('type')}
-        type="radio"
-        label={t(TRANSLATION.PHONE)}
-        value={ERegistrationType.Phone}
-        id="phone"
-        disabled
-      />
-      <Checkbox
-        {...formRegister('type')}
-        type="radio"
-        label={t(TRANSLATION.EMAIL)}
-        value={ERegistrationType.Email}
-        id="email"
-      />
+      <fieldset className="auth-channel-options auth-registration-channel"><legend className="sr-only">{t(TRANSLATION.SIGNUP)}</legend>
+       <div className="auth-channel-choice auth-channel-choice--unavailable"><Phone size={18} aria-hidden="true"/><Checkbox
+        {...formRegister('type')} type="radio" label={t(TRANSLATION.PHONE)} value={ERegistrationType.Phone} id="phone" disabled
+       /></div>
+       <div className="auth-channel-choice"><Mail size={18} aria-hidden="true"/><Checkbox
+        {...formRegister('type')} type="radio" label={t(TRANSLATION.EMAIL)} value={ERegistrationType.Email} id="email"
+       /></div>
+      </fieldset>
 
       {isDriver && (
         <Input
@@ -584,6 +606,8 @@ const RegisterForm: React.FC<IProps> = ({
       <Input
         inputProps={{
           ...formRegister('ref_code'),
+          'aria-label': t(TRANSLATION.PROMO_CODE),
+          placeholder: t(TRANSLATION.PROMO_CODE),
         }}
         fieldWrapperClassName={cn('ref-code__input', {
           'ref-code__input--active': showRefCode,
@@ -665,6 +689,8 @@ const RegisterForm: React.FC<IProps> = ({
         </div>
       )}
 
+     </div>
+     <div className="auth-register-footer">
       <Button
         type="submit"
         text={t(TRANSLATION.SIGNUP)}
@@ -674,6 +700,7 @@ const RegisterForm: React.FC<IProps> = ({
         disabled={!isValidFrom}
         status={status}
       />
+     </div>
     </form>
   )
 }

@@ -1,3 +1,4 @@
+import { serverPickupEta } from '../../pilot/rules'
 import React, { useEffect, useMemo, useState } from 'react'
 import { connect, ConnectedProps } from 'react-redux'
 import Button from '../Button'
@@ -236,7 +237,7 @@ const VoteModal: React.FC<IProps> = ({
                 const offer = getCandidateOfferInfo(driver)
                 const seatsText = getFirstFilledOfferValue(offer.seats) || '—'
                 const commentText = getFirstFilledOfferValue(offer.comment) || '—'
-                const pickupEta = getPassengerPickupEta(order?.b_id, driver) || '—'
+                const pickupEta = serverPickupEta(driver) || '—'
 
                 return (
                   <button
@@ -273,7 +274,7 @@ const VoteModal: React.FC<IProps> = ({
                 </div>
                 <div className="vote-modal__selected-row">
                   <span>{t(TRANSLATION.CLIENT_PICKUP_ETA)}</span>
-                  <b>{getPassengerPickupEta(order?.b_id, selectedCandidate) || '—'}</b>
+                  <b>{serverPickupEta(selectedCandidate) || '—'}</b>
                 </div>
                 <div className="vote-modal__selected-row">
                   <span>{t(TRANSLATION.CLIENT_ROUTE_DURATION)}</span>
@@ -355,34 +356,8 @@ function normalizeCandidateOfferObject(value: any): Record<string, any> {
 }
 
 
-function getSyntheticOfferIndex(driver: IDriver, order?: any) {
-  const source = `${driver.u_id || ''}_${driver.c_id || ''}_${order?.b_id || ''}`
-  return source.split('').reduce((sum, char) => sum + char.charCodeAt(0), 0)
-}
 
-function getSyntheticOfferEta(driver: IDriver, order?: any) {
-  const variants = [
-    t(TRANSLATION.DRIVER_OFFER_ETA_5),
-    t(TRANSLATION.DRIVER_OFFER_ETA_10),
-    t(TRANSLATION.DRIVER_OFFER_ETA_15),
-    t(TRANSLATION.DRIVER_OFFER_ETA_20),
-    t(TRANSLATION.DRIVER_OFFER_ETA_30),
-    t(TRANSLATION.DRIVER_OFFER_ETA_45),
-  ]
-  return variants[getSyntheticOfferIndex(driver, order) % variants.length]
-}
 
-function getSyntheticOfferComment(driver: IDriver, order?: any) {
-  const variants = [
-    t(TRANSLATION.DRIVER_OFFER_COMMENT_DIRECT),
-    t(TRANSLATION.DRIVER_OFFER_COMMENT_FAST),
-    t(TRANSLATION.DRIVER_OFFER_COMMENT_AC),
-    t(TRANSLATION.DRIVER_OFFER_COMMENT_BIG_TRUNK),
-    t(TRANSLATION.DRIVER_OFFER_COMMENT_NEARBY),
-    t(TRANSLATION.DRIVER_OFFER_COMMENT_CAREFUL),
-  ]
-  return variants[getSyntheticOfferIndex(driver, order) % variants.length]
-}
 
 function getCandidateOfferInfo(driver: IDriver) {
   const rawDriver = driver as any
@@ -398,28 +373,7 @@ function getCandidateOfferInfo(driver: IDriver) {
         topOfferObject
 
   return {
-    eta: getFirstFilledOfferValue(
-      options.driver_offer_eta,
-      rawDriver.driver_offer_eta,
-      rawDriverData.driver_offer_eta,
-      rawDriverData.c_pickup_time,
-      rawDriverData.pickup_time,
-      rawOffer.eta,
-      rawOffer.pickup_time,
-      rawOffer.arrival_time,
-      rawOffer.time,
-      getSyntheticOfferEta(driver),
-      options.eta,
-      rawDriver.eta,
-      rawDriver.pickup_time,
-      rawDriver.arrival_time,
-      rawDriver.c_eta,
-      rawDriver.c_pickup_time,
-      options.c_pickup_time,
-      options.pickup_time,
-      options.arrival_time,
-      options.time,
-    ),
+    eta: serverPickupEta(driver),
     seats: getFirstFilledOfferValue(
       options.driver_offer_free_seats,
       rawDriver.driver_offer_free_seats,
@@ -441,7 +395,6 @@ function getCandidateOfferInfo(driver: IDriver) {
       rawDriverData.comment,
       rawOffer.comment,
       rawOffer.driver_comment,
-      getSyntheticOfferComment(driver),
       options.driver_comment,
       rawDriver.driver_comment,
       rawDriver.comment,
@@ -469,12 +422,11 @@ function sortCandidateDriversByEta(drivers: IDriver[], order?: any) {
 }
 
 function getCandidatePickupEtaText(driver: IDriver, order?: any) {
-  const eta = getCandidateOfferInfo(driver).eta
+  const eta = serverPickupEta(driver)
   if (eta !== undefined && eta !== null && String(eta).trim())
     return String(eta).trim()
 
-  const minutes = getCandidateEstimatedPickupMinutes(driver, order)
-  return minutes ? `≈ ${minutes} ${t(TRANSLATION.MINUTES)}` : '—'
+  return '—'
 }
 
 function getCandidatePickupEtaMinutes(driver: IDriver, order?: any) {
@@ -482,7 +434,7 @@ function getCandidatePickupEtaMinutes(driver: IDriver, order?: any) {
   if (eta !== Number.POSITIVE_INFINITY)
     return eta
 
-  return getCandidateEstimatedPickupMinutes(driver, order) ?? Number.POSITIVE_INFINITY
+  return Number.POSITIVE_INFINITY
 }
 
 function parseOfferEtaMinutes(value: unknown) {
@@ -503,19 +455,6 @@ function parseOfferEtaMinutes(value: unknown) {
   return firstNumber
 }
 
-function getCandidateEstimatedPickupMinutes(driver: IDriver, order?: any) {
-  if (!order?.b_start_latitude || !order.b_start_longitude || !driver.c_latitude || !driver.c_longitude)
-    return undefined
-
-  const distanceKm = distanceBetweenEarthCoordinates(
-    driver.c_latitude,
-    driver.c_longitude,
-    order.b_start_latitude,
-    order.b_start_longitude,
-  )
-
-  return Math.max(1, Math.round((distanceKm * 1.2 / 30) * 60))
-}
 
 function getOrderTravelTimeText(order?: any) {
   const minutes = getOrderTravelTimeMinutes(order)

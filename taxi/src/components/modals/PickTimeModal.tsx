@@ -1,8 +1,8 @@
-import React, { useState, useMemo, useCallback } from 'react'
+import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react'
+import {Clock3,CalendarDays,CalendarClock,Check,ChevronRight} from 'lucide-react'
 import cn from 'classnames'
-import { TimePicker } from '@mui/x-date-pickers'
 import { connect, ConnectedProps } from 'react-redux'
-import moment, { Moment } from 'moment'
+import moment from 'moment'
 import { t, TRANSLATION } from '../../localization'
 import {
   clientOrderActionCreators,
@@ -14,7 +14,7 @@ import { dateFormatTimeShort } from '../../tools/utils'
 import Overlay from './Overlay'
 import './styles.scss'
 
-const timePickerViews = ['hours', 'minutes'] as const
+
 
 const mapStateToProps = (state: IRootState) => ({
   isOpen: modalsSelectors.isPickTimeModalOpen(state),
@@ -36,7 +36,7 @@ enum EPeriods {
   Tomorrow
 }
 
-const PickTimeModal: React.FC<IProps> = ({
+export const PickTimeModal: React.FC<IProps> = ({
   isOpen,
   time,
   setTime,
@@ -44,6 +44,12 @@ const PickTimeModal: React.FC<IProps> = ({
 }) => {
   const [isPickerOpen, setIsPickerOpen] = useState(false)
   const [period, setPeriod] = useState(EPeriods.Now)
+  const [clock, setClock] = useState('12:00')
+  const clockInput = useRef<HTMLInputElement>(null)
+  useEffect(() => { if (isOpen) {
+    setIsPickerOpen(false)
+    setClock((time === 'now' ? moment().add(5, 'minutes') : time).format('HH:mm'))
+  } }, [isOpen])
 
   const onPeriodClick = useCallback((item: EPeriods) => {
     setPeriod(item)
@@ -56,9 +62,9 @@ const PickTimeModal: React.FC<IProps> = ({
   }, [])
 
   const items = [
-    { label: t(TRANSLATION.TODAY), value: EPeriods.Today },
-    { label: t(TRANSLATION.NOW), value: EPeriods.Now },
-    { label: t(TRANSLATION.TOMORROW), value: EPeriods.Tomorrow },
+    { label: t(TRANSLATION.NOW), value: EPeriods.Now,icon:Clock3 },
+    { label: t(TRANSLATION.TODAY), value: EPeriods.Today,icon:CalendarDays },
+    { label: t(TRANSLATION.TOMORROW), value: EPeriods.Tomorrow,icon:CalendarClock },
   ]
   const activePeriod = useMemo(
     () => time === 'now' ?
@@ -79,64 +85,48 @@ const PickTimeModal: React.FC<IProps> = ({
         setIsPickerOpen(false)
       }, [])}
     >
-      <div className="modal timer-modal">
+      <div className="modal timer-modal" hidden={isPickerOpen}>
+        <h2 className="rs-dialog-title">{t(TRANSLATION.START_TIME)}</h2>
         {useMemo(() => items.map((item, index) =>
           <div key={item.value} className="timer-modal__item">
-            <div
+            <button
+              type="button"
+              aria-pressed={activePeriod === item.value}
               className={cn('timer-modal__button', {
                 'timer-modal__button--active': activePeriod === item.value,
               })}
               onClick={() => onPeriodClick(item.value)}
             >
-              {item.label}
+              <span className="timer-modal__icon"><item.icon size={22} aria-hidden="true"/></span><span className="timer-modal__copy">{item.label}
               {activePeriod === item.value && typeof time !== 'string' &&
-                <label className="timer-modal__label">
+                <span className="timer-modal__label">
                   <span>{time.format(dateFormatTimeShort)}</span>
-                </label>
+                </span>
               }
-            </div>
+              </span>{activePeriod===item.value ? <Check size={20} aria-hidden="true"/> : <ChevronRight size={18} aria-hidden="true"/>}
+            </button>
             <span className="timer-modal__separator" />
           </div>,
         ), [time, activePeriod])}
       </div>
-      <TimePicker
-        autoFocus
-        ampm={false}
-        open={isPickerOpen}
-        onClose={useCallback(() => setIsPickerOpen(false), [])}
-        slots={timePickerSlots}
-        views={timePickerViews}
-        value={typeof time === 'string' ? null : time}
-        onAccept={useCallback((date: Moment | null) => {
-          if (date) {
-            const days = period === EPeriods.Tomorrow ? 1 : 0
-            setTime(date.clone().add(days, 'days'))
-          }
+      {isPickerOpen && <div className="modal timer-modal timer-modal__clock">
+        <h2>{t(TRANSLATION.START_TIME)} · {t(period === EPeriods.Tomorrow ? TRANSLATION.TOMORROW : TRANSLATION.TODAY)}</h2>
+        <label className="timer-modal__clock-label">{t(TRANSLATION.START_TIME)}
+          <input ref={clockInput} type="time" value={clock} onChange={event => setClock(event.target.value)} required aria-label={t(TRANSLATION.START_TIME)} />
+        </label>
+        <button type="button" className="timer-modal__clock-confirm" disabled={!/^\d{2}:\d{2}$/.test(clock)} onClick={() => {
+          const value = clockInput.current?.value ?? clock
+          if (!/^\d{2}:\d{2}$/.test(value)) return
+          const [hours, minutes] = value.split(':').map(Number)
+          setTime(moment().startOf('day').add(period === EPeriods.Tomorrow ? 1 : 0, 'days').hours(hours).minutes(minutes))
+          setIsPickerOpen(false)
           setPickTimeModal(false)
-        }, [period])}
-      />
+        }}>{t(TRANSLATION.SAVE, {toUpper:false})}</button>
+        <button type="button" className="timer-modal__clock-back" onClick={() => setIsPickerOpen(false)}>{t(TRANSLATION.CANCEL, {toUpper:false})}</button>
+      </div>}
+
     </Overlay>
   )
-}
-
-interface ITimePickerDialogProps {
-  children?: React.ReactNode,
-  open: boolean
-}
-
-const timePickerSlots = {
-  dialog({ children, open }: ITimePickerDialogProps) {
-    return (
-      <div
-        className={cn('timer-modal__time-picker', {
-          'timer-modal__time-picker--visible': open,
-        })}
-      >
-        {children}
-      </div>
-    )
-  },
-  textField: () => null,
 }
 
 export default connector(PickTimeModal)

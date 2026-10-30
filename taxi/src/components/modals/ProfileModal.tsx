@@ -184,7 +184,7 @@ const PROFILE_FALLBACK_FIELDS: TForm = [
 ]
 
 const ProfileInlineError = () => (
-  <div className="profile-modal__inline-error">
+  <div className="profile-modal__inline-error" role="alert">
     {t(TRANSLATION.ERROR)}
   </div>
 )
@@ -227,6 +227,9 @@ function ProfileModalContent({
   createUserCar,
   setLanguage,
 }: IProps) {
+  const photoLabels = { en: 'Change profile photo', ru: 'Изменить фото профиля', fr: 'Changer la photo du profil', ar: 'تغيير صورة الملف الشخصي' }
+  const languageCode = (language?.iso || '').toLowerCase().split('-')[0]
+  const photoLabel = photoLabels[languageCode.startsWith('ar') ? 'ar' : languageCode as keyof typeof photoLabels] || photoLabels.en
   const onChangeAvatar = useCallback((e: any) => {
     const file = e.target.files[0]
     if (!user || !tokens || !file) return
@@ -575,6 +578,8 @@ function ProfileModalContent({
                   <input
                     onChange={onChangeAvatar}
                     type="file"
+                    accept="image/*"
+                    aria-label={photoLabel}
                     className="avatar_input"
                   />
                 </label>
