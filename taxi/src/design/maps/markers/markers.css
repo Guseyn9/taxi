@@ -1,0 +1,16 @@
+/* Top-down car artwork points north; existing marker bearing rotates the whole car. */
+#root .rs-taxi-marker .smooth-rotating-marker__image{display:block;width:100%!important;height:100%!important;object-fit:contain;filter:none!important;transform-origin:50% 50%}
+#root .rs-taxi-marker .smooth-rotating-marker__fallback-arrow{display:none}
+#root .map-container__center-marker{width:42px!important;height:52px!important;transform:translate(-50%,-86%);filter:drop-shadow(0 1px 1px #fff)}
+#root .passenger:has([data-map-preview=active]) .map-container__center-marker{display:none}
+#root .rs-map-marker-preview{position:absolute;left:18px;bottom:32px;z-index:750;display:flex;gap:8px;align-items:center;flex-wrap:wrap;background:#fff;border:1px solid #e9e9e9;border-radius:12px;padding:6px;color:#121212;max-width:calc(100% - 36px);font-family:Manrope,sans-serif}
+#root .rs-map-marker-preview button{display:flex;align-items:center;justify-content:center;gap:6px;min-width:44px;min-height:44px;padding:0 10px;border:0;background:#fff;color:var(--drive-red,#b51218);border-radius:8px;font:700 12px Manrope,sans-serif;cursor:pointer}
+#root .rs-map-marker-preview button:hover{background:#fff0ed}#root .rs-map-marker-preview button:focus-visible{outline:2px solid var(--drive-red,#b51218);outline-offset:1px}
+#root .rs-map-preview-active{width:286px;padding:12px}
+#root .rs-marker-preview-title{flex:1;display:flex;flex-direction:column;gap:3px}#root .rs-marker-preview-title b{font-size:13px}#root .rs-marker-preview-title span{font-size:10px;color:#666666}#root .rs-marker-preview-actions{display:flex;gap:2px}
+#root .rs-map-preview-active label{display:block;flex:1 0 100%;font-size:11px}#root .rs-map-preview-active output{float:right;font-size:11px}#root .rs-map-preview-active input{display:block;width:100%;height:24px;accent-color:var(--drive-red,#b51218)}
+@media(max-width:899px){#root .rs-map-marker-preview{left:auto;right:64px;top:12px;bottom:auto;padding:0;max-width:calc(100% - 84px)}#root .rs-map-preview-active{left:12px;right:64px;top:12px;width:auto;padding:8px;z-index:760}#root .rs-map-preview-active button{min-width:36px;min-height:36px;padding:0 6px}#root .rs-marker-preview-title b{font-size:12px}#root .rs-map-preview-active input{height:20px}}
+@media(max-width:899px){#root .rs-map-preview-active{flex-wrap:nowrap;min-height:44px;padding:4px 8px}#root .rs-map-preview-active label{display:none}#root .rs-marker-preview-title span{font-size:9px}#root .rs-map-preview-active button{min-width:36px;min-height:40px}}
+@media(max-width:899px) and (min-height:650px) and (orientation:portrait){#root .passenger:has([data-map-preview=active]) .passenger__draggable{max-height:calc(var(--taxi-viewport-height,100dvh) - 340px)!important}}
+
+@media(min-width:900px){#root .rs-map-marker-preview{left:520px;max-width:calc(100% - 540px)}}

@@ -1,10 +1,11 @@
 import React from 'react'
 import L from 'leaflet'
-import { Marker } from 'react-leaflet'
+import { Marker, useMap } from 'react-leaflet'
 
 type LatLngTuple = [number, number]
 
 interface IProps {
+  title?: string
   position: LatLngTuple
   iconUrl: string
   className?: string
@@ -25,7 +26,7 @@ interface IProps {
 
 const EARTH_RADIUS_METERS = 6371000
 const DEFAULT_SPEED_KMH = 42
-const MIN_ANIMATION_MS = 220
+const MIN_ANIMATION_MS = 80
 const MAX_ANIMATION_MS = 18000
 const MAX_BAD_POSITION_JUMP_METERS = 420
 const MAX_ROUTE_SNAP_METERS = 180
@@ -57,8 +58,8 @@ function normalizeAngle(value: number) {
   return ((value % 360) + 360) % 360
 }
 
-function shortestAngleDelta(from: number, to: number) {
-  return ((to - from + 540) % 360) - 180
+export function shortestAngleDelta(from: number, to: number) {
+  return ((to - from + 180) % 360 + 360) % 360 - 180
 }
 
 function interpolate(from: LatLngTuple, to: LatLngTuple, progress: number): LatLngTuple {
@@ -202,24 +203,15 @@ function nowMs() {
     Date.now()
 }
 
-function getPathKey(path?: LatLngTuple[]) {
+export function getPathKey(path?: LatLngTuple[]) {
   const safePath = normalizePath(path)
   if (safePath.length < 2) return ''
-  const last = safePath[safePath.length - 1]
-  const first = safePath[0]
-
-  // Do not include every first-point change with high precision. The backend can
-  // return a new route from the current car coordinate every poll; resetting the
-  // route on those updates caused marker disappearance and backward turns.
-  return [
-    first[0].toFixed(3),
-    first[1].toFixed(3),
-    last[0].toFixed(5),
-    last[1].toFixed(5),
-  ].join(':')
+  // Geometry, not just endpoints: reroutes can share both endpoints.
+  return safePath.map(point => `${point[0]},${point[1]}`).join(';')
 }
 
 export default function SmoothRotatingMarker({
+  title = 'Taxi',
   position,
   iconUrl,
   className = 'smooth-rotating-marker',
@@ -232,9 +224,9 @@ export default function SmoothRotatingMarker({
   path,
   children,
 }: IProps) {
+  const map = useMap()
   const safeInitialPosition: LatLngTuple = isFinitePoint(position) ? position : [0, 0]
-  const [displayPosition, setDisplayPosition] = React.useState<LatLngTuple>(safeInitialPosition)
-  const [angle, setAngle] = React.useState(0)
+  const initialPositionRef = React.useRef<LatLngTuple>(safeInitialPosition)
   const animationRef = React.useRef<number | null>(null)
   const displayPositionRef = React.useRef<LatLngTuple>(safeInitialPosition)
   const angleRef = React.useRef(0)
@@ -245,6 +237,21 @@ export default function SmoothRotatingMarker({
   const lastPositionUpdateAtRef = React.useRef<number | null>(null)
   const pathKey = getPathKey(path)
   const markerRef = React.useRef<L.Marker | null>(null)
+
+  const paint = () => {
+    const marker = markerRef.current
+    if (!marker) return
+    marker.setLatLng(displayPositionRef.current)
+    const element = marker.getElement()
+    // Leaflet rounds marker positions to whole pixels. Retain the fractional
+    // remainder inside the icon so slow motion does not step pixel by pixel.
+    const projected = map.project(displayPositionRef.current, map.getZoom())
+    const wrap = element?.querySelector<HTMLElement>('.smooth-rotating-marker__wrap')
+    if (wrap) wrap.style.transform = `translate(${projected.x - Math.round(projected.x)}px, ${projected.y - Math.round(projected.y)}px)`
+    element?.querySelectorAll<HTMLElement>('.smooth-rotating-marker__image, .smooth-rotating-marker__fallback-arrow').forEach(node => {
+      node.style.transform = `rotate(${angleRef.current}deg)`
+    })
+  }
 
   React.useEffect(() => {
     if (!isFinitePoint(position)) return
@@ -262,8 +269,7 @@ export default function SmoothRotatingMarker({
         routePathRef.current = nextPath
         lastPathKeyRef.current = pathKey
         routeMetersRef.current = projectedFrom.routeMeters
-        displayPositionRef.current = projectedFrom.point
-        setDisplayPosition(projectedFrom.point)
+
       } else {
         routePathRef.current = []
         lastPathKeyRef.current = ''
@@ -304,9 +310,6 @@ export default function SmoothRotatingMarker({
       useRouteAnimation = true
 
       if (targetRouteMeters <= startRouteMeters + ROUTE_FORWARD_EPSILON_METERS) {
-        const nextAngle = normalizeAngle(angleRef.current + shortestAngleDelta(angleRef.current, targetBearing) * .18)
-        angleRef.current = nextAngle
-        setAngle(nextAngle)
         return
       }
     } else {
@@ -316,6 +319,7 @@ export default function SmoothRotatingMarker({
       if (directDistance > MAX_BAD_POSITION_JUMP_METERS && lastRawDistance > MAX_BAD_POSITION_JUMP_METERS)
         return
 
+      if (directDistance < 1) return // Stationary GPS noise must not spin the car.
       lastAcceptedRawPositionRef.current = position
       targetBearing = bearingDegrees(from, position)
       targetPoint = position
@@ -338,34 +342,35 @@ export default function SmoothRotatingMarker({
     const observedGapDuration = previousUpdateAt ?
       Math.max(MIN_ANIMATION_MS, Math.min(MAX_ANIMATION_MS, (startedAt - previousUpdateAt) * 1.15)) :
       speedDuration
-    const duration = Math.max(MIN_ANIMATION_MS, Math.min(MAX_ANIMATION_MS, Math.min(speedDuration, observedGapDuration)))
+    const duration = Math.max(MIN_ANIMATION_MS, Math.min(MAX_ANIMATION_MS, observedGapDuration))
 
     if (animationRef.current !== null) {
       cancelAnimationFrame(animationRef.current)
       animationRef.current = null
     }
 
+    let lastFrameAt = startedAt
     const animate = (now: number) => {
       const progress = Math.min(1, (now - startedAt) / duration)
       const next = useRouteAnimation ?
         pointAtRouteMeters(routePath, startRouteMeters + (targetRouteMeters - startRouteMeters) * progress) :
         { point: interpolate(from, targetPoint, progress), bearing: targetBearing }
-      const angleStep = Math.min(.28, Math.max(.14, progress < .98 ? .18 : .28))
-      const nextAngle = normalizeAngle(angleRef.current + shortestAngleDelta(angleRef.current, next.bearing) * angleStep)
+      const angleStep = 1 - Math.exp(-Math.max(0, now - lastFrameAt) / 120)
+      lastFrameAt = now
+      const nextAngle = angleRef.current + shortestAngleDelta(angleRef.current, next.bearing) * angleStep
 
       displayPositionRef.current = next.point
       angleRef.current = nextAngle
-      setDisplayPosition(next.point)
-      setAngle(nextAngle)
+      if (useRouteAnimation)
+        routeMetersRef.current = startRouteMeters + (targetRouteMeters - startRouteMeters) * progress
+      paint()
 
       if (progress < 1) {
         animationRef.current = requestAnimationFrame(animate)
       } else {
         const finalPoint = useRouteAnimation ? pointAtRouteMeters(routePath, targetRouteMeters).point : targetPoint
         displayPositionRef.current = finalPoint
-        angleRef.current = normalizeAngle(angleRef.current + shortestAngleDelta(angleRef.current, targetBearing) * .35)
-        setDisplayPosition(finalPoint)
-        setAngle(angleRef.current)
+        paint()
         if (useRouteAnimation)
           routeMetersRef.current = Math.max(routeMetersRef.current, targetRouteMeters)
         animationRef.current = null
@@ -400,25 +405,17 @@ export default function SmoothRotatingMarker({
     popupAnchor[1],
   ])
 
+  React.useEffect(() => { paint() }, [icon])
   React.useEffect(() => {
-    const element = markerRef.current?.getElement?.()
-    if (!element) return
+    map.on('zoomend', paint)
+    return () => { map.off('zoomend', paint) }
+  }, [map])
 
-    const rotation = `rotate(${angle}deg)`
-    const image = element.querySelector<HTMLElement>('.smooth-rotating-marker__image')
-    const fallback = element.querySelector<HTMLElement>('.smooth-rotating-marker__fallback-arrow')
-
-    if (image)
-      image.style.transform = rotation
-    if (fallback)
-      fallback.style.transform = rotation
-  }, [angle])
-
-  if (!isFinitePoint(displayPosition) || !iconUrl)
+  if (!isFinitePoint(initialPositionRef.current) || !iconUrl)
     return null
 
   return (
-    <Marker ref={markerRef} position={displayPosition} icon={icon} zIndexOffset={zIndexOffset}>
+    <Marker ref={markerRef} title={title} alt={title} position={initialPositionRef.current} icon={icon} zIndexOffset={zIndexOffset}>
       {children}
     </Marker>
   )

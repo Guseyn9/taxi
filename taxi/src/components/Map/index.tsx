@@ -1,8 +1,21 @@
+import {createPortal} from 'react-dom'
+import {bookingFramePoints} from '../../design/maps/bookingFrame'
+import {requestFreshLocation} from '../../design/maps/freshLocation'
+import LocationFeedback from '../../design/maps/LocationFeedback'
+import {taxiColor,taxiPicture,DEFAULT_TAXI_COLOR} from '../../design/maps/taxiPalette'
+import MapBoundary from '../../design/maps/MapBoundary'
+import {displayAddress} from '../../design/addressPresentation'
+import {canAutoCenter,validMapPoint} from '../../design/maps/locationPolicy'
+import {configSelectors} from '../../state/config'
+import { PASSENGER } from '../../design/maps/markers/assets'
+import RsaleBasemap, {viewportPadding} from '../../design/maps/RsaleBasemap'
+import {passengerInitialCamera} from '../../design/maps/passengerCamera'
+import { MOROCCO_CENTER, MOROCCO_ZOOM, MOROCCO_VIEW, MOROCCO_MAX_ZOOM, isInMoroccoView } from '../../design/maps/morocco'
 import React, { useState, useEffect, useMemo, useRef } from 'react'
 import cn from 'classnames'
 import L from 'leaflet'
 import {
-  MapContainer, TileLayer,
+  MapContainer,
   Marker, CircleMarker, Popup, Tooltip, Polyline,
   useMap,
 } from 'react-leaflet'
@@ -18,8 +31,6 @@ import {
 } from '../../types/types'
 import {
   distanceBetweenEarthCoordinates,
-  getAttribution,
-  getTileServerUrl,
 } from '../../tools/utils'
 import { useInterval } from '../../tools/hooks'
 import SITE_CONSTANTS from '../../siteConstants'
@@ -35,7 +46,7 @@ import { areasSelectors } from '../../state/areas'
 import { IWayGraph } from '../../tools/maps'
 import { orderSelectors } from '../../state/order'
 import { getPassengerConfirmedChoice, getPassengerConfirmedChoiceStartedAt, getPassengerPickupEta, getPassengerRejectedChoices, isChoiceOrder, isOfferOrder, isVotingOrder, isVisibleChoiceDriverState, setPassengerPickupEta } from '../../tools/driverOffer'
-import { BROWSER_EMULATOR_DRIVER_LOCATION_EVENT, getEmulatedDriverLocation, isEmulatedDriver } from '../../tools/emulatorMode'
+import { BROWSER_EMULATOR_DRIVER_LOCATION_EVENT, getEmulatedDriverLocation, isEmulatedDriver, isAnyBrowserEmulatorOrder } from '../../tools/emulatorMode'
 import { setFrontendLogSnapshot, summarizeDriver, summarizeOrder, summarizePoint, summarizeRouteInfo, writeFrontendLog } from '../../tools/frontendLog'
 import { writeFlowEvent } from '../../tools/flowLog'
 import './styles.scss'
@@ -48,10 +59,10 @@ const STATIC_ACTIVE_MARKER_ICON = new L.Icon({
 })
 
 const FROM_MARKER_ICON = new L.Icon({
-  iconUrl: images.markerFrom,
-  iconSize: [35, 41],
-  iconAnchor: [18, 41],
-  popupAnchor: [0, -35],
+  iconUrl: PASSENGER,
+  iconSize: [42, 52],
+  iconAnchor: [21, 45],
+  popupAnchor: [0, -45],
 })
 
 const TO_MARKER_ICON = new L.Icon({
@@ -66,11 +77,11 @@ function formatPickupRouteDuration(routeInfo?: IRouteInfo | null) {
   if (!routeInfo) return ''
 
   const parts = [
-    !!routeInfo.time.hours && `${routeInfo.time.hours} ч`,
-    !!routeInfo.time.minutes && `${routeInfo.time.minutes} мин`,
+    !!routeInfo.time.hours && `${routeInfo.time.hours} ${t(TRANSLATION.HOURS)}`,
+    !!routeInfo.time.minutes && `${routeInfo.time.minutes} ${t(TRANSLATION.MINUTES)}`,
   ].filter(Boolean)
 
-  return parts.length ? parts.join(' ') : 'меньше минуты'
+  return parts.length ? `≈ ${parts.join(' ')}` : t('less_than_minute')
 }
 
 const KNOWN_LEAFLET_CLEANUP_ERRORS = [
@@ -423,6 +434,7 @@ function makeStablePointAroundPickup(pickup: [number, number], seed: string): [n
 }
 
 function makeVisibleCandidateDriver(driver: IDriver, order: IOrder | null, confirmedChoiceId: string | null): IDriver {
+  if (!order || !isAnyBrowserEmulatorOrder(order) || !isEmulatedDriver(driver)) return driver
   if (!order || !isChoiceOrder(order) || confirmedChoiceId)
     return driver
 
@@ -465,6 +477,7 @@ function makeVisibleCandidateDriver(driver: IDriver, order: IOrder | null, confi
 }
 
 function makeSafeSelectedEmulatedDriver(driver: IDriver, order: IOrder | null, confirmedChoiceId: string | null): IDriver {
+  if (!order || !isAnyBrowserEmulatorOrder(order) || !isEmulatedDriver(driver)) return driver
   if (!order || !isChoiceOrder(order) || !confirmedChoiceId || String(driver.u_id) !== String(confirmedChoiceId))
     return driver
 
@@ -814,6 +827,7 @@ function getChoiceVisualDriverPosition(
   confirmedChoiceId: string | null,
   now: number,
 ): [number, number] | null {
+  if (!order || !isAnyBrowserEmulatorOrder(order) || !isEmulatedDriver(driver)) return null
   if (!order || !isChoiceOrder(order) || !confirmedChoiceId || String(driver.u_id) !== String(confirmedChoiceId))
     return null
 
@@ -835,6 +849,7 @@ function getChoiceVisualDriverPosition(
 }
 
 const mapStateToProps = (state: IRootState) => ({
+  language: configSelectors.language(state),
   type: modalsSelectors.mapModalType(state),
   defaultCenter: modalsSelectors.mapModalDefaultCenter(state),
   modalFrom: modalsSelectors.mapModalFrom(state),
@@ -861,6 +876,8 @@ interface IProps extends ConnectedProps<typeof connector> {
   containerClassName?: string
   setCenter?: (coordinates: [lat: number, lng: number]) => void
   forceFreeMode?: boolean
+  initialOverview?: boolean
+  showDraftCenterMarker?: boolean
 }
 
 function Map({
@@ -870,9 +887,13 @@ function Map({
   containerClassName,
   selectedOrder,
   forceFreeMode,
+  language,
   ...props
 }: IProps) {
+  const savedMapCenter = getSavedMapCenter()
+  const hasMoroccoCenter = isInMoroccoView(savedMapCenter)
   const effectiveSelectedOrder = forceFreeMode ? null : selectedOrder
+  const initialCamera = passengerInitialCamera(defaultCenter ?? undefined, hasMoroccoCenter ? savedMapCenter : null, Boolean(effectiveSelectedOrder))
   const mapKey = useMemo(() => [
     SITE_CONSTANTS.MAP_MODE,
     isModal ? 'modal' : 'page',
@@ -883,11 +904,15 @@ function Map({
       className={cn('map-container', containerClassName, { 'map-container--active': isOpen, 'map-container--modal': isModal })}
     >
       <div key={mapKey} className="map-container__leaflet-host">
-        <MapErrorBoundary resetKey={mapKey}>
+        <MapBoundary resetKey={mapKey} iso={language?.iso}>
           <MapContainer
             key={mapKey}
-            center={defaultCenter || getSavedMapCenter() || SITE_CONSTANTS.DEFAULT_POSITION}
-            zoom={defaultZoom}
+            center={initialCamera.center}
+            zoom={initialCamera.zoom}
+            minZoom={MOROCCO_ZOOM}
+            maxZoom={MOROCCO_MAX_ZOOM}
+            maxBounds={MOROCCO_VIEW}
+            maxBoundsViscosity={1}
             className='map'
             attributionControl={false}
             doubleClickZoom={false}
@@ -896,18 +921,22 @@ function Map({
             preferCanvas
           >
             <MapContent
-              {...{ isOpen, defaultCenter, isModal, containerClassName }}
+              {...{ isOpen, defaultCenter, isModal, containerClassName, language }}
+              initialOverview={initialCamera.overview}
               selectedOrder={effectiveSelectedOrder}
               {...props}
             />
           </MapContainer>
-        </MapErrorBoundary>
+        </MapBoundary>
       </div>
     </div>
   )
 }
 
 function MapContent({
+  language,
+  initialOverview = false,
+  showDraftCenterMarker = true,
   isOpen = true,
   type,
   defaultCenter,
@@ -933,6 +962,11 @@ function MapContent({
   const map = useMap()
 
   const [staticMarkers, setStaticMarkers] = useState<IStaticMarker[]>([])
+  const cameraMoved=useRef(false),geoAllowed=useRef(false),locationProtection=useRef(false)
+  locationProtection.current=Boolean(defaultCenter||selectedOrder||clientFrom?.latitude||clientTo?.latitude)
+  const [locating,setLocating]=useState(false)
+  const [locationError,setLocationError]=useState<number|null>(null)
+  useEffect(()=>{const moved=()=>{cameraMoved.current=true};map.on('dragstart',moved);return()=>{map.off('dragstart',moved)}},[map])
   const [userCoordinates, setUserCoordinates] =
     useState<IAddressPoint | null>(null)
   const [userCoordinatesAccuracy, setUserCoordinatesAccuracy] =
@@ -999,7 +1033,7 @@ function MapContent({
   const rejectedChoiceIdSet = useMemo(() => new Set(rejectedChoiceIds.map(String)), [rejectedChoiceIds.join('|')])
 
   useInterval(() => {
-    if (document.hidden || !selectedActiveOrder || !isChoiceOrder(selectedActiveOrder) || !confirmedChoiceId)
+    if (document.hidden || !selectedActiveOrder || !isAnyBrowserEmulatorOrder(selectedActiveOrder) || !isChoiceOrder(selectedActiveOrder) || !confirmedChoiceId)
       return
 
     setChoiceVisualMoveTick(value => value + 1)
@@ -1169,9 +1203,43 @@ function MapContent({
     ).join('|'),
   ])
 
+  // Frame the pickup and every responding driver while waiting. GPS polling
+  // must not continuously recenter; a manual map drag opts out until another booking is selected.
+  const framedBookingRef = useRef<string | null>(null)
+  const framedOrderRef = useRef<string | null>(null)
+  const selectedFrameId = selectedActiveOrder?.b_id ? String(selectedActiveOrder.b_id) : null
+  const selectedStartLat = Number(selectedActiveOrder?.b_start_latitude)
+  const selectedStartLng = Number(selectedActiveOrder?.b_start_longitude)
+  const selectedEndLat = Number(selectedActiveOrder?.b_destination_latitude)
+  const selectedEndLng = Number(selectedActiveOrder?.b_destination_longitude)
+  const approachFrame=Boolean(isChoiceOrder(selectedActiveOrder)&&!confirmedChoiceId&&!hasAssignedSelectedOrderDriver)
+  const frameDrivers=displayedSelectedOrderDrivers.filter(driver=>driver.c_latitude!=null&&driver.c_longitude!=null&&validMapPoint([Number(driver.c_latitude),Number(driver.c_longitude)])&&isInMoroccoView([Number(driver.c_latitude),Number(driver.c_longitude)]))
+  const driverFrameIds=frameDrivers.map(driver=>String(driver.u_id)).sort().join('|')
+  const driverFramePositions=frameDrivers.map(driver=>`${driver.c_latitude}:${driver.c_longitude}`).join('|')
+  const frameKey=selectedFrameId ? `${selectedFrameId}:${approachFrame?driverFrameIds:'route'}` : null
+  useEffect(()=>{
+    if(!selectedFrameId){framedBookingRef.current=null;framedOrderRef.current=null;return}
+    if(!isOpen||!isLeafletMapConnected(map))return
+    const points=bookingFramePoints([selectedStartLat,selectedStartLng],[selectedEndLat,selectedEndLng],frameDrivers.map(driver=>[Number(driver.c_latitude),Number(driver.c_longitude)]),approachFrame)
+    if(!points.length)return
+    const selectionChanged=framedOrderRef.current!==selectedFrameId
+    if(selectionChanged)cameraMoved.current=false
+    const fit=()=>{
+      if(!isLeafletMapConnected(map)||cameraMoved.current)return
+      const box=map.getContainer().getBoundingClientRect();if(box.width<80||box.height<100)return
+      const plaques=map.getContainer().closest('.passenger')?.querySelector('.passenger__mini-orders')?.getBoundingClientRect()
+      const top=plaques?Math.max(20,plaques.bottom-box.top+16):24
+      safeLeafletAction(()=>{map.invalidateSize();map.fitBounds(points as L.LatLngBoundsExpression,{paddingTopLeft:L.point(Math.max(28,viewportPadding(map).paddingTopLeft.x),Math.min(top,box.height/3)),paddingBottomRight:L.point(28,32),maxZoom:16,animate:false})})
+      framedBookingRef.current=frameKey;framedOrderRef.current=selectedFrameId
+    }
+    const frame=framedBookingRef.current!==frameKey?window.requestAnimationFrame(fit):null
+    map.on('resize',fit)
+    return()=>{if(frame!==null)window.cancelAnimationFrame(frame);map.off('resize',fit)}
+  },[map,isOpen,selectedFrameId,frameKey,approachFrame,selectedStartLat,selectedStartLng,selectedEndLat,selectedEndLng,driverFramePositions])
+
   const shouldShowCenterMarker =
     type === EMapModalTypes.TakePassenger ||
-    (type === EMapModalTypes.Client && !selectedActiveOrder)
+    (type === EMapModalTypes.Client && !selectedActiveOrder && showDraftCenterMarker)
   const shouldShowFromMarker = type !== EMapModalTypes.VotingNavigation
 
   let from: IAddressPoint | null = null,
@@ -1280,8 +1348,9 @@ function MapContent({
     let cancelled = false
 
     const handleLocationFound = (e: L.LocationEvent) => {
-      if (cancelled) return
-
+      if (cancelled || !isLeafletMapConnected(map)) return
+      geoAllowed.current=true
+      setLocationError(null)
       const point = {
         latitude: e.latlng.lat,
         longitude: e.latlng.lng,
@@ -1289,20 +1358,23 @@ function MapContent({
       setUserCoordinates(point)
       saveLastBrowserGeolocation(point)
       setUserCoordinatesAccuracy(e.accuracy)
-      if (!defaultCenter && isLeafletMapConnected(map))
+      if (canAutoCenter([point.latitude,point.longitude],e.accuracy,locationProtection.current||cameraMoved.current))
         safeLeafletAction(() => map.setView(e.latlng))
     }
 
-    const handleLocationError = (_e: L.ErrorEvent) => {
-      // Геолокация может быть запрещена браузером. Не валим экран и не спамим консоль.
+    const handleLocationError = (e: L.ErrorEvent) => {
+      if(!cancelled){if(e.code===1)geoAllowed.current=false;setLocationError(e.code || 2)}
     }
 
     map.once('locationfound', handleLocationFound)
     map.once('locationerror', handleLocationError)
-    map.locate({
-      timeout: Infinity,
-      enableHighAccuracy: true,
-    })
+    // Request permission on first launch; browsers retain existing grant/denial.
+    const locate = () => {if(!cancelled&&navigator.geolocation&&isLeafletMapConnected(map))map.locate({timeout:10000,enableHighAccuracy:true,maximumAge:0})}
+    if(navigator.permissions?.query)navigator.permissions.query({name:'geolocation'}).then(permission=>{
+      if(permission.state==='denied'){if(!cancelled)setLocationError(1);return}
+      locate()
+    }).catch(locate)
+    else locate()
 
     return () => {
       cancelled = true
@@ -1315,7 +1387,7 @@ function MapContent({
   }, [map, defaultCenter])
 
   useInterval(() => {
-    if (document.hidden || passengerGeoRequestPendingRef.current) return
+    if (document.hidden || !geoAllowed.current || passengerGeoRequestPendingRef.current) return
 
     const now = Date.now()
     if (now - lastPassengerGeoRequestAtRef.current < PASSENGER_GEOLOCATION_POLL_INTERVAL_MS) return
@@ -1325,6 +1397,7 @@ function MapContent({
     navigator.geolocation.getCurrentPosition(
       ({ coords }) => {
         passengerGeoRequestPendingRef.current = false
+        if(!isLeafletMapConnected(map))return
         const point = {
           latitude: coords.latitude,
           longitude: coords.longitude,
@@ -1336,7 +1409,7 @@ function MapContent({
       _error => {
         passengerGeoRequestPendingRef.current = false
       },
-      { enableHighAccuracy: true },
+      { enableHighAccuracy: true,timeout:10000,maximumAge:5000 },
     )
   }, PASSENGER_GEOLOCATION_POLL_INTERVAL_MS)
 
@@ -1353,6 +1426,12 @@ function MapContent({
       if (isLeafletMapConnected(map))
         safeLeafletAction(() => map.invalidateSize())
     })
+    // Layout-only: Leaflet must repaint when the responsive map host changes size.
+    const resizeObserver = new ResizeObserver(() => {
+      if (isLeafletMapConnected(map))
+        safeLeafletAction(() => map.invalidateSize())
+    })
+    resizeObserver.observe(map.getContainer())
     const timers = [80, 240].map(delay =>
       window.setTimeout(() => {
         if (isLeafletMapConnected(map))
@@ -1361,6 +1440,7 @@ function MapContent({
     )
     return () => {
       window.cancelAnimationFrame(frame)
+      resizeObserver.disconnect()
       timers.forEach(timer => window.clearTimeout(timer))
     }
   }, [isOpen, map, containerClassName, selectedOrder, selectedActiveOrder?.b_id])
@@ -2216,25 +2296,24 @@ function MapContent({
   ])
 
   const centerOnUser = () => {
-    const latitude = userCoordinates?.latitude
-    const longitude = userCoordinates?.longitude
-
-    if (typeof latitude !== 'number' || typeof longitude !== 'number')
-      return
-    if (isLeafletMapConnected(map))
-      safeLeafletAction(() => map.setView([latitude, longitude], Math.max(map.getZoom(), 16)))
+    if(locating)return
+    if(!navigator.geolocation){setLocationError(0);return}
+    setLocating(true)
+    requestFreshLocation(navigator.geolocation,({coords})=>{
+      if(!isLeafletMapConnected(map))return
+      setLocating(false);setLocationError(null);geoAllowed.current=true;cameraMoved.current=true
+      const point={latitude:coords.latitude,longitude:coords.longitude}
+      if(!validMapPoint([point.latitude,point.longitude]))return
+      setUserCoordinates(point);setUserCoordinatesAccuracy(coords.accuracy);saveLastBrowserGeolocation(point)
+      safeLeafletAction(()=>map.setView([point.latitude,point.longitude],Math.max(map.getZoom(),16)))
+    },error=>{if(isLeafletMapConnected(map)){setLocating(false);if(error.code===1)geoAllowed.current=false;setLocationError(error.code)}})
   }
 
   return (
     <>
-      <TileLayer
-        attribution={getAttribution()}
-        url={getTileServerUrl()}
-        updateWhenIdle
-        updateWhenZooming={false}
-        keepBuffer={2}
-      />
-      {!!userCoordinates?.latitude && !!userCoordinates.longitude &&
+      <RsaleBasemap initialOverview={initialOverview} showRegionControls={!isModal} />
+      {locationError!==null&&createPortal(<LocationFeedback code={locationError} iso={language?.iso} busy={locating} onAllow={centerOnUser} onClose={()=>setLocationError(null)}/>,!isModal ? document.querySelector('.layout') || document.body : document.body)}
+      {Boolean(navigator.geolocation) &&
         <button
           type="button"
           className={cn('map-container__locate-button', {
@@ -2249,6 +2328,8 @@ function MapContent({
             event.stopPropagation()
             centerOnUser()
           }}
+          disabled={locating}
+          aria-busy={locating}
           aria-label={t(TRANSLATION.SHOW_MY_LOCATION)}
         >
           <img src={images.mapLocationButton} alt="" />
@@ -2371,8 +2452,8 @@ function MapContent({
             )}
             <SmoothRotatingMarker
               position={driverPosition}
-              iconUrl={getDriverMarkerIcon(selectedActiveOrder)}
-              className="client-driver-marker smooth-rotating-marker"
+              iconUrl={taxiPicture(taxiColor({point:Number.isFinite(selectedStartLat) && Number.isFinite(selectedStartLng) ? [selectedStartLat,selectedStartLng] : driverPosition,palette:DEFAULT_TAXI_COLOR}))}
+              className="client-driver-marker smooth-rotating-marker rs-taxi-marker"
               iconAnchor={[20, 20]}
               popupAnchor={[0, -22]}
               speedKmh={110}
@@ -2393,7 +2474,7 @@ function MapContent({
           position={[from.latitude, from.longitude]}
           icon={FROM_MARKER_ICON}
         >
-          <Popup>{t(TRANSLATION.FROM)}{!!from.address && `: ${from.shortAddress || from.address}`}</Popup>
+          <Popup>{t(TRANSLATION.FROM)}{!!from.address && `: ${displayAddress(from.shortAddress || from.address,language?.iso,from.latitude,from.longitude)}`}</Popup>
         </Marker>
       }
       {modalHighlight === 'from' && !!from?.latitude && !!from.longitude &&
@@ -2413,7 +2494,7 @@ function MapContent({
           position={[to.latitude, to.longitude]}
           icon={TO_MARKER_ICON}
         >
-          <Popup>{t(TRANSLATION.TO)}{!!to.address && `: ${to.shortAddress || to.address}`}</Popup>
+          <Popup>{t(TRANSLATION.TO)}{!!to.address && `: ${displayAddress(to.shortAddress || to.address,language?.iso,to.latitude,to.longitude)}`}</Popup>
         </Marker>
       }
       {modalHighlight === 'to' && !!to?.latitude && !!to.longitude &&
@@ -2429,9 +2510,9 @@ function MapContent({
         />
       }
       {shouldShowCenterMarker && <img
-        src="https://unpkg.com/leaflet@1.6.0/dist/images/marker-icon-2x.png"
+        src={PASSENGER}
         className="map-container__center-marker"
-        alt="Центр"
+        alt="Пассажир: точка подачи"
         tabIndex={0}
       />}
       {/* {!disableButtons && <div className={cn('modal-buttons',{'z-indexed': isModal})}>
@@ -2479,44 +2560,6 @@ function MapContent({
 }
 
 
-class MapErrorBoundary extends React.Component<{
-  resetKey: string
-  children: React.ReactNode
-}, {
-  hasError: boolean
-  resetKey: string
-}> {
-  state = {
-    hasError: false,
-    resetKey: this.props.resetKey,
-  }
-
-  static getDerivedStateFromError() {
-    return { hasError: true }
-  }
-
-  static getDerivedStateFromProps(
-    props: { resetKey: string },
-    state: { resetKey: string },
-  ) {
-    if (props.resetKey !== state.resetKey)
-      return { hasError: false, resetKey: props.resetKey }
-
-    return null
-  }
-
-  componentDidCatch(error: unknown) {
-    if (!isKnownLeafletCleanupError(error))
-      console.error(error)
-  }
-
-  render() {
-    if (this.state.hasError)
-      return <div className="map map--fallback" />
-
-    return this.props.children
-  }
-}
 
 export default connector(Map)
 
@@ -2529,13 +2572,6 @@ function isVotingDriverVisible(state: EBookingDriverState) {
   ].includes(state)
 }
 
-function getDriverMarkerIcon(order: IOrder | null) {
-  if (isVotingOrder(order))
-    return images.mapArrowVoting || images.mapArrow
-  if (isOfferOrder(order))
-    return images.mapArrowHome || images.mapArrow
-  return images.mapArrow
-}
 
 function getDriverDisplayName(driver: any) {
   return [
