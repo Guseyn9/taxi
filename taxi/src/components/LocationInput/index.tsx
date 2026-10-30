@@ -1,7 +1,13 @@
-import React, { useEffect, useRef, useState } from 'react'
+import { rideCopy } from '../../design/copy'
+import useAddressSearch from '../../design/useAddressSearch'
+import { journeyCopy } from '../../design/journeyCopy'
+import { MOROCCO_CENTER } from '../../design/maps/morocco'
+import {displayAddress,displayShortAddress} from '../../design/addressPresentation'
+import { configSelectors } from '../../state/config'
+import React, { useMemo, useRef, useState } from 'react'
+import {rankAddressSuggestions} from '../../tools/rankAddressSuggestions'
 import { connect, ConnectedProps } from 'react-redux'
-import _ from 'lodash'
-import images from '../../constants/images'
+import { ChevronDown,LocateFixed,Flag } from 'lucide-react'
 import SITE_CONSTANTS from '../../siteConstants'
 import { t, TRANSLATION } from '../../localization'
 import { IRootState } from '../../state'
@@ -17,8 +23,10 @@ import { backendGateway } from '../../platform/adapters/LegacyBackendGateway'
 import { useCachedState } from '../../tools/hooks'
 import { cachedOrderDataStateKey } from '../../tools/utils'
 import Input, { EInputStyles } from '../Input'
+import Overlay from '../modals/Overlay'
 
 const mapStateToProps = (state: IRootState) => ({
+  language: configSelectors.language(state),
   from: clientOrderSelectors.from(state),
   to: clientOrderSelectors.to(state),
   locationClass: clientOrderSelectors.locationClass(state),
@@ -32,24 +40,22 @@ const mapDispatchToProps = {
 const connector = connect(mapStateToProps, mapDispatchToProps)
 
 const hasCoordinates = (point?: IAddressPoint | null): point is IAddressPoint =>
-  Number.isFinite(Number(point?.latitude)) && Number.isFinite(Number(point?.longitude))
+  point?.latitude != null && point?.longitude != null &&
+  Number.isFinite(Number(point.latitude)) && Number.isFinite(Number(point.longitude))
 
 interface IProps extends ConnectedProps<typeof connector> {
+  getMapSearchCenter?:()=>[number,number]|null
   className?: string
   type: EPointType
   onOpenMap: () => void
   extended?: boolean
   error?: string
   disabled?: boolean
+  detailsAsDialog?: boolean
 }
 
-const debouncedGetPointSuggestion = _.debounce((callback, ...args) => {
-  backendGateway.getPointSuggestions(
-    ...args,
-  ).then(callback)
-}, 500)
-
 function LocationInput({
+  language,
   from,
   to,
   locationClass,
@@ -61,6 +67,8 @@ function LocationInput({
   extended = false,
   error,
   disabled = false,
+  detailsAsDialog = false,
+  getMapSearchCenter,
 }: IProps) {
   const point = type === EPointType.From ? from : to
   const setPoint = type === EPointType.From ? setFrom : setTo
@@ -69,7 +77,8 @@ function LocationInput({
     `${cachedOrderDataStateKey}.is${EPointType[type]}AddressShort`,
     true,
   )
-  const [suggestions, setSuggestions] = useState<ISuggestion[]>([])
+  const [searchActive,setSearchActive] = useState(false)
+  const [detailsOpen,setDetailsOpen] = useState(false)
   const lastFromWithCoordinates = useRef<IAddressPoint | null>(hasCoordinates(from) ? from : null)
   const lastToWithCoordinates = useRef<IAddressPoint | null>(hasCoordinates(to) ? to : null)
 
@@ -79,12 +88,14 @@ function LocationInput({
     lastToWithCoordinates.current = to
 
   const getSuggestionSearchCenter = () => {
+    const camera=getMapSearchCenter?.() || MOROCCO_CENTER
+    const mapCenter:IAddressPoint={latitude:camera[0],longitude:camera[1]}
     if (type === EPointType.To)
-      return lastFromWithCoordinates.current || lastToWithCoordinates.current || null
+      return lastFromWithCoordinates.current || lastToWithCoordinates.current || mapCenter
 
     return hasCoordinates(point) ?
       point :
-      lastFromWithCoordinates.current || lastToWithCoordinates.current || null
+      lastFromWithCoordinates.current || lastToWithCoordinates.current || mapCenter
   }
 
   const suggestionSearchCenter = getSuggestionSearchCenter()
@@ -93,12 +104,12 @@ function LocationInput({
     ''
 
   const getPointDisplayValue = () => {
-    const address = isAddressShort && point?.shortAddress ?
-      point.shortAddress :
-      point?.address
-
-    if (address)
-      return address
+    const address = point?.address || point?.shortAddress
+    if (address) {
+      if (!hasCoordinates(point)) return address
+      const present = detailsAsDialog || isAddressShort ? displayShortAddress : displayAddress
+      return present(address,language?.iso,point.latitude,point.longitude)
+    }
 
     return ''
   }
@@ -106,50 +117,59 @@ function LocationInput({
   const locationClassData = SITE_CONSTANTS.BOOKING_LOCATION_CLASSES
     .find(({ id }) => id === locationClass)!
   const isIntercity = locationClassData.kind === EBookingLocationKinds.Intercity
-  useEffect(() => {
-    const query = String(point?.address || '').trim()
-    if (!query) {
-      setSuggestions([])
-      return
-    }
+  const typedQuery = String(point?.address || '')
+  const {suggestions,status:searchStatus,retry}=useAddressSearch({
+    query:searchActive&&!hasCoordinates(point)?typedQuery:'',
+    contextKey:`${language?.iso}:${isIntercity}:${suggestionSearchCenterKey}`,
+    search:query=>backendGateway.getPointSuggestions(query,isIntercity,suggestionSearchCenter),
+  })
 
-    debouncedGetPointSuggestion(setSuggestions, query, isIntercity, suggestionSearchCenter || undefined)
-  }, [point?.address, isIntercity, suggestionSearchCenterKey])
-
-  const resolveTypedAddress = () => {
-    if (disabled)
-      return
-    const query = String(point?.address || point?.shortAddress || '').trim()
-    if (!query || (point?.latitude && point?.longitude))
-      return
-    setPoint({
-      address: query,
-      resolveAddress: true,
-    })
-  }
-
-  const buttons = [
+  const uiCopy = rideCopy(language?.iso)
+  const rankedSuggestions=useMemo(()=>rankAddressSuggestions(typedQuery,suggestions),[typedQuery,suggestions])
+  const searchCopy = journeyCopy(language?.iso)
+  const pointLabel = type === EPointType.From ? uiCopy.pickup : uiCopy.destination
+  const buttons: NonNullable<React.ComponentProps<typeof Input>['buttons']> = [
     {
-      src: isAddressShort ? images.minusIcon : images.plusIcon,
-      onClick: disabled ? undefined : () => setIsAddressShort(prev => !prev),
+      text: detailsAsDialog || isAddressShort ? uiCopy.expandAddress : uiCopy.collapseAddress,
+      svg: <ChevronDown width={14} height={14} aria-hidden="true" style={{ transform: (detailsAsDialog ? detailsOpen : !isAddressShort) ? 'rotate(180deg)' : undefined }} />,
+      title: detailsAsDialog || isAddressShort ? uiCopy.expandAddress : uiCopy.collapseAddress,
+      'aria-label': `${detailsAsDialog || isAddressShort ? uiCopy.expandAddress : uiCopy.collapseAddress}: ${pointLabel}`,
+      'aria-expanded': detailsAsDialog ? detailsOpen : !isAddressShort,
+      wrapperProps: { className: 'rs-address-toggle-control' },
+      className: 'rs-address-toggle-button',
+      type: 'button',
+      checkLogin: false,
+      disabled,
+      onClick: disabled ? undefined : () => detailsAsDialog ? setDetailsOpen(true) : setIsAddressShort(prev => !prev),
     },
     {
-      src: images.pointOnMap,
+      svg: type===EPointType.From ? <LocateFixed size={20} aria-hidden="true"/> : <Flag size={20} aria-hidden="true"/>,
+      'aria-label': `${uiCopy.onMap}: ${pointLabel}`,
+      wrapperProps: { className: 'rs-map-pick-control' },
+      className: 'rs-map-pick-button',
+      type: 'button',
+      checkLogin: false,
+      disabled,
       onClick: disabled ? undefined : onOpenMap,
     },
   ]
 
   return (
+    <>
     <Input
+      floatingSuggestions
       fieldWrapperClassName={className}
+      label={pointLabel}
       inputProps={{
-        placeholder: t(type === EPointType.From ?
-          TRANSLATION.START_POINT :
-          TRANSLATION.DESTINATION_POINT,
-        ),
+        'aria-label': pointLabel,
+        name: type === EPointType.From ? 'pickupAddress' : 'destinationAddress',
+        autoComplete: 'off',
+        placeholder: type === EPointType.From ? rideCopy(language?.iso).pickupSearch : rideCopy(language?.iso).destinationSearch,
         value: getPointDisplayValue(),
         disabled,
         readOnly: disabled,
+        onFocus:()=>setSearchActive(true),
+        onBlur:()=>setSearchActive(false),
         // Контракт для E2E: поля точек формы заказа пассажира.
         ...({
           'data-testid': type === EPointType.From ? 'passenger-order-from' : 'passenger-order-to',
@@ -158,12 +178,12 @@ function LocationInput({
           if (disabled) return
           setPoint({ address: e.target.value })
         },
-        onBlur: resolveTypedAddress,
         onKeyDown: (e: React.KeyboardEvent<HTMLInputElement>) => {
           if (disabled) return
           if (e.key === 'Enter') {
             e.preventDefault()
-            resolveTypedAddress()
+            // Input selects only an explicitly highlighted result. Never geocode
+            // the first ambiguous result simply because focus leaves the field.
           }
         },
       }}
@@ -174,7 +194,12 @@ function LocationInput({
           buttons :
           buttons.slice(1)
       }
-      suggestions={disabled ? [] : suggestions}
+      suggestions={disabled ? [] : rankedSuggestions}
+      getSuggestionLabel={item=>displayShortAddress(item.point?.address || item.point?.shortAddress,language?.iso,item.point?.latitude,item.point?.longitude)}
+      expandedText={!detailsAsDialog && !isAddressShort ? point?.address : undefined}
+      suggestionStatus={searchStatus}
+      onRetrySuggestions={retry}
+      suggestionLabels={{loading:searchCopy.searching,empty:searchCopy.noResults,error:searchCopy.searchError,personal:searchCopy.personal,shared:searchCopy.shared,map:searchCopy.map}}
       onSuggestionClick={(suggestion) => {
         if (disabled) return
         const selectedPoint = suggestion.point || null
@@ -192,6 +217,14 @@ function LocationInput({
         setPoint(selectedPoint)
       }}
     />
+    {detailsAsDialog && <Overlay isOpen={detailsOpen} onClick={() => setDetailsOpen(false)}>
+     <div className="modal ride-service-dialog ride-address-dialog">
+      <h2>{searchCopy.addressDetails}: {pointLabel}</h2>
+      <p dir="auto">{point?.address || point?.shortAddress}</p>
+      <button type="button" onClick={() => setDetailsOpen(false)}>{uiCopy.done}</button>
+     </div>
+    </Overlay>}
+    </>
   )
 }
 

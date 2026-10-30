@@ -1,0 +1,49 @@
+/* Arabic UI follows document direction; mapping engines retain their own geometry. */
+html[dir='rtl'] :is(.login-modal,.profile-modal,.overlay__wrapper,.driver-tabs,.page-section.driver,.driver-emulator-panel,.chat) {
+  direction: rtl;
+}
+html[dir='rtl'] :is(.modal,.driver-emulator-panel,.page-section.driver,.chat) :is(h1,h2,h3,h4,h5,h6,legend,label,.input__label) {
+  text-align: start;
+}
+html[dir='rtl'] :is(input,textarea) {
+  unicode-bidi: plaintext;
+  text-align: start;
+}
+html[dir='rtl'] :is(input[type='email'],input[type='tel'],input[type='number']) {
+  direction: ltr;
+  unicode-bidi: isolate;
+}
+html[dir='rtl'] :is(.map,.map-container,.leaflet-container,.maplibregl-map,.maplibregl-canvas-container) {
+  direction: ltr;
+}
+html[dir='rtl'] :is(.leaflet-popup-content,.maplibregl-popup-content) {
+  direction: rtl;
+  unicode-bidi: plaintext;
+  text-align: start;
+}
+html[dir='rtl'] .driver-order-overview__price,
+html[dir='rtl'] .driver-order-overview__id {
+  direction: ltr;
+  unicode-bidi: isolate;
+}
+html[dir='rtl'] body .chat__message--main-user-message {
+  margin-left: 0;
+  margin-right: auto;
+}
+html[dir='rtl'] body .chat__message {
+  direction: rtl;
+  unicode-bidi: plaintext;
+  text-align: start;
+}
+html[dir='rtl'] .driver-emulator-panel__logs,
+html[dir='rtl'] .settings-editor,
+html[dir='rtl'] .order-id {
+  direction: ltr;
+  unicode-bidi: isolate;
+}
+/* Product names and identifiers keep their reading order inside Arabic layouts. */
+html[dir='rtl'] .header-logo,
+html[dir='rtl'] .rs-brand-name,
+html[dir='rtl'] .mini-orders__id { direction:ltr; unicode-bidi:isolate; }
+html[dir='rtl'] #root .menu__list { left:auto; right:-5px; transform-origin:top right; }
+html[dir='rtl'] #root .menu__button { text-align:start; }

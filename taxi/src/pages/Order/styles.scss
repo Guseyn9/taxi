@@ -28,7 +28,7 @@
 
   &__separator {
     border-bottom: 1px solid rgba(79, 0, 0, 0.22);
-    box-shadow: 0px 1px 0px #FFFFFF;
+    box-shadow: 0px 1px 0px #ffffff;
     margin-bottom: 10px;
     height: 0;
   }
@@ -83,7 +83,7 @@
 
     .estimate-time {
       margin-bottom: 10px;
-      color: #B8B8B8;
+      color: #b8b8b8;
     }
   }
 
@@ -136,7 +136,7 @@
       font-size: 25px;
       line-height: 34px;
       text-align: right;
-      color: #FF5C00;
+      color: #ff5c00;
       margin-right: 10px;
     }
   }
@@ -150,7 +150,7 @@
     margin-bottom: 5px;
 
     button {
-      background: linear-gradient(90deg, #EC4C60 0%, #991B0E 100%);
+      background: linear-gradient(90deg, #ec4c60 0%, #991b0e 100%);
     }
   }
 
@@ -158,9 +158,9 @@
     margin: 15px 0 15px 0;
 
     button {
-      background: linear-gradient(107.25deg, #E8E8E8 10.86%, #B0B0B0 102.23%);
+      background: linear-gradient(107.25deg, #e8e8e8 10.86%, #b0b0b0 102.23%);
       border: 2px solid #939393;
-      color: #4A4A4A !important;
+      color: #4a4a4a !important;
     }
   }
 
@@ -168,8 +168,8 @@
     margin-top: 10px;
 
     button {
-      background: linear-gradient(107.25deg, #FFE34E 10.86%, #FFF500 102.23%);
-      border: 2px solid #FBD300;
+      background: linear-gradient(107.25deg, #ffe34e 10.86%, #fff500 102.23%);
+      border: 2px solid #fbd300;
       box-sizing: border-box;
       color: #414141 !important;
     }
@@ -180,15 +180,15 @@
     gap: 6px;
     margin: 14px 0 6px;
     padding: 12px 14px;
-    border: 1px solid #FFE0B8;
+    border: 1px solid #ffe0b8;
     border-radius: 14px;
-    background: #FFF9F0;
-    color: #1F2937;
+    background: #fff9f0;
+    color: #1f2937;
     font-size: 14px;
     font-weight: 500;
 
     .voting-participation__status {
-      color: #B45309;
+      color: #b45309;
       font-weight: 700;
     }
 
@@ -214,21 +214,21 @@
         min-width: 0;
         padding: 3px 8px;
         border-radius: 999px;
-        background: #FFFFFF;
-        border: 1px solid #FFE0B8;
+        background: #ffffff;
+        border: 1px solid #ffe0b8;
         font-weight: 700;
 
         span {
           max-width: 120px;
           overflow: hidden;
-          color: #4B5563;
+          color: #4b5563;
           font-weight: 600;
           text-overflow: ellipsis;
           white-space: nowrap;
         }
 
         b {
-          color: #92400E;
+          color: #92400e;
           font-weight: 800;
           white-space: nowrap;
         }
@@ -472,14 +472,14 @@
 
 .order__driver-offer-field .input__wrapper {
   border-radius: 14px;
-  background-color: #E7E7E7;
+  background-color: #e7e7e7;
 }
 
 .order__driver-offer-choice {
   flex: 1 0 100%;
   display: grid;
   grid-template-columns: 76px minmax(0, 1fr);
-  align-items: start;
+  align-items: flex-start;
   gap: 6px 10px;
   margin: 2px 0 4px;
 }
@@ -496,7 +496,7 @@
   padding: 0 8px;
   border: 0;
   border-radius: 999px;
-  background: #E7E7E7;
+  background: #e7e7e7;
   color: #001f43;
   font-family: inherit;
   font-size: 10px;
@@ -509,7 +509,7 @@
 }
 
 .order__driver-offer-option--active {
-  background: #FF2400;
+  background: #ff2400;
   color: #ffffff;
 }
 
@@ -601,7 +601,7 @@
   padding: 0 10px 0 12px;
   border: 0;
   border-radius: 14px;
-  background: #E7E7E7;
+  background: #e7e7e7;
   color: #001f43;
   font-family: inherit;
   font-size: 12px;
@@ -707,7 +707,7 @@
   padding: 0 8px;
   border: 1px solid transparent;
   border-radius: 13px;
-  background: #E7E7E7;
+  background: #e7e7e7;
   color: #001f43;
   font-family: inherit;
   font-size: 12px;
@@ -720,7 +720,7 @@
 }
 
 .order__driver-offer-eta-chip--active {
-  background: #FF2400;
+  background: #ff2400;
   color: #ffffff;
   border-color: rgba(255, 36, 0, .35);
   box-shadow: 0 0 0 3px rgba(255, 36, 0, .12) !important;
@@ -741,7 +741,7 @@
 }
 
 .order__driver-offer-select--active {
-  background: #FF2400 !important;
+  background: #ff2400 !important;
   color: #ffffff !important;
 }
 
@@ -782,7 +782,7 @@
 
 .order__driver-offer-comment-save--active {
   color: #ffffff;
-  background: #FF2400;
+  background: #ff2400;
   border-color: rgba(255, 36, 0, .35);
   box-shadow: 0 0 0 3px rgba(255, 36, 0, .12), 0 2px 8px rgba(15, 23, 42, .08) !important;
 }
@@ -815,7 +815,7 @@
 
 .order__hide-confirm-title {
   grid-column: 1 / -1;
-  color: #4A4A4A;
+  color: #4a4a4a;
   font-size: 12px;
   font-weight: 600;
   text-align: center;

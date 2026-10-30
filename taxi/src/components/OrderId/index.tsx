@@ -48,8 +48,7 @@ const OrderId: React.FC<IProps> = ({
       {withSign && '№'}
       {variant === 'full' && prefix ? (
         <>
-          {prefix}
-          <span className="order-id__suffix">-{suffix}</span>
+          {prefix}<span className="order-id__suffix">{suffix}</span>
         </>
       ) : (
         <span className="order-id__suffix">{suffix}</span>

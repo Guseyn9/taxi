@@ -1,4 +1,4 @@
-$red: #FF2400;
+$red: #ff2400;
 
 .boundary-buttons {
   height: 40px;
@@ -21,7 +21,7 @@ $red: #FF2400;
     max-width: 40px;
     height: 40px;
     border-radius: 16px;
-    background-color: #E7E7E7;
+    background-color: #e7e7e7;
     white-space: nowrap;
     cursor: pointer;
     transition: 0.5s ease-in-out;
@@ -34,15 +34,15 @@ $red: #FF2400;
   }
 
   &--disabled &__item {
-    background-color: #AAAAAA;
+    background-color: #aaaaaa;
 
     &--active {
-      background-color: #AAAAAA;
+      background-color: #aaaaaa;
     }
   }
 
   &__text {
-    color: #FFFFFF;
+    color: #ffffff;
     font-weight: 600;
     font-size: 13px;
     margin-right: 8px;

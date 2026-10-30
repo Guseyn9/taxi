@@ -29,7 +29,10 @@ const Tabs: React.FC<IProps> = ({
     <div className={cn('tabs', containerClassName)}>
       {tabs.map((item, index) => {
         return (
-          <div
+          <button
+            type="button"
+            disabled={item.disabled}
+            aria-pressed={item.id === activeTabID}
             className={cn(tabClassName, {
               'is-active': item.id === activeTabID,
               small: !item.img,
@@ -47,7 +50,7 @@ const Tabs: React.FC<IProps> = ({
               </div>
             )}
             <span className="tabs__label">{item.label}</span>
-          </div>
+          </button>
         )
       })}
     </div>

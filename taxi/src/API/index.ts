@@ -1,4 +1,5 @@
 import axios from 'axios'
+import {rememberAddressPresentation} from '../design/addressPresentation'
 import { Stringify, ValueOf } from '../types'
 import {
   EOrderTypes,
@@ -462,6 +463,7 @@ const getGeocodeSuggestionsViaNominatim = (
         params: {
           q: query,
           addressdetails: 1,
+          namedetails: 1,
           limit,
           format: 'json',
           'accept-language': language.iso,
@@ -472,7 +474,7 @@ const getGeocodeSuggestionsViaNominatim = (
     .then(res => Array.isArray(res.data) ? res.data : [])
     .then(items => items
       .filter((item: any) => item?.display_name && item.lat && item.lon)
-      .map((item: any) => ({
+      .map((item: any) => rememberAddressPresentation({
         ...item,
         lat: parseFloat(item.lat),
         lon: parseFloat(item.lon),
@@ -575,12 +577,13 @@ const reverseGeocodeViaNominatim = (
           lat,
           lon: lng,
           addressdetails: +details,
+          namedetails: 1,
           format: 'json',
           'accept-language': language.iso,
         },
       },
     ))
-    .then(res => res.data)
+    .then(res => rememberAddressPresentation(res.data))
 }
 
 export const reverseGeocode = (
@@ -634,6 +637,7 @@ export const geocode = (
       params: {
         q: query,
         addressdetails: +details,
+        namedetails: 1,
         limit: 1,
         format: 'json',
         'accept-language': language.iso,
@@ -643,7 +647,7 @@ export const geocode = (
   )
     .then(res =>
       res.data[0] &&
-            ({ ...res.data[0], lat: parseFloat(res.data[0].lat), lon: parseFloat(res.data[0].lon) }),
+            rememberAddressPresentation({ ...res.data[0], lat: parseFloat(res.data[0].lat), lon: parseFloat(res.data[0].lon) }),
     )
 }
 

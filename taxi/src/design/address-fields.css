@@ -1,0 +1,58 @@
+/* Address rows use one geometry for labels, text, markers and map controls. */
+#root .passenger-voting-form__location-wrapper,
+#root .passenger-voting-form[dir=rtl] .passenger-voting-form__location-wrapper{
+ padding:0;margin:3px;border:1px solid #e9e9e9;border-radius:14px;background:#f8f8f8;gap:0
+}
+#root .passenger-voting-form__location-wrapper .input__field-wrapper{
+ position:relative;display:flex;flex-direction:column;justify-content:center;
+ box-sizing:border-box;min-height:76px;margin:0;padding:12px 66px 12px 14px;
+ border:0;border-radius:0;outline:none;background:transparent;gap:2px
+}
+#root .passenger-voting-form[dir=rtl] .passenger-voting-form__location-wrapper .input__field-wrapper{padding-inline:14px 66px}
+#root .passenger-voting-form__location-wrapper .input__field-wrapper:first-child{border-radius:13px 13px 0 0}
+#root .passenger-voting-form__location-wrapper .input__field-wrapper:last-child{border-radius:0 0 13px 13px}
+#root .passenger-voting-form__location-wrapper .input__field-wrapper+.input__field-wrapper{border-top:1px solid #e9e9e9}
+#root .passenger-voting-form__location-wrapper .input__field-wrapper::before{content:none;display:none}
+#root .passenger-voting-form__location-wrapper .input__header{
+ height:16px;min-height:16px;margin:0;padding:0;line-height:16px
+}
+#root .passenger-voting-form__location-wrapper .input__label{font-size:12px;line-height:16px;font-weight:600;color:#666666}
+#root .passenger-voting-form__location-wrapper .input__side-text-wrapper{display:block;min-width:0}
+#root .passenger-voting-form__location-wrapper .input__wrapper,
+#root .passenger-voting-form__location-wrapper .input__wrapper:focus-within{
+ min-height:28px;min-width:0;padding:0;border:0;border-radius:0;background:transparent;outline:none;box-shadow:none
+}
+#root .passenger-voting-form__location-wrapper input.input,
+#root .passenger-voting-form__location-wrapper input.input:focus,
+#root .passenger-voting-form__location-wrapper input.input:focus-visible{
+ box-sizing:border-box;flex:1 1 100%;width:100%;min-width:0;height:28px;padding:0;margin:0;
+ border:0;border-radius:0;background:transparent;outline:none;box-shadow:none;
+ --tw-ring-shadow:0 0 #0000;--tw-ring-offset-shadow:0 0 #0000;
+ font-size:16px;line-height:28px;transform:none;color:#121212
+}
+#root .passenger-voting-form__location-wrapper .input__buttons{
+ position:absolute;inset-inline-end:12px;top:16px;height:44px;display:flex;align-items:center;gap:0
+}
+#root .passenger-voting-form__location-wrapper .input__field-wrapper:has(input:focus){
+ outline:none;border-radius:0;background:#f8f6f3;box-shadow:inset 0 -2px var(--drive-red,#b51218)
+}
+#root .passenger-voting-form__location-wrapper .input__field-wrapper:first-child:has(input:focus){border-radius:13px 13px 0 0}
+#root .passenger-voting-form__location-wrapper .input__field-wrapper:last-child:has(input:focus){border-radius:0 0 13px 13px}
+#root .passenger-voting-form__location-wrapper .input__field-wrapper:has(input:focus) .input__label{color:var(--drive-red,#b51218)}
+#root .passenger-voting-form__location-wrapper .rs-map-pick-button{background:#fff!important;border:1px solid #e9e9e9;border-radius:10px}
+#root .passenger-voting-form__location-wrapper .rs-map-pick-button:hover{background:#fff0ed!important}
+#root .passenger-voting-form__location-wrapper .input__suggestions{flex-basis:100%;width:100%;margin:0;border:0;border-radius:8px;background:#fff}
+#root .passenger-voting-form__location-wrapper .input__suggestions--active{margin-top:8px;border:1px solid #e9e9e9}
+#root .passenger-voting-form__location-wrapper .input__field-wrapper:has(.input__buttons>img[role=button]){padding-inline-end:108px}
+#root .passenger-voting-form__location-wrapper .input__side-text-wrapper,
+#root .passenger-voting-form__location-wrapper .input__wrapper{position:static}
+/* Keep text width stable when the address-entry view removes vertical scrolling. */
+#root .rs-ride-body{scrollbar-gutter:stable}
+/* The full/short-address switch is readable and does not narrow the text field. */
+#root .passenger-voting-form__location-wrapper .input__field-wrapper:has(.rs-address-toggle-control){min-height:112px;padding-bottom:48px;padding-inline-end:66px}
+#root .passenger-voting-form__location-wrapper .input__buttons:has(.rs-address-toggle-control){display:contents;position:static}
+#root .passenger-voting-form__location-wrapper .input__buttons:has(.rs-address-toggle-control) .rs-map-pick-control{position:absolute;inset-inline-end:12px;top:16px}
+#root .passenger-voting-form__location-wrapper .rs-address-toggle-control{position:absolute;inset-inline-start:14px;bottom:2px;max-width:calc(100% - 28px);margin:0}
+#root .passenger-voting-form__location-wrapper .rs-address-toggle-button{min-height:44px;height:44px;width:auto;min-width:44px;padding:6px 0;border:0;border-radius:6px;background:transparent!important;color:var(--drive-red,#b51218);font-size:12px;font-weight:600;line-height:18px;gap:5px;box-shadow:none}
+#root .passenger-voting-form__location-wrapper .rs-address-toggle-button:hover{background:transparent!important;color:#910e13;text-decoration:underline}
+#root .rs-address-toggle-button svg{width:14px;height:14px;flex-shrink:0}

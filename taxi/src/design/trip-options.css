@@ -1,0 +1,62 @@
+/* Trip options: shared row geometry rather than nested cards of mixed sizes. */
+#root .passenger-voting-form__seats-and-time{
+ display:flex;flex-direction:column;align-items:stretch;width:100%;height:auto;
+ min-height:0;margin:0;padding:0;gap:0;border:1px solid #e9e9e9;border-radius:12px;
+ background:#fff;box-shadow:none
+}
+#root .passenger-voting-form__seats{
+ display:flex;flex-direction:column;width:100%;box-sizing:border-box;padding:14px 12px;gap:8px;min-width:0
+}
+#root .passenger-voting-form__seats-title,
+#root .passenger-voting-form__time-title,
+#root .passenger-voting-form__comments-title{font-size:12px;font-weight:600;color:#666666;line-height:18px}
+#root .passenger-voting-form__seats>div{width:100%;min-width:0}
+#root .seat-slider{width:min(100%,252px);height:44px}
+#root .seat-slider__slide{height:44px;min-height:44px;border-radius:8px;color:#666666;font-size:14px;line-height:20px;border:1px solid transparent}
+#root .seat-slider__slide__active{border-color:var(--drive-red,#b51218);background:#fff0ed;color:var(--drive-red,#b51218);font-weight:700}
+#root .seat-slider__button{width:44px;height:44px;border-radius:8px;background:#fff}
+#root .passenger-voting-form__time{
+ display:flex;align-items:center;justify-content:space-between;gap:12px;
+ width:100%;box-sizing:border-box;min-height:72px;padding:12px;border-top:1px solid #e9e9e9
+}
+#root .passenger-voting-form__time-wrapper,
+#root .passenger-voting-form__comments-wrapper{display:flex;flex-direction:column;justify-content:center;align-items:flex-start;gap:3px;height:auto;min-width:0;flex:1}
+#root .passenger-voting-form__time-value,
+#root .passenger-voting-form__comments-value{font-size:14px;line-height:20px;font-weight:500;color:#121212;max-width:100%}
+#root .passenger-voting-form__comments{
+ box-sizing:border-box;display:flex;align-items:center;justify-content:space-between;
+ width:100%;height:auto;min-height:72px;margin:0;padding:12px;gap:12px;
+ border:1px solid #e9e9e9;border-radius:12px;background:#fff;box-shadow:none
+}
+#root .passenger-voting-form__time-btn,
+#root .passenger-voting-form__comments-btn{
+ display:flex;align-items:center;justify-content:center;flex:0 0 44px;
+ box-sizing:border-box;width:44px;min-width:44px;max-width:44px;height:44px;min-height:44px;
+ margin:0;padding:10px;border:1px solid #e9e9e9;border-radius:10px;background:#f8f8f8
+}
+#root .passenger-voting-form__time-icon{width:22px;height:22px}
+#root .passenger-voting-form__comments-btn img{width:16px;height:16px}
+#root .rs-ride-body>.passenger-voting-form__input.input__field-wrapper{margin:0}
+#root .rs-ride-body>.passenger-voting-form__input>.input__header{height:auto;min-height:18px;margin:0 0 6px}
+#root .rs-ride-body>.passenger-voting-form__input>.input__header .input__label{font-size:12px;line-height:18px;font-weight:600;color:#666666}
+#root .rs-ride-body>.passenger-voting-form__input .input__side-text-wrapper{display:flex;flex-direction:row;min-width:0}
+#root .rs-ride-body>.passenger-voting-form__input .input__wrapper{box-sizing:border-box;min-width:0;min-height:52px;padding:4px 6px;background:#f8f8f8;border:1px solid #e9e9e9;border-radius:12px}
+#root .rs-ride-body>.passenger-voting-form__input input.input{min-width:0;height:42px;padding:0 6px;font-size:16px;line-height:24px;transform:none}
+#root .rs-ride-body>.passenger-voting-form__input .input__buttons{flex-shrink:0;gap:4px;align-items:center}
+#root .rs-ride-body>.passenger-voting-form__input .input__buttons>*{margin:0}
+#root .rs-ride-body>.passenger-voting-form__input .passenger-voting-form__phone-save-button{
+ display:flex;align-items:center;justify-content:center;width:auto;min-width:44px;height:44px;
+ padding:8px;border:1px solid #e9e9e9;border-radius:8px;background:#fff!important;
+ color:var(--drive-red,#b51218);font-size:11px;font-weight:700;line-height:16px
+}
+#root .rs-ride-body>.passenger-voting-form__input .passenger-voting-form__phone-save-button:hover{background:#fff0ed!important}
+#root .rs-ride-body>.passenger-voting-form__input .input__error{margin-top:6px;font-size:12px;line-height:18px}
+#root .rs-order-actions__heading{display:none}
+#root .rs-order-actions__hint{font-size:12px;line-height:18px;color:#666666;margin:0 0 10px}
+#root .rs-options-toggle{min-height:44px}
+#root .rs-ride-body>.passenger-voting-form__comments{margin-top:12px}
+#root .rs-ride-body>.passenger-voting-form__input.input__field-wrapper{margin-top:16px}
+#root .rs-ride-body>.passenger-voting-form__input .input__wrapper:focus-within{outline:none;box-shadow:none}
+#root .rs-ride-body>.passenger-voting-form__input .input__wrapper:has(input:focus){outline:1.5px solid var(--drive-red,#b51218);outline-offset:0}
+#root .rs-ride-body>.passenger-voting-form__input input.input:focus,
+#root .rs-ride-body>.passenger-voting-form__input input.input:focus-visible{outline:none;box-shadow:none;--tw-ring-shadow:0 0 #0000;--tw-ring-offset-shadow:0 0 #0000}

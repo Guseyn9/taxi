@@ -1,0 +1,10 @@
+.rs-address-suggestions-popup{z-index:1301;max-width:calc(100vw - 16px);font-family:Manrope,sans-serif}
+.rs-address-suggestions-popup .input__suggestions--active{position:static;box-sizing:border-box;width:100%;height:auto;max-height:min(224px,28dvh);margin:0;overflow-y:auto;overscroll-behavior:contain;opacity:1;background:#fff;border:1px solid #e6e6e6;border-radius:12px;box-shadow:0 8px 24px #10101020}
+.rs-address-suggestions-popup .input__suggestions .input__suggestion{background:#fff;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 8px;padding:12px;min-height:64px;border-bottom:1px solid #e6e6e6;text-align:start;color:#101010;cursor:pointer}
+.rs-address-suggestions-popup .input__suggestion:last-child{border-bottom:0}
+.rs-address-suggestions-popup .input__suggestion .input__suggestion-source{background:transparent;border:0;border-radius:0;padding:0;width:fit-content;text-align:start;grid-column:1;font-size:10px;line-height:14px;color:#666666}
+.rs-address-suggestions-popup .input__suggestion-text{grid-column:1;font-size:14px;line-height:21px;font-weight:600;overflow-wrap:anywhere;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;overflow:hidden}
+.rs-address-suggestions-popup .input__suggestion-distance{grid-column:2;grid-row:1/span 2;font-size:11px;line-height:16px;color:#666666}
+.rs-address-suggestions-popup .input__suggestions .input__suggestion--highlighted,.rs-address-suggestions-popup .input__suggestions .input__suggestion:hover{background:#fff0ed}
+.rs-address-suggestions-popup .rs-address-search-status{padding:16px 12px;font-size:13px;line-height:20px;color:#666666}
+.rs-address-suggestions-popup .rs-address-search-retry{display:block;min-height:44px;margin-top:8px;padding:8px 12px;border:1px solid #e6e6e6;border-radius:8px;background:#fff;color:#b51218;font:inherit;cursor:pointer}

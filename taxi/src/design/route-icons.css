@@ -1,0 +1,18 @@
+/* Decorative route symbols share geometry across passenger and driver screens. */
+.investor-app .driver-demo-route-start,
+.investor-app .driver-demo-route-end,
+.investor-app .investor-route-dot {
+ display:block;
+ width:28px;
+ height:28px;
+ flex:0 0 28px;
+ align-self:center;
+ margin:0;
+ border:0;
+ border-radius:0;
+ background:transparent center / 28px 28px no-repeat;
+}
+.investor-app .driver-demo-route-start,
+.investor-app .investor-route-dot.is-pickup {background-image:url('/design-v2/route-pickup-v1.svg')}
+.investor-app .driver-demo-route-end,
+.investor-app .investor-route-dot.is-destination {background-image:url('/design-v2/route-destination-v1.svg')}

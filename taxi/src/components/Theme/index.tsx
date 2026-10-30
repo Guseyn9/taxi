@@ -1,5 +1,4 @@
 import React from 'react'
-import SITE_CONSTANTS from '../../siteConstants'
 import './styles.scss'
 
 export default function Theme({ children }: React.PropsWithChildren) {
@@ -7,12 +6,12 @@ export default function Theme({ children }: React.PropsWithChildren) {
     <div
       className="theme"
       style={{
-        '--theme--primary-main': SITE_CONSTANTS.PALETTE.primary.main,
-        '--theme--primary-light': SITE_CONSTANTS.PALETTE.primary.light,
-        '--theme--primary-dark': SITE_CONSTANTS.PALETTE.primary.dark,
-        '--theme--secondary-main': SITE_CONSTANTS.PALETTE.secondary.main,
-        '--theme--secondary-light': SITE_CONSTANTS.PALETTE.secondary.light,
-        '--theme--secondary-dark': SITE_CONSTANTS.PALETTE.secondary.dark,
+        '--theme--primary-main': 'var(--drive-red,#b51218)',
+        '--theme--primary-light': 'color-mix(in srgb,var(--drive-red,#b51218),white 50%)',
+        '--theme--primary-dark': 'color-mix(in srgb,var(--drive-red,#b51218),black 35%)',
+        '--theme--secondary-main': 'var(--drive-orange,#e87516)',
+        '--theme--secondary-light': 'color-mix(in srgb,var(--drive-orange,#e87516),white 50%)',
+        '--theme--secondary-dark': 'color-mix(in srgb,var(--drive-orange,#e87516),black 35%)',
       } as React.CSSProperties}
     >
       {children}

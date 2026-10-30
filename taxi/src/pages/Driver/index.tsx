@@ -1,5 +1,6 @@
 import React, { createContext, useEffect, useRef, useState } from 'react'
 import DriverOrders from './Orders'
+import { LogIn } from 'lucide-react'
 import DriverMap from './Map'
 import { t, TRANSLATION } from '../../localization'
 import { connect, ConnectedProps } from 'react-redux'
@@ -18,7 +19,6 @@ import ErrorFrame from '../../components/ErrorFrame'
 import images from '../../constants/images'
 import { withLayout } from '../../HOCs/withLayout'
 import { addHiddenOrder } from '../../tools/utils'
-import { useLiveEstimatedOrders } from '../../tools/liveOrderProfit'
 import { backendGateway } from '../../platform/adapters/LegacyBackendGateway'
 import { clearEmulatorClientChoseOtherDriver, getOfferEvent, getStoredDriverOffer, hasEmulatorClientChoseOtherDriver, isOfferOrder, isVotingOrder, subscribeEmulatorClientChoseOtherDriver, updateStoredDriverOfferStatus } from '../../tools/driverOffer'
 import { orderControlModeSelectors } from '../../state/orderControlMode'
@@ -120,8 +120,6 @@ const Driver: React.FC<IProps> = ({
   // и выгода должна пересчитываться. Селекторы считают её от GPS браузера,
   // который во время прогона эмулятора стоит на месте, поэтому списку и карте
   // отдаём заказы, пересчитанные от положения маркера водителя.
-  const liveActiveOrders = useLiveEstimatedOrders(activeOrders)
-  const liveReadyOrders = useLiveEstimatedOrders(readyOrders)
 
   useEffect(() => {
     if (user?.u_role !== EUserRoles.Driver)
@@ -158,19 +156,19 @@ const Driver: React.FC<IProps> = ({
   }, [user?.u_role, user?.u_id, getUserCars])
 
   useEffect(() => {
-    if (user?.u_role !== EUserRoles.Driver || !emulatorOrdersEnabled)
+    if (user?.u_role !== EUserRoles.Driver)
       return
     return watchActiveOrders()
   }, [user?.u_role, emulatorOrdersEnabled, watchActiveOrders])
 
   useEffect(() => {
-    if (user?.u_role !== EUserRoles.Driver || !emulatorOrdersEnabled)
+    if (user?.u_role !== EUserRoles.Driver)
       return
     return watchReadyOrders()
   }, [user?.u_role, emulatorOrdersEnabled, watchReadyOrders])
 
   useEffect(() => {
-    if (user?.u_role !== EUserRoles.Driver || !emulatorOrdersEnabled)
+    if (user?.u_role !== EUserRoles.Driver)
       return
     return watchHistoryOrders()
   }, [user?.u_role, emulatorOrdersEnabled, watchHistoryOrders])
@@ -531,9 +529,9 @@ const Driver: React.FC<IProps> = ({
     return (
       <ErrorFrame
         renderImage={() => (
-          <div className="errorIcon" onClick={() => setLoginModal(true)}>
-            <img src={images.avatar} alt={t(TRANSLATION.ERROR)} style={{ marginTop: '50px' }}/>
-          </div>
+          <button type="button" className="errorIcon driver-login-action" aria-label={t(TRANSLATION.UNAUTHORIZED_ACCESS)} onClick={() => setLoginModal(true)}>
+            <LogIn size={20} aria-hidden="true" /><span>{t(TRANSLATION.SIGN_IN_HEADER)}</span>
+          </button>
         )}
         title={t(TRANSLATION.UNAUTHORIZED_ACCESS)}
       />
@@ -552,15 +550,19 @@ const Driver: React.FC<IProps> = ({
     <>
       <OrderModeDecisionModal />
       <OrderModeToast />
-      <div className="driver-tabs">
+      <div className="driver-tabs" data-order-source={emulatorOrdersEnabled ? 'emulator' : 'normal'}>
         <button
           onClick={onFirstTabClick}
+          type="button"
+          aria-current={tab === EDriverTabs.Lite ? 'page' : undefined}
           className={cn('driver-tabs__tab', { 'driver-tabs__tab--active': tab === EDriverTabs.Lite })}
         >
           {t(TRANSLATION.LIGHT)}
         </button>
         <button
           onClick={onSecondTabClick}
+          type="button"
+          aria-current={tab === EDriverTabs.Detailed ? 'page' : undefined}
           className={cn('driver-tabs__tab', { 'driver-tabs__tab--active': tab === EDriverTabs.Detailed })}
         >
           {t(TRANSLATION.ALL)}
@@ -573,6 +575,8 @@ const Driver: React.FC<IProps> = ({
           // Контракт для E2E: вкладку надо выбирать так же, как водитель, —
           // переходом внутри приложения, а не перезагрузкой страницы.
           data-testid="driver-tab-map"
+          type="button"
+          aria-current={tab === EDriverTabs.Map ? 'page' : undefined}
           className={cn('driver-tabs__tab', { 'driver-tabs__tab--active': tab === EDriverTabs.Map })}
         >
           {t(TRANSLATION.MAP)}
@@ -583,8 +587,8 @@ const Driver: React.FC<IProps> = ({
           <DriverOrders
             user={user}
             type={tab}
-            activeOrders={liveActiveOrders}
-            readyOrders={liveReadyOrders}
+            activeOrders={activeOrders}
+            readyOrders={readyOrders}
             historyOrders={historyOrders}
           />
         </OrderAddressContext.Provider>
@@ -593,8 +597,8 @@ const Driver: React.FC<IProps> = ({
         <OrderAddressContext.Provider value={{ ordersAddressRef }}>
           <DriverMap
             user={user}
-            activeOrders={liveActiveOrders}
-            readyOrders={liveReadyOrders}
+            activeOrders={activeOrders}
+            readyOrders={readyOrders}
           />
         </OrderAddressContext.Provider>
       }

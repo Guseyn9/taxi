@@ -4,8 +4,8 @@
   #{Theme.$primary}: var(--theme--primary-light);
   #{Theme.$secondary}: var(--theme--secondary-light);
   #{Theme.$foreground}: #000000;
-  #{Theme.$accent}: #FF2400;
-  #{Theme.$icon}: #1C274C;
+  #{Theme.$accent}: #ff2400;
+  #{Theme.$icon}: #1c274c;
 
   @media (prefers-color-scheme: dark) {
     #{Theme.$primary}: var(--theme--primary-dark);

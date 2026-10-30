@@ -1,5 +1,5 @@
 $height: 80px;
-$red: #FF2400;
+$red: #ff2400;
 
 .header {
   position: relative;
@@ -10,7 +10,7 @@ $red: #FF2400;
   border-radius: 0 0 16px 16px;
   padding: 8px 16px;
   box-sizing: border-box;
-  background: #FFFFFF;
+  background: #ffffff;
 
   .api {
     margin-right: 15px;
@@ -24,7 +24,7 @@ $red: #FF2400;
   .api {
     font-weight: 500;
     font-size: 24px;
-    color: #FFF8F8;
+    color: #fff8f8;
     text-shadow: 1px 1px 6px rgba(0, 0, 0, 0.33);
 
     @media (max-width: 768px) {
@@ -109,7 +109,7 @@ $red: #FF2400;
     width: 232px;
     max-height: 0;
     padding: 8px;
-    background: #FFFFFF;
+    background: #ffffff;
     border: 1px solid rgba(17, 24, 39, .08);
     border-radius: 14px;
     box-shadow: 0 16px 40px rgba(17, 24, 39, .18);
@@ -125,14 +125,14 @@ $red: #FF2400;
     &__profile {
       padding: 8px 10px 9px;
       border-radius: 12px;
-      background: #F8FAFC;
+      background: #f8fafc;
       border: 1px solid rgba(17, 24, 39, .06);
       margin-bottom: 8px;
       color: #111827;
     }
 
     &__profile-title {
-      color: #6B7280;
+      color: #6b7280;
       font-size: 11px;
       line-height: 1.25;
       font-weight: 600;
@@ -151,7 +151,7 @@ $red: #FF2400;
 
     &__profile-muted {
       margin-top: 2px;
-      color: #6B7280;
+      color: #6b7280;
       font-size: 11px;
       line-height: 1.25;
       overflow: hidden;
@@ -165,7 +165,7 @@ $red: #FF2400;
       justify-content: space-between;
       gap: 8px;
       margin-top: 6px;
-      color: #6B7280;
+      color: #6b7280;
       font-size: 11px;
       line-height: 1.25;
 
@@ -204,12 +204,12 @@ $red: #FF2400;
       &:active {
         transform: none;
         box-shadow: none;
-        background: #F3F4F6;
+        background: #f3f4f6;
       }
 
       &--active {
-        background: #EAFBF0;
-        color: #128A2E;
+        background: #eafbf0;
+        color: #128a2e;
       }
 
       &:disabled {
@@ -219,13 +219,13 @@ $red: #FF2400;
 
       &--logout {
         margin-top: 6px;
-        color: #C92A2A;
-        background: #FFF5F5;
+        color: #c92a2a;
+        background: #fff5f5;
 
         &:hover,
         &:focus,
         &:active {
-          background: #FFE3E3;
+          background: #ffe3e3;
         }
       }
     }
@@ -234,7 +234,7 @@ $red: #FF2400;
       display: block;
       margin-top: 6px;
       padding: 0 4px 4px;
-      color: #6B7280;
+      color: #6b7280;
       font-size: 12px;
       line-height: 1.35;
     }
@@ -324,7 +324,7 @@ $red: #FF2400;
       display: flex;
       flex-direction: column;
       padding: 5px 0;
-      background: #FFFFFF;
+      background: #ffffff;
       border: 1px solid #858585;
       border-radius: 5px;
       position: absolute;
@@ -389,7 +389,7 @@ $red: #FF2400;
 
 .header-user-name,
 .header-user-lng {
-  color: #BDBDBD;
+  color: #bdbdbd;
   font-size: 13px;
   font-weight: 500;
 }
@@ -474,7 +474,7 @@ $red: #FF2400;
     justify-content: center;
     border-radius: 0;
     background: transparent;
-    color: #FF2400;
+    color: #ff2400;
 
     &-image {
       width: 72px;
@@ -503,8 +503,8 @@ $red: #FF2400;
     margin-top: 12px;
     padding: 12px;
     border-radius: 14px;
-    background: #F7F7F8;
-    color: #4B5563;
+    background: #f7f7f7;
+    color: #4b5563;
     font-size: 12.5px;
     line-height: 1.42;
     font-weight: 500;
@@ -524,7 +524,7 @@ $red: #FF2400;
     margin-top: 12px;
     border: none;
     border-radius: 12px;
-    background: #FF2400;
+    background: #ff2400;
     color: #ffffff;
     font-family: inherit;
     font-size: 14px;
@@ -536,7 +536,7 @@ $red: #FF2400;
     &:hover,
     &:focus,
     &:active {
-      background: #E92200;
+      background: #e92200;
       outline: none;
       transform: none;
       box-shadow: none;

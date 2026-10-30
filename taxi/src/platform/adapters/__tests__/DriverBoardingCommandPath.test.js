@@ -62,6 +62,7 @@ describe('Driver boarding command path', () => {
   const CALLERS = [
     'src/components/modals/CardModal.tsx',
     'src/pages/Order/index.tsx',
+    'src/pages/Driver/Map.tsx',
   ]
 
   it.each(CALLERS)('%s подтверждает посадку только через шлюз', relativePath => {
@@ -73,6 +74,7 @@ describe('Driver boarding command path', () => {
     expect(source).not.toMatch(/backendGateway\.confirmVotingCode/)
     expect(source).not.toMatch(/\.setState\(\s*orderId/)
     expect(source).not.toMatch(/setOrderState\(/)
+    expect(source).not.toMatch(/driverMapGateway\.start\(/)
   })
 
   // Сама цепочка «BoardingConfirmed → состояние = Started» проверяется в runtime

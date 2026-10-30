@@ -1,9 +1,10 @@
+import {terminalBooking,startedTripDriver} from '../../design/reliability/rideData'
 import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react'
 import cn from 'classnames'
 import { EBookingDriverState, EStatuses, IOrder } from '../../types/types'
 import { getPassengerConfirmedChoice, isChoiceOrder, isStoredSimpleOrderMode } from '../../tools/driverOffer'
 import { candidateMode } from '../../tools/order'
-import { useSwipe } from '../../tools/swipe'
+import SheetHandle from '../../design/SheetHandle'
 import { passengerGateway } from '../../platform/adapters/LegacyPassengerGateway'
 import {
   passengerScreenConnector,
@@ -17,11 +18,16 @@ import BoundaryButtons from '../../components/BoundaryButtons'
 import PassengerLiveOrder from '../../components/PassengerLiveOrder'
 import VotingForm, { IRequestOrderDraft } from './VotingForm'
 import './styles.scss'
+import { Card } from '../../components/ui/card'
 import { t, TRANSLATION } from '../../localization'
 import { getOrderIdText } from '../../tools/orderId'
 import { writeFlowEvent } from '../../tools/flowLog'
 import { isPassengerUiFsmEnabled } from './fsmFeature'
 import { usePassengerSurface } from '../../platform/platform-interface'
+import { journeyCopy } from '../../design/journeyCopy'
+import { tripToRestore,rememberedTrip,rememberTrip } from '../../design/restoreTrip'
+import { Button as UiButton } from '../../components/ui/button'
+import { ArrowLeft,MapPin } from 'lucide-react'
 
 function getReverseGeocodeText(response: any) {
   const address = String(response?.display_name || '').trim()
@@ -60,8 +66,13 @@ function Passenger({
 }: IProps) {
 
   const languageIso = language?.iso
+  const copy = journeyCopy(languageIso)
+  const [mapPicker,setMapPicker] = useState<'from'|'to'|null>(null)
+  const pickFrom = useCallback(()=>setMapPicker('from'),[])
+  const pickTo = useCallback(()=>setMapPicker('to'),[])
 
   const mapCenter = useRef<[lat: number, lng: number]>(null)
+  const getMapSearchCenter = useCallback(()=>mapCenter.current,[])
   const mapPointRequestId = useRef({ from: 0, to: 0 })
   const setMapCenter = useCallback((value: [number, number]) => {
     mapCenter.current = value
@@ -71,10 +82,8 @@ function Passenger({
   const draggableRef = useRef<HTMLDivElement>(null)
   const minimizedPartRef = useRef<HTMLElement>(null)
   const formSlidersRef = useRef<HTMLElement[]>([])
-  const { isExpanded, setIsExpanded } = useSwipe(
-    formContainerRef, draggableRef,
-    minimizedPartRef, formSlidersRef,
-  )
+  const [isExpanded,setIsExpanded] = useState(false)
+  const [sheetCollapsed,setSheetCollapsed] = useState(false)
 
   const setPointAsMapCenter = useCallback((type: 'from' | 'to') => {
     if (!mapCenter.current)
@@ -102,7 +111,7 @@ function Passenger({
 
         const { address, shortAddress } = getReverseGeocodeText(response)
         if (!address)
-          return
+          throw new Error('Empty reverse geocode response')
 
         setPoint({
           latitude,
@@ -144,10 +153,19 @@ function Passenger({
   const [submittedOrderDraft, setSubmittedOrderDraft] = useState<IRequestOrderDraft | null>(null)
   const [isCreatingAnotherOrder, setIsCreatingAnotherOrder] = useState(false)
   const [cancelRequestedOrderId, setCancelRequestedOrderId] = useState<IOrder['b_id'] | null>(null)
+  const restoredForUser=useRef<string|null>(null)
+  useEffect(()=>{
+    if(!user?.u_id){restoredForUser.current=null;return}
+    const owner=String(user.u_id)
+    if(selectedOrderID){rememberTrip(owner,selectedOrderID);restoredForUser.current=owner;return}
+    if(isCreatingAnotherOrder || restoredForUser.current===owner)return
+    const trip=tripToRestore(activeOrders?.filter(order=>String(order.u_id)===owner) || null,rememberedTrip(owner))
+    if(trip){restoredForUser.current=owner;setSelectedOrder(trip.b_id)}
+  },[user?.u_id,activeOrders,selectedOrderID,isCreatingAnotherOrder,setSelectedOrder])
 
   const selectedOrder = useMemo(() =>
     !isCreatingAnotherOrder && selectedOrderID ?
-      activeOrders?.find((item) => item.b_id === selectedOrderID) ?? null :
+      activeOrders?.find((item) => item.b_id === selectedOrderID && !terminalBooking(item)) ?? null :
       null
   , [activeOrders, selectedOrderID, isCreatingAnotherOrder])
 
@@ -222,6 +240,9 @@ function Passenger({
 
     if (confirmedDriver)
       return confirmedDriver
+
+    const started=startedTripDriver(selectedOrder)
+    if(started)return started
 
     if (isRequestChoiceOrder(selectedOrder) || (candidateMode(selectedOrder) && !isStoredSimpleOrderMode(selectedOrder))) {
       // Пока идёт подбор водителей/кандидатов, не считаем Performer выбранным
@@ -784,12 +805,13 @@ function Passenger({
       },
     })
 
+    rememberTrip(user?.u_id,data.b_id)
     setSubmittedOrderId(data.b_id)
     setSubmittedOrderDraft(draft ?? null)
     setIsCreatingAnotherOrder(false)
     setSelectedOrder(null)
     setIsExpanded(false)
-  }, [setSelectedOrder, setIsExpanded])
+  }, [setSelectedOrder, setIsExpanded, user?.u_id])
 
   const waitingForSubmittedOrder = submittedOrderId !== null && !selectedOrder
 
@@ -798,10 +820,11 @@ function Passenger({
 
   const votingFormContent = useMemo(() =>
     <VotingForm
+      getMapSearchCenter={getMapSearchCenter}
       isExpanded={isExpanded}
       setIsExpanded={setIsExpanded}
-      syncFrom={setFromAsMapCenter}
-      syncTo={setToAsMapCenter}
+      syncFrom={pickFrom}
+      syncTo={pickTo}
       onSubmit={onSubmit}
       lockedOrder={shouldKeepRequestForm ? selectedOrder : null}
       lockedDraft={waitingForSubmittedOrder ? submittedOrderDraft : null}
@@ -815,26 +838,34 @@ function Passenger({
   , [
     languageIso,
     isExpanded, setIsExpanded,
-    setFromAsMapCenter, setToAsMapCenter,
+    pickFrom, pickTo,
     onSubmit,
     shouldKeepRequestForm, selectedOrder, waitingForSubmittedOrder, submittedOrderDraft,
     submittedOrderId, handleLockedCancel, handleNewOrderClick, effectivePassengerUiConfig,
   ])
 
+  useEffect(()=>{setSheetCollapsed(false)},[selectedOrder?.b_id,mapPicker])
+
+  const handlePlaqueClick = useCallback((order:IOrder)=>{
+    setMapPicker(null)
+    setSheetCollapsed(false)
+    handleOrderClick(order)
+  },[handleOrderClick])
+
   const miniOrdersContent = useMemo(() =>
     <MiniOrders
       className="passenger__mini-orders"
-      handleOrderClick={handleOrderClick}
+      handleOrderClick={handlePlaqueClick}
       uiConfig={effectivePassengerUiConfig}
     />
-  , [handleOrderClick, languageIso, effectivePassengerUiConfig])
+  , [handlePlaqueClick, languageIso, effectivePassengerUiConfig])
   const shouldPinPassengerPanel = passengerUiFsmEnabled ?
     passengerUiConfig.pinBottomSheet :
     isDriverArrivedOrStarted(selectedOrderDriver?.c_state)
 
   return (
     <Layout>
-      <PageSection className="passenger" scrollable={false}>
+      <PageSection className={cn('passenger',{'passenger--picking-location':mapPicker})} scrollable={false}>
 
         {miniOrdersContent}
 
@@ -845,32 +876,40 @@ function Passenger({
             })}
             forceFreeMode={passengerUiFsmEnabled ? passengerUiConfig.mapMode === 'draft' : isCreatingAnotherOrder}
             setCenter={setMapCenter}
+            showDraftCenterMarker={Boolean(mapPicker)}
           />
-        , [setMapCenter, selectedOrder?.b_id, showLiveOrderPanel, isCreatingAnotherOrder, passengerUiFsmEnabled, passengerUiConfig.mapMode, languageIso])}
+        , [setMapCenter, selectedOrder?.b_id, showLiveOrderPanel, isCreatingAnotherOrder, passengerUiFsmEnabled, passengerUiConfig.mapMode, languageIso, mapPicker])}
 
         <div className="passenger__form-placeholder" />
 
+        {mapPicker && <section className="rs-location-picker" aria-label={mapPicker==='from'?copy.mapPickup:copy.mapDestination}>
+          <div className="rs-location-picker__heading"><UiButton type="button" variant="ghost" size="icon" aria-label={copy.back} onClick={()=>setMapPicker(null)}><ArrowLeft aria-hidden="true"/></UiButton><h2>{mapPicker==='from'?copy.mapPickup:copy.mapDestination}</h2></div>
+          <p>{copy.moveMap}</p>
+          <UiButton type="button" className="rs-location-picker__confirm" data-testid="passenger-map-confirm" onClick={()=>{mapPicker==='from'?setFromAsMapCenter():setToAsMapCenter();setMapPicker(null)}}><MapPin size={18} aria-hidden="true"/>{copy.confirmPoint}</UiButton>
+        </section>}
+
         <div
           ref={formContainerRef}
+          data-sheet-collapsed={sheetCollapsed}
           className={cn('passenger__form-container', {
             'passenger__form-container--live-order': showLiveOrderPanel,
             'passenger__form-container--pinned': shouldPinPassengerPanel,
           })}
         >
           {useMemo(() => <BoundaryButtons />, [languageIso])}
-          <div
+          <Card
             className={cn('passenger__draggable', {
               'passenger__draggable--live-order': showLiveOrderPanel,
               'passenger__draggable--pinned': shouldPinPassengerPanel,
             })}
             ref={draggableRef}
           >
-            <div className="passenger__swipe-line"></div>
+            <SheetHandle collapsed={sheetCollapsed} onChange={setSheetCollapsed} iso={languageIso}/>
 
             {showLiveOrderPanel && selectedOrder ? (
               <PassengerLiveOrder order={selectedOrder} onNewOrder={handleNewOrderClick} />
             ) : votingFormContent}
-          </div>
+          </Card>
         </div>
 
       </PageSection>

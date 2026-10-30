@@ -1,6 +1,8 @@
-import React, { useMemo, useState, useRef } from 'react'
+import { Input as ShadcnInput } from '../ui/input'
+import React, { useMemo, useState, useRef, useEffect } from 'react'
 import './styles.scss'
 import InputMask from '@mona-health/react-input-mask'
+import SuggestionLayer from './SuggestionLayer'
 import SITE_CONSTANTS from '../../siteConstants'
 import useMergedRef from '@react-hook/merged-ref'
 import { ISelectOption } from '../../types'
@@ -131,7 +133,13 @@ interface IProps {
   error?: string | null
   label?: string
   buttons?: (React.ComponentProps<'img'> | React.ComponentProps<typeof Button>)[]
+  floatingSuggestions?: boolean
   suggestions?: ISuggestion[]
+  getSuggestionLabel?: (suggestion: ISuggestion) => string
+  expandedText?: string
+  suggestionStatus?: 'idle'|'loading'|'empty'|'error'|'ready'
+  onRetrySuggestions?:()=>void
+  suggestionLabels?: {loading:string,empty:string,error:string,personal:string,shared:string,map:string}
   onSuggestionClick?: (value: ISuggestion) => any
   options?: ISelectOption[]
   inputProps?: React.ComponentProps<'input'> | React.ComponentProps<'select'> | React.ComponentProps<'textarea'> | InputMaskProps
@@ -161,6 +169,12 @@ export default function Input({
   inputProps = {},
   fieldWrapperClassName,
   suggestions,
+  floatingSuggestions=false,
+  getSuggestionLabel,
+  expandedText,
+  suggestionStatus,
+  onRetrySuggestions,
+  suggestionLabels,
   oneline,
   showDisablerCheckbox,
   defaultValue,
@@ -176,7 +190,10 @@ export default function Input({
   onChangeCompareVariant,
   onSuggestionClick,
 }: IProps) {
+  const suggestionAnchor=useRef<HTMLDivElement>(null)
   const [isFocused, setIsFocused] = useState(false)
+  const [activeSuggestion,setActiveSuggestion] = useState(-1)
+  useEffect(()=>setActiveSuggestion(-1),[suggestions,inputProps.value])
   const [isDisabled, setIsDisabled] = useState<boolean>(Boolean(inputProps.disabled))
   const [isDefaultValueUsed, setIsDefaultValueUsed] = useState(false)
   const [files, setFiles] = useState<File[]>([])
@@ -188,7 +205,7 @@ export default function Input({
 
   const id = useMemo(() => inputProps.id || Math.random().toString().slice(2), [])
 
-  const innerRef = React.createRef<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>()
+  const innerRef = useRef<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>(null)
   const refs: any[] = [innerRef]
   if ((inputProps as React.ComponentProps<'input'>).ref) refs.push((inputProps as React.ComponentProps<'input'>).ref)
   if ((inputProps as InputMaskProps).inputRef) {
@@ -212,12 +229,34 @@ export default function Input({
 
   const blurTimeoutId = useRef<ReturnType<typeof setTimeout>>(undefined)
   const properties = {
+    ...(suggestions ? {role:'combobox','aria-autocomplete':'list' as const,'aria-expanded':isFocused && Boolean(suggestions.length || (suggestionStatus && suggestionStatus!=='idle')),'aria-controls':`${id}-results`,'aria-activedescendant':isFocused && activeSuggestion>=0?`${id}-result-${activeSuggestion}`:undefined}:{}),
+    'aria-invalid': error ? true : inputProps['aria-invalid'],
+    'aria-describedby': [inputProps['aria-describedby'], error ? `${id}-error` : undefined].filter(Boolean).join(' ') || undefined,
     className: cn('input', inputProps.className),
 
     onFocus: (e: any) => {
       clearTimeout(blurTimeoutId.current)
       setIsFocused(true)
       inputProps.onFocus && inputProps.onFocus(e)
+    },
+    onClick: (event:any) => {
+      if(suggestions){clearTimeout(blurTimeoutId.current);setIsFocused(true)}
+      inputProps.onClick?.(event)
+    },
+    onKeyDown: (event:any) => {
+      if(suggestions){
+        if((event.key==='ArrowDown'||event.key==='ArrowUp') && suggestions.length){
+          event.preventDefault()
+          setIsFocused(true)
+          const next=event.key==='ArrowDown'?(activeSuggestion+1)%suggestions.length:(activeSuggestion<=0?suggestions.length-1:activeSuggestion-1)
+          setActiveSuggestion(next)
+          requestAnimationFrame(()=>document.getElementById(`${id}-result-${next}`)?.scrollIntoView({block:'nearest'}))
+          return
+        }
+        if(event.key==='Enter' && isFocused && activeSuggestion>=0){event.preventDefault();handleSuggestionClick(suggestions[activeSuggestion]);return}
+        if(event.key==='Escape'){event.preventDefault();setIsFocused(false);return}
+      }
+      inputProps.onKeyDown?.(event)
     },
 
     onBlur: (e: any) => {
@@ -228,6 +267,7 @@ export default function Input({
     },
 
     onChange: (e: any) => {
+      if(suggestions){clearTimeout(blurTimeoutId.current);setIsFocused(true)}
       if (inputType === EInputTypes.File) {
         inputProps.onChange && inputProps.onChange(e as any)
         addImageToRaw(e)
@@ -368,7 +408,7 @@ export default function Input({
         )
       default:
         return (
-          <input
+          <ShadcnInput
             ref={mergedRef}
             {...inputProps as React.ComponentProps<'input'>}
             {...properties}
@@ -399,6 +439,8 @@ export default function Input({
 
   const handleSuggestionClick = (item: ISuggestion) => {
     setIsFocused(false)
+    setActiveSuggestion(-1)
+    innerRef.current?.blur()
     onSuggestionClick && onSuggestionClick(item)
   }
 
@@ -506,6 +548,7 @@ export default function Input({
             <div className="input__side-text-wrapper">
               {sideText && <span>{sideText}</span>}
               <div
+                ref={suggestionAnchor}
                 className={cn(
                   'input__wrapper',
                   {
@@ -515,12 +558,22 @@ export default function Input({
                 )}
               >
                 {getInputByType()}
+                {expandedText && <p className="rs-input-expanded" dir="auto">{expandedText}</p>}
                 {!!buttons && <div className='input__buttons'>
                   {buttons.map((item, index) => (
                     (item as React.ComponentProps<'img'>).src ?
                       (
                         // eslint-disable-next-line jsx-a11y/alt-text
-                        <img key={index} {...item as React.ComponentProps<'img'>} />
+                        <img key={index} {...item as React.ComponentProps<'img'>}
+                          role={item.onClick ? 'button' : undefined}
+                          tabIndex={item.onClick ? 0 : undefined}
+                          onKeyDown={event => {
+                            if (item.onClick && (event.key === 'Enter' || event.key === ' ')) {
+                              event.preventDefault()
+                              event.currentTarget.click()
+                            }
+                          }}
+                        />
                       ) :
                       (
                         <Button
@@ -536,25 +589,29 @@ export default function Input({
                       )
                   ))}
                 </div>}
+                <SuggestionLayer floating={floatingSuggestions} anchor={suggestionAnchor.current} open={isFocused && Boolean(suggestions?.length || (suggestionStatus && suggestionStatus!=='idle'))}>
                 <div
-                  className={cn('input__suggestions', { 'input__suggestions--active': isFocused && suggestions?.length })}
+                  id={`${id}-results`} role={suggestions?'listbox':undefined}
+                  className={cn('input__suggestions', { 'input__suggestions--active': isFocused && (suggestions?.length || (suggestionStatus && suggestionStatus!=='idle')) })}
                 >
-                  {suggestions && suggestions.map((item, index) => (
+                  {isFocused && suggestions && suggestions.map((item, index) => (
                     <div
                       key={index}
+                      id={`${id}-result-${index}`} role="option" aria-selected={activeSuggestion===index}
+                      onMouseDown={event=>event.preventDefault()}
                       onClick={() => handleSuggestionClick(item)}
-                      className={cn('input__suggestion', `input__suggestion--${getSuggestionClass(item.type)}`)}
+                      className={cn('input__suggestion', `input__suggestion--${getSuggestionClass(item.type)}`,{'input__suggestion--highlighted':activeSuggestion===index})}
                       // Контракт для E2E: подсказка привязана к своему полю, а источник
                       // (official/unofficial/user-top) не зависит от языка интерфейса.
                       data-testid={suggestionTestId}
                       data-suggestion-source={getSuggestionClass(item.type)}
                     >
-                      <span className='input__suggestion-source'>{getSuggestionSourceLabel(item.type)}</span>
+                      <span className='input__suggestion-source'>{suggestionLabels ? item.type===ESuggestionType.PointUserTop?suggestionLabels.personal:item.type===ESuggestionType.PointUnofficial?suggestionLabels.shared:suggestionLabels.map : getSuggestionSourceLabel(item.type)}</span>
                       <span
                         className='input__suggestion-text'
                         title={item.point?.address || item.point?.shortAddress}
                       >
-                        {buildCompactSuggestionAddress(item.point?.address, item.point?.shortAddress)}
+                        {getSuggestionLabel ? getSuggestionLabel(item) : item.point?.shortAddress || item.point?.address}
                       </span>
                       {
                         item.distance ?
@@ -563,7 +620,9 @@ export default function Input({
                       }
                     </div>
                   ))}
+                  {isFocused && suggestionLabels && suggestionStatus && ['loading','empty','error'].includes(suggestionStatus) && <div className="rs-address-search-status" role="status">{suggestionStatus==='loading'?suggestionLabels.loading:suggestionStatus==='empty'?suggestionLabels.empty:suggestionLabels.error}{suggestionStatus==='error'&&onRetrySuggestions&&<button type="button" className="rs-address-search-retry" onMouseDown={event=>event.preventDefault()} onClick={onRetrySuggestions}>{t('retry')}</button>}</div>}
                 </div>
+                </SuggestionLayer>
               </div>
             </div>
             {
@@ -571,7 +630,7 @@ export default function Input({
               onChangeCompareVariant &&
               <CompareVariants value={compareVariant} onChange={onChangeCompareVariant}/>
             }
-            {!!error && <p className="input__error">{error}</p>}
+            {!!error && <p className="input__error" id={`${id}-error`} role="alert">{error}</p>}
           </>
         )
       }

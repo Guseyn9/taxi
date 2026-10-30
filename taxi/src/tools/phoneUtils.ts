@@ -67,37 +67,26 @@ export const normalizePhoneNumber = (phone: string, isRegistration: boolean = fa
  */
 export const formatPhoneNumber = (phone: string): string => {
   if (!phone) return ''
-  
-  // Если номер уже содержит нецифровые символы (форматированный), возвращаем как есть
-  if (/\D/.test(phone)) {
+
+  const mask = getPhoneMask()
+  const prefix = getPhonePrefix()
+  const slots = (mask.match(/_/g) || []).length
+  const digits = phone.replace(/\D/g, '')
+  if (!prefix || !slots || !digits) return phone
+
+  let localDigits: string
+  if (digits.startsWith(prefix) && digits.length === prefix.length + slots) {
+    localDigits = digits.slice(prefix.length)
+  } else if (digits.startsWith('11') && digits.length === 2 + slots) {
+    // +11 is the internal driver prefix; display the site's original prefix.
+    localDigits = digits.slice(2)
+  } else if (!phone.trim().startsWith('+') && digits.length === slots) {
+    localDigits = digits
+  } else {
+    // Unknown international prefixes and incomplete/oversized values must stay lossless.
     return phone
   }
 
-  const mask = getPhoneMask()
-  if (!mask) return phone
-
-  const digits = phone.replace(/\D/g, '')
-  const prefix = getPhonePrefix()
-  
-  // Если номер начинается с 11 (для водителей), заменяем 11 на префикс из маски
-  if (digits.startsWith('11')) {
-    return prefix + digits.slice(2)
-  }
-
-  // Форматируем номер по маске
-  let result = mask
-  let digitIndex = 0
-  
-  // Заменяем все символы подчеркивания на цифры из номера
-  for (let i = 0; i < mask.length && digitIndex < digits.length; i++) {
-    if (mask[i] === '_') {
-      result = result.slice(0, i) + digits[digitIndex] + result.slice(i + 1)
-      digitIndex++
-    }
-  }
-  
-  // Если в результате остались символы подчеркивания, заменяем их на пустую строку
-  result = result.replace(/_/g, '')
-  
-  return result
-} 
+  let index = 0
+  return mask.replace(/_/g, () => localDigits[index++])
+}

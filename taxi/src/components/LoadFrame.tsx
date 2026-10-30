@@ -7,7 +7,7 @@ interface IProps {
 }
 
 const LoadFrame: React.FC<IProps> = ({ title }) => {
-  return <div className="loading-frame">
+  return <div className="loading-frame" role="status" aria-live="polite">
     <img src={images.fetching} alt={t(TRANSLATION.FETCHING)}/>
     <div className="loading-frame__title colored">{title || t(TRANSLATION.LOADING, { toLower: true })}</div>
   </div>

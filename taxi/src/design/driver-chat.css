@@ -1,0 +1,68 @@
+/* Driver, order and conversation surfaces. Display-only; trip state remains in the existing components. */
+#root .driver-tabs{margin:0;padding:10px 16px;background:#fff;border-bottom:1px solid var(--rs-line);gap:6px;flex-shrink:0}
+#root .driver-tabs__tab{min-width:0;min-height:44px;padding:8px 10px;line-height:1.35;background:var(--rs-canvas);color:var(--rs-muted);border:1px solid var(--rs-line);border-radius:10px}
+#root .driver-tabs__tab--active{background:var(--rs-ink);color:white;border-color:var(--rs-ink)}
+#root .driver-login-action{display:block;min-width:44px;min-height:44px;padding:0;border:0;background:transparent;cursor:pointer}
+#root .driver .driver-orders__free-seats{color:var(--rs-muted);opacity:1;line-height:1.5}
+#root .driver .driver-statuses{gap:8px;align-items:center;line-height:1.5}
+#root .driver .driver-statuses span label{font-size:12px;color:var(--rs-muted)}
+#root .driver .driver-orders-empty{padding:20px 16px;border:1px solid var(--rs-line);border-radius:12px;background:white;color:var(--rs-muted);line-height:1.5}
+#root .driver :is(.status-card,.mini-order,.driver-order-wide-mode-status-card){box-shadow:none;border:1px solid var(--rs-line);border-radius:14px;min-width:0;transition:border-color .15s ease}
+#root .driver :is(.status-card,.mini-order):hover{transform:none;border-color:#c8bdb5;box-shadow:none}
+#root .driver :is(.status-card__from-address,.status-card__comments,.status-card__offer-summary){min-width:0;overflow-wrap:anywhere}
+#root .driver .status-card__money{gap:12px;flex-wrap:wrap;justify-content:space-between!important;border-color:var(--rs-line)}
+#root .driver :is(.status-card__cost,.status-card__profit,.amount__value){font-variant-numeric:tabular-nums}
+#root .driver .mini-order__chat-btn{min-height:44px;border-radius:8px;background:var(--rs-selected);color:var(--rs-primary)}
+#root .driver .mini-order__icon{color:var(--rs-ink)}
+#root .driver-order-map-mode :is(.driver-order-map-card,.driver-map-active-order){border:1px solid var(--rs-line);box-shadow:none;border-radius:14px}
+#root .driver-order-map-mode .no-coords-orders{max-width:calc(100% - 24px);padding:10px 12px;border:1px solid #e8c9a3;border-radius:10px;background:#fff8ec;color:#794d14;font-size:12px;line-height:1.4}
+#root .driver-order-map-mode .finish-drive-button{min-height:48px;white-space:normal;border-radius:12px;background:var(--rs-primary)!important;color:white!important;box-shadow:none;font-size:14px;line-height:1.4}
+#root .driver-order-map-mode__along-the-way-button{min-height:44px;white-space:normal;border-radius:10px;box-shadow:none;line-height:1.4}
+#root .order{box-sizing:border-box;width:100%;min-width:0;max-width:960px;margin-inline:auto;padding:24px max(20px,env(safe-area-inset-right)) max(24px,env(safe-area-inset-bottom));color:var(--rs-ink);scroll-padding-block:16px;overscroll-behavior:contain}
+#root .order>form{min-width:0;width:100%;box-sizing:border-box}
+#root .order :is(.order__from-to,.order__driver-offer-info){padding:18px;border:1px solid var(--rs-line);border-radius:14px;background:white;box-shadow:none}
+#root .order .order__from-to{overflow-wrap:anywhere}
+#root .order :is(.from,.to){gap:12px;min-width:0}
+#root .order .from__buttons,#root .order .to__buttons{flex-shrink:0}
+#root .order :is(.order__separator,.order__from-to .from-delivery,.order__from-to .to-delivery){border-color:var(--rs-line);box-shadow:none}
+#root .order .order__from-to h3{font-size:16px;font-weight:700;line-height:1.5;margin-bottom:12px}
+#root .order .order__from-to :is(.from-delivery,.to-delivery){font-size:14px;line-height:1.5}
+#root .order .currency{color:var(--rs-ink);font-variant-numeric:tabular-nums}
+#root .order :is(.order_take-order-btn,.order_hide-order-btn,.order_alarm-btn),body .status-card__modal :is(.order_take-order-btn,.order_hide-order-btn,.order_alarm-btn){min-height:48px;border-radius:10px;box-shadow:none;white-space:normal;line-height:1.4;padding:10px 16px;font-size:14px}
+#root .order .order_take-order-btn,body .status-card__modal .order_take-order-btn{background:var(--rs-primary)!important;border:1px solid transparent;color:white!important}
+#root .order .order_hide-order-btn,body .status-card__modal .order_hide-order-btn{background:var(--rs-canvas)!important;border:1px solid var(--rs-line);color:var(--rs-ink)!important}
+#root .order .order_hide-order-btn:hover,body .status-card__modal .order_hide-order-btn:hover{background:#e9e9e9!important}
+#root .order .order-action--danger,body .status-card__modal .order-action--danger{background:#fff1ef!important;color:#b1271e!important;border:1px solid #f0c5c0}
+#root .order .order-action--danger:hover,body .status-card__modal .order-action--danger:hover{background:#fbe0dc!important}
+#root .order .order_alarm-btn,body .status-card__modal .order_alarm-btn{background:#fff3dc!important;color:#794d14!important;border:1px solid #e8c9a3}
+#root .order :is(.order__driver-offer-select,.order__driver-offer-select-option,.order__driver-offer-eta-chip),body .status-card__modal :is(.order__driver-offer-select,.order__driver-offer-select-option,.order__driver-offer-eta-chip){min-height:44px;box-sizing:border-box;font:600 13px/1.4 Manrope,sans-serif;color:var(--rs-ink);cursor:pointer;text-align:start}
+#root .order .order__driver-offer-select,body .status-card__modal .order__driver-offer-select{width:100%;background:white;border:1px solid var(--rs-line);border-radius:8px}
+#root .order .order__driver-offer-select-option,body .status-card__modal .order__driver-offer-select-option{display:block;width:100%;border:0;background:white;padding:10px 12px}
+#root .order :is(.order__driver-offer-select--active,.order__driver-offer-select-option--active,.order__driver-offer-eta-chip--active),body .status-card__modal :is(.order__driver-offer-select--active,.order__driver-offer-select-option--active,.order__driver-offer-eta-chip--active){color:var(--rs-primary);background:var(--rs-selected);border-color:#c8bdb5}
+#root .order .order__driver-offer-select-list,body .status-card__modal .order__driver-offer-select-list{max-height:220px;overflow:auto;border:1px solid var(--rs-line);border-radius:10px;background:white;box-shadow:none}
+/* Chat retains its existing transport, resizing and send handler. Only the reading layout changes. */
+body .chat{box-sizing:border-box;right:16px;bottom:0;max-width:calc(100vw - 32px);max-height:calc(100dvh - 88px);border:1px solid var(--rs-line);border-radius:16px 16px 0 0;background:#fff;color:var(--rs-ink);box-shadow:none}
+body .chat>form{height:100%;min-height:0;display:flex;flex-direction:column}
+body .chat__header{box-sizing:border-box;min-height:56px;height:auto;flex:0 0 auto;padding:8px 12px;gap:8px;background:white;color:var(--rs-ink);border-bottom:1px solid var(--rs-line);font-size:14px;font-weight:700;line-height:1.4;overflow-wrap:anywhere}
+body .chat__close-button{width:44px;height:44px;min-width:44px;display:grid;place-items:center;color:var(--rs-muted);background:var(--rs-canvas);border-radius:8px;font-size:16px}
+body .chat__messages{box-sizing:border-box;flex:1 1 auto;height:auto;min-height:0;padding:16px 12px;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin}
+body .chat__message{width:fit-content;max-width:90%;padding:10px 12px;margin:0 0 12px;border-radius:12px;background:var(--rs-canvas);font-size:14px;font-weight:400;line-height:1.5;overflow-wrap:anywhere;white-space:pre-wrap}
+body .chat__message--main-user-message{margin-left:auto;background:var(--rs-selected)}
+body .chat__message--action{max-width:100%;margin-inline:auto;background:none;color:var(--rs-muted);font-size:12px}
+body .chat__name{margin-bottom:3px;font-size:11px;line-height:1.4;color:var(--rs-muted)}
+body .chat__footer{box-sizing:border-box;flex:0 0 auto;height:auto;min-height:64px;padding:8px 10px max(8px,env(safe-area-inset-bottom));border-top:1px solid var(--rs-line)}
+body .chat__input{min-width:0;width:100%}
+body .chat__input .input__wrapper{width:100%;min-width:0;gap:8px;background:var(--rs-canvas)!important;border-radius:10px!important}
+body .chat__input textarea.input{box-sizing:border-box;min-width:0;font-size:16px;line-height:24px;padding:10px;height:44px}
+body .chat .chat__send-button{width:44px;height:44px;min-width:44px;padding:8px;background:var(--rs-primary)!important;color:white;border-radius:8px}
+body .chat .input__buttons{flex-shrink:0}
+#root .chat__toggler{box-sizing:border-box;min-width:44px;min-height:44px;background:var(--rs-selected)!important;color:var(--rs-primary)!important;border:1px solid #c8bdb5;border-radius:10px}
+@media(max-width:899px){
+ #root .driver-tabs{padding:8px 12px}
+ #root .order{padding:16px 12px max(20px,env(safe-area-inset-bottom))}
+ #root .order :is(.order__from-to,.order__driver-offer-info){padding:14px 12px}
+ #root .driver .driver-orders__list{scroll-padding-bottom:max(20px,env(safe-area-inset-bottom))}
+ body .chat{right:0;left:0;width:100%!important;max-width:100%;max-height:calc(100dvh - 64px);border-inline:0;border-radius:18px 18px 0 0}
+}
+@media(max-width:360px){#root .driver-tabs{padding-inline:8px;gap:4px}#root .driver-tabs__tab{font-size:12px;padding-inline:6px}#root .driver .status-card{padding:12px}#root .driver .driver-orders__list{gap:8px}}
+@media(orientation:landscape) and (max-height:500px){body .chat{max-height:calc(100dvh - 12px);right:8px;left:auto;width:min(480px,100%)!important;border-radius:12px;bottom:6px}body .chat__header{min-height:44px;padding-block:0}body .chat__footer{min-height:56px;padding-block:6px}}

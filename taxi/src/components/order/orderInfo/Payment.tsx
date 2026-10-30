@@ -1,3 +1,4 @@
+import {displayFare,orderCurrency} from '../../../design/reliability/rideData'
 import React from 'react'
 import { t, TRANSLATION } from '../../../localization'
 import { CURRENCY } from '../../../siteConstants'
@@ -11,10 +12,9 @@ interface IProps {
 }
 
 const Payment: React.FC<IProps> = ({ order }) => {
+  const payment=getPayment(order)
   const _type = order.b_payment_way === EPaymentWays.Credit ? TRANSLATION.CARD : TRANSLATION.CASH
-  const _value = (order && order.b_options && order.b_options.customer_price) ?
-    t(_type) + '. ' + t(TRANSLATION.WHAT_WE_DELIVERING) + ` ${order.b_options.customer_price} ${CURRENCY.SIGN}` :
-    t(_type) + '. ' + t(TRANSLATION.FIXED) + ` ${getPayment(order).text} ${CURRENCY.SIGN}`
+  const _value = `${t(_type)} · ${displayFare(payment.value,orderCurrency(order,CURRENCY.NAME),undefined,payment.estimated)}`
 
   return <div className="order-info__payment">
     <OrderField image={images.cash} alt={t(TRANSLATION.CARD)} title={t(TRANSLATION.PAYMENT_WAY)} value={_value}/>

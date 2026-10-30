@@ -7,7 +7,7 @@
   justify-content: center;
   min-height: 140px;
   width: 29%;
-  background: #FFFFFF;
+  background: #ffffff;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
   border-radius: 16px;
   margin-bottom: 18px;
@@ -23,9 +23,9 @@
   }
 
   &--profit {
-    &--low { background: #C19276; }
-    &--medium { background: #FFFB8E; }
-    &--high { background: #A1FF97; }
+    &--low { background: #c19276; }
+    &--medium { background: #fffb8e; }
+    &--high { background: #a1ff97; }
   }
 
   &--history {
@@ -56,7 +56,7 @@
     font-weight: 600;
     font-size: 24px;
     line-height: 28px;
-    color: #8B1010;
+    color: #8b1010;
     display: inline-flex;
     align-items: center;
     gap: 4px;
@@ -88,20 +88,20 @@
     .amount__value {
       font-size: 24px;
       line-height: 28px;
-      color: #2C3E50;
+      color: #2c3e50;
     }
 
     .amount__currency {
       align-self: flex-end;
       margin-left: 4px;
-      color: #2C3E50;
+      color: #2c3e50;
       font-size: 14px;
     }
 
     &._blue {
-      color: #1E90FF;
+      color: #1e90ff;
       .amount__value,
-      .amount__currency { color: #1E90FF; }
+      .amount__currency { color: #1e90ff; }
     }
   }
 
@@ -109,7 +109,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    background: linear-gradient(135deg, #1E90FF 0%, #0D47A1 100%);
+    background: linear-gradient(135deg, #1e90ff 0%, #0d47a1 100%);
     border-radius: 12px;
     width: 64px;
     height: 32px;
@@ -130,7 +130,7 @@
   }
 
   .colored {
-    color: #2C3E50;
+    color: #2c3e50;
     font-weight: 600;
   }
 }
@@ -184,7 +184,7 @@
 .mini-order__profit-relative {
   font-size: 10px;
   line-height: 1.1;
-  color: #2C3E50;
+  color: #2c3e50;
   font-weight: 600;
 }
 
@@ -216,6 +216,6 @@
 }
 
 .mini-order--profit-negative .mini-order__profit {
-  color: #8B1010;
+  color: #8b1010;
   font-weight: 700;
 }

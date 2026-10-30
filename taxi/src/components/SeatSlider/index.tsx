@@ -9,6 +9,7 @@ import {
 } from '../../state/clientOrder'
 import Glide from '../Glide'
 import './styles.scss'
+import { t, TRANSLATION } from '../../localization'
 
 const mapStateToProps = (state: IRootState) => ({
   maxSeats: clientOrderSelectors.maxAvailableSeats(state),
@@ -56,15 +57,15 @@ function SeatSlider({ maxSeats, seats, setSeats }: IProps) {
         className: `seat-slider__slide ${
           seats === value ? 'seat-slider__slide__active' : ''
         }`,
-        onClick: () => setSeats(value),
-        children: value,
-      })), [items, seats, setSeats])}
+        children: <button type="button" className="rs-seat-choice" disabled={disabled} aria-label={`${t(TRANSLATION.SEATS)}: ${value}`} aria-pressed={seats === value} onClick={() => setSeats(value)}>{value}</button>,
+      })), [items, seats, setSeats, disabled])}
       buttons={useMemo(() => [
         ...(position === 0 ?
           [] :
           [{
             key: 0,
             className: 'seat-slider__button seat-slider__button--left',
+            'aria-label': t('seats_previous'),
             dir: '<' as '<',
             children: (
               <img
@@ -80,6 +81,7 @@ function SeatSlider({ maxSeats, seats, setSeats }: IProps) {
           [{
             key: 1,
             className: 'seat-slider__button seat-slider__button--right',
+            'aria-label': t('seats_more'),
             dir: '>' as '>',
             children: (
               <img

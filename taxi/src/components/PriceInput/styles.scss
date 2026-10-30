@@ -14,13 +14,13 @@
     padding: 6px 10px;
     border: 0;
     border-radius: 16px;
-    background-color: #E7E7E7;
+    background-color: #e7e7e7;
     box-sizing: border-box;
     cursor: pointer;
     transition: flex-basis 0.18s ease-in-out, background-color 0.18s ease-in-out, opacity 0.18s ease-in-out;
 
     &--disabled {
-      background-color: #EFEFEF;
+      background-color: #efefef;
     }
 
     &--active {

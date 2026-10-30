@@ -1,0 +1,58 @@
+/* Compact auth: fixed heading, scrollable fields only when needed, visible CTA. */
+body .overlay__wrapper>.modal.login-modal{padding:24px!important;background-image:none!important;max-height:calc(var(--taxi-viewport-height,100dvh) - 32px);border-radius:24px}
+body .overlay__wrapper>.modal.login-modal::before{display:none!important;content:none}
+body .login-modal>fieldset{margin:0;padding:0;min-width:0;border:0}
+body .login-modal>fieldset>legend{width:100%;margin:0 0 16px!important;padding:0!important;text-align:start!important;font-size:26px!important;line-height:32px!important;font-weight:800!important;color:var(--drive-black)!important}
+body .login-modal .tabs{display:flex;flex:none;gap:4px;min-height:44px;margin:0 0 16px;padding:4px;border-radius:14px;background:var(--drive-soft)}
+body .login-modal .tabs>button{flex:1;min-width:0;min-height:44px;padding:8px 12px;border-radius:10px!important;font:700 14px/20px Manrope,sans-serif}
+body .login-modal .login-form__input{margin:0 0 12px!important;min-width:0}
+body .login-modal .login-form__input .input__header{margin:0 0 6px;padding:0;min-height:18px;line-height:18px}
+body .login-modal .login-form__input .input__label{font-size:12px;line-height:18px}
+body .login-modal .login-form__input .input__wrapper{min-height:48px;border-radius:12px}
+body .login-modal .login-form__input .input{height:40px;font-size:16px;line-height:24px}
+body .login-modal .sign-up-subform .auth-password-toggle{display:grid;place-items:center;min-width:44px;width:44px;height:44px;min-height:44px;padding:8px;border:0;border-radius:10px;background:transparent!important;color:var(--drive-muted)!important}
+body .login-modal .sign-up-subform .auth-password-toggle-control{flex:0 0 44px;max-width:44px}
+body .login-modal:has(.sign-in-subform){width:min(100%,440px);max-width:440px}
+body .login-modal:has(.sign-up-subform){display:flex;flex-direction:column;width:min(100%,600px);max-width:600px;overflow:hidden}
+body .login-modal:has(.sign-up-subform)>fieldset{display:flex;flex-direction:column;flex:1 1 auto;min-height:0;overflow:hidden}
+body .login-modal:has(.sign-up-subform) .login{display:flex;flex-direction:column;flex:1 1 auto;min-height:0;overflow:hidden}
+body .login-modal .sign-up-subform{display:flex;flex-direction:column;flex:1 1 auto;min-height:0;gap:0;overflow:hidden}
+body .login-modal .auth-register-fields{display:block;flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain;padding-inline-end:4px;scroll-padding-block:8px;scrollbar-width:thin;scrollbar-color:#d3d3d3 transparent}
+body .login-modal .auth-register-footer{flex:none;padding-top:16px;background:#fff}
+body .login-modal .auth-register-footer .login-modal_login-btn{width:100%;min-height:48px;margin:0;border-radius:14px;font-size:15px}
+body .login-modal .sign-up-subform .auth-channel-options{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:0!important;padding:0;border:0}
+body .login-modal .auth-channel-choice{position:relative;min-width:0;min-height:44px;border:1px solid var(--drive-line);border-radius:12px;background:var(--drive-canvas)}
+body .login-modal .auth-channel-choice>svg{position:absolute;inset-inline-start:12px;top:13px;pointer-events:none;color:var(--drive-muted);z-index:1}
+body .login-modal .auth-channel-choice .checkbox{display:block;width:100%;margin:0}
+body .login-modal .auth-channel-choice .checkbox__input{position:absolute!important;width:1px!important;height:1px!important;padding:0!important;margin:-1px!important;overflow:hidden;clip-path:inset(50%);white-space:nowrap;visibility:visible}
+body .login-modal .auth-channel-choice .checkbox__label{display:flex;align-items:center;box-sizing:border-box;width:100%;min-height:44px;padding:10px 12px;padding-inline-start:38px;font-size:13px;line-height:20px;cursor:pointer}
+body .login-modal .auth-channel-choice .checkbox__label::before,body .login-modal .auth-channel-choice .checkbox__label::after{display:none!important}
+body .login-modal .auth-channel-choice:has(input:checked){border-color:var(--drive-red);background:var(--drive-soft);color:var(--drive-red)}
+body .login-modal .auth-channel-choice:has(input:focus-visible){outline:2px solid var(--drive-red);outline-offset:2px}
+body .login-modal .auth-channel-choice--unavailable{opacity:.45}
+body .login-modal .auth-channel-choice--unavailable .checkbox__label{cursor:not-allowed}
+body .login-modal .auth-register-fields>.ref-code__toggler{display:flex;align-items:center;min-height:44px;margin:0;padding:0}
+body .login-modal .auth-register-fields>.ref-code__input:not(.ref-code__input--active){display:none!important}
+body .login-modal:has(.sign-up-subform)>details{display:none}
+body .login-modal .sign-up-subform[data-registration-role=passenger] .auth-register-fields{display:grid;grid-template-columns:minmax(0,1fr);gap:12px;align-content:start}
+body .login-modal .sign-up-subform[data-registration-role=passenger] .auth-register-fields>.login-form__input{margin:0!important}
+@media(min-width:600px){
+ body .login-modal .sign-up-subform[data-registration-role=passenger] .auth-register-fields{grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px 16px}
+ body .login-modal .sign-up-subform[data-registration-role=passenger] .auth-register-fields>:is(:has(input[name=u_email]),fieldset,.ref-code__toggler,.ref-code__input,.alert-container){grid-column:1/-1}
+}
+@media(max-width:599px){
+ body .overlay__wrapper>.modal.login-modal{padding:20px 16px!important;max-height:calc(var(--taxi-viewport-height,100dvh) - 24px);border-radius:22px}
+ body .login-modal>fieldset>legend{font-size:24px!important;line-height:30px!important;margin-bottom:12px!important}
+ body .login-modal .tabs{margin-bottom:12px}
+ body .login-modal .auth-register-footer{padding-top:12px;padding-bottom:env(safe-area-inset-bottom)}
+}
+/* Fieldset's anonymous content box must not prevent the field area shrinking. */
+body .overlay__wrapper.login-modal-overlay{height:min(100dvh,var(--taxi-viewport-height,100dvh));padding:16px;align-items:center;overflow:hidden}
+body .overlay__wrapper>.modal.login-modal{max-height:min(calc(100dvh - 32px),calc(var(--taxi-viewport-height,100dvh) - 32px))}
+body .login-modal:has(.sign-up-subform)>fieldset{display:contents}
+body .login-modal>fieldset>legend{flex:none;padding-inline-end:44px!important;box-sizing:border-box}
+body .login-modal .sign-up-subform[data-registration-role=passenger] .login-form__input .input__wrapper{height:52px;min-height:52px;padding:3px 8px!important;align-items:center}
+@media(max-width:599px){
+ body .overlay__wrapper.login-modal-overlay{padding:12px}
+ body .overlay__wrapper>.modal.login-modal{max-height:min(calc(100dvh - 24px),calc(var(--taxi-viewport-height,100dvh) - 24px))}
+}

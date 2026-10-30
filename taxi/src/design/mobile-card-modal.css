@@ -1,0 +1,40 @@
+/* The driver card now uses the shared dialog lifecycle. Legacy overlay rules stay scoped away. */
+body .overlay__wrapper.status-card__modal{position:fixed;inset:0;bottom:auto;width:100%;height:var(--taxi-viewport-height,100dvh);padding:64px 16px max(16px,env(safe-area-inset-bottom));box-sizing:border-box;display:none;background:transparent;opacity:0;visibility:hidden;pointer-events:none;transition:none;overflow:hidden}
+body .overlay__wrapper.status-card__modal.overlay__wrapper--active{display:flex;opacity:1;visibility:visible;pointer-events:auto}
+body .overlay__wrapper.status-card__modal>.overlay{position:absolute;inset:0;display:block;width:100%;height:100%;max-width:none;max-height:none;margin:0;padding:0;border:0;border-radius:0;background:rgba(17,17,20,.36);box-shadow:none;overflow:hidden}
+body .overlay__wrapper.status-card__modal>.card-modal__surface{position:relative;box-sizing:border-box;display:flex;flex-direction:column;gap:16px;width:min(100%,620px);max-width:620px;max-height:calc(var(--taxi-viewport-height,100dvh) - 92px);min-height:0;margin:0;padding:20px;border:1px solid var(--rs-line);border-radius:18px;background:#fff;box-shadow:none;overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin;scroll-padding-block:16px;-webkit-overflow-scrolling:touch}
+body .overlay__wrapper.status-card__modal>.card-modal__surface>div{position:relative;padding-bottom:0;min-width:0}
+body .overlay__wrapper.status-card__modal>.card-modal__surface>div::before{display:none}
+body .overlay__wrapper.status-card__modal .card-modal__heading{display:grid;grid-template-columns:44px minmax(0,1fr);grid-template-rows:auto;gap:12px;align-items:center;padding:0 0 16px;border-bottom:1px solid var(--rs-line)}
+body .overlay__wrapper.status-card__modal .card-modal__heading .avatar{width:44px;height:44px;grid-row:auto;grid-column:auto;flex:none;border:1px solid var(--rs-line);border-radius:50%;background-color:var(--rs-canvas)}
+body .overlay__wrapper.status-card__modal .card-modal__heading .name{display:block;min-width:0;margin:0;padding:0}
+body .overlay__wrapper.status-card__modal .card-modal__heading h2{margin:0 0 3px;font-size:20px;line-height:28px;font-weight:800;letter-spacing:-.3px;color:var(--rs-ink);overflow-wrap:anywhere}
+body .overlay__wrapper.status-card__modal .card-modal__heading .name p{margin:0;font-size:14px;line-height:21px;font-weight:500;color:var(--rs-muted);overflow-wrap:anywhere}
+body .overlay__wrapper.status-card__modal .card-modal__heading .card-modal__status{grid-column:2;grid-row:auto;font-size:12px;font-weight:600;line-height:18px}
+body .overlay__wrapper.status-card__modal .address{margin:0;padding:14px;border:1px solid var(--rs-line);border-radius:12px;background:#f8f8f8}
+body .overlay__wrapper.status-card__modal .address>b{display:block;font-size:12px;line-height:18px;font-weight:600;opacity:1;color:var(--rs-muted);margin-bottom:12px}
+body .overlay__wrapper.status-card__modal .address__content{gap:12px}
+body .overlay__wrapper.status-card__modal .address__title{font-size:14px;font-weight:700;line-height:21px;color:var(--rs-ink)}
+body .overlay__wrapper.status-card__modal .address__row{display:grid;grid-template-columns:minmax(0,1fr) 44px 44px;gap:6px;align-items:flex-start;min-width:0}
+body .overlay__wrapper.status-card__modal .address__label{grid-column:1/-1;font-size:12px;line-height:18px;font-weight:600;color:var(--rs-muted)}
+body .overlay__wrapper.status-card__modal .address__value{grid-column:1;font-size:14px;line-height:22px;font-weight:500;white-space:normal;overflow-wrap:anywhere;color:var(--rs-ink);min-width:0}
+body .overlay__wrapper.status-card__modal button.address__toggle,body .overlay__wrapper.status-card__modal button.card-modal__map-button{box-sizing:border-box;display:grid;place-items:center;flex:none;width:44px!important;height:44px!important;min-width:44px!important;min-height:44px!important;max-height:44px;margin:0!important;padding:10px!important;border:1px solid var(--rs-line);border-radius:10px;background:#fff;color:var(--rs-primary);cursor:pointer;line-height:1}
+body .overlay__wrapper.status-card__modal button.address__toggle{grid-column:2}
+body .overlay__wrapper.status-card__modal button.card-modal__map-button{grid-column:3}
+body .overlay__wrapper.status-card__modal :is(button.address__toggle,button.card-modal__map-button):hover{background:var(--rs-selected)}
+body .overlay__wrapper.status-card__modal .card-modal__surface :is(.time,.payment){font-size:14px;line-height:21px;color:var(--rs-ink);overflow-wrap:anywhere}
+body .overlay__wrapper.status-card__modal .card-modal__surface :is(.time,.payment) p{font-size:14px;line-height:21px;margin:0 0 8px}
+body .overlay__wrapper.status-card__modal .client{display:flex;flex-direction:column;gap:12px;margin:0;padding:0;background:none;border:0;min-width:0}
+body .overlay__wrapper.status-card__modal .client>.comments{margin:0;overflow-wrap:anywhere}
+body .overlay__wrapper.status-card__modal .client>form{position:relative;min-width:0;width:100%;margin:0;padding:14px 0 0;border-top:1px solid var(--rs-line)}
+body .overlay__wrapper.status-card__modal .client .btns{display:flex!important;flex-wrap:wrap!important;align-items:stretch!important;justify-content:stretch!important;gap:8px!important;margin:0!important;padding:0!important}
+body .overlay__wrapper.status-card__modal .client .btns>.button__wrapper,body .overlay__wrapper.status-card__modal .client .btns>.order_action-button-wrapper{flex:1 1 160px!important;box-sizing:border-box;min-width:0!important;width:auto!important;max-width:100%!important;margin:0!important;padding:0!important}
+body .overlay__wrapper.status-card__modal .client .btns .button{box-sizing:border-box;display:flex;align-items:center;justify-content:center;width:100%!important;min-width:44px!important;max-width:100%!important;height:auto!important;min-height:48px!important;margin:0!important;padding:12px 16px!important;border-radius:10px!important;font-size:14px!important;line-height:21px!important;font-weight:700!important;white-space:normal!important;text-align:center;overflow-wrap:anywhere;box-shadow:none!important}
+body .overlay__wrapper.status-card__modal .rs-dialog-close{width:44px;height:44px;min-width:44px;border-radius:12px}
+@media(max-width:599px){body .overlay__wrapper.status-card__modal{padding:64px 12px max(12px,env(safe-area-inset-bottom))}body .overlay__wrapper.status-card__modal>.card-modal__surface{width:100%;max-height:calc(var(--taxi-viewport-height,100dvh) - 88px);padding:16px 12px;border-radius:16px}body .overlay__wrapper.status-card__modal .address{padding:12px 10px}body .overlay__wrapper.status-card__modal .client .btns>.button__wrapper{flex-basis:120px!important}}
+@media(max-height:500px){body .overlay__wrapper.status-card__modal{padding:56px 12px 8px}body .overlay__wrapper.status-card__modal>.card-modal__surface{max-height:calc(var(--taxi-viewport-height,100dvh) - 64px)}}
+body .overlay__wrapper.status-card__modal .client .btns .button--secondary{background:#fff!important;color:var(--rs-ink)!important;border:1px solid var(--rs-line)!important}
+body .overlay__wrapper.status-card__modal .client .btns .button--danger{background:var(--rs-danger-bg,#fff1f0)!important;color:var(--rs-danger,#b42318)!important;border:1px solid #efc5c1!important}
+body .overlay__wrapper.status-card__modal :is(.order__driver-offer-eta-chip,.order__driver-offer-select,.order__driver-offer-select-option){box-sizing:border-box;min-height:44px!important;height:auto!important;padding:10px 12px!important;white-space:normal!important;font-size:13px!important;line-height:20px!important;border-radius:8px}
+body .overlay__wrapper.status-card__modal .order__driver-offer-select-option{display:block;width:100%;text-align:start;border:0}
+body .overlay__wrapper.status-card__modal .order__driver-offer-select-list{max-height:220px;overflow-y:auto}

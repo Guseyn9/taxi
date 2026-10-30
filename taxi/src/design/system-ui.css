@@ -1,0 +1,162 @@
+/* Shared UI contract: typography, predictable fields, explicit actions. */
+:root{--rs-danger:#b42318;--rs-danger-bg:#fff1f0}
+body input,body select,body textarea,body button{font-variant-numeric:tabular-nums}
+#root .input:focus-visible,body .overlay__wrapper .input:focus-visible{outline:none;box-shadow:none;--tw-ring-shadow:0 0 #0000;--tw-ring-offset-shadow:0 0 #0000}
+#root .input__error,body .overlay__wrapper .input__error{font-size:12px;line-height:18px;color:var(--rs-danger);margin-top:6px;overflow-wrap:anywhere}
+#root .button,body .overlay__wrapper .button{min-height:44px;font-size:14px;line-height:20px}
+#root .button--danger,body .overlay__wrapper .button--danger{background:var(--rs-danger)!important;color:#fff;border-color:var(--rs-danger)}
+#root .button--secondary,body .overlay__wrapper .button--secondary{background:#fff!important;color:var(--rs-ink);border:1px solid var(--rs-line)}
+/* Every money meaning remains visible; activation does not resize a segment. */
+#root .price-input{display:flex;flex-direction:column;width:100%;gap:8px;min-width:0}
+#root .price-input .price-input__container{display:flex;align-items:center;flex:0 0 auto;width:100%;min-width:0;min-height:64px;padding:10px 12px;gap:10px;background:#f8f8f8;border:1px solid var(--rs-line);border-radius:12px;transition:none;box-shadow:none;outline:none}
+#root .price-input .price-input__container--active{background:#fff;border-color:#c8bdb5}
+#root .price-input .price-input__container:focus-visible,#root .price-input .price-input__container:has(input:focus){outline:2px solid var(--rs-primary);outline-offset:2px}
+#root .price-input .price-input__pictogram{display:grid;place-items:center;flex:0 0 22px;width:22px;height:22px;color:var(--rs-muted)}
+#root .price-input .price-input__pictogram svg{width:20px;height:20px}
+#root .price-input .price-input__content{display:grid;grid-template-columns:minmax(0,1fr) 80px;align-items:center;flex:1 1 auto;width:auto;min-width:0;gap:12px}
+#root .price-input .price-input__label{display:block;min-width:0;overflow:visible;white-space:normal;text-overflow:clip;font-size:12px;line-height:18px;font-weight:600;color:var(--rs-muted)}
+#root .price-input .price-input__value,#root .price-input input.price-input__segment-input{box-sizing:border-box;display:block;width:80px;min-width:0;max-width:none;height:40px;min-height:40px;padding:0 6px;margin:0;flex:none;line-height:40px;font-size:16px;font-weight:700;text-align:end;color:var(--rs-ink);background:transparent;border:0;border-radius:6px;outline:none;box-shadow:none;--tw-ring-shadow:0 0 #0000;--tw-ring-offset-shadow:0 0 #0000;transform:none}
+#root .price-input .price-input__container--disabled{opacity:1;cursor:default}
+/* Dialogs share one surface. Close is always available, including during loading. */
+body .overlay__wrapper{padding:64px 16px 20px;outline:none}
+body .overlay__wrapper>.modal{width:min(100%,420px);max-width:420px;max-height:calc(var(--taxi-viewport-height,100dvh) - 92px);padding:24px;border:1px solid var(--rs-line);border-radius:20px;background:#fff;box-shadow:none;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin;scroll-padding-block:16px}
+body .overlay__wrapper>.profile-modal,body .overlay__wrapper>.login-modal{width:min(100%,640px);max-width:640px}
+body .overlay__wrapper .modal fieldset,body .overlay__wrapper .modal form fieldset{width:100%;min-width:0;margin:0;padding:0;border:0!important;border-radius:0}
+body .overlay__wrapper .modal fieldset legend{float:none;width:100%;margin:0 0 20px;padding:0;color:var(--rs-ink)!important;text-align:start;font-size:22px;font-weight:800;line-height:28px;letter-spacing:-.4px}
+body .overlay__wrapper .modal h2,body .overlay__wrapper .modal h3{font-size:20px;line-height:28px;font-weight:700;margin:0 0 16px;color:var(--rs-ink);text-align:start}
+body .overlay__wrapper .modal .input__field-wrapper{margin-bottom:16px;min-width:0}
+body .overlay__wrapper .modal .input__header{height:auto;min-height:18px;margin:0 0 6px}
+body .overlay__wrapper .modal .input__label{font-size:12px;line-height:18px;font-weight:600;color:var(--rs-muted)}
+body .overlay__wrapper .modal .input__wrapper{box-sizing:border-box;min-width:0;min-height:48px;padding:3px 8px;background:#f8f8f8;border:1px solid var(--rs-line);border-radius:10px;outline:none;box-shadow:none}
+body .overlay__wrapper .modal .input__wrapper:has(.input:focus){outline:2px solid var(--rs-primary);outline-offset:2px}
+body .overlay__wrapper .modal .input{box-sizing:border-box;height:42px;min-width:0;padding:4px 6px;border:0;border-radius:0;background:transparent;font-size:16px;line-height:24px;transform:none;outline:none;box-shadow:none}
+body .overlay__wrapper .modal textarea.input{min-height:80px;resize:vertical}
+body .overlay__wrapper .modal select.input{min-height:44px;width:100%;font-size:14px;line-height:normal}
+body .overlay__wrapper .modal .input__buttons{flex-shrink:0}
+body .rs-dialog-close{position:absolute;top:max(12px,env(safe-area-inset-top));inset-inline-end:max(16px,env(safe-area-inset-right));z-index:4;display:grid;place-items:center;width:44px;height:44px;padding:10px;border:1px solid var(--rs-line);border-radius:12px;background:#fff;color:var(--rs-ink);cursor:pointer}
+body .rs-dialog-close:hover{background:var(--rs-selected);color:var(--rs-primary)}
+body .overlay__wrapper:has(.login-modal__close,.message-modal__close)>.rs-dialog-close{display:none}
+body .login-modal__close,body .message-modal__close{width:44px;height:44px;min-width:44px;top:8px;right:8px;display:grid;place-items:center;border-radius:10px;color:var(--rs-muted);background:#f8f8f8;border:1px solid var(--rs-line);z-index:3}
+body .login-modal{padding-top:56px!important}
+body .login-modal .login,body .login-modal .login-form{width:100%;min-width:0;margin:0;padding:0}
+body .login-modal .sign-up-subform{display:flex;flex-direction:column;gap:0}
+body .login-modal .tabs{margin-bottom:20px}
+/* Use the existing native checkbox, rather than an invisible input + fragile pseudo icon. */
+body .overlay__wrapper .checkbox,#root .checkbox{position:relative;display:flex;align-items:center;gap:10px;margin:0;min-height:44px}
+body .overlay__wrapper input.checkbox__input,#root input.checkbox__input{visibility:visible;position:static;display:block;flex:0 0 20px;width:20px;height:20px;margin:0;accent-color:var(--drive-red,#b51218);cursor:pointer;opacity:1}
+body .overlay__wrapper .checkbox__label,#root .checkbox__label{display:flex;align-items:center;min-width:0;min-height:44px;flex:1;font-size:14px;line-height:20px;color:var(--rs-ink);cursor:pointer}
+body .overlay__wrapper .checkbox .checkbox__input+.checkbox__label:before,#root .checkbox .checkbox__input+.checkbox__label:before{display:none!important;content:none!important}
+body .overlay__wrapper .comments-modal{padding:20px;width:min(100%,420px)}
+body .comments-modal__form{max-height:none;overflow:visible;gap:4px;padding:0}
+body .comments-modal .checkbox{border-bottom:1px solid var(--rs-line);padding-block:2px}
+body .comments-modal .checkbox:last-of-type{border-bottom:0}
+body .comments-modal .button__wrapper{position:static!important;padding:12px 0 0!important;background:#fff!important}
+body .comments-modal .button{border-radius:10px!important;background:var(--rs-primary)!important;min-height:44px!important}
+body .timer-modal{padding:8px!important}
+body .timer-modal__item{margin:0}
+body .timer-modal__button{box-sizing:border-box;display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;min-height:56px;padding:12px 16px;margin:0;border:0;border-radius:10px;background:#fff;color:var(--rs-ink);font-size:15px;font-weight:600;text-align:start}
+body .timer-modal__button--active{background:var(--rs-selected);color:var(--rs-primary)}
+body .timer-modal__button:hover{background:#f8f8f8}
+body .timer-modal__separator{display:none}
+body .timer-modal__label{font-size:12px;color:var(--rs-muted)}
+/* Tabs are real buttons, with a quieter selected state. */
+#root .tabs,body .overlay__wrapper .tabs{display:flex;gap:4px;padding:4px;border:1px solid var(--rs-line);border-radius:12px;background:var(--rs-canvas);overflow:auto}
+#root .tabs>button,body .overlay__wrapper .tabs>button{display:flex;align-items:center;justify-content:center;flex:1 0 auto;min-width:44px;min-height:44px;height:auto;padding:10px 12px;border:0;border-radius:8px;background:transparent!important;cursor:pointer}
+#root .tabs>button.is-active,body .overlay__wrapper .tabs>button.is-active{background:#fff!important;box-shadow:0 0 0 1px var(--rs-line)}
+#root .tabs__label,body .overlay__wrapper .tabs__label{font-size:13px;font-weight:700;color:var(--rs-muted)}
+#root .tabs>button.is-active .tabs__label,body .overlay__wrapper .tabs>button.is-active .tabs__label{color:var(--rs-primary)}
+#root .tabs>button:disabled,body .overlay__wrapper .tabs>button:disabled{opacity:.5;cursor:not-allowed}
+#root .menu__list,#root .menu__languages{max-height:calc(var(--taxi-viewport-height,100dvh) - 88px);overflow-y:auto;max-width:calc(100vw - 32px)}
+body .loading-frame{font-size:14px;line-height:20px;color:var(--rs-muted);padding:24px;gap:12px}
+body .loading-frame>img{width:40px;height:40px;object-fit:contain}
+body .profile-modal .avatar>svg{width:44px;height:44px}
+body .message-modal__hero{gap:12px}
+body .message-modal__hero-icon-wrapper{width:44px;height:44px;border-radius:12px;box-shadow:none;background:var(--rs-selected);color:var(--rs-primary)}
+body .message-modal__info-card{padding:16px;border:1px solid var(--rs-line);border-radius:12px;background:#f8f8f8;box-shadow:none}
+body .message-modal__info-title{font-size:14px;font-weight:700;line-height:20px}
+body .message-modal__info-text,body .message-modal__subtitle{font-size:14px;line-height:21px;color:var(--rs-muted)}
+body .message-modal__action-button{min-height:44px;border-radius:10px;font-size:14px}
+body .message-modal__action-button--primary{background:var(--rs-primary);color:white}
+body .message-modal__action-button--secondary{background:#fff;color:var(--rs-ink);border:1px solid var(--rs-line)}
+body .cancel-order-modal .reason-item{min-height:44px;padding:12px;border:1px solid var(--rs-line);border-radius:10px;background:#fff;color:var(--rs-ink);font-size:14px;line-height:20px;margin-bottom:8px}
+body .cancel-order-modal .reason-item--active{border-color:var(--rs-primary);background:var(--rs-selected)}
+body .rating-modal .rating{padding:0;margin:0}
+body .rating-modal .final-price{font-size:20px;line-height:28px;font-weight:800}
+/* Active passenger journey follows the same status / details / action hierarchy. */
+#root .passenger-live-order{padding:4px 0 0;gap:12px;max-height:100%;border-radius:0;background:#fff;color:var(--rs-ink);box-shadow:none}
+#root .passenger-live-order__handle{display:none}
+#root .passenger-live-order__status-card{padding:14px 12px;gap:10px;border:1px solid #e9e4df;border-radius:12px;background:#f8f6f3;box-shadow:none}
+#root .passenger-live-order__status-icon{width:40px;height:40px;flex-basis:40px;border-radius:10px;background:#fff;color:var(--rs-primary);box-shadow:none}
+#root .passenger-live-order__status-title{font-size:18px;line-height:24px;gap:8px;color:var(--rs-primary);margin-bottom:3px}
+#root .passenger-live-order__status-title span{font-size:12px;min-height:24px;background:#fff;color:var(--rs-muted);padding:2px 8px}
+#root .passenger-live-order__status-subtitle{font-size:13px;line-height:19px;color:var(--rs-muted)}
+#root .passenger-live-order__search-spinner{border-color:#c8bdb5;border-top-color:var(--rs-primary)}
+#root .passenger-live-order__detail,#root .passenger-live-order__driver-row,#root .passenger-live-order__candidate{padding:12px;border:1px solid var(--rs-line);border-radius:12px;background:#fff;box-shadow:none;min-width:0}
+#root .passenger-live-order__detail{font-size:14px;line-height:21px;overflow-wrap:anywhere}
+#root .passenger-live-order__driver-name{font-size:16px;font-weight:700;line-height:23px}
+#root .passenger-live-order__driver-car{font-size:13px;line-height:19px;color:var(--rs-muted)}
+#root .passenger-live-order__plate{font-size:14px;line-height:20px;letter-spacing:.5px;background:var(--rs-canvas);border-color:var(--rs-line)}
+#root .passenger-live-order__candidate.is-active{border-color:var(--rs-primary);background:var(--rs-selected)}
+#root .passenger-live-order__action,#root .passenger-live-order__choose-button{min-height:44px;border-radius:10px;background:var(--rs-primary);color:#fff;border:1px solid transparent;box-shadow:none;font-size:14px;font-weight:700;line-height:20px}
+#root .passenger-live-order__action--secondary,#root .passenger-live-order__top-action{min-height:44px;background:#fff;color:var(--rs-ink);border:1px solid var(--rs-line);border-radius:10px;box-shadow:none}
+#root .passenger-live-order__action--sos{background:#fff6df;color:#805500;border:1px solid #ebd499}
+#root .passenger-live-order__driver-cancel{min-height:44px;min-width:44px;border:1px solid #f2c7c3;background:var(--rs-danger-bg);color:var(--rs-danger);border-radius:10px}
+#root .passenger-live-order__call{min-height:44px;min-width:44px;background:var(--rs-selected);color:var(--rs-primary);border:1px solid #c8bdb5;border-radius:10px;box-shadow:none}
+#root .passenger-live-order__boarding-code{padding:14px;background:var(--rs-canvas);border:1px solid var(--rs-line);border-radius:12px;box-shadow:none}
+@media(max-width:599px){
+ body .overlay__wrapper{padding:64px 12px max(16px,env(safe-area-inset-bottom))}
+ body .overlay__wrapper>.modal{max-height:calc(var(--taxi-viewport-height,100dvh) - 88px);padding:20px 16px;border-radius:18px}
+ body .overlay__wrapper>.login-modal{padding-top:56px!important}
+ body .overlay__wrapper .modal fieldset legend{font-size:20px;line-height:26px;margin-bottom:16px}
+ #root .price-input .price-input__content{grid-template-columns:minmax(0,1fr) 72px;gap:8px}
+ #root .price-input .price-input__value,#root .price-input input.price-input__segment-input{width:72px}
+ #root .passenger-live-order__details-grid{grid-template-columns:minmax(0,1fr)}
+}
+@media(prefers-reduced-motion:reduce){body .overlay__wrapper *{animation-duration:.01ms!important;transition-duration:.01ms!important}}
+/* Backend-defined JSON forms keep their fields and validation, with the same spacing. */
+body .overlay__wrapper .element__field{display:block;min-width:0;margin:0 0 16px}
+body .overlay__wrapper .element__label{display:flex;align-items:center;flex-wrap:wrap;gap:4px;margin:0 0 6px;font-size:12px;font-weight:600;line-height:18px;color:var(--rs-muted)}
+body .overlay__wrapper .element__text_input,body .overlay__wrapper .element__select_input{box-sizing:border-box;width:100%;min-width:0;height:48px;padding:10px 12px;border:1px solid var(--rs-line);border-radius:10px;background:#f8f8f8;color:var(--rs-ink);font-size:16px;line-height:24px;box-shadow:none;outline:none}
+body .overlay__wrapper .element__text_input:focus-visible,body .overlay__wrapper .element__select_input:focus-visible{outline:2px solid var(--rs-primary);outline-offset:2px}
+body .overlay__wrapper .element__input{min-width:0}
+body .overlay__wrapper .element__checkbox,body .overlay__wrapper .element__radio{display:flex;align-items:flex-start;gap:10px;position:relative;min-height:44px;padding:8px 0;font-size:13px;line-height:20px}
+body .overlay__wrapper .element__checkbox_input,body .overlay__wrapper .element__radio_input{display:block;visibility:visible;position:static;flex:0 0 20px;width:20px;height:20px;margin:0;accent-color:var(--rs-primary)}
+body .overlay__wrapper .element__checkbox_input+span,body .overlay__wrapper .element__radio_input+span{display:block;min-width:0;margin:0;min-height:20px;height:auto;font-size:13px;line-height:20px}
+body .overlay__wrapper .element__checkbox_input+span:before,body .overlay__wrapper .element__radio_input+span:before{display:none;content:none}
+body .overlay__wrapper .element__hint_icon{display:grid;place-items:center;width:24px;height:24px;padding:0;border:1px solid var(--rs-line);border-radius:50%;color:var(--rs-muted);background:#fff;font-size:12px;font-weight:600;cursor:help}
+body .overlay__wrapper .element__hint:focus-within .element__hint_message{display:block;visibility:visible;opacity:1}
+body .overlay__wrapper .element__field_error,body .overlay__wrapper .element__required{color:var(--rs-danger);font-size:12px;line-height:18px}
+body .overlay__wrapper .element__field_subscription{font-size:12px;line-height:18px;color:var(--rs-muted)}
+body .overlay__wrapper .element__file_add{min-height:44px;border:1px dashed var(--rs-line);border-radius:10px;background:#f8f8f8;color:var(--rs-muted)}
+body .login-modal .checkboxes{font-size:14px;line-height:20px;color:var(--rs-ink)}
+body .login-modal .checkboxes label{font-size:14px!important;line-height:20px!important;color:var(--rs-ink)!important;font-weight:500!important}
+body .login-modal .restore-password-block__button{background:#fff!important;color:var(--rs-muted);border:1px solid var(--rs-line);font-size:12px;min-height:44px}
+body .login-modal .input__buttons img[role=button]{box-sizing:border-box;width:44px;height:44px;padding:11px;object-fit:contain;cursor:pointer;border-radius:8px}
+body .login-modal .version-info{font-size:10px;line-height:15px;color:var(--rs-muted)}
+#root .loading-frame{box-sizing:border-box;max-width:480px;margin:auto;text-align:center;gap:20px}
+#root .loading-frame__title{font-size:16px;font-weight:600;line-height:24px;color:var(--rs-muted);text-align:center}
+#root .loading-frame .driver-login-action{display:flex;align-items:center;justify-content:center;gap:8px;width:auto;min-height:48px;padding:12px 20px;border:0;border-radius:10px;background:var(--rs-primary);color:#fff;font-size:14px;font-weight:700;box-shadow:none}
+#root .loading-frame .driver-login-action{height:48px;min-height:48px;max-height:48px;flex:none;width:auto;min-width:120px;max-width:100%;align-self:center}
+body .timer-modal .rs-dialog-title{padding:12px 16px 4px;margin:0;font-size:18px;line-height:26px}
+body .comments-modal .rs-dialog-title{margin-bottom:12px;font-size:20px;line-height:28px}
+body .rs-version-details{margin-top:16px;color:var(--rs-muted);font-size:11px;line-height:16px}
+body .rs-version-details>summary{cursor:pointer;min-height:32px;padding-block:8px;font-size:11px;line-height:16px}
+body .overlay__wrapper .rs-version-details .version-info{display:flex;flex-wrap:wrap;gap:4px 10px;margin:0;padding:0}
+body .overlay__wrapper .rs-version-details .info-item{font-size:10px;line-height:16px;font-weight:400;color:var(--rs-muted)}
+#root .tabs>button:has(.img),body .overlay__wrapper .tabs>button:has(.img){flex-direction:column;gap:6px}
+#root .tabs>button .img,body .overlay__wrapper .tabs>button .img{display:flex;align-items:center;justify-content:center;height:32px;max-width:64px;margin:0}
+#root .tabs>button .img img,body .overlay__wrapper .tabs>button .img img{display:block;max-height:32px;max-width:64px;width:auto;object-fit:contain}
+#root .rs-seat-choice{display:grid;place-items:center;box-sizing:border-box;width:100%;height:44px;min-height:44px;padding:0;border:0;border-radius:8px;background:transparent;color:inherit;font-size:14px;font-weight:inherit;cursor:pointer}
+/* Keep the existing close actions visible while a long form scrolls. */
+body .overlay__wrapper .login-modal__close,body .overlay__wrapper .message-modal__close{position:fixed;top:max(12px,env(safe-area-inset-top));right:max(16px,env(safe-area-inset-right));z-index:5}
+body .overlay__wrapper .modal.login-modal{padding-top:24px!important}
+body .timer-modal__button{height:56px}
+#root .price-input .price-input__container:focus-visible,#root .price-input .price-input__container:has(input:focus){outline:none;border-color:var(--rs-primary);box-shadow:inset 0 0 0 1px var(--rs-primary)}
+#root .price-input__unit{display:block;margin-top:2px;font-size:10px;font-weight:500;line-height:14px;color:var(--rs-muted)}
+#root .pilot-note{font-size:12px;line-height:18px;color:#666666;padding:8px 10px;background:#f8f8f8;border:1px solid #e9e9e9;border-radius:8px}#root .pilot-note summary{cursor:pointer;font-size:11px;color:#666666}#root .pilot-note p{margin:6px 0 0;font-size:12px;line-height:18px}
+#root details.pilot-config-note{width:fit-content;max-width:100%;margin:0 0 12px;padding:4px 9px;background:#fff8ed;border-color:#f0dfc6}
+#root .pilot-config-note>summary{min-height:24px;line-height:24px;padding:0;color:#79572f;text-decoration:none;list-style:none}
+#root .pilot-config-note>summary::-webkit-details-marker{display:none}
+#root details.pilot-config-note[open]{width:auto}
+#root .rs-readonly-location{padding:12px 14px;min-height:76px;border:0!important;box-shadow:none!important}#root .rs-readonly-location>span{display:block;font-size:11px;color:#666666;margin-bottom:5px}#root .rs-readonly-location>p{margin:0;font-size:14px;line-height:21px;font-weight:600;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;overflow-wrap:anywhere}#root .rs-readonly-location+.rs-readonly-location{border-top:1px solid #e9e9e9!important}
+body .pilot-boarding-modal label{display:block;font-size:13px;color:#666666}body .pilot-boarding-modal input{display:block;width:100%;height:52px;border:1px solid #e9e9e9;border-radius:10px;margin:8px 0 16px;padding:10px;font:700 22px Manrope,sans-serif;letter-spacing:8px}body .pilot-boarding-modal button[type=submit]{width:100%;min-height:48px;background:var(--drive-red,#b51218);color:white;border:0;border-radius:10px;font:700 14px Manrope,sans-serif}body .pilot-boarding-modal [role=alert]{font-size:13px;color:#b42318}

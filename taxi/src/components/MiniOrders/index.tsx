@@ -1,4 +1,9 @@
+import {userSelectors} from '../../state/user'
+import {pendingOffer} from '../../pilot/pendingOffer'
+import { formatDriverRating } from '../../tools/driverRating'
+import {addressLocale} from '../../design/addressPresentation'
 import React from 'react'
+import {CarFront,UsersRound,Tag} from 'lucide-react'
 import { ConnectedProps, connect } from 'react-redux'
 import cn from 'classnames'
 import OrderId from '../OrderId'
@@ -23,12 +28,11 @@ import { backendGateway } from '../../platform/adapters/LegacyBackendGateway'
 import { driverMapGateway } from '../../platform/adapters/DriverMapGateway'
 import ChatToggler from '../Chat/Toggler'
 import CarClassBadge, { getRequiredCarClassKind } from '../CarClassBadge'
-import votingModeIconPng from './icon_group_check.png'
-import offerModeIconPng from './icon_tag_star.png'
 import { PassengerUiConfig } from '../../types/passengerUi'
 import './styles.scss'
 
 const mapStateToProps = (state: IRootState) => ({
+  ownerId: userSelectors.user(state)?.u_id,
   activeOrders: ordersSelectors.activeOrders(state),
   selectedOrder: clientOrderSelectors.selectedOrder(state),
   language: configSelectors.language(state),
@@ -299,11 +303,7 @@ function getCandidateDrivers(order: IOrder) {
 
 
 function getDriverRating(driver?: IDriver | null) {
-  const rating = Number(driver?.c_rating)
-  if (Number.isFinite(rating) && rating > 0)
-    return rating.toFixed(1)
-
-  return driver ? '4.8' : '—'
+  return formatDriverRating(driver?.c_rating)
 }
 
 function getOrderTypeText(order: IOrder) {
@@ -426,23 +426,9 @@ function getMiniOrderMode(order: IOrder): MiniOrderMode {
   return 'order'
 }
 
-function MiniOrderModeIcon({ mode }: { mode: MiniOrderMode }) {
-  if (mode === 'offer') {
-    return <img src={offerModeIconPng} alt="" aria-hidden="true" className="mini-orders__mode-icon-image" />
-  }
-
-  if (mode === 'voting') {
-    return <img src={votingModeIconPng} alt="" aria-hidden="true" className="mini-orders__mode-icon-image" />
-  }
-
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" className="mini-orders__plain-car-icon">
-      <path d="M6.1 11.8 7.2 8.6c.4-1.1 1.5-1.8 2.7-1.8h4.3c1.2 0 2.3.7 2.7 1.8l1.1 3.2h.4c.8 0 1.4.6 1.4 1.4v2.7c0 .8-.6 1.4-1.4 1.4h-.8c-.3.8-1 1.4-1.9 1.4-.9 0-1.6-.6-1.9-1.4h-3.7c-.3.8-1 1.4-1.9 1.4-.9 0-1.6-.6-1.9-1.4h-.8c-.8 0-1.4-.6-1.4-1.4v-2.7c0-.8.6-1.4 1.4-1.4h.5Z" fill="currentColor" />
-      <path d="M8.8 9.1h6.4c.4 0 .7.2.8.6l.5 1.5H7.5L8 9.7c.1-.4.4-.6.8-.6Z" fill="#FFFFFF" opacity=".96" />
-      <circle cx="8.8" cy="15.4" r="1.1" fill="#FFFFFF" opacity=".98" />
-      <circle cx="15.2" cy="15.4" r="1.1" fill="#FFFFFF" opacity=".98" />
-    </svg>
-  )
+function MiniOrderModeIcon({mode}:{mode:MiniOrderMode}){
+ const Icon=mode==='offer'?Tag:mode==='voting'?UsersRound:CarFront
+ return <Icon size={18} aria-hidden="true"/>
 }
 
 const connector = connect(mapStateToProps, mapDispatchToProps)
@@ -453,7 +439,8 @@ interface IProps extends ConnectedProps<typeof connector> {
   uiConfig?: PassengerUiConfig
 }
 
-function MiniOrders({
+export function MiniOrders({
+  ownerId,
   activeOrders,
   selectedOrder,
   setSelectedOrder,
@@ -571,14 +558,16 @@ function MiniOrders({
   if (!activeOrders?.length) return null
 
   return (
-    <div className={cn('mini-orders', className)} data-ui-state={uiConfig?.state}>
+    <div className={cn('mini-orders', className)} data-ui-state={uiConfig?.state} role="navigation" aria-label={`${({ru:'Активные заказы',fr:'Trajets actifs',ar:'الرحلات النشطة'} as Record<string,string>)[addressLocale(languageIso)] || 'Active trips'}: ${activeOrders.length}`}>
       {
         activeOrders.map(order => {
           const isCardSelected = selectedOrder === order.b_id
           const orderDriver = getActiveDriver(order)
           const candidatesCount = getCandidateDrivers(order).length
           const isTripStarted = orderDriver?.c_state === EBookingDriverState.Started
-          const statusText = getOrderStatusText(order, orderDriver)
+          const isModePending = pendingOffer(ownerId,order.b_id)
+          const pendingText = ({ru:'Тип уточняется',fr:'Type à confirmer',ar:'النوع غير مؤكد'} as Record<string,string>)[addressLocale(languageIso)] || 'Type unconfirmed'
+          const statusText = isModePending ? pendingText : getOrderStatusText(order, orderDriver)
           const ratingText = getDriverRating(orderDriver)
           const typeText = getOrderTypeText(order)
           const uiConfigApplies = Boolean(uiConfig && isCardSelected && !uiConfig.legacy)
@@ -616,16 +605,16 @@ function MiniOrders({
               // Контракт для E2E: плашка конкретного активного заказа пассажира.
               data-testid="passenger-mini-order"
               data-order-id={order.b_id}
-              onClick={() => handleOrderClick(order)}
             >
+              <button type="button" className="mini-orders__select-target" aria-pressed={isCardSelected} aria-label={`№${order.b_id}: ${statusText}`} onClick={() => handleOrderClick(order)} />
               <span className={cn('mini-orders__mode-icon', `mini-orders__mode-icon--${orderMode}`)} aria-hidden="true">
-                <MiniOrderModeIcon mode={orderMode} />
+                {isModePending ? '?' : <MiniOrderModeIcon mode={orderMode} />}
               </span>
 
               <div className="mini-orders__main">
                 <div className="mini-orders__header">
-                  <span className="mini-orders__id"><OrderId orderId={order.b_id} variant="short" /></span>
-                  <span className="mini-orders__status">{getMiniOrderTitleText(order, statusText, orderDriver)}</span>
+                  <span className="mini-orders__id">№{String(order.b_id)}</span>
+                  <span className="mini-orders__status">{isModePending ? pendingText : getMiniOrderTitleText(order, statusText, orderDriver)}</span>
                 </div>
 
                 <div className="mini-orders__body">
@@ -647,7 +636,7 @@ function MiniOrders({
                 </div>
               </div>
 
-              <CarClassBadge kind={carClassKind} compact className="mini-orders__car-class" />
+              <CarClassBadge kind={carClassKind} point={typeof order.b_start_latitude==='number' && typeof order.b_start_longitude==='number' ? [order.b_start_latitude,order.b_start_longitude] : undefined} compact className="mini-orders__car-class" />
 
               {isTripStarted && isCardSelected && (!uiConfigApplies || uiConfig!.showFinishTrip) && (
                 <div className="mini-orders__started-actions">

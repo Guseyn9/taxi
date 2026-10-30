@@ -1,4 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
+import { formatEstimatedFare } from '../../design/fareDisplay'
+import { configSelectors } from '../../state/config'
+import { Calculator, CarFront, Wallet } from 'lucide-react'
 import cn from 'classnames'
 import { connect, ConnectedProps } from 'react-redux'
 import moment from 'moment'
@@ -14,6 +17,7 @@ import { t, TRANSLATION } from '../../localization'
 import './styles.scss'
 
 const mapStateToProps = (state: IRootState) => ({
+  language:configSelectors.language(state),
   from: clientOrderSelectors.from(state),
   to: clientOrderSelectors.to(state),
   time: clientOrderSelectors.time(state),
@@ -31,6 +35,11 @@ const connector = connect(mapStateToProps, mapDispatchToProps)
 
 interface IProps extends ConnectedProps<typeof connector> {
   className?: string
+  visibleItems?: TPriceItemKey[]
+  customerLabel?: string
+  readOnlySummary?: boolean
+  currencyOverride?: string
+  estimatedPriceOverride?: number | string | null
   disabled?: boolean
   forceCustomerPrice?: boolean
   pickupEditable?: boolean
@@ -61,6 +70,7 @@ interface IPriceItem {
 }
 
 function PriceInput({
+  language,
   from,
   to,
   time,
@@ -70,6 +80,11 @@ function PriceInput({
   setPickupPrice,
   setCustomerPrice,
   className,
+  visibleItems,
+  customerLabel,
+  estimatedPriceOverride,
+  currencyOverride,
+  readOnlySummary = false,
   disabled = false,
   forceCustomerPrice = false,
   pickupEditable = true,
@@ -151,23 +166,21 @@ function PriceInput({
     }
   }
 
+  const estimate = estimatedPriceOverride != null && Number.isFinite(Number(estimatedPriceOverride)) && Number(estimatedPriceOverride) >= 0 ? Number(estimatedPriceOverride) : payment
   const items: IPriceItem[] = [
     {
       key: 'estimated',
       label: t(TRANSLATION.CLIENT_ESTIMATED_PRICE),
-      value: formatMoneyValue(payment),
-      compactValue: formatMoneyValue(payment),
+      value: formatEstimatedFare(estimate,language?.iso),
+      compactValue: formatEstimatedFare(estimate,language?.iso),
       icon: images.priceEstimatedIcon,
       disabled: true,
     },
   ]
 
-  if (forceCustomerPrice) {
-    // In offer/voting form all three segments stay visible.
-    // Segment 2 is the pickup amount and is stored separately.
-    // Segment 3 is the customer's whole-trip offer and is editable only
-    // for offer orders; in voting/ordinary orders it opens grey/read-only
-    // and never duplicates the pickup amount.
+  if (forceCustomerPrice && !readOnlySummary) {
+    // Pickup and the editable whole-trip offer are distinct amounts.
+    // Omit a non-applicable customer-offer field rather than inventing a zero.
     items.push(makeEditablePriceItem(
       'pickup',
       t(TRANSLATION.CLIENT_PICKUP_PRICE),
@@ -176,17 +189,17 @@ function PriceInput({
       pickupEditable,
     ))
 
-    if (hasCustomerPrice) {
+    if (hasCustomerPrice && customerOfferEditable) {
       items.push(makeEditablePriceItem(
         'customer',
-        t(TRANSLATION.CLIENT_CUSTOMER_OFFER_PRICE),
+        customerLabel || t(TRANSLATION.CLIENT_CUSTOMER_OFFER_PRICE),
         images.priceCustomerIcon,
         customerSegment,
         customerOfferEditable,
         customerOfferEditable ? undefined : 0,
       ))
     }
-  } else {
+  } else if (!readOnlySummary) {
     items.push({
       key: 'pickup',
       label: t(TRANSLATION.CLIENT_PICKUP_PRICE),
@@ -212,10 +225,11 @@ function PriceInput({
 
   return (
     <div className={cn('price-input', className)}>
-      {items.map(item => (
+      {items.filter(item => !visibleItems || visibleItems.includes(item.key)).map(item => (
         <PriceInputItem
           key={item.key}
           item={item}
+          currency={currencyOverride||CURRENCY.NAME}
           active={item.key === normalizedActiveItem}
           setActive={() => setActiveItem(item.key)}
         />
@@ -378,20 +392,22 @@ function valueToRoundedMoney(value: number) {
 export default connector(PriceInput)
 
 interface IItemProps {
+  currency: string
   item: IPriceItem
   active: boolean
   setActive: () => void
 }
 
 function PriceInputItem({
+  currency,
   item,
   active,
   setActive,
 }: IItemProps) {
   const inputRef = useRef<HTMLInputElement | null>(null)
-  const showInput = active && item.editable
+  const showInput = Boolean(item.editable)
   const displayValue = active ? item.value : item.compactValue
-  const showContent = active || showInput || Boolean(displayValue)
+  const showContent = true
   const handleActivate = () => {
     setActive()
     if (item.editable)
@@ -409,25 +425,15 @@ function PriceInputItem({
       // Контракт для E2E: сегмент цены (estimated | pickup | customer).
       data-testid="passenger-order-price-segment"
       data-price-key={item.key}
-      role="button"
-      tabIndex={0}
-      onKeyDown={event => {
-        if (event.key === 'Enter' || event.key === ' ') {
-          event.preventDefault()
-          handleActivate()
-        }
-      }}
+      role="group"
+      aria-label={item.label}
     >
-      <img
-        src={item.icon}
-        alt=""
-        className={cn('price-input__pictogram', {
-          'price-input__pictogram--compact': !active,
-        })}
-      />
+      <span className="price-input__pictogram" aria-hidden="true">
+        {item.key === 'estimated' ? <Calculator /> : item.key === 'pickup' ? <CarFront /> : <Wallet />}
+      </span>
       {showContent && (
         <span className="price-input__content">
-          {active && <span className="price-input__label">{item.label}</span>}
+          <span className="price-input__label">{item.label}<small className="price-input__unit">{currency}</small></span>
           {showInput ? (
             <input
               ref={inputRef}
@@ -435,8 +441,10 @@ function PriceInputItem({
               data-testid="passenger-order-price"
               data-price-key={item.key}
               inputMode="numeric"
+              aria-label={item.label}
+              autoComplete="off"
               value={item.value}
-              placeholder={item.placeholder}
+              placeholder="0"
               disabled={item.disabled}
               min={item.minValue}
               onClick={event => event.stopPropagation()}
@@ -444,6 +452,7 @@ function PriceInputItem({
               onTouchStart={event => event.stopPropagation()}
               onKeyDown={event => event.stopPropagation()}
               onFocus={event => {
+                setActive()
                 const target = event.currentTarget
                 item.onFocus?.()
                 window.setTimeout(() => target.select(), 0)

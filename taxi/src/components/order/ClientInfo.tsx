@@ -1,7 +1,7 @@
 import React from 'react'
-import images from '../../constants/images'
+import { UserRound } from 'lucide-react'
 import { t, TRANSLATION } from '../../localization'
-import { IOrder, IUser } from '../../types/types'
+import { EBookingStates, IOrder, IUser } from '../../types/types'
 
 interface IProps {
   order: IOrder,
@@ -14,12 +14,12 @@ const ClientInfo: React.FC<IProps> = ({
   client,
   user,
 }) => {
-  const _userName = client ? `${client.u_name} ${client.u_family} ${client.u_middle}` : '',
+  const _userName = [client?.u_name, client?.u_family, client?.u_middle].filter(Boolean).join(' ') || t(TRANSLATION.PASSENGER),
     _driver = !!user && order?.drivers?.find(item => item.u_id === user.u_id),
     _extInfo =
-    order.b_canceled ?
+    order.b_canceled || order.b_state === EBookingStates.Canceled ?
       `(${t(TRANSLATION.CANCELED)})` :
-      order.b_completed ?
+      order.b_completed || order.b_state === EBookingStates.Completed ?
         `(${t(TRANSLATION.FINISHED)})` :
         _driver ?
           `(${t(TRANSLATION.BOOKING_DRIVER_STATES[_driver.c_state])})` :
@@ -27,12 +27,9 @@ const ClientInfo: React.FC<IProps> = ({
 
   return <div className="order__passenger-info">
     <div className="order_passenger-info">
-      <img src={images.passengerAvatar} alt={t(TRANSLATION.PASSENGER)}/>
+      <div className="order-passenger-avatar"><UserRound size={28} aria-hidden="true" /></div>
       <span>
         <span className="colored">{_userName} {_extInfo}</span>
-        <div>
-          <img src={images.stars} alt={t(TRANSLATION.STARS)}/>
-        </div>
       </span>
     </div>
     <div className="order__separator"/>

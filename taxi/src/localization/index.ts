@@ -11,6 +11,34 @@ interface IOptions {
 }
 
 const FALLBACK_TRANSLATIONS: Record<string, Record<string, string>> = {
+  from:{ru:'Откуда',en:'From',fr:'Départ',ar:'من'},
+  to:{ru:'Куда',en:'To',fr:'Destination',ar:'إلى'},
+  cost:{ru:'Стоимость',en:'Cost',fr:'Prix',ar:'السعر'},
+  payment_way:{ru:'Оплата',en:'Payment',fr:'Paiement',ar:'الدفع'},
+  cash:{ru:'Наличные',en:'Cash',fr:'Espèces',ar:'نقداً'},
+  cancel:{ru:'Отменить',en:'Cancel',fr:'Annuler',ar:'إلغاء'},
+  account_summary: {en:'Current account',ru:'Текущая учётная запись',fr:'Compte actuel',ar:'الحساب الحالي'},
+  service_configuration: {en:'Service configuration',ru:'Настройки сервиса',fr:'Configuration du service',ar:'إعدادات الخدمة'},
+  app_version: {en:'Version',ru:'Версия',fr:'Version',ar:'الإصدار'},
+  app_build_date: {en:'Build date',ru:'Дата сборки',fr:'Date de compilation',ar:'تاريخ الإصدار'},
+  seats_previous: {en:'Previous seats',ru:'Меньше мест',fr:'Moins de places',ar:'مقاعد أقل'},
+  seats_more: {en:'More seats',ru:'Больше мест',fr:'Plus de places',ar:'مقاعد أكثر'},
+  duration_minute_short: {en:'min',ru:'мин',fr:'min',ar:'دقيقة'},
+  duration_hour_short: {en:'h',ru:'ч',fr:'h',ar:'ساعة'},
+  duration_calculating: {en:'Calculating…',ru:'Рассчитывается…',fr:'Calcul en cours…',ar:'جارٍ الحساب…'},
+  signin: {en:'Sign in',ru:'Вход',fr:'Connexion',ar:'تسجيل الدخول'},
+  signup: {en:'Create account',ru:'Регистрация',fr:'Créer un compte',ar:'إنشاء حساب'},
+  sign_in: {en:'Sign in',ru:'Войти',fr:'Se connecter',ar:'تسجيل الدخول'},
+  navigation_menu: {en:'Menu',ru:'Меню',fr:'Menu',ar:'القائمة'},
+  login_method: {en:'Sign-in method',ru:'Способ входа',fr:'Méthode de connexion',ar:'طريقة تسجيل الدخول'},
+  google_sign_in: {en:'Continue with Google',ru:'Войти через Google',fr:'Continuer avec Google',ar:'المتابعة باستخدام Google'},
+  sign_in_header: {en:'Sign in',ru:'Вход',fr:'Connexion',ar:'تسجيل الدخول'},
+  restore_password: {en:'Forgot password?',ru:'Забыли пароль?',fr:'Mot de passe oublié ?',ar:'هل نسيت كلمة المرور؟'},
+  retry: {en:'Try again',ru:'Повторить',fr:'Réessayer',ar:'حاول مجدداً'},
+  chat: {en:'Chat',ru:'Чат',fr:'Discussion',ar:'محادثة'},
+  map_demo: {en:'Taxi map demo',ru:'Демонстрация такси на карте',fr:'Démonstration sur la carte',ar:'عرض تجريبي على الخريطة'},
+  order_details: {en:'Trip details',ru:'Детали поездки',fr:'Détails du trajet',ar:'تفاصيل الرحلة'},
+  less_than_minute: {en:'≈ less than a minute',ru:'≈ меньше минуты',fr:'≈ moins d’une minute',ar:'≈ أقل من دقيقة'},
   auto: {
     ru: 'Авто',
     en: 'Car',
@@ -1073,10 +1101,10 @@ const FALLBACK_TRANSLATIONS: Record<string, Record<string, string>> = {
     ar: 'ألغى العميل الانتظار.',
   },
   driver_voting_closed_timeout: {
-    ru: 'Время ожидания истекло. Клиент не выбрал водителя, заказ закрыт.',
-    en: 'The waiting time has expired. The customer did not choose a driver, so the order is closed.',
-    fr: 'Le temps d attente a expire. Le client n a pas choisi de chauffeur, la commande est fermee.',
-    ar: 'انتهى وقت الانتظار. لم يختر العميل سائقا، لذلك تم إغلاق الطلب.',
+    ru: 'Статус заявки изменился. Проверьте актуальные заказы и историю.',
+    en: 'The request status has changed. Check current orders and history.',
+    fr: 'Le statut de la demande a changé. Consultez les commandes actuelles et l’historique.',
+    ar: 'تغيرت حالة الطلب. تحقق من الطلبات الحالية والسجل.',
   },
   driver_route_time: {
     ru: 'Примерно ехать',
@@ -2098,7 +2126,7 @@ function getLanguageInfo() {
 }
 
 function getFallbackText(key: string, language?: { iso?: string, id?: string | number }) {
-  const iso = language?.iso?.toLowerCase() || 'ru'
+  const iso = language?.iso?.toLowerCase().split('-')[0] || 'ru'
   const dictionary = FALLBACK_TRANSLATIONS[key]
 
   if (dictionary)
@@ -2111,7 +2139,7 @@ function getFallbackText(key: string, language?: { iso?: string, id?: string | n
 }
 
 function normalizeProjectText(key: string, result: string, language?: { iso?: string } | null) {
-  const iso = language?.iso?.toLowerCase() || 'ru'
+  const iso = language?.iso?.toLowerCase().split('-')[0] || 'ru'
   const isRussian = iso === 'ru'
   const localDictionary = FALLBACK_TRANSLATIONS[key]
 
@@ -2162,9 +2190,7 @@ function t(id: string, options: IOptions = {}) {
     let result = ''
 
     if (category === CATEGORIES.BOOKING_DRIVER_STATES && key === '1') {
-      const consideringText = language?.iso === 'en' ?
-        'Searching for a driver' :
-        'Поиск водителя'
+      const consideringText = getFallbackText('client_searching_driver', language)
       return applyOptions(consideringText, options)
     }
 
