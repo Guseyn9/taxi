@@ -1,4 +1,5 @@
 'use strict';
+require('./tools/prepare-road-graph.cjs').prepare();
 
 const fs = require('fs');
 const path = require('path');
