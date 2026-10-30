@@ -1,6 +1,11 @@
 import { confirmDriverBoarding, isBoardingCodeAccepted } from './driverBoarding'
 
 describe('isBoardingCodeAccepted', () => {
+  it('rejects 000 when the boarding code is 111 in normal mode', () => {
+    window.localStorage.clear()
+    expect(isBoardingCodeAccepted('111', '000')).toBe(false)
+    expect(isBoardingCodeAccepted('111', '111')).toBe(true)
+  })
 
   it('принимает код, совпавший с кодом заказа', () => {
     expect(isBoardingCodeAccepted('1234', '1234')).toBe(true)

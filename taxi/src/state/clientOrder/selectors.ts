@@ -7,12 +7,16 @@ import { userSelectors } from '../user'
 import * as util from './util'
 import { resolveRouteFacts, resolveAvailableClasses, resolveOrderModes, resolveButtonLayout, resolveSubmitValidation, OrderFormFacts } from './orderFormResolvers'
 import { moduleName } from './constants'
+import { zoneChecksReady } from '../../design/reliability/zoneCheck'
 
 export const moduleSelector = (state: IRootState) => state[moduleName]
 export const carClass = createSelector(moduleSelector, state => state.carClass)
 export const seats = createSelector(moduleSelector, state => state.seats)
 export const from = createSelector(moduleSelector, state => state.from)
 export const to = createSelector(moduleSelector, state => state.to)
+export const fromZoneStatus = createSelector(moduleSelector, state => state.fromZoneStatus)
+export const toZoneStatus = createSelector(moduleSelector, state => state.toZoneStatus)
+export const zonesReady = createSelector(moduleSelector, zoneChecksReady)
 export const comments = createSelector(moduleSelector, state => state.comments)
 const rawTime = createSelector(moduleSelector, state => state.time)
 export const time = createSelector(

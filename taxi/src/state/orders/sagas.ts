@@ -45,9 +45,7 @@ const ORDER_POLL_INTERVAL = 5000
 let lastAreasBetweenPointsKey = ''
 const shownClientVotingTimeoutNotifications: Record<string, true> = {}
 
-function isDriverEmulatorOnlyUiForcedEmpty(user: any) {
-  return user?.u_role === EUserRoles.Driver && !isAnyBrowserEmulatorModeRunning() && !isExternalEmulatorEnabled()
-}
+
 
 function writeOrdersUiForcedEmpty(reason: string, type: 'activeOrders' | 'readyOrders' | 'historyOrders', previousOrders: IOrder[] = []) {
   const payload = {
@@ -508,54 +506,7 @@ function* getActiveOrdersSaga() {
   const pollStartedAt = Date.now()
   const currentUserAtStart = yield* select(userSelector)
 
-  if (isDriverEmulatorOnlyUiForcedEmpty(currentUserAtStart)) {
-    // Состояние гейта значениями: строка `emulator_not_running` — вывод из них,
-    // и при смене правила доступности она устареет, а эти факты нет.
-    const emulatorGateFacts = {
-      driverRole: currentUserAtStart?.u_role === EUserRoles.Driver,
-      emulatorAnyModeRunning: isAnyBrowserEmulatorModeRunning(),
-      externalEmulatorEnabled: isExternalEmulatorEnabled(),
-    }
-
-    writeFlowEvent('ACTIVE_ORDERS_REQUEST_SKIPPED', {
-      driverId: currentUserAtStart?.u_id ?? null,
-      screen: 'OrdersSaga',
-      uiState: 'EmulatorOnlyGate',
-      data: {
-        ...emulatorGateFacts,
-        type: 'activeOrders',
-        previousCount: prev.length,
-        previousOrderIds: prev.map(order => order.b_id),
-        // LEGACY: вывод старой модели, см. tools/legacyLogReasons.ts.
-        reason: 'emulator_not_running',
-      },
-    })
-    writeRawLog('ACTIVE_ORDERS_REQUEST_SKIPPED', {
-      source: 'orders-saga',
-      screen: 'OrdersSaga',
-      uiState: 'EmulatorOnlyGate',
-      driverId: currentUserAtStart?.u_id ?? null,
-      ...emulatorGateFacts,
-      type: 'activeOrders',
-      previousCount: prev.length,
-      previousOrderIds: prev.map(order => order.b_id),
-      reason: 'emulator_not_running',
-    })
-    // Decision Log: пустой список — тоже решение. Матрица зафиксирует состояние
-    // эмуляторного гейта, из-за которого заказы до водителя не дошли.
-    trackOrderDecisions({
-      stage: 'SELECTOR',
-      orders: prev,
-      visibleOrderIds: [],
-      context: buildOrderDecisionContext({ user: currentUserAtStart, activeOrders: prev }),
-      legacyReasonOf: () => 'emulator_not_running',
-    })
-
-    yield put(setSelectedOrder(null))
-    yield put({ type: ActionTypes.GET_ACTIVE_ORDERS_SUCCESS, payload: [] })
-    writeOrdersUiForcedEmpty('emulator_not_running', 'activeOrders', prev)
-    return
-  }
+  
 
   writeFlowEvent('POLL_REQUEST', {
     screen: 'OrdersSaga',
@@ -859,11 +810,7 @@ const readyOrdersAutoDriveAttempted: Record<string, true> = {}
 function* getReadyOrdersSaga() {
   const prev = (yield* select(readyOrders)) ?? []
   const currentUserAtStart = yield* select(userSelector)
-  if (isDriverEmulatorOnlyUiForcedEmpty(currentUserAtStart)) {
-    yield put({ type: ActionTypes.GET_READY_ORDERS_SUCCESS, payload: [] })
-    writeOrdersUiForcedEmpty('emulator_not_running', 'readyOrders', prev)
-    return
-  }
+  
 
   // Машин у водителя нет. Когда основная машина появится, следующий цикл сам
   // пойдёт в API.
@@ -934,11 +881,7 @@ function* getReadyOrdersSaga() {
 function* getHistoryOrdersSaga() {
   const prev = (yield* select(historyOrders)) ?? []
   const currentUserAtStart = yield* select(userSelector)
-  if (isDriverEmulatorOnlyUiForcedEmpty(currentUserAtStart)) {
-    yield put({ type: ActionTypes.GET_HISTORY_ORDERS_SUCCESS, payload: [] })
-    writeOrdersUiForcedEmpty('emulator_not_running', 'historyOrders', prev)
-    return
-  }
+  
 
   try {
     const response = yield* call(API.getOrders, EOrderTypes.History)
@@ -956,12 +899,16 @@ function* getHistoryOrdersSaga() {
   }
 }
 
-function* getOrderSaga({ payload: id }: TAction) {
+function* getOrderSaga({ payload: id, historyOwner }: TAction & {historyOwner?: string}) {
+  const ownerAtStart = String((yield* select(userSelector))?.u_id ?? '')
   if (yield* select((state: IRootState) =>
     !moduleSelector(state).orders.get(id)?.mutations,
   )) {
     try {
       const order = yield* call(API.getOrder, id)
+      if (String((yield* select(userSelector))?.u_id ?? '') !== ownerAtStart) return
+      if (order && historyOwner === ownerAtStart)
+        yield put({type: ActionTypes.RETAIN_DRIVER_HISTORY, payload: {owner: ownerAtStart, order}})
       if (order)
         yield put({ type: ActionTypes.GET_ORDER_SUCCESS, payload: order })
       else
@@ -978,9 +925,10 @@ function* afterOrdersChangeSaga(prev: IOrder[], current: IOrder[]) {
 
   const existing =
     yield* select((state: IRootState) => moduleSelector(state).orders)
+  const owner = String((yield* select(userSelector))?.u_id ?? '')
   for (const order of diff)
-    if (existing.has(order.b_id))
-      yield put({ type: ActionTypes.GET_ORDER_REQUEST, payload: order.b_id })
+    if (existing.has(order.b_id) || order.drivers?.some(driver => String(driver.u_id) === owner))
+      yield put({ type: ActionTypes.GET_ORDER_REQUEST, payload: order.b_id, historyOwner: owner })
 }
 
 function getBookingDriverStateValue(state?: EBookingDriverState | string | number | null) {

@@ -17,6 +17,7 @@ export interface LegacyChatConnection {
   readonly to: string
   readonly onMessage: (data: unknown) => void
   readonly onError?: (error: unknown) => void
+  readonly onState?: (state: 'connecting' | 'open' | 'closed') => void
 }
 
 /** Compatibility adapter. Chat UI does not depend on WebSocket or legacy API. */
@@ -36,6 +37,7 @@ export class LegacyChatGateway {
         }))
       },
       onMessage: connection.onMessage,
+      onState: connection.onState,
       onError: connection.onError,
     })
 

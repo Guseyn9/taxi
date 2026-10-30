@@ -42,6 +42,9 @@ export const passengerVotingFormConnector = connect(
   (state: IRootState) => ({
     from: clientOrderSelectors.from(state),
     to: clientOrderSelectors.to(state),
+    fromZoneStatus: clientOrderSelectors.fromZoneStatus(state),
+    toZoneStatus: clientOrderSelectors.toZoneStatus(state),
+    zonesReady: clientOrderSelectors.zonesReady(state),
     comments: clientOrderSelectors.comments(state),
     time: clientOrderSelectors.time(state),
     phone: clientOrderSelectors.phone(state),
@@ -95,6 +98,7 @@ export const passengerLiveOrderConnector = connect(
 export type PassengerLiveOrderStoreProps = ConnectedProps<typeof passengerLiveOrderConnector>
 
 export interface PassengerOrderSubmissionState {
+  readonly zonesReady: boolean
   readonly carClass: ReturnType<typeof clientOrderSelectors.carClass>
   readonly seats: ReturnType<typeof clientOrderSelectors.seats>
   readonly pickupPrice: ReturnType<typeof clientOrderSelectors.pickupPrice>
@@ -107,6 +111,7 @@ export function usePassengerOrderSubmissionReader(): () => PassengerOrderSubmiss
   return () => {
     const state = store.getState()
     return {
+      zonesReady: clientOrderSelectors.zonesReady(state),
       carClass: clientOrderSelectors.carClass(state),
       seats: clientOrderSelectors.seats(state),
       pickupPrice: clientOrderSelectors.pickupPrice(state),

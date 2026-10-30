@@ -61,8 +61,8 @@ export const getUsers = apiMethod<typeof _getUsers>(_getUsers)
 const _getAuthorizedUser = (
   { formData }: IApiMethodArguments,
 ): Promise<IUser | null> => {
-  return axios.post(`${Config.API_URL}/user/authorized`, formData)
-    .then(res => res.data?.data)
+  return axios.post(`${Config.API_URL}/user/authorized`, formData, {timeout:15000})
+    .then(res => {if(res.data?.code!=null&&Number(res.data.code)!==200)throw Object.assign(new Error('Session verification failed'),{status:Number(res.data.code)});return res.data?.data})
     .then(res => {
       const user = firstObjectValue<IUser>(res?.user)
 
