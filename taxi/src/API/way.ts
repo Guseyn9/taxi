@@ -1,4 +1,5 @@
 import axios from 'axios'
+import { loadRoadArea } from '../graph/client'
 import { IArea, IWay, IWaySegment, IWayNode } from '../types/types'
 import { calculateDistance } from '../tools/maps'
 
@@ -9,8 +10,7 @@ export async function getAreasIdsBetweenPoints(
 }
 
 export async function getArea(id: IArea['id']): Promise<IArea> {
-  const { data } = await axios.get('/mock/agadir.json')
-  return data as IArea
+  return loadRoadArea()
 }
 
 const ROADWAY_TYPES = new Set<string>([
