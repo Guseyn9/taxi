@@ -19,6 +19,7 @@ export const apiMethod = <T extends (...args: any[]) => any>(
   }: apiMethodOptions = {},
 ) => {
   return (...args: ParametersExceptFirst<T>): ReturnType<T> => {
+    if (typeof navigator !== 'undefined' && navigator.onLine === false) return Promise.reject(new Error('Network unavailable. Reconnect and check the current order before trying again.')) as ReturnType<T>
     const formData = new FormData()
     let tokens
 
@@ -55,7 +56,7 @@ export interface IResponseFields {
 
 export const addToFormData = (formData: FormData, object: {[key: string]: any}) => {
   for (let [key, value] of Object.entries(object)) {
-    if (!value) continue
+    if (value === null || value === undefined || value === '') continue
     formData.append(key, value)
   }
   return formData

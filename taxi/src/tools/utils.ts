@@ -1,3 +1,5 @@
+import {getPassengerConfirmedChoice} from './driverOffer'
+import {quotedFare} from '../design/reliability/rideData'
 import _ from 'lodash'
 import { findBestMatch } from 'string-similarity'
 import moment, { Moment } from 'moment'
@@ -280,7 +282,10 @@ export function getPayment(
   value: number | string,
   text: string,
   type: EPaymentType,
+  estimated?: boolean,
 } {
+  const quote = quotedFare(order,getPassengerConfirmedChoice(order?.b_id))
+  if (quote) return { value: quote.value, text: String(quote.value), type: quote.customer ? EPaymentType.Customer : EPaymentType.Calculated }
   if (order?.b_options?.customer_price && SITE_CONSTANTS.ENABLE_CUSTOMER_PRICE)
     return {
       value: order.b_options.customer_price,
@@ -320,7 +325,7 @@ export function getPayment(
       ${_value === 0 ? '-' : _value}`
   }
 
-  return { value: _value, text: _text, type: EPaymentType.Calculated }
+  return { value: _value, text: _text, type: EPaymentType.Calculated, estimated: true }
 }
 
 export function calcOrderDistance(
