@@ -1,0 +1,30 @@
+import {loadSessionTokens,saveSessionTokens,clearSessionTokens} from './sessionTokens'
+beforeEach(()=>{clearSessionTokens();localStorage.clear();sessionStorage.clear()})
+test('migrates legacy credentials once and retains reload auth only in the current tab session',()=>{
+ localStorage.setItem('state.user.tokens',JSON.stringify({token:'test-token',u_hash:'test-hash'}))
+ expect(loadSessionTokens()).toEqual({token:'test-token',u_hash:'test-hash'})
+ expect(localStorage.getItem('state.user.tokens')).toBeNull()
+ expect(JSON.parse(sessionStorage.getItem('state.user.tokens'))).toEqual({token:'test-token',u_hash:'test-hash'})
+ expect(loadSessionTokens()).toEqual({token:'test-token',u_hash:'test-hash'})
+ clearSessionTokens();expect(loadSessionTokens()).toBeNull();expect(sessionStorage.getItem('state.user.tokens')).toBeNull()
+})
+test('rejects corrupt sessions and never persists extra server fields',()=>{
+ sessionStorage.setItem('state.user.tokens','{bad');expect(loadSessionTokens()).toBeNull()
+ expect(()=>saveSessionTokens({token:'',u_hash:'hash'})).toThrow()
+ saveSessionTokens({token:'token',u_hash:'hash',other:'not-kept'})
+ expect(sessionStorage.getItem('state.user.tokens')).not.toContain('not-kept')
+})
+test('logout invalidates a duplicated tab even if it restores its old sessionStorage snapshot',()=>{
+ saveSessionTokens({token:'token',u_hash:'hash'})
+ const snapshot=sessionStorage.getItem('state.user.tokens'),epoch=sessionStorage.getItem('taxi.auth.session-epoch')
+ clearSessionTokens()
+ sessionStorage.setItem('state.user.tokens',snapshot);sessionStorage.setItem('taxi.auth.session-epoch',epoch)
+ expect(loadSessionTokens()).toBeNull();expect(sessionStorage.getItem('state.user.tokens')).toBeNull()
+})
+test('other tabs receive logout revocation while unrelated storage changes do nothing',()=>{
+ const {subscribeSessionRevocation}=require('./sessionTokens'),listener=jest.fn(),stop=subscribeSessionRevocation(listener)
+ saveSessionTokens({token:'token',u_hash:'hash'})
+ window.dispatchEvent(new StorageEvent('storage',{key:'unrelated'}));expect(listener).not.toHaveBeenCalled()
+ window.dispatchEvent(new StorageEvent('storage',{key:'taxi.auth.revocation',newValue:'changed'}));expect(listener).toHaveBeenCalledTimes(1)
+ expect(loadSessionTokens()).toBeNull();stop()
+})

@@ -1,16 +1,15 @@
 import React from 'react'
-import ReactHtmlParser from 'react-html-parser'
+import { sanitizeHtml } from '../../security/html'
 
 interface IProps {
   html?: string
+  inline?: boolean
 }
 
-function HTML({ html = '' }: IProps) {
-  return (
-    <>
-      {ReactHtmlParser(html)}
-    </>
-  )
+function HTML({ html = '', inline = false }: IProps) {
+  const content = {__html:sanitizeHtml(html,inline)}
+  return inline ? <span dangerouslySetInnerHTML={content}/> :
+    <div style={{display:'contents'}} dangerouslySetInnerHTML={content}/>
 }
 
 export default HTML

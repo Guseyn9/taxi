@@ -4,6 +4,7 @@ import { ILanguage } from '../../types/types'
 import { getPhoneMask } from '../../tools/phoneUtils'
 import { t } from '../../localization'
 import Button from '../Button'
+import HTML from '../HTML'
 import { TFormElement, TOption, TFormValues } from './types'
 import {
   getCalculation, isRequired,
@@ -79,6 +80,7 @@ function JSONFormElement({
   )
   const commonProperties = {
     name,
+    'aria-label': !['radio', 'checkbox'].includes(type) && formElement.label ? String(getTranslation(getCalculation(formElement.label, values, variables))) : undefined,
     disabled: calculatedDisabled,
     onChange(event: React.ChangeEvent<TElement>) {
       const value = getValue(event)
@@ -97,7 +99,7 @@ function JSONFormElement({
     null :
     (
       <div className="element__hint">
-        <span className="element__hint_icon">?</span>
+        <button type="button" className="element__hint_icon" aria-label={getTranslation(hint)}>?</button>
         <div className={`element__hint_message element__hint_message_${!formElement.label ? 'left' : 'right'}`}>
           {getTranslation(hint)}
         </div>
@@ -191,11 +193,7 @@ function JSONFormElement({
           onChange={e => onChange(e, e.target.name, e.target.checked)}
         />
         <span>
-          <span
-            dangerouslySetInnerHTML={{
-              __html: getTranslation(getCalculation(formElement.label, values, variables)),
-            }}
-          />
+          <HTML inline html={getTranslation(getCalculation(formElement.label, values, variables))}/>
           {isRequired(formElement, values, variables) && <span className="element__required">*</span>}
         </span>
       </label>

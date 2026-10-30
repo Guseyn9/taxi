@@ -1,4 +1,5 @@
 import moment from 'moment'
+import { evaluateArithmetic, displayArithmetic } from '../security/arithmetic'
 import SITE_CONSTANTS from '../siteConstants'
 import {
   APPROXIMATE_ROUTE_COST_PER_KM,
@@ -56,22 +57,19 @@ export const calculateFinalPriceFormula = (order: IOrder | null) => {
     return 'err'
   }
   let formula = order.b_options?.pricingModel?.formula
+  if (formula === '-') return '-'
   let options = order.b_options?.pricingModel?.options || {}
 
   // pick up submitPrice from b_options
   options = {
     ...options,
     ...{
-      submit_price: order.b_options?.submitPrice,
+      submit_price: order.b_options?.submitPrice ?? options.submit_price,
       distance: order.b_options?.pricingModel?.calculationType === 'incomplete'? '?' : order.b_options?.pricingModel?.options?.distance,
       duration:  order.b_options?.pricingModel?.calculationType === 'incomplete' && order.b_options?.pricingModel?.options?.duration === 0? '?' : order.b_options?.pricingModel?.options?.duration,
     },
   }
-  // Replace all placeholders in the formula with their values
-  Object.entries(options).forEach(([key, value]) => {
-    const placeholder = `${key}`
-    formula = (formula || 'error_0x01').replace(new RegExp(placeholder, 'g'), value === '?' ? '?' :Math.trunc(value)?.toString() || '0')
-  })
+  try { formula = displayArithmetic(formula, options) } catch { return 'err' }
 
   const timeRatioMatch = (formula || 'error_0x02').match(/\(([^)]+)\)\*(\d+(?:\.\d+)?)/)
   if (timeRatioMatch) {
@@ -95,30 +93,16 @@ export const calculateFinalPrice = (order: IOrder | null) => {
   if(order.b_options?.pricingModel?.formula === '-') {
     return '-'
   }
-  let formula  = order.b_options?.pricingModel?.formula
-  let options = order.b_options?.pricingModel?.options || {}
+  const formula = order.b_options.pricingModel.formula
+  const options = {
+    ...order.b_options.pricingModel.options,
+    submit_price: order.b_options.submitPrice ?? order.b_options.pricingModel.options?.submit_price,
+    // Preserve the legacy misspelled alias while accepting the documented name.
+    submit_rice: order.b_options.submitPrice ?? order.b_options.pricingModel.options?.submit_rice,
+  }
+  try { return Math.trunc(evaluateArithmetic(formula, options)).toString() }
+  catch { return 'err' }
 
-  // pick up submitPrice from b_options
-  options = {
-    ...options,
-    ...{
-      submit_rice: order.b_options?.submitPrice,
-    },
-  }
-  if (!formula || formula === 'err') {
-    return 'err'
-  }
-  Object.entries(options).forEach(([key, value]) => {
-    const placeholder = `${key}`
-    formula = formula.replace(new RegExp(placeholder, 'g'), value?.toString() || '0')
-  })
-  try {
-    const result = eval(formula)
-    console.log('FINAL FORMULA', formula, '=', result, ' ~ ', Math.trunc(result))
-    return Math.trunc(result).toString()
-  } catch (e) {
-    return 'err'
-  }
 }
 
 export function candidateMode(order?: IOrder): boolean {
