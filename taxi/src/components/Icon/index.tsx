@@ -8,11 +8,12 @@ interface IProps extends React.SVGProps<SVGSVGElement> {
 }
 
 export default function Icon({ src, ...svgProps }: IProps) {
-  const directory = SITE_CONSTANTS.ICONS_PALETTE_FOLDER
+  const requested = SITE_CONSTANTS.ICONS_PALETTE_FOLDER
+  const directory = Object.values(EIconsPalettes).includes(requested) ? requested : EIconsPalettes.Default
   if (!components[directory][src])
     components[directory][src] = React.lazy(() => importIcon(directory, src))
   const SVG = components[directory][src]
-  return <SVG {...svgProps} />
+  return <React.Suspense fallback={null}><SVG {...svgProps} /></React.Suspense>
 }
 
 // Статическое перечисление путей к директориям для лучшей совместимости с webpack
@@ -34,5 +35,5 @@ const components: Record<
     React.FC<React.SVGProps<SVGSVGElement>>
   >>
 > = objectFromEntries(
-  Object.keys(EIconsPalettes).map(directory => [directory, {}]),
+  Object.values(EIconsPalettes).map(directory => [directory, {}]),
 ) as Record<EIconsPalettes, {}>

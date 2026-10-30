@@ -1,0 +1,68 @@
+/* Mobile pass: a useful map above a compact sheet; address entry gets its own space. */
+@media(max-width:899px){
+ #root .layout{height:var(--taxi-viewport-height,100dvh)}
+ #root .header{min-height:60px;padding:8px 16px;padding-top:max(8px,env(safe-area-inset-top));flex-shrink:0}
+ #root .header-logo{left:64px;height:36px}
+ #root .header-user-lng{font-size:12px}
+ #root .burger-button{width:44px;height:44px}
+ #root .header .avatar,#root .header-avatar-status:not(.header-avatar-status--driver){width:44px;height:44px;flex-basis:44px}
+ #root .passenger__form-container{row-gap:8px}
+ #root .boundary-buttons{height:44px;padding:0 12px;gap:6px;max-width:100%;overflow-x:auto;scrollbar-width:none}
+ #root .boundary-buttons__item{height:44px;min-width:44px;max-width:44px;color:#666666}
+ #root .boundary-buttons__item--active{max-width:100%;color:#fff}
+ #root .passenger__draggable{padding:20px 16px max(12px,env(safe-area-inset-bottom))!important;border-radius:24px 24px 0 0;max-height:calc(var(--taxi-viewport-height,100dvh) - 204px)!important}
+ #root .passenger-voting-form{gap:10px}
+ #root .rs-ride-heading>div{font-size:22px;line-height:1.3;letter-spacing:-.6px}
+ #root .rs-ride-body>*+*{margin-top:12px}
+ #root .passenger-voting-form__group{gap:8px}
+ #root .passenger-voting-form__location-wrapper{padding-inline:26px 8px}
+ #root .passenger-voting-form__location-wrapper .input__field-wrapper{padding-block:3px}
+ #root .passenger-voting-form__location-wrapper .input{font-size:16px;line-height:28px}
+ #root .passenger-voting-form__location-wrapper .input__field-wrapper::before{left:-15px}
+ #root .passenger-voting-form[dir=rtl] .passenger-voting-form__location-wrapper{padding-inline:26px 8px}
+ #root .passenger-voting-form[dir=rtl] .passenger-voting-form__location-wrapper .input__field-wrapper::before{left:auto;right:-15px}
+ #root .car-class-slider{height:74px}
+ #root .car-class-slider__slide{height:72px;padding:5px 8px}
+ #root .rs-options-toggle{min-height:44px;font-size:12px}
+ #root .rs-order-actions{padding-top:10px}
+ #root .rs-order-actions__heading{font-size:12px}
+ #root .rs-order-actions__hint{font-size:11px;line-height:1.4;margin-bottom:8px}
+ #root .passenger-voting-form__order-button-wrapper--modes{gap:6px}
+ #root .passenger-voting-form__order-button-wrapper--modes .button{height:44px;font-size:12px;padding:8px;gap:5px}
+ #root .passenger-voting-form__order-button-wrapper--modes .passenger-voting-form__mode-button--order .button{height:48px;font-size:14px}
+ #root .input__suggestions{max-height:min(300px,40dvh);overscroll-behavior:contain}
+}
+@media(max-width:360px){
+ #root .header{padding-inline:12px}#root .header-logo{left:58px}
+ #root .passenger__draggable{padding-inline:12px!important}
+ #root .rs-ride-heading>div{font-size:20px}
+ #root .passenger-voting-form__order-button-wrapper--modes .button{font-size:11px;padding-inline:5px}
+}
+/* Short screens, landscape and open keyboards need one continuous scroll surface. */
+@media(max-width:899px) and (max-height:450px){
+ #root .passenger__draggable{max-height:calc(var(--taxi-viewport-height,100dvh) - 152px)!important;overflow-y:auto!important;scroll-padding-block:16px}
+ #root .passenger-voting-form{overflow:visible;max-height:none;flex:0 0 auto}
+ #root .rs-ride-body{overflow:visible;flex:0 0 auto}
+ #root .rs-ride-footer{padding-bottom:4px}
+}
+@media(max-width:899px){#root .rs-order-actions__heading{display:none}}
+@media(min-width:600px) and (max-width:899px) and (max-height:500px) and (orientation:landscape){
+ #root .passenger__form-container{left:auto;right:12px;top:8px!important;bottom:8px!important;width:min(390px,52vw);max-height:calc(100% - 16px)!important;gap:6px}
+ #root .passenger__draggable{padding:12px!important;max-height:calc(100% - 50px)!important;overflow:hidden!important;border-radius:16px}
+ #root .passenger__swipe-line{display:none}
+ #root .passenger-voting-form{overflow:hidden;max-height:100%;flex:1 1 auto;gap:6px}
+ #root .rs-ride-body{overflow:auto;flex:1 1 auto;min-height:0}
+ #root .rs-ride-heading>div{font-size:20px}
+ #root .rs-ride-footer{padding-bottom:0}
+ #root .rs-order-actions{padding-top:6px}
+ #root .rs-order-actions__hint{margin-bottom:6px;font-size:10px}
+ #root .boundary-buttons{padding:0}
+ #root .passenger .passenger__form-map-container{position:absolute;inset:0 auto 0 0;margin:0;width:calc(100% - min(390px,52vw) - 24px);height:100%}
+ #root .passenger .map-container__leaflet-host>.map{height:100%!important}
+ #root .passenger .leaflet-bottom{bottom:0}
+}
+#root .rs-address-done{display:none}
+@media(max-width:899px){
+ #root .rs-ride-heading{flex-direction:row;align-items:center;justify-content:space-between;gap:8px}
+ #root .rs-ride-heading>div{min-width:0}
+}

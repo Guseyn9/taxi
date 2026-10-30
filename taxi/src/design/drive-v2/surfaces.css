@@ -1,0 +1,210 @@
+/* Presentation only. Legacy geometry and command handlers remain authoritative. */
+body {background:var(--drive-canvas);color:var(--drive-black)}
+body .theme {--theme--primary-main:var(--drive-red,#b51218)!important;--theme--primary-light:#fff0ed!important;--theme--primary-dark:#910e13!important;--theme--secondary-main:var(--drive-orange,#e87516)!important}
+body :is(button,input,textarea,select){font-family:Manrope,sans-serif}
+body :is(button,a,input,summary,select,textarea):focus-visible{outline:3px solid var(--drive-red);outline-offset:3px}
+#root .header{background:var(--drive-black);border:0;padding-inline:24px;min-height:72px}
+#root .header-logo,.rs-brand-name{color:white}.rs-brand-name span{color:var(--drive-red)}
+#root .rs-brand-mark{background:var(--drive-red);color:white;border-radius:50%}
+#root .header .burger-button__line{background:white}#root .header-user-lng{color:white}
+#root .header .avatar{background-color:white;border:0}#root .header-avatar-wrapper{gap:16px}
+#root .rs-header-back img{filter:brightness(0);width:22px;height:22px;object-fit:contain}
+#root .menu__list,#root .menu__languages,#root .header-driver-status-menu{background:white;border:1px solid var(--drive-line);border-radius:24px;box-shadow:0 16px 50px #10101020;padding:12px}
+#root .menu__button{min-height:48px;padding-inline:16px;border-radius:14px;font-weight:650}
+#root .menu__button:hover,#root .menu__language-button:hover{background:var(--drive-soft)}
+#root .passenger{background:transparent}
+#root .passenger__draggable{border:0;border-radius:var(--drive-sheet-radius);padding:24px;box-shadow:0 8px 40px #1010100a;scrollbar-width:thin;scrollbar-color:#c8bdb5 transparent}
+#root .passenger__swipe-line{background:#c8bdb5;width:36px;height:4px}
+#root .rs-ride-heading{min-height:82px;display:flex;align-items:center;padding-block:10px;background:none;padding-inline-end:0}
+#root .rs-ride-heading>div{font-size:30px;line-height:1.13;letter-spacing:-1.1px;font-weight:800}
+#root .rs-address-done{background:var(--drive-soft);color:var(--drive-red);border-radius:14px}
+#root .passenger-voting-form__group{gap:20px}
+#root .passenger-voting-form__location-wrapper{background:var(--drive-black);border:0!important;border-radius:22px;padding:4px 14px!important;overflow:visible}
+#root .passenger-voting-form__location-wrapper :is(.input__wrapper,.input__field-wrapper){background:transparent!important;border:0!important;box-shadow:none!important;outline:0!important}
+#root .passenger-voting-form__location-wrapper .input__label{color:#c8c8c8!important;font-size:12px!important}
+#root .passenger-voting-form__location-wrapper input.input{color:white!important;caret-color:var(--drive-orange);background:transparent!important;font-size:16px!important;font-weight:650!important}
+#root .passenger-voting-form__location-wrapper input.input::placeholder{color:white!important;opacity:1}
+#root .passenger-voting-form__location-wrapper .input__error{color:#f4c299!important}
+#root .passenger-voting-form__location-wrapper>.passenger-voting-form__input{border:0!important;border-radius:0!important;padding-block:12px!important}
+#root .passenger-voting-form__location-wrapper>.passenger-voting-form__input+*{border-top:1px solid #ffffff26!important}
+#root .passenger-voting-form__location-wrapper .input__wrapper:focus-within{background:#ffffff0b!important;border-radius:12px!important}
+#root .passenger-voting-form .rs-map-pick-button{background:#fff0ed!important;color:var(--drive-red);border-radius:14px;width:46px;height:46px}
+#root .passenger-voting-form .rs-address-toggle-button{color:#e9e4df!important;font-weight:600}
+#root .rs-readonly-location{padding:16px 10px!important;background:transparent!important}
+#root .rs-readonly-location>span{color:#c8c8c8}#root .rs-readonly-location>p{color:white;font-size:15px;line-height:23px}
+#root .rs-readonly-location .rs-address-source summary{color:#e9e4df}#root .rs-readonly-location .rs-address-source p{color:#ddd!important}
+#root .input__suggestions{border-radius:18px;border:1px solid var(--drive-line);background:white;box-shadow:0 16px 40px #1010101a;overflow:hidden}
+#root .input__suggestion{padding:14px 16px;min-height:60px;border-bottom:1px solid var(--drive-line);background:white;color:var(--drive-black)}
+#root .input__suggestion:hover,#root .input__suggestion--highlighted{background:var(--drive-soft)}
+#root .passenger-voting-form__car-class-title{font-size:15px;font-weight:750}
+#root .car-class-slider__options{gap:10px}
+#root .car-class-slider__options .car-class-slider__slide{height:98px!important;border:1px solid var(--drive-line);border-radius:18px!important;background:#fff;padding:12px!important}
+#root .car-class-slider__options .car-class-slider__slide--active{background:var(--drive-soft)!important;border:2px solid var(--drive-red)!important}
+#root .car-class-slider__title{font-size:12px;line-height:18px;color:var(--drive-black)}
+#root .car-class-slider__value{font-size:12px;color:var(--drive-muted)}
+#root .car-class-slider__icon{background:url('/design-v2/vehicles/petit-red-v3.png') no-repeat center/contain;width:66px;height:32px!important}
+#root .car-class-slider__icon svg{visibility:hidden}
+#root .rs-options-toggle{font-size:13px;font-weight:700;padding-block:12px}
+#root .rs-request-actions{border-top:0;padding-top:16px;gap:12px}
+#root .rs-request-modes{gap:6px;background:transparent;padding:0}
+#root .rs-request-mode{background:var(--drive-canvas);min-height:50px;border:1px solid var(--drive-line);border-radius:14px;font-size:12px;color:var(--drive-black)}
+#root .rs-request-mode--selected{background:var(--drive-soft);color:var(--drive-red);border-color:var(--drive-red)}
+#root .rs-request-hint{font-size:12px;line-height:18px;min-height:18px}
+#root .rs-request-submit,#root .rs-location-picker__confirm{background:var(--drive-red)!important;color:#fff!important;min-height:56px;font-size:16px;font-weight:800;border:0;border-radius:18px;box-shadow:none}
+#root .rs-request-submit:hover{background:#ee974d!important}
+#root .boundary-buttons__item{border-radius:14px;border:0;background:white;min-height:46px}
+#root .boundary-buttons__item--active{background:var(--drive-red);color:white}
+#root .mini-orders__card{border-radius:18px!important;box-shadow:0 4px 16px #10101012!important;border-color:var(--drive-line)!important}
+#root .mini-orders__card--selected{border:2px solid var(--drive-red)!important;background:white!important}
+#root .mini-orders__card--selected::after{background:var(--drive-red)!important}
+#root .mini-orders__mode-icon{border-radius:12px;background:var(--drive-soft);color:var(--drive-red)}
+#root .rs-map-region{border:0;border-radius:16px;box-shadow:0 4px 16px #10101010;min-height:48px;font-weight:700}
+#root .rs-map-zoom{border:0;border-radius:18px;box-shadow:0 4px 16px #10101010;overflow:hidden}
+#root .map-container__locate-button{border-radius:50%;box-shadow:0 4px 16px #10101010}
+#root .rs-location-picker{border:0;border-radius:24px;padding:24px;background:white;box-shadow:0 12px 40px #10101024}
+#root .driver-tabs{padding:12px 20px;background:var(--drive-soft);gap:8px;border:0}
+#root .driver-tabs__tab{background:transparent;border-radius:100px;min-height:46px;color:var(--drive-black);font-size:14px}
+#root .driver-tabs__tab--active{background:var(--drive-black);color:white}
+#root .page-section.driver--mobile-first{background:var(--drive-canvas);padding:20px}
+#root .driver-active-trip-status{background:var(--drive-black);color:white;border:0;border-radius:18px;min-height:60px;padding:18px;font-size:14px}
+#root .driver-section-heading{margin-top:24px;font-size:22px;letter-spacing:-.6px}
+#root .driver-section-heading button{font:inherit}
+#root .driver-card--overview{border-radius:22px;padding:20px;box-shadow:0 4px 16px #10101004!important}
+#root .driver-order-overview__price{font-size:26px;letter-spacing:-.8px;font-weight:800}
+#root .driver-order-overview__meta{gap:6px;margin-top:12px}
+#root .driver-order-overview__mode{border:0!important;background:var(--drive-soft)!important;color:var(--drive-red)!important;border-radius:8px!important;padding:6px 9px!important}
+#root .driver-order-overview__status{border-radius:8px;padding:6px 9px;background:var(--drive-canvas);color:var(--drive-black)}
+#root .driver-order-overview__route{padding-block:8px}
+#root .driver-order-overview__route p span{font-size:14px;line-height:21px;font-weight:650}
+#root .driver-order-overview__profit{background:var(--drive-canvas);border:0!important;padding:14px!important;border-radius:14px}
+#root .driver-order-overview__profit dd{color:var(--drive-black);font-size:16px}
+#root .driver-order-overview__profit[data-loss=true] dd{color:var(--rs-danger,#b42318)}
+#root .order{background:var(--drive-canvas);color:var(--drive-black)}
+#root .order :is(.card,.order__group){border-radius:22px;border-color:var(--drive-line);box-shadow:none}
+#root .order button.button{border-radius:16px;min-height:52px}
+/* Portal surfaces: account, auth, order details, preferences, safety, ratings. */
+body .overlay__wrapper{background:#10101070;backdrop-filter:blur(8px)}
+body .overlay__wrapper>.modal,body .card-modal__surface{border-radius:28px!important;border:0!important;background:white;box-shadow:0 24px 90px #10101026;padding:28px!important}
+body .overlay__wrapper :is(h1,h2,.modal__title,.modal-title,.login-modal__title){font-size:26px;line-height:1.2;font-weight:800;letter-spacing:-.7px;color:var(--drive-black)}
+body .overlay__wrapper .input__wrapper{border-radius:14px!important;background:var(--drive-canvas)!important;border:1px solid var(--drive-line)!important;box-shadow:none!important;min-height:52px}
+body .overlay__wrapper .input__wrapper:focus-within{border-color:var(--drive-red)!important;outline:2px solid var(--drive-soft)!important}
+body .overlay__wrapper .button{min-height:52px;border-radius:16px!important;background:var(--drive-red)!important;font-size:14px;font-weight:750;box-shadow:none!important}
+body .overlay__wrapper .button--secondary{background:var(--drive-soft)!important;color:var(--drive-red)!important;border:0!important}
+body .overlay__wrapper .button--danger{background:#fff0ed!important;color:#ae281d!important}
+body .overlay__wrapper .rs-dialog-close{border:0;border-radius:50%;background:var(--drive-canvas);width:44px;height:44px}
+body .login-modal{background-image:url('/design-v2/vehicles/petit-red-v3.png')!important;background-repeat:no-repeat!important;background-position:right 24px top 20px!important;background-size:100px!important;padding-top:84px!important}
+body .login-modal .tabs{border-radius:100px;background:var(--drive-soft);padding:4px}
+body .login-modal .tabs>button{border-radius:100px!important;min-height:44px}
+body .login-modal .tabs>button.is-active{background:var(--drive-red)!important;color:white;box-shadow:none!important}
+body .profile-modal .avatar{border-radius:24px;background:var(--drive-soft);padding:16px}
+body .rating-modal{background-image:url('/design-v2/journey.svg');background-repeat:no-repeat;background-position:center 24px;background-size:130px;padding-top:125px!important}
+body .chat{border:0;border-radius:26px!important;box-shadow:0 20px 70px #10101030;background:white}
+body .chat__header{background:var(--drive-black);color:white;padding:16px!important;border:0}
+body .chat__conversation{color:#ddd}body .chat__close-button{color:white}
+body .chat__message{border-radius:18px!important;background:var(--drive-canvas);color:var(--drive-black);padding:12px 16px}
+body .chat__message--main-user-message{background:var(--drive-soft)!important;color:var(--drive-black)}
+body .chat__input .input__wrapper{border-radius:24px!important;background:var(--drive-canvas)!important}
+body .chat .chat__send-button{background:var(--drive-red)!important;border-radius:50%;color:white}
+body .status-card__modal .address{border:0!important;border-radius:18px;background:var(--drive-canvas)!important}
+body .status-card__modal .card-modal__surface .payment{padding:16px;border-radius:16px;background:var(--drive-soft)}
+body .driver-emulator-panel__card{border:0;border-radius:28px;background:white}
+body .driver-emulator-panel__header{border-bottom:1px solid var(--drive-line);padding-bottom:16px}
+body .driver-emulator-panel__button{border-radius:14px;min-height:48px}
+@media(min-width:900px){
+ #root .passenger__form-container{width:440px;left:20px;bottom:20px;gap:12px}
+ #root .passenger__draggable{padding:24px;border-radius:28px}
+ #root .passenger__form-map-container{left:0;width:100%}
+ #root .passenger__mini-orders{left:500px;max-width:calc(100% - 524px)}
+ #root .driver--mobile-first.driver--lite .driver-orders__list{grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px}
+}
+@media(max-width:899px){
+ #root .header{min-height:60px;padding-inline:16px}
+ #root .passenger__draggable{padding:20px 16px;border-radius:28px 28px 0 0}
+ #root .rs-ride-heading{min-height:68px;background-size:96px;padding-inline-end:100px}
+ #root .rs-ride-heading>div{font-size:26px;letter-spacing:-.8px}
+ #root .car-class-slider__options .car-class-slider__slide{height:88px!important;padding:10px!important}
+ #root .rs-request-submit{min-height:54px}
+ #root .page-section.driver--mobile-first{padding:16px 12px}
+ #root .driver-tabs{padding:10px 12px}
+ #root .driver-card--overview{padding:18px}
+ body .overlay__wrapper>.modal{padding:24px 18px!important;border-radius:26px!important}
+}
+@media(max-height:500px){#root .rs-ride-heading{min-height:48px;background:none;padding-inline-end:0}#root .rs-ride-heading>div{font-size:22px}#root .car-class-slider__options .car-class-slider__slide{height:72px!important}body .overlay__wrapper>.modal{padding:20px!important}}
+@media(prefers-reduced-motion:reduce){body *,body *::before,body *::after{scroll-behavior:auto!important;animation-duration:.01ms!important;transition-duration:.01ms!important}}
+/* Nested labels own their colour in the legacy tabs; match the new selected surface. */
+body .login-modal .tabs>button.is-active .tabs__label{color:white!important}
+body .login-modal .auth-password-toggle{background:transparent!important;color:var(--drive-red)!important}
+body .login-modal .auth-password-toggle svg{stroke:currentColor}
+body .login-modal .auth-restore-control .restore-password-block__button{background:transparent!important;color:var(--drive-muted)!important;border:0!important}
+@media(max-width:599px) and (min-height:650px){
+ #root .rs-ride-heading{min-height:54px;background-size:90px}
+ #root .passenger-voting-form__group{gap:12px}
+ #root .car-class-slider__options .car-class-slider__slide{height:80px!important;padding:8px 10px!important}
+ #root .car-class-slider__icon{height:26px!important}
+ #root .car-class-slider__title,#root .car-class-slider__value{line-height:16px;font-size:11px}
+}
+body .overlay__wrapper>.modal.rating-modal{padding-top:150px!important}
+#root .loading-frame{border:0;border-radius:24px;background:white;padding:32px;color:var(--drive-black)}
+#root .rs-sandbox{background:var(--drive-canvas);gap:20px;padding:20px}
+#root .rs-sandbox .column--editor,#root .rs-sandbox .column--content{border:1px solid var(--drive-line);border-radius:22px;background:white;overflow:hidden}
+#root .rs-sandbox-open{background:var(--drive-red);color:white;border-radius:14px;min-height:48px;padding:12px 20px}
+/* Short landscape: keep the route visible ahead of the persistent action. */
+@media(min-width:600px) and (max-width:899px) and (max-height:500px) and (orientation:landscape){
+ #root .rs-ride-heading{display:none}
+ #root .passenger__draggable{padding:8px 12px!important}
+ #root .rs-request-actions{gap:4px;padding-top:0}
+ #root .rs-request-hint{display:none}
+ #root .rs-request-mode,#root .rs-request-submit{min-height:44px;padding-block:8px}
+ #root .passenger-voting-form__location-wrapper .input__field-wrapper{min-height:64px;padding-block:8px!important}
+ #root .passenger-voting-form__location-wrapper .input__buttons{top:10px}
+}
+body .overlay__wrapper>.modal.rating-modal{background-image:url('/design-v2/journey.svg')!important;background-position:center 24px!important;background-size:130px!important;background-repeat:no-repeat!important}
+html[dir=rtl] #root .rs-ride-heading{background-position:left center}
+/* Header language selection is independent of the navigation drawer. */
+#root .header-language{position:relative;flex:0 0 auto}
+#root .header-emulation-indicator{width:36px;height:36px;flex-basis:36px;border-radius:12px;background:var(--drive-soft)}
+#root .header-emulation-indicator:hover,#root .header-emulation-indicator:focus-visible{background:white}
+#root .header-language__trigger{display:flex;align-items:center;justify-content:center;gap:6px;min-width:58px;min-height:44px;padding:8px;color:white;background:transparent;border:1px solid #ffffff26;border-radius:12px;font-size:13px;font-weight:700;cursor:pointer}
+#root .header-language__trigger:hover{background:#ffffff18}
+#root .header-language__panel{position:absolute;inset-inline-end:0;top:calc(100% + 12px);width:250px;max-width:calc(100vw - 32px);max-height:calc(var(--taxi-viewport-height,100dvh) - 100px);overflow:auto;padding:8px;background:white;color:var(--drive-black);border:1px solid var(--drive-line);border-radius:18px;box-shadow:0 12px 40px #10101026;z-index:1200}
+#root .header-language__panel button{display:flex;justify-content:space-between;align-items:center;gap:12px;width:100%;min-height:44px;padding:10px 12px;border:0;border-radius:10px;text-align:start;background:white;color:var(--drive-black);font-size:14px;cursor:pointer}
+#root .header-language__panel button[aria-checked=true],#root .header-language__panel button:hover{background:var(--drive-soft);color:var(--drive-red)}
+#root .header-language__panel button:focus-visible{outline:2px solid var(--drive-red);outline-offset:-2px}
+#root .menu__list{width:280px;max-width:calc(100vw - 24px);padding:8px;border-radius:18px}
+#root .menu__list .menu__button{min-height:48px;padding:12px;border-radius:10px;font-size:14px;line-height:20px}
+#root .menu__list .menu__button:focus-visible{outline:2px solid var(--drive-red);outline-offset:-2px}
+#root .menu__tools>summary{min-height:48px;display:flex;align-items:center;justify-content:space-between;padding:12px;font-size:13px}
+/* Compact portrait / software keyboard: route fields take priority over artwork. */
+@media(max-width:599px) and (max-height:650px){
+ #root .rs-ride-heading{min-height:32px;background:none;padding-inline-end:0;padding-block:0}
+ #root .rs-ride-heading>div{font-size:22px;line-height:28px;letter-spacing:-.5px}
+ #root .passenger-voting-form__group{gap:10px}
+ #root .passenger-voting-form__location-wrapper .input__field-wrapper{min-height:64px;padding-block:8px!important}
+ #root .passenger-voting-form__location-wrapper .input__buttons{top:10px}
+ #root .rs-request-hint{display:none}
+ #root .rs-request-actions{padding-top:8px;gap:8px}
+}
+/* Artwork must scroll with the dialog content, never sit over form fields. */
+body .overlay__wrapper>.modal.login-modal{background-image:none!important;position:relative}
+body .overlay__wrapper>.modal.login-modal::before{content:"";position:absolute;top:16px;inset-inline-end:24px;width:90px;height:58px;background:url('/design-v2/vehicles/petit-red-v3.png') center/contain no-repeat;pointer-events:none}
+@media(max-width:359px){body .overlay__wrapper>.modal.login-modal::before{width:72px;inset-inline-end:18px;top:14px}}
+/* Keep navigation controls on their physical sides; localize the panels themselves. */
+#root .header{direction:ltr}
+html[dir=rtl] #root .header .menu__list{left:-5px;right:auto;direction:rtl}
+html[dir=rtl] #root .header-language__panel{direction:rtl;right:0;left:auto}
+#root .passenger-voting-form[dir=rtl] .passenger-voting-form__location-wrapper{background:var(--drive-black)}
+#root .header-user-name{max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+@media(max-width:599px){#root .header-user-name{display:none}}
+@media(max-width:359px){#root .header:has(.header-emulation-indicator) .rs-brand-name{display:none}#root .header-avatar-wrapper{gap:8px}}
+/* Card actions must outrank legacy red buttons inside the lazy loaded modal. */
+body .overlay__wrapper.status-card__modal .client .btns .button.order_take-order-btn{background:var(--drive-red)!important;color:#fff!important;border-color:transparent!important}
+body .overlay__wrapper.status-card__modal .client .btns .button.order_hide-order-btn{background:var(--drive-canvas)!important;color:var(--drive-black)!important;border:1px solid var(--drive-line)!important}
+body .overlay__wrapper.status-card__modal .client .btns .button.order-action--danger{background:#fff0ed!important;color:#ae281d!important;border-color:#efc5c1!important}
+/* Legacy .svg assigned column 4, silently creating an empty extra column. */
+body .overlay__wrapper.status-card__modal .card-modal__surface .address__row button.card-modal__map-button{grid-column:3!important;display:grid;align-self:flex-start}
+@media(max-width:599px){body .overlay__wrapper.status-card__modal>.card-modal__surface{padding:20px 14px!important}}
+@media(max-width:599px) and (max-height:650px){
+ /* With an active plaque, the compact map strip has no room for a second
+    toolbar. Full controls remain available in the map location picker. */
+ #root .passenger:not(.passenger--picking-location):has(.mini-orders__card) .rs-map-controls{display:none}
+}

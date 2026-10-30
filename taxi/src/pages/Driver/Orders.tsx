@@ -1,4 +1,8 @@
+import {useLiveEstimatedOrders} from '../../tools/liveOrderProfit'
+import {profitPercentiles} from '../../design/profitPresentation'
 import React, { useEffect, useMemo, useRef, useState } from 'react'
+import { ChevronDown, Inbox, History } from 'lucide-react'
+import { driverCopy } from './copy'
 import { connect, ConnectedProps } from 'react-redux'
 import cn from 'classnames'
 import {
@@ -15,7 +19,6 @@ import { configSelectors } from '../../state/config'
 import { t, TRANSLATION } from '../../localization'
 import PageSection from '../../components/PageSection'
 import StatusCard from '../../components/Card/OrderCard'
-import Separator from '../../components/separator/Separator'
 import Button from '../../components/Button'
 import images from '../../constants/images'
 import MiniOrder from '../../components/MiniOrder'
@@ -29,7 +32,7 @@ import { writeRawLog } from '../../tools/rawLog'
 import { summarizeOrder } from '../../tools/frontendLog'
 import { isVotingOrder } from '../../tools/driverOffer'
 import { getOrderIdText } from '../../tools/orderId'
-import { computeProfitPercentiles } from '../../tools/order'
+
 import { canDriverTakeOrderBySeats, getCarCapacity, getDriverFreeSeats } from '../../tools/driverCapacity'
 import {
   buildOrderDecisionContext,
@@ -88,20 +91,20 @@ const DriverOrders: React.FC<IProps> = ({
       ...driverPresentation.user,
     } as IUser
   }
-  const activeOrders = driverPresentation.available ?
+  const activeOrders = useLiveEstimatedOrders(driverPresentation.available ?
     driverPresentation.activeOrders as IOrder[] :
-    activeOrdersProp
-  const readyOrders = driverPresentation.available ?
+    activeOrdersProp)
+  const readyOrders = useLiveEstimatedOrders(driverPresentation.available ?
     driverPresentation.readyOrders as IOrder[] :
-    readyOrdersProp
+    readyOrdersProp)
   const historyOrders = driverPresentation.available ?
     driverPresentation.historyOrders as IOrder[] :
     historyOrdersProp
   const languageIso = language?.iso
+  const copy = driverCopy(languageIso)
   const [showCandidateOrders, setShowCandidateOrders] = useState(true)
   const [showReadyOrders, setShowReadyOrders] = useState(true)
   const [showHistoryOrders, setShowHistoryOrders] = useState(false)
-  const [statusID, setStatusID] = useState(statuses[0].id)
   const [hiddenOrderIds, setHiddenOrderIds] = useState<string[]>(() => getHiddenOrderIds(user?.u_id))
   const [selectedOrderId, setSelectedOrderId] = useState<IOrder['b_id'] | null>(null)
   const orderCardRefs = useRef<Record<string, HTMLDivElement | null>>({})
@@ -191,7 +194,7 @@ const DriverOrders: React.FC<IProps> = ({
   // совпадает с картой (активные + свободные, без истории), иначе один и тот же
   // заказ был бы «зелёным» на карте и «жёлтым» в списке.
   const orderProfitPercentiles = useMemo(
-    () => computeProfitPercentiles([
+    () => profitPercentiles([
       ...(visibleActiveOrders ?? []),
       ...(visibleReadyOrders ?? []),
     ]),
@@ -543,7 +546,7 @@ const DriverOrders: React.FC<IProps> = ({
 
   return (
     <PageSection
-      className={cn('driver', {
+      className={cn('driver driver--mobile-first', {
         'driver--lite': type === EDriverTabs.Lite,
         'driver--detailed': type === EDriverTabs.Detailed,
       })}
@@ -580,6 +583,7 @@ const DriverOrders: React.FC<IProps> = ({
           {activeOrdersWithoutCandidates!.map(item => (
             type === EDriverTabs.Lite ?
               <MiniOrder
+                driverOverview
                 user={user as IUser}
                 order={item}
                 onClick={() => handleOrderClick(item.b_id)}
@@ -590,6 +594,7 @@ const DriverOrders: React.FC<IProps> = ({
                 key={item.b_id}
               /> :
               <StatusCard
+                driverOverview
                 className="driver-order-wide-mode-status-card"
                 style={{ boxShadow: '0px 1px 7px rgba(0, 0, 0, 0.23)', border: 'none' }}
                 onClick={() => handleOrderClick(item.b_id)}
@@ -603,16 +608,16 @@ const DriverOrders: React.FC<IProps> = ({
           ))}
         </div>
       ) : (
-        <div className='driver-orders-empty driver-orders-empty--standalone'>{t(TRANSLATION.NO_ACTUAL_DRIVE)}</div>
+        <div className='driver-orders-empty driver-orders-empty--standalone' role="status">{activeOrders === null ? t(TRANSLATION.LOADING) : copy.noActive}</div>
       )}
       {!!candidateOrders?.length && (
         <>
-          <Separator
+          <DriverSectionHeading id="driver-candidate-orders" expanded={showCandidateOrders}
             onClick={() => setShowCandidateOrders(prev => !prev)}
-            src={showCandidateOrders ? images.minusCircle : images.plusCircle}
-            text={t(TRANSLATION.CANDIDATE)}
-          />
+            label={t(TRANSLATION.CANDIDATE)} count={candidateOrders?.length} />
           <div
+            id="driver-candidate-orders"
+            hidden={!showCandidateOrders}
             className={cn('driver-orders', {
               'driver-orders--active': showCandidateOrders,
               'driver-orders--scroll': showCandidateOrders,
@@ -622,6 +627,7 @@ const DriverOrders: React.FC<IProps> = ({
               (candidateOrders?.length && candidateOrders?.map(item => (
                 type === EDriverTabs.Lite ?
                   <MiniOrder
+                driverOverview
                     user={user as IUser}
                     order={item}
                     onClick={() => handleOrderClick(item.b_id)}
@@ -633,6 +639,7 @@ const DriverOrders: React.FC<IProps> = ({
                     isHistory={false}
                   /> :
                   <StatusCard
+                driverOverview
                     className="driver-order-wide-mode-status-card"
                     style={{ boxShadow: '0px 1px 7px rgba(0, 0, 0, 0.23)', border: 'none' }}
                     onClick={() => handleOrderClick(item.b_id)}
@@ -643,46 +650,45 @@ const DriverOrders: React.FC<IProps> = ({
                     order={item}
                     user={user as IUser}
                   />
-              ))) || <div>{t(TRANSLATION.NO_ACTUAL_DRIVE)}</div>
+              ))) || <div>{copy.noActive}</div>
             }
           </div>
         </>
       )}
-      <Separator
+      <DriverSectionHeading id="driver-ready-orders" expanded={showReadyOrders}
         onClick={() => setShowReadyOrders(prev => !prev)}
-        active={showReadyOrders}
-        text={t(TRANSLATION.ACTUAL)}
-      />
+        label={copy.readyTitle} count={visibleReadyOrders?.length} />
       <div
+        id="driver-ready-orders" hidden={!showReadyOrders}
         className={cn('driver-orders driver-orders--ready', { 'driver-orders--active': showReadyOrders })}
       >
         <div className="driver-orders__free-seats">
           {t(TRANSLATION.DRIVER_OFFER_SEATS)}: <b>{driverFreeSeats}</b> / {carCapacity}
         </div>
-        <div className="driver-statuses">
-          {
-            statuses.map(status => {
-              return (
-                <span
-                  key={status.id}
-                  onClick={() => {
-                    setStatusID(status.id)
-                  }}
-                >
-                  <div className={status.className}/>
-                  <label>
-                    {status.id === statusID ? t(status.label) : t(status.label)[0]}
-                  </label>
-                </span>
-              )
-            })
-          }
-        </div>
-        <div className="driver-orders__list driver-orders__list--ready">
+        <details className="driver-status-legend">
+          <summary>{copy.statuses}<ChevronDown size={16} aria-hidden="true" /></summary>
+          <ul className="driver-statuses">
+            {statuses.map(status => (
+              <li key={status.id}>
+                <span className={status.className} aria-hidden="true" />
+                <span>{t(status.label)}</span>
+              </li>
+            ))}
+          </ul>
+        </details>
+        <div className="driver-orders__list driver-orders__list--ready" aria-busy={visibleReadyOrders === null}>
+          {!visibleReadyOrders?.length && (
+            <div className="driver-list-empty" role="status">
+              <Inbox size={28} aria-hidden="true" />
+              <strong>{visibleReadyOrders === null ? t(TRANSLATION.LOADING) : copy.noReady}</strong>
+              {visibleReadyOrders !== null && <p>{copy.noReadyHint}</p>}
+            </div>
+          )}
           {
             visibleReadyOrders?.map(item => (
               type === EDriverTabs.Lite ?
               <MiniOrder
+                driverOverview
                 user={user as IUser}
                 order={item}
                 onClick={() => handleOrderClick(item.b_id)}
@@ -694,6 +700,7 @@ const DriverOrders: React.FC<IProps> = ({
                 isHistory={false}
               /> :
               <StatusCard
+                driverOverview
                 style={{ boxShadow: '0px 1px 7px rgba(0, 0, 0, 0.23)', border: 'none' }}
                 onClick={() => handleOrderClick(item.b_id)}
                 onSelect={handleOrderSelect}
@@ -707,19 +714,26 @@ const DriverOrders: React.FC<IProps> = ({
           }
         </div>
       </div>
-      <Separator
-        text={t(TRANSLATION.ORDERS_HISTORY)}
-        active={showHistoryOrders}
+      <DriverSectionHeading id="driver-history-orders" expanded={showHistoryOrders}
         onClick={() => setShowHistoryOrders(prev => !prev)}
-      />
+        label={t(TRANSLATION.ORDERS_HISTORY)} count={historyOrders?.length} />
       <div
+        id="driver-history-orders" hidden={!showHistoryOrders}
         className={cn('driver-orders driver-orders--history', { 'driver-orders--active': showHistoryOrders })}
       >
-        <div className="driver-orders__list driver-orders__list--history">
+        <div className="driver-orders__list driver-orders__list--history" aria-busy={historyOrders === null}>
+          {!historyOrders?.length && (
+            <div className="driver-list-empty" role="status">
+              <History size={28} aria-hidden="true" />
+              <strong>{historyOrders === null ? t(TRANSLATION.LOADING) : copy.noHistory}</strong>
+              {historyOrders !== null && <p>{copy.noHistoryHint}</p>}
+            </div>
+          )}
           {
             historyOrders?.map(item => (
               type === EDriverTabs.Lite ?
               <MiniOrder
+                driverOverview
                 user={user as IUser}
                 order={item}
                 onClick={() => handleOrderClick(item.b_id)}
@@ -730,6 +744,7 @@ const DriverOrders: React.FC<IProps> = ({
                 isHistory={true}
               /> :
               <StatusCard
+                driverOverview
                 className="driver-order-wide-mode-status-card"
                 style={{ boxShadow: '0px 1px 7px rgba(0, 0, 0, 0.23)', border: 'none' }}
                 onClick={() => handleOrderClick(item.b_id)}
@@ -745,6 +760,19 @@ const DriverOrders: React.FC<IProps> = ({
       </div>
     </PageSection>
   )
+}
+
+
+function DriverSectionHeading({ id, expanded, onClick, label, count }: {
+  id: string; expanded: boolean; onClick: () => void; label: string; count?: number;
+}) {
+  return <h2 className="driver-section-heading">
+    <button type="button" aria-expanded={expanded} aria-controls={id} onClick={onClick}>
+      <span>{label}</span>
+      {count !== undefined && <span className="driver-section-heading__count">{count}</span>}
+      <ChevronDown size={18} aria-hidden="true" />
+    </button>
+  </h2>
 }
 
 

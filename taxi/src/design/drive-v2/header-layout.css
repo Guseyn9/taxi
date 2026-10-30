@@ -1,0 +1,59 @@
+/* inDrive reference: a single account entry in the menu and quiet utility
+   controls. The grid replaces the overlapping absolute brand positioning. */
+#root .header {
+  display:grid;grid-template-columns:44px minmax(0,1fr) auto;align-items:center;
+  --drive-header-size:64px;
+  column-gap:12px;box-sizing:border-box;height:calc(var(--drive-header-size) + env(safe-area-inset-top,0px));min-height:var(--drive-header-size);
+  padding:8px 20px;padding-top:calc(8px + env(safe-area-inset-top,0px));background:var(--drive-white);border-bottom:1px solid var(--drive-line);
+}
+#root .header .burger-wrapper {grid-column:1;height:44px;width:44px;position:static}
+#root .header .burger-wrapper>.column {width:44px}
+#root .header .menu__wrapper {height:44px;padding:0}
+#root .header .menu__backdrop {top:calc(var(--drive-header-size) + env(safe-area-inset-top,0px));height:calc(100dvh - var(--drive-header-size) - env(safe-area-inset-top,0px))}
+#root .header .burger-button,#root .header .rs-header-back {
+  display:grid;place-items:center;box-sizing:border-box;width:44px;height:44px;
+  padding:10px;border:0;border-radius:50%;background:transparent;color:var(--drive-black);
+}
+#root .header .burger-button:hover,#root .header .rs-header-back:hover {background:var(--drive-canvas)}
+#root .header .burger-button:focus-visible,#root .header .rs-header-back:focus-visible,
+#root .header .header-language__trigger:focus-visible {outline:2px solid var(--drive-red);outline-offset:2px}
+#root .header .burger-button svg {display:block;width:24px;height:24px}
+#root .header .header-logo {
+  grid-column:2;position:static;left:auto;right:auto;top:auto;transform:none;
+  justify-self:start;display:flex;width:auto;max-width:100%;height:40px;gap:8px;
+}
+#root .header .rs-brand-name {color:var(--drive-black);font-size:26px;line-height:32px;white-space:nowrap}
+#root .header .rs-brand-mark {width:30px;height:30px;flex:0 0 30px}
+#root .header .header-avatar-wrapper {grid-column:3;justify-self:end;min-width:0;height:44px;gap:8px}
+#root .header .header-language__trigger {
+  display:flex;align-items:center;justify-content:center;gap:7px;
+  min-width:64px;height:44px;min-height:44px;padding:8px;
+  background:transparent;border:0;border-radius:12px;color:var(--drive-black);
+  font-size:12px;font-weight:750;line-height:20px;
+}
+#root .header .header-language__trigger:hover,#root .header .header-language__trigger[aria-expanded=true] {background:var(--drive-soft);color:var(--drive-red)}
+#root .header .header-language__trigger svg {width:20px;height:20px;flex-shrink:0}
+#root .header .header-language__panel {top:calc(100% + 12px);width:264px;border-radius:20px;padding:8px;box-shadow:0 12px 36px #10101014}
+#root .header-language__title {padding:10px 12px 8px;font-size:12px;line-height:18px;color:var(--drive-muted);font-weight:600}
+#root .header .header-language__panel button {min-height:48px;padding:12px;font-size:14px}
+#root .header .menu__list {top:calc(100% + 12px);left:0;right:auto;width:288px;max-width:calc(100vw - 24px);border-radius:20px;padding:8px;box-shadow:0 12px 36px #10101014}
+#root .header .menu__account {display:flex;align-items:center;gap:12px;min-height:76px;padding:12px;font-size:15px;text-align:start}
+#root .menu__account-avatar {display:grid;place-items:center;flex:0 0 44px;width:44px;height:44px;background:var(--drive-soft);border-radius:50%;color:var(--drive-red);overflow:hidden}
+#root .menu__account-avatar img {display:block;width:100%;height:100%;object-fit:cover}
+#root .menu__account-copy {display:flex;flex-direction:column;gap:3px;flex:1;min-width:0}
+#root .menu__account-copy strong {font-size:15px;line-height:21px;font-weight:750;overflow:hidden;text-overflow:ellipsis}
+#root .menu__account-copy>span {font-size:12px;line-height:18px;color:var(--drive-muted)}
+#root .menu__account>svg {flex-shrink:0;color:var(--drive-muted)}
+#root .menu__tools {margin-top:4px;padding-top:4px}
+html[dir=rtl] #root .header .menu__list {left:0;right:auto}
+html[dir=rtl] #root .menu__account>svg {transform:rotate(180deg)}
+@media(max-width:899px) {
+  #root .header {--drive-header-size:60px;min-height:60px;padding-inline:12px;column-gap:8px}
+  #root .header .rs-brand-name {font-size:24px}
+}
+@media(max-width:359px) {
+  #root .header .header-logo {gap:6px}
+  #root .header .rs-brand-name {font-size:22px}
+  #root .header:has(.header-driver-status) .rs-brand-name {display:none}
+  #root .header .header-emulation-indicator {width:32px;flex-basis:32px}
+}

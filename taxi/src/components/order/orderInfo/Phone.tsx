@@ -1,4 +1,5 @@
 import React from 'react'
+import { formatPhoneNumber } from '../../../tools/phoneUtils'
 import { connect, ConnectedProps } from 'react-redux'
 import images from '../../../constants/images'
 import { t, TRANSLATION } from '../../../localization'
@@ -31,7 +32,7 @@ const OrderPhone: React.FC<IProps> = ({ user, order }) => {
       <img src={images.phone} alt={t(TRANSLATION.PHONE)}/>
       <label className="colored">
         <span className="order-fields__title">{t(TRANSLATION.CLIENT_TEL_MAIN)}:</span>
-        <a className="phone-link" href={`tel:${order['b_contact']}`}>{order['b_contact']}</a>
+        <a className="phone-link" href={`tel:${order['b_contact']}`}>{formatPhoneNumber(String(order['b_contact']))}</a>
       </label>
     </div>
     <div className="order__separator"/>

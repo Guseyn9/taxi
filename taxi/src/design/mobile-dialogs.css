@@ -1,0 +1,62 @@
+/* Dialog and conversation geometry follows the visible viewport above a mobile keyboard. */
+body .overlay__wrapper{box-sizing:border-box;bottom:auto;height:var(--taxi-viewport-height,100dvh);min-height:0;overflow:hidden}
+body .overlay__wrapper>.modal{min-height:0;max-height:calc(var(--taxi-viewport-height,100dvh) - 88px);overscroll-behavior:contain;-webkit-overflow-scrolling:touch;scrollbar-gutter:stable}
+body .overlay__wrapper .login-modal{scroll-padding-block:20px 24px}
+body .login-modal .login-form__input{margin-bottom:16px}
+body .login-modal .input__wrapper:has(.auth-password-toggle){display:grid;grid-template-columns:minmax(0,1fr) 44px;gap:4px 8px;padding:4px 8px}
+body .login-modal .input__wrapper:has(.auth-password-toggle)>.input{width:100%;min-width:0}
+body .login-modal .input__wrapper:has(.auth-password-toggle)>.input__buttons{display:contents}
+body .login-modal .auth-password-toggle-control{width:44px;height:44px;margin:0}
+body .login-modal .auth-password-toggle{box-sizing:border-box;width:44px;height:44px;min-width:44px;padding:10px;border:0;border-radius:8px;background:transparent!important;color:var(--rs-muted)}
+body .login-modal .auth-password-toggle:hover{background:var(--rs-selected)!important;color:var(--rs-primary)}
+body .login-modal .auth-restore-control{grid-column:1/-1;min-width:0;width:100%;margin:0;padding:4px 0 2px;border-top:1px solid var(--rs-line)}
+body .login-modal .auth-restore-control .restore-password-block__button{width:100%;max-width:none;height:auto;min-height:44px;padding:8px 12px;line-height:20px;font-size:13px;white-space:normal}
+body .chat{max-height:calc(var(--taxi-viewport-height,100dvh) - 76px)}
+body .chat__heading{display:flex;flex-direction:column;gap:3px;min-width:0;flex:1;font-size:14px;font-weight:700;line-height:20px}
+body .chat__conversation{font-size:12px;font-weight:500;line-height:18px;color:var(--rs-muted);overflow-wrap:anywhere}
+body .chat__messages{scroll-padding-block:12px}
+body .chat__message--action{white-space:normal}
+body .chat__input .input__wrapper{display:flex;align-items:flex-end}
+body .chat__input .input__buttons{flex:0 0 44px;width:44px}
+body .chat__input .input__buttons>.button__wrapper{margin:0}
+body .chat__input textarea.input{resize:none;max-height:96px;overflow-y:auto}
+body .chat .chat__close-button{flex:0 0 44px;padding:10px}
+#root button.chat__toggler--small{display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;padding:10px;margin:0;cursor:pointer;vertical-align:middle}
+#root button.chat__toggler svg{width:20px;height:20px;flex:none}
+@media(max-width:599px){
+ body .overlay__wrapper{padding:64px 12px max(12px,env(safe-area-inset-bottom))}
+ body .overlay__wrapper>.modal{max-height:calc(var(--taxi-viewport-height,100dvh) - 88px);scroll-padding-bottom:max(20px,env(safe-area-inset-bottom))}
+ body .chat{max-height:calc(var(--taxi-viewport-height,100dvh) - 64px)}
+ body .chat__footer{padding-bottom:max(8px,env(safe-area-inset-bottom))}
+}
+@media(max-height:500px){
+ body .overlay__wrapper{padding:56px 12px 8px}
+ body .overlay__wrapper>.modal{max-height:calc(var(--taxi-viewport-height,100dvh) - 64px)}
+ body .chat{max-height:calc(var(--taxi-viewport-height,100dvh) - 12px)}
+}
+@media(prefers-reduced-motion:reduce){body .chat *,body .overlay__wrapper *{scroll-behavior:auto}}
+/* Chat is a later shared dialog layer above the order card; the header owns its close action. */
+body .chat-overlay>.rs-dialog-close{display:none}
+body .chat-overlay .chat{z-index:1}
+body .chat-overlay .chat__close-button{position:relative;z-index:2}
+body .chat-overlay .chat__header{flex-shrink:0}
+body .rating-modal .rating-stars{display:flex;align-items:center;justify-content:flex-start;gap:4px;max-width:100%;margin:0 0 12px;padding:0}
+body .rating-modal .rating-stars__option{position:relative;display:block;flex:0 0 44px;width:44px;height:44px;cursor:pointer}
+body .rating-modal .rating-stars__option input{position:absolute;inset:0;width:44px;height:44px;margin:0;opacity:0;cursor:pointer;z-index:1}
+body .rating-modal .rating-stars__symbol{box-sizing:border-box;display:grid;place-items:center;width:44px;height:44px;border:1px solid var(--rs-line);border-radius:10px;background:#fff;color:var(--rs-muted)}
+body .rating-modal .rating-stars__option input:checked+.rating-stars__symbol{color:var(--rs-primary);border-color:var(--rs-primary);background:var(--rs-selected)}
+body .rating-modal .rating-stars__option input:focus-visible+.rating-stars__symbol{outline:2px solid var(--rs-primary);outline-offset:2px}
+
+body .cancel-order-modal__reasons{display:grid;gap:8px;padding:0;margin:0;border:0;min-width:0}
+body .cancel-order-modal__reasons .reason-item{display:flex;align-items:center;gap:10px;min-height:44px;margin:0;text-align:start;cursor:pointer}
+body .cancel-order-modal__reasons input{appearance:auto;display:block;width:18px;height:18px;margin:0;accent-color:var(--drive-red,#b51218);flex:0 0 18px}
+body .cancel-order-modal__reasons .reason-item:focus-within{outline:2px solid var(--drive-red,#b51218);outline-offset:2px}
+
+body .timer-modal[hidden]{display:none!important}
+body .timer-modal__clock{display:grid;gap:16px;text-align:start}
+body .timer-modal__clock-label{display:grid;gap:8px;font-size:14px}
+body .timer-modal__clock input{display:block;min-height:52px;width:100%;box-sizing:border-box;border:1px solid #e0e0e0;border-radius:10px;background:#f8f8f8;padding:10px 14px;font:600 20px/1.5 Manrope,sans-serif;color:#121212;direction:ltr}
+body .timer-modal__clock button{min-height:48px;border-radius:10px;border:1px solid #e0e0e0;background:white;color:#121212;font:600 14px/1.5 Manrope,sans-serif}
+body .timer-modal__clock .timer-modal__clock-confirm{background:var(--drive-red,#b51218);color:white;border-color:var(--drive-red,#b51218)}
+body .rating-modal .rating-modal__submit-error{padding:10px 12px;margin:8px 0 12px;border:1px solid #efc5c1;border-radius:10px;background:var(--rs-danger-bg,#fff1f0);color:var(--rs-danger,#b42318);font-size:13px;line-height:20px;overflow-wrap:anywhere}
+body .rating-modal fieldset:disabled .rating-stars__option,body .rating-modal fieldset:disabled .rating-stars__option input{cursor:wait}

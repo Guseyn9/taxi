@@ -1,7 +1,9 @@
+import {displayFare,orderCurrency} from '../../design/reliability/rideData'
 import React, { useEffect } from 'react'
 import { connect, ConnectedProps } from 'react-redux'
 import cn from 'classnames'
 import OrderId from '../OrderId'
+import DriverOrderOverview from '../DriverOrderOverview'
 import {
   EBookingDriverState,
   EOrderProfitRank,
@@ -188,6 +190,7 @@ const connector = connect(mapStateToProps, mapDispatchToProps)
 interface IProps extends ConnectedProps<typeof connector> {
   user: IUser,
   order: IOrder,
+  driverOverview?: boolean,
   className?: string,
   style?: React.CSSProperties,
   onClick?: React.PointerEventHandler<HTMLDivElement>,
@@ -211,6 +214,8 @@ function OrderCard({
   onSelect,
   isSelected,
   profitBucket,
+  driverOverview,
+  language,
 }: IProps) {
 
   useEffect(() => {
@@ -281,20 +286,21 @@ function OrderCard({
     <div
       className={cn(
         'status-card colored',
+        { 'driver-card--overview': driverOverview },
         `status-card--status-${statusKey}`,
         `status-card--participation-${participationKey}`,
         `status-card--archive-${archiveKey}`,
         { 'status-card--history': order.b_canceled || order.b_completed },
         { 'status-card--selected': isSelected },
         { 'status-card--profit-negative': isNegativeProfit },
-        order.profitRank !== undefined && `status-card--profit--${{
+        profitValue !== undefined && order.profitRank !== undefined && `status-card--profit--${{
           [EOrderProfitRank.Low]: 'low',
           [EOrderProfitRank.Medium]: 'medium',
           [EOrderProfitRank.High]: 'high',
         }[order.profitRank]}`,
         // Перцентильный класс перекрывает абсолютный low/medium/high (правила в scss),
         // как это уже сделано для хинтов над булавками заказов на карте.
-        profitBucket !== undefined && `status-card--profit-p${profitBucket}`,
+        profitValue !== undefined && profitBucket !== undefined && `status-card--profit-p${profitBucket}`,
         className,
       )}
       style={style}
@@ -302,7 +308,16 @@ function OrderCard({
       // не отличить — ни href, ни идентификатора в разметке нет.
       data-testid="driver-order-card"
       data-order-id={order.b_id}
-      // onClick={onClick}
+      role={driverOverview ? 'button' : undefined}
+      tabIndex={driverOverview ? 0 : undefined}
+      onKeyDown={driverOverview ? event => {
+        if (event.target !== event.currentTarget) return
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault()
+          onSelect?.(order.b_id)
+          setOrderCardModal({ isOpen: true, orderId: order.b_id })
+        }
+      } : undefined}
       onClick={() => {
         onSelect?.(order.b_id)
         setOrderCardModal({ isOpen: true, orderId: order.b_id })
@@ -324,6 +339,9 @@ function OrderCard({
           </div>
         ) :
         null} */}
+      {driverOverview && <DriverOrderOverview order={order} user={user} iso={language?.iso}
+        from={getAddressString(address?.address) || fullFromText}
+        to={getAddressString(destinationAddress?.address) || fullDestinationText} />}
       <div className="status-card__top" >
         <span className="status-card__time">
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none" ><path d="M8 14C11.3137 14 14 11.3137 14 8C14 4.68629 11.3137 2 8 2C4.68629 2 2 4.68629 2 8C2 11.3137 4.68629 14 8 14Z" stroke="#FF2400" strokeLinecap="round" strokeLinejoin="round"/><path d="M7.82996 5.33334V8.66668H11.1633" stroke="#FF2400" strokeLinecap="round" strokeLinejoin="round"/></svg>
@@ -340,7 +358,7 @@ function OrderCard({
         </span>
         <span className="status-card__number" style={{ color: getStatusTextColor() }}><OrderId orderId={order.b_id} variant="short" /> {getStatusText()}</span>
       </div>
-      <div>
+      <div className="status-card__route">
         <span className="status-card__points">
           <div className="status-card__from">
             <span className="status-card__from-address">
@@ -374,7 +392,7 @@ function OrderCard({
 
         {/* <span style={{ color: SITE_CONSTANTS.PALETTE.primary.light }}> */}
         <span className="status-card__cost">
-          <img src={images.dollarMinimalistic} alt={t(TRANSLATION.CASH)}/> {getPayment(order).value} {CURRENCY.NAME}
+          <img src={images.dollarMinimalistic} alt={t(TRANSLATION.CASH)}/> {getPayment(order).estimated?'≈ ':''}{displayFare(getPayment(order).value,orderCurrency(order,CURRENCY.NAME))}
           {offerOrder && (
             <small>{t(TRANSLATION.CLIENT_OFFER_DESIRED_PRICE_LABEL)}</small>
           )}

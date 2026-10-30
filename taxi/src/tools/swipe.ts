@@ -25,7 +25,11 @@ export function useSwipe(
   const getLiftingHeightBounds = useCallback((): [min: number, max: number] => {
     if (!element.current)
       return [0, 0]
-    const parent = element.current.offsetParent! as HTMLElement
+    const parent = element.current.offsetParent as HTMLElement | null
+    // The location picker hides this panel; a queued ResizeObserver can also
+    // run while React replaces it during a language change.
+    if (!parent)
+      return [0, 0]
     const visible = parent.offsetHeight - element.current.offsetTop
     const expanded = element.current.offsetHeight
 

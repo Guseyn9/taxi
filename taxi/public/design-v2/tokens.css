@@ -1,0 +1,9 @@
+/* Drive v2. Manrope + five primitive brand colours. */
+:root {
+ --drive-purple:#5b2dda; --drive-lilac:#ede6ff; --drive-orange:#ff8534; --drive-black:#101010; --drive-white:#fff;
+ --drive-muted:#64616b; --drive-line:#e6e3eb; --drive-canvas:#f8f7fa;
+ --drive-space:4px; --drive-control:52px; --drive-radius:18px; --drive-sheet-radius:28px;
+ --rs-primary:var(--drive-purple); --rs-primary-hover:#4820b4; --rs-selected:var(--drive-lilac); --rs-orange:var(--drive-orange);
+ --rs-ink:var(--drive-black); --rs-muted:var(--drive-muted); --rs-line:var(--drive-line); --rs-canvas:var(--drive-canvas);
+ --primary:256 70% 52%; --accent:260 100% 95%; --ring:256 70% 52%; --radius:18px;
+}

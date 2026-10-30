@@ -73,7 +73,7 @@ const VersionInfo: React.FC<IProps> = ({ setLanguage }) => {
     }
   }
 
-  return <div className="version-info colored">
+  return <details className="rs-version-details"><summary>{version.name} {version.version}</summary><div className="version-info colored">
     <span 
       className="info-item _database" 
       onClick={handleClick}
@@ -83,7 +83,7 @@ const VersionInfo: React.FC<IProps> = ({ setLanguage }) => {
     <span className="info-item _name">{version.name}</span>
     <span className="info-item _build">{`ver. ${version.version}`}</span>
     <span className="info-item _date">{_dt.toLocaleString()}</span>
-  </div>
+  </div></details>
 }
 
 export default connector(VersionInfo)

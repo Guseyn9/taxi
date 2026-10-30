@@ -44,15 +44,15 @@
     }
 
     &--new-order {
-      flex: 0 0 54px;
-      max-width: 54px;
+      flex: 1 1 0;
+      min-width: 0;
     }
   }
 
   &__order-button-error {
     width: 100%;
     font-size: 15px;
-    color: #FF1111;
+    color: #ff1111;
   }
 
   &__location-wrapper {
@@ -71,7 +71,7 @@
 
   &__seats-and-time {
     display: flex;
-    align-items: start;
+    align-items: flex-start;
     column-gap: 12px;
     height: 56px;
     padding-top: 6px;
@@ -88,7 +88,7 @@
     width: 50%;
     display: flex;
     justify-content: space-between;
-    align-content: start;
+    align-content: flex-start;
     align-items: center;
   }
 
@@ -162,7 +162,7 @@
   &__comments-wrapper {
     display: flex;
     flex-direction: column;
-    align-items: start;
+    align-items: flex-start;
     overflow: hidden;
   }
 
@@ -1163,109 +1163,10 @@
   grid-column: 1 / -1;
 }
 
-.passenger-voting-form__order-button--new-order .button {
-  min-width: 0;
-  padding: 0;
-  font-size: 18px;
-  font-weight: 500;
-}
-
-/* Locked state buttons: cancel almost full width, small new-order control like the site floating button. */
-.passenger-voting-form__order-button-wrapper--locked {
-  display: flex;
-  flex-wrap: nowrap;
-  gap: 8px;
-  width: 100%;
-  margin-bottom: 12px;
-}
-
-.passenger-voting-form__order-button--cancel {
-  flex: 1 1 auto !important;
-  min-width: 0;
-}
-
-.passenger-voting-form__order-button--new-order {
-  flex: 0 0 44px !important;
-  width: 44px !important;
-  max-width: 44px !important;
-}
-
-.passenger-voting-form__order-button--new-order .button {
-  width: 44px !important;
-  min-width: 44px !important;
-  height: 40px !important;
-  padding: 0 !important;
-  border: 0 !important;
-  border-radius: 999px !important;
-  background: #f4f4f4 !important;
-  color: #8b929c !important;
-  font-size: 18px !important;
-  font-weight: 500 !important;
-  box-shadow: none !important;
-  transform: none !important;
-}
-
-.passenger-voting-form__order-button--new-order .button:hover,
-.passenger-voting-form__order-button--new-order .button:focus,
-.passenger-voting-form__order-button--new-order .button:active {
-  transform: none !important;
-  box-shadow: none !important;
-}
-
 .passenger-voting-form.passenger-voting-form--locked .passenger-voting-form__candidates-title span {
   display: inline-flex;
   align-items: center;
   line-height: 1;
-}
-
-/* Final locked-state new-order control: copy the site's small round grey map button. */
-.passenger-voting-form__order-button-wrapper--locked {
-  display: flex !important;
-  flex-wrap: nowrap !important;
-  align-items: stretch !important;
-  gap: 8px !important;
-  width: 100% !important;
-  margin-bottom: 12px !important;
-}
-
-.passenger-voting-form__order-button--cancel {
-  flex: 1 1 auto !important;
-  min-width: 0 !important;
-}
-
-.passenger-voting-form__order-button--new-order {
-  flex: 0 0 46px !important;
-  width: 46px !important;
-  max-width: 46px !important;
-  display: flex !important;
-  justify-content: center !important;
-}
-
-.passenger-voting-form__order-button--new-order .button {
-  width: 40px !important;
-  min-width: 40px !important;
-  height: 40px !important;
-  min-height: 40px !important;
-  margin: 0 auto !important;
-  padding: 0 !important;
-  border: 0 !important;
-  border-radius: 50% !important;
-  background: #f5f5f5 !important;
-  color: #1f2937 !important;
-  font-size: 15px !important;
-  line-height: 1 !important;
-  font-weight: 500 !important;
-  box-shadow: none !important;
-  transform: none !important;
-}
-
-.passenger-voting-form__order-button--new-order .button:hover,
-.passenger-voting-form__order-button--new-order .button:focus,
-.passenger-voting-form__order-button--new-order .button:active {
-  background: #eeeeee !important;
-  color: #111827 !important;
-  transform: none !important;
-  box-shadow: none !important;
 }
 
 .passenger-voting-form.passenger-voting-form--locked .passenger-voting-form__candidates-title span {
@@ -3333,34 +3234,30 @@
   }
 }
 
-/* CUSTOMER CHAT PATCH 2026-06-10
-   Keep the compact "new order" control square/round in locked passenger panel.
-   Some older rules can stretch the shared Button component, so lock both wrapper
-   and inner Button dimensions here without touching the main cancel button. */
-.passenger-voting-form__order-button-wrapper--locked .passenger-voting-form__order-button--new-order {
-  flex: 0 0 46px !important;
-  width: 46px !important;
-  min-width: 46px !important;
-  max-width: 46px !important;
-  align-self: stretch !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  overflow: visible !important;
+/* Explicit action for another concurrent booking; one layout owns these controls. */
+.passenger-voting-form__order-button-wrapper--locked {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  gap: 8px;
+  width: 100%;
+  margin-bottom: 0;
 }
-
-.passenger-voting-form__order-button-wrapper--locked .passenger-voting-form__order-button--new-order .button {
-  flex: 0 0 40px !important;
-  width: 40px !important;
-  min-width: 40px !important;
-  max-width: 40px !important;
-  height: 40px !important;
-  min-height: 40px !important;
-  max-height: 40px !important;
-  aspect-ratio: 1 / 1 !important;
-  padding: 0 !important;
-  border-radius: 50% !important;
-  transform: none !important;
-  box-shadow: none !important;
-  white-space: nowrap !important;
+.passenger-voting-form__order-button-wrapper--locked .passenger-voting-form__order-button {
+  flex: 1 1 140px;
+  width: auto;
+  min-width: 0;
+  max-width: none;
+}
+#root .passenger-voting-form__order-button-wrapper--locked .button {
+  width: 100%;
+  min-width: 0;
+  height: auto;
+  min-height: 44px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 20px;
+  white-space: normal;
 }

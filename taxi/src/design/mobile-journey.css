@@ -1,0 +1,97 @@
+/* Mobile is the base surface. Desktop upgrades the sheet to a side panel. */
+#root .rs-request-actions{display:flex;flex-direction:column;gap:8px;padding-top:12px;border-top:1px solid var(--rs-line)}
+#root .rs-request-modes{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px;margin:0;padding:4px;min-width:0;border:0;border-radius:12px;background:var(--rs-canvas)}
+#root .rs-request-mode{position:relative;display:flex;align-items:center;justify-content:center;gap:6px;min-height:44px;min-width:0;padding:7px 4px;border:1px solid transparent;border-radius:9px;color:var(--rs-muted);font:600 12px/18px Manrope,sans-serif;cursor:pointer}
+#root .rs-request-mode input{position:absolute;inset:0;opacity:0;width:100%;height:100%;cursor:pointer;margin:0}
+#root .rs-request-mode:has(input:focus-visible){outline:2px solid var(--rs-primary);outline-offset:2px}
+#root .rs-request-mode--selected{color:var(--rs-primary);background:#fff;border-color:var(--rs-line)}
+#root .rs-request-mode:has(input:disabled){opacity:.55;cursor:wait}
+#root .rs-request-mode svg{flex-shrink:0}
+#root .rs-request-mode span{font:inherit;color:inherit;line-height:18px}
+#root .passenger:not(.passenger--picking-location):has(.mini-orders__card) .rs-map-controls{top:88px}
+#root .rs-request-hint{font-size:12px;line-height:18px;color:var(--rs-muted);margin:0;min-height:18px;text-align:start}
+#root .rs-request-submit{width:100%;height:auto;min-height:50px;padding:12px 16px;border-radius:12px;background:var(--rs-primary);color:#fff;font-size:16px;line-height:22px;white-space:normal;font-weight:700}
+#root .rs-request-submit:hover{background:var(--rs-primary-hover)}
+#root .rs-request-error{font-size:13px;line-height:19px;color:var(--rs-danger);margin:0;overflow-wrap:anywhere}
+#root .rs-request-submit:disabled{opacity:.55}
+#root .passenger-voting-form__driver-card>.chat__toggler--small{position:static!important;transform:none!important;flex-shrink:0}
+#root .rs-config-retry{min-height:48px;padding:12px 24px;background:var(--rs-primary);color:#fff;border:0;border-radius:12px;font-size:15px;font-weight:700;margin-top:16px}
+#root .rs-map-marker-preview:not(.rs-map-preview-active){display:none}
+#root .passenger-voting-form__location-wrapper .input__suggestions{position:relative;inset:auto;max-width:none;width:calc(100% + 52px);margin-inline-end:-52px;overflow-y:auto;overflow-x:hidden;box-shadow:none;flex-shrink:0}
+#root .passenger-voting-form__location-wrapper .input__suggestions--active{max-height:36dvh;border:0;border-top:1px solid var(--rs-line);border-radius:0;background:#fff;margin-top:12px;margin-inline-start:-14px;padding:0;width:calc(100% + 80px);min-width:calc(100% + 80px);max-width:none;flex:0 0 calc(100% + 80px)}
+#root .input__suggestion{grid-template-columns:minmax(0,1fr) auto;gap:4px 8px;min-height:64px;padding:12px;align-items:center;background:#fff;font-size:14px;line-height:20px;text-align:start}
+#root .input__suggestion-source{grid-column:1;font-size:10px;line-height:14px;width:fit-content;min-width:0;padding:0;border:0;border-radius:0;background:transparent;color:var(--rs-muted);font-weight:500}
+#root .input__suggestion-text{grid-column:1;font-size:14px;line-height:21px;color:var(--rs-ink);-webkit-line-clamp:3;font-weight:600;overflow-wrap:anywhere}
+#root .input__suggestion-distance{grid-column:2;grid-row:1/span 2;font-size:11px;line-height:16px;color:var(--rs-muted)}
+#root .input__suggestion--highlighted,#root .input__suggestion:hover{background:var(--rs-selected)}
+#root .rs-address-search-status{padding:16px 12px;margin:0;font-size:13px;line-height:20px;color:var(--rs-muted)}
+#root .rs-address-search-retry{display:block;min-height:44px;margin-top:8px;padding:8px 12px;border:1px solid var(--rs-line);background:#fff;color:var(--rs-primary);border-radius:8px;font-size:13px;font-weight:600}
+#root .rs-input-expanded{flex:0 0 100%;width:100%;min-width:0;font-size:13px;line-height:20px;margin:8px 0 0;padding-top:8px;border-top:1px solid var(--rs-line);color:var(--rs-muted);overflow-wrap:anywhere;text-align:start}
+#root .passenger-voting-form__location-wrapper .input__field-wrapper:has(.rs-address-toggle-control){min-height:104px;padding-bottom:40px}
+#root .passenger-voting-form__location-wrapper .rs-address-toggle-button{justify-content:flex-start;font-size:11px}
+#root .rs-location-picker{position:absolute;inset:auto 12px 12px;z-index:750;margin:0 auto;padding:16px;background:#fff;border:1px solid var(--rs-line);border-radius:20px;max-width:420px;box-shadow:0 8px 32px #12121212}
+#root .rs-location-picker__heading{display:flex;align-items:center;gap:8px}
+#root .rs-location-picker__heading button{width:44px;height:44px;flex-shrink:0}
+#root .rs-location-picker h2{font-size:20px;line-height:28px;font-weight:800;margin:0}
+#root .rs-location-picker p{font-size:13px;line-height:20px;color:var(--rs-muted);margin:4px 0 16px}
+#root .rs-location-picker__confirm{width:100%;height:auto;min-height:48px;background:var(--rs-primary);color:#fff;border-radius:12px;gap:8px;font-weight:700}
+#root .passenger--picking-location .passenger__form-container,#root .passenger--picking-location .passenger__mini-orders,#root .passenger--picking-location .rs-map-marker-preview{display:none!important}
+#root .passenger--picking-location .passenger__form-map-container{inset:0!important;width:100%!important;height:100%!important;margin:0}
+#root .passenger--picking-location .map-container__leaflet-host>.map{height:100%!important}
+#root .passenger--picking-location .map-container__locate-button{bottom:190px}
+#root .menu__list[hidden],#root .header-driver-status-menu[hidden]{display:none!important}
+#root .menu__language-button{display:flex;align-items:center;gap:10px;width:100%;min-height:44px;background:transparent;border:0;color:inherit;text-align:start;padding:8px 12px;font:inherit;cursor:pointer}
+#root .rs-header-back{display:grid;place-items:center;width:44px;height:44px;border:0;border-radius:10px;background:#fff;cursor:pointer}
+#root .rs-header-back img{width:24px;height:24px}
+#root .driver-map-contact-actions{position:absolute;bottom:78px;left:12px;z-index:720;display:flex;align-items:center;gap:8px}
+#root .driver-map-contact-actions>button{min-height:44px;padding:10px 14px;border:1px solid var(--rs-line);border-radius:10px;background:#fff;color:var(--rs-primary);font-size:13px;font-weight:700;box-shadow:none}
+#root .menu__tools{border-top:1px solid var(--rs-line);margin-top:8px;padding-top:8px}
+#root .menu__tools summary{min-height:44px;display:flex;align-items:center;cursor:pointer;color:var(--rs-muted);font-size:12px;padding:8px 12px}
+#root .menu__tools>summary:after{content:'+';margin-inline-start:auto}
+#root .menu__tools[open]>summary:after{content:'−'}
+@media(max-width:899px){
+ #root .passenger__draggable{padding:20px 16px max(12px,env(safe-area-inset-bottom))!important;max-height:calc(var(--taxi-viewport-height,100dvh) - 232px)!important}
+ #root .passenger-voting-form{gap:10px}
+ #root .rs-ride-body{scrollbar-gutter:auto}
+ #root .rs-ride-body>*+*{margin-top:12px}
+ #root .passenger-voting-form__group{gap:10px}
+ #root .rs-ride-heading{margin:0;padding:0}
+ #root .rs-ride-heading>div{font-size:22px;line-height:28px}
+ #root .passenger-voting-form__location-wrapper{margin:0;border-radius:14px}
+ #root .passenger-voting-form__location-wrapper .input__field-wrapper{min-height:72px;padding-block:10px}
+ #root .passenger-voting-form__car-class{gap:6px}
+ #root .car-class-slider{height:70px}
+ #root .car-class-slider__slide{height:68px;padding:6px 8px}
+ #root .car-class-slider__icon{height:20px}
+ #root .car-class-slider__icon svg{height:20px}
+ #root .rs-trip-options-row{gap:4px}
+ #root .rs-options-toggle{font-size:12px}
+ #root .short-info{min-height:28px}
+ #root .passenger__mini-orders{left:12px;right:64px;top:8px;width:auto;max-width:calc(100% - 76px)}
+ #root .passenger-voting-form__location-wrapper .input__suggestions--active{max-height:max(120px,calc(var(--taxi-viewport-height,100dvh) - 340px))}
+ #root .passenger__form-container:has([data-expanded=true]) .passenger__draggable{max-height:calc(var(--taxi-viewport-height,100dvh) - 176px)!important}
+}
+@media(max-width:359px){#root .rs-request-mode{font-size:11px;gap:4px}#root .rs-request-mode svg{width:16px}#root .passenger__draggable{max-height:calc(var(--taxi-viewport-height,100dvh) - 180px)!important}}
+@media(min-width:900px){#root .rs-request-hint{min-height:36px}#root .rs-location-picker{inset:auto 24px 24px auto;width:380px}}
+@media(max-height:500px) and (max-width:899px){
+ #root .passenger__draggable{max-height:calc(var(--taxi-viewport-height,100dvh) - 100px)!important;overflow-y:auto!important}
+ #root .passenger-voting-form{overflow:visible;flex:0 0 auto;height:auto}
+ #root .rs-ride-body{overflow:visible;flex:0 0 auto}
+}
+@media(min-width:600px) and (max-width:899px) and (max-height:500px) and (orientation:landscape){
+ #root .passenger__draggable{height:100%;max-height:calc(100% - 50px)!important;overflow:hidden!important}
+ #root .passenger-voting-form{flex:1 1 auto;max-height:100%;overflow:hidden}
+ #root .rs-ride-body{flex:1 1 auto;min-height:0;overflow:auto}
+ #root .rs-ride-footer{flex:0 0 auto}
+ #root .rs-request-actions{gap:4px;padding-top:6px}
+ #root .rs-request-modes{padding:2px}
+ #root .rs-request-hint{font-size:11px;line-height:16px;min-height:16px}
+ #root .rs-request-submit{min-height:44px;padding:10px;font-size:14px}
+}
+
+/* Native class cards retain their dimensions during address entry. */
+#root .car-class-slider.car-class-slider--native{height:auto;min-height:0;overflow:visible}
+#root .car-class-slider__options{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;list-style:none;padding:0;margin:0;width:100%;min-width:0;transform:none}
+#root .car-class-slider__options:has(>li:only-child){grid-template-columns:minmax(0,1fr)}
+#root .car-class-slider__options>li{min-width:0;display:block;margin:0;padding:0}
+#root .car-class-slider__options .car-class-slider__slide{display:flex;width:100%;height:76px;min-width:0;max-width:100%;margin:0;float:none;position:relative}

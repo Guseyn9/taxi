@@ -1,0 +1,54 @@
+#root .page-section.order--direct {
+  padding: 16px max(12px, env(safe-area-inset-right)) max(24px, env(safe-area-inset-bottom));
+  font-family: Manrope, sans-serif;
+  background: #fff;
+}
+#root .order--direct > form { width: min(100%, 680px); margin-inline: auto; }
+#root .order--direct .order_passenger-info { gap: 12px; margin-bottom: 16px; }
+#root .order--direct .order_passenger-info > span { min-width: 0; margin: 0; }
+#root .order--direct .order_passenger-info > span > span {
+  font: 600 16px/1.5 Manrope, sans-serif;
+  overflow-wrap: anywhere;
+  color: #222222;
+}
+#root .order--direct .order-passenger-avatar {
+  display: grid;
+  place-items: center;
+  flex: 0 0 48px;
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  color: var(--drive-red,#b51218);
+  background: #f8f6f3;
+}
+#root .order--direct .order__from-to :is(.from,.to) { align-items: flex-start; gap: 8px; margin-bottom: 14px; }
+#root .order--direct .order__from-to :is(.from,.to) > label {
+  min-width: 0;
+  flex: 1;
+  font: 600 14px/1.6 Manrope, sans-serif;
+  overflow-wrap: anywhere;
+  unicode-bidi: plaintext;
+}
+#root .order--direct :is(.from__buttons,.to__buttons) { display: flex; flex: 0 0 auto; gap: 4px; }
+#root .order--direct .order-address-button {
+  display: grid;
+  place-items: center;
+  flex: 0 0 44px;
+  width: 44px;
+  height: 44px;
+  padding: 10px;
+  border: 1px solid #e7e7e7;
+  border-radius: 9px;
+  background: #fff;
+  color: var(--drive-red,#b51218);
+}
+#root .order--direct .order-address-button--pickup { color: #d44b06; }
+#root .order--direct .order-address-button:focus-visible { outline: 3px solid var(--drive-red,#b51218); outline-offset: 2px; }
+#root .order--direct .estimate-time { font-size: 12px; line-height: 1.5; color: #6a6a6a; }
+#root .order--direct .order__separator { border-color: #ececec; box-shadow: none; }
+#root .order--direct .phone-link { display: inline-flex; align-items: center; min-height: 44px; direction: ltr; unicode-bidi: isolate; }
+#root .order--direct .chat__toggler { width: 100%; min-height: 48px; gap: 8px; }
+#root .order--direct .button { border-radius: 10px; }
+@media (max-width: 359px) {
+  #root .order--direct :is(.from__buttons,.to__buttons) { flex-direction: column; }
+}

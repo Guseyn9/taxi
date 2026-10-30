@@ -1,0 +1,2 @@
+/* Tailwind utilities for locally owned shadcn/ui components. No global preflight. */
+@tailwind utilities;

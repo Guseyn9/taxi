@@ -1,7 +1,9 @@
+import {displayFare,orderCurrency} from '../../design/reliability/rideData'
 import React from 'react'
 import { connect, ConnectedProps } from 'react-redux'
 import cn from 'classnames'
 import OrderId from '../OrderId'
+import DriverOrderOverview from '../DriverOrderOverview'
 import {
   EBookingDriverState,
   EOrderProfitRank,
@@ -291,6 +293,7 @@ const connector = connect(mapStateToProps, mapDispatchToProps)
 interface IProps extends ConnectedProps<typeof connector> {
   user: IUser,
   order: IOrder,
+  driverOverview?: boolean,
   onClick: (event: React.MouseEvent, id: IOrder['b_id']) => any,
   onSelect?: (id: IOrder['b_id']) => void,
   isHistory?: boolean,
@@ -313,6 +316,7 @@ function MiniOrder({
   onSelect,
   innerRef,
   profitBucket,
+  driverOverview,
 }: IProps) {
   void language
 
@@ -410,26 +414,38 @@ function MiniOrder({
       ref={innerRef}
       className={cn(
         'mini-order',
+        { 'driver-card--overview': driverOverview },
         `mini-order--status-${statusView.key}`,
         `mini-order--participation-${participationKey}`,
         `mini-order--archive-${archiveKey}`,
         { 'mini-order--history': order.b_canceled || order.b_completed },
         { 'mini-order--selected': isSelectedForDriver || isSelected },
         { 'mini-order--profit-negative': isNegativeProfit },
-        order.profitRank !== undefined && `mini-order--profit--${{
+        profitValue !== undefined && order.profitRank !== undefined && `mini-order--profit--${{
           [EOrderProfitRank.Low]: 'low',
           [EOrderProfitRank.Medium]: 'medium',
           [EOrderProfitRank.High]: 'high',
         }[order.profitRank]}`,
         // Перцентильный класс перекрывает абсолютный low/medium/high (правила в scss),
         // как это уже сделано для хинтов над булавками заказов на карте.
-        profitBucket !== undefined && `mini-order--profit-p${profitBucket}`,
+        profitValue !== undefined && profitBucket !== undefined && `mini-order--profit-p${profitBucket}`,
       )}
+      role={driverOverview ? 'button' : undefined}
+      tabIndex={driverOverview ? 0 : undefined}
+      onKeyDown={driverOverview ? event => {
+        if (event.target !== event.currentTarget) return
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault()
+          onSelect?.(order.b_id)
+          setOrderCardModal({ isOpen: true, orderId: order.b_id })
+        }
+      } : undefined}
       onClick={() => {
         onSelect?.(order.b_id)
         setOrderCardModal({ isOpen: true, orderId: order.b_id })
       }}
     >
+      {driverOverview && <DriverOrderOverview order={order} user={user} iso={language?.iso} />}
       <OrderId orderId={order.b_id} variant="short" className="colored" />
 
       {!isHistory && driver && driver.u_id === user.u_id && driver.c_state !== EBookingDriverState.Started && (
@@ -465,7 +481,7 @@ function MiniOrder({
 
       <div className={cn('mini-order__amount', { '_blue': payment.type === EPaymentType.Customer })}>
         <div className="amount__value">
-          {payment.value + (order?.b_options?.pricingModel?.calculationType === 'incomplete' ? '+?' : '')}
+          {displayFare(payment.value,orderCurrency(order,CURRENCY.NAME),undefined,payment.estimated) + (order?.b_options?.pricingModel?.calculationType === 'incomplete' ? '+?' : '')}
         </div>
         {offerOrder && (
           <div className="amount__hint">

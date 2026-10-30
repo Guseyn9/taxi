@@ -1,3 +1,12 @@
+import {useDriverDepartures,driverJourneyCopy} from '../../tools/driverPickupJourney'
+import type { IOrder } from '../../types/types'
+import { MapPin, Plus, Minus } from 'lucide-react'
+import { formatPhoneNumber } from '../../tools/phoneUtils'
+import { configSelectors } from '../../state/config'
+import { rideCopy } from '../../design/copy'
+import { isCompletedOrder } from './terminalOrder'
+import '../../design/mobile-direct-order.css'
+import { useBoardingGate } from '../../pilot/BoardingGate'
 import React, { useEffect, useRef, useState } from 'react'
 import { connect, ConnectedProps } from 'react-redux'
 import { useParams } from 'react-router-dom'
@@ -68,6 +77,7 @@ import {
 } from '../../tools/driverOffer'
 
 const mapStateToProps = (state: IRootState) => ({
+  language: configSelectors.language(state),
   order: orderSelectors.order(state),
   client: orderSelectors.client(state),
   start: orderSelectors.start(state),
@@ -226,16 +236,16 @@ function getOrderRoutePoints(order: any) {
 function formatApproximateRouteDuration(minutes?: number | null, isLoading?: boolean) {
   const normalizedMinutes = normalizeRouteDurationMinutes(minutes)
   if (!normalizedMinutes)
-    return isLoading ? 'рассчитывается' : '—'
+    return isLoading ? t('duration_calculating') : '—'
 
   const hours = Math.floor(normalizedMinutes / 60)
   const mins = normalizedMinutes % 60
 
   if (hours <= 0)
-    return `${normalizedMinutes} мин`
+    return `${normalizedMinutes} ${t('duration_minute_short')}`
   if (mins <= 0)
-    return `${hours} ч`
-  return `${hours} ч ${mins} мин`
+    return `${hours} ${t('duration_hour_short')}`
+  return `${hours} ${t('duration_hour_short')} ${mins} ${t('duration_minute_short')}`
 }
 
 function getOfferCustomerDesiredPrice(order: any) {
@@ -459,6 +469,7 @@ function saveStartedVotingOrderId(orderId: string) {
 }
 
 const Order: React.FC<IProps> = ({
+  language,
   order,
   client,
   start,
@@ -481,6 +492,7 @@ const Order: React.FC<IProps> = ({
   watchGeolocation,
   activateGeolocationSending,
 }) => {
+  const addressCopy = rideCopy(language?.iso)
   const [isFromAddressShort, setIsFromAddressShort] = useState(true)
   const [isToAddressShort, setIsToAddressShort] = useState(true)
   const [votingParticipationIds, setVotingParticipationIds] = useState(() =>
@@ -491,6 +503,8 @@ const Order: React.FC<IProps> = ({
   )
   // Команда посадки в полёте (см. onVotingConfirmCode ниже).
   const [boardingPending, setBoardingPending] = useState(false)
+  const { requestBoarding, boardingDialog } = useBoardingGate()
+  const confirmBoardingCommand = (orderId: IOrder['b_id'], code: string, updateState = true) => driverMapGateway.confirmBoarding(orderId, code, updateState)
   const boardingPendingRef = useRef(false)
   const now = useReliableNow(Boolean(order), 1000)
   const [votingCloseHandled, setVotingCloseHandled] = useState(false)
@@ -535,20 +549,12 @@ const Order: React.FC<IProps> = ({
       isVotingDriverParticipating(userAsDriver)
     ),
   )
-  // Boarding stage: the driver has tapped "На месте". Deliberately NOT keyed on
-  // c_state === Arrived — "Поехал" sets that state, and here it means "en route to
-  // the passenger", so it would flip the card into boarding mode the moment the
-  // driver departs. Reaching the pickup only enables "На месте"; pressing it is
-  // what starts boarding.
-  const isVotingArrived = Boolean(order?.b_voting && votingArrivedIds.includes(id))
-  // Departure stage: the driver has tapped "Поехал" (mirrors the map's own
-  // Performer -> Arrived transition). Until then, the pickup-leg actions
-  // ("На месте", navigation, refuse) don't apply yet — only "Поехал" does.
-  const hasVotingDeparted = Boolean(
-    order?.b_voting &&
-    userAsDriver &&
-    userAsDriver.c_state >= EBookingDriverState.Arrived,
-  )
+  const departure = useDriverDepartures(String(user?.u_id ?? ''))
+  // Arrived is a physical arrival confirmed by the server, never departure.
+  const isVotingArrived = Boolean(order?.b_voting && userAsDriver?.c_state === EBookingDriverState.Arrived)
+  const hasVotingDeparted = Boolean(order?.b_voting && userAsDriver && (
+    userAsDriver.c_state >= EBookingDriverState.Arrived || departure.ids.includes(String(id))
+  ))
   const driverPosition = useDriverPosition()
   // The route emulator moves the map marker without touching device GPS, so trust
   // the map's published position first and fall back to the Redux geoposition.
@@ -1182,20 +1188,24 @@ const Order: React.FC<IProps> = ({
     })
   }
 
-  const onArrivedClick = () =>
-    driverMapGateway.arrive(id)
+  const onArrivedClick = () => {
+    if (!canMarkVotingArrived(order, effectiveDriverPosition, user?.u_id)) return
+    return driverMapGateway.arrive(id)
       .then(() => getOrder(id))
       .catch(error => {
         console.error(error)
         setMessageModal({ isOpen: true, message: t(TRANSLATION.ERROR), status: EStatuses.Fail })
       })
+  }
 
-  const onStartedClick = () =>
-    driverMapGateway.start(id)
-      .then(() => {
-        getOrder(id)
-        navigate(PLATFORM_ROUTES.DriverOrders, { query: { tab: 'map' } })
-      })
+  const onStartedClick = () => {
+    if (!order || !canMarkVotingArrived(order, effectiveDriverPosition, user?.u_id)) return
+    requestBoarding(order, async code => {
+      await confirmBoardingCommand(id, code)
+      getOrder(id)
+      navigate(PLATFORM_ROUTES.DriverOrders, { query: { tab: 'map' } })
+    }, async () => getDriverDoorNumber(userAsDriver, await backendGateway.getUserCar(user!.u_id)))
+  }
 
   const onCompleteOrderClick = () => {
     if (!driver?.c_started) {
@@ -1267,6 +1277,7 @@ const Order: React.FC<IProps> = ({
   }
 
   const onVotingArrived = () => {
+    if (!canMarkVotingArrived(order, effectiveDriverPosition, user?.u_id)) return
     const updateState =
       userAsDriver?.c_state === EBookingDriverState.Performer ||
       userAsDriver?.c_state === EBookingDriverState.Started
@@ -1291,22 +1302,7 @@ const Order: React.FC<IProps> = ({
       })
   }
 
-  const onVotingWentClick = () => {
-    driverMapGateway.arrive(id, {
-      voting: true,
-      updateState: true,
-      tolerateNotAppointed: true,
-    })
-      .then(() => getOrder(id))
-      .catch(error => {
-        console.error(error)
-        setMessageModal({
-          isOpen: true,
-          status: EStatuses.Fail,
-          message: t(TRANSLATION.ERROR),
-        })
-      })
-  }
+  const onVotingWentClick = () => { departure.depart(String(id)) }
 
   const onVotingNavigation = () => {
     setMapModal({
@@ -1328,7 +1324,8 @@ const Order: React.FC<IProps> = ({
     })
   }
 
-  const onVotingConfirmCode = formHandleSubmit(({ votingNumber }) => {
+  const onVotingConfirmCode = formHandleSubmit(async ({ votingNumber }) => {
+    if (!canMarkVotingArrived(order, effectiveDriverPosition, user?.u_id)) return
     // Повторное нажатие, пока команда в полёте, отправило бы по тому же заказу
     // вторую посадку. Флаг в рефе: два клика подряд успевают пройти до
     // перерисовки (тот же приём, что в карточке заказа).
@@ -1336,13 +1333,21 @@ const Order: React.FC<IProps> = ({
       return
 
     const enteredCode = normalizeDriverDoorNumber(votingNumber)
-
-    if (!isBoardingCodeAccepted(order?.b_driver_code, enteredCode)) {
-      setMessageModal({
-        isOpen: true,
-        message: t(TRANSLATION.WRONG_BOARDING_CODE),
-        status: EStatuses.Fail,
-      })
+    boardingPendingRef.current = true
+    setBoardingPending(true)
+    let expectedCode = normalizeDriverDoorNumber(order?.b_driver_code)
+    try {
+      if (!expectedCode) expectedCode = getDriverDoorNumber(userAsDriver, await backendGateway.getUserCar(user!.u_id))
+    } catch {
+      boardingPendingRef.current = false
+      setBoardingPending(false)
+      setMessageModal({ isOpen: true, message: t(TRANSLATION.ERROR), status: EStatuses.Fail })
+      return
+    }
+    if (!expectedCode || !isBoardingCodeAccepted(expectedCode, enteredCode)) {
+      boardingPendingRef.current = false
+      setBoardingPending(false)
+      setMessageModal({ isOpen: true, message: t(TRANSLATION.WRONG_BOARDING_CODE), status: EStatuses.Fail })
       return
     }
 
@@ -1351,7 +1356,7 @@ const Order: React.FC<IProps> = ({
     confirmDriverBoarding({
       orderId: id,
       code: enteredCode,
-      confirmBoarding: (orderId, code) => driverMapGateway.confirmBoarding(
+      confirmBoarding: (orderId, code) => confirmBoardingCommand(
         orderId,
         code,
         userAsDriver?.c_state !== EBookingDriverState.Started,
@@ -1413,6 +1418,7 @@ const Order: React.FC<IProps> = ({
               <button
                 key={String(option.value)}
                 type="button"
+                aria-pressed={offerEtaValue === option.value}
                 className={cn('order__driver-offer-eta-chip', { 'order__driver-offer-eta-chip--active': offerEtaValue === option.value })}
                 onClick={() => {
                   setValue('offerEta', String(option.value), { shouldValidate: true })
@@ -1424,43 +1430,30 @@ const Order: React.FC<IProps> = ({
             ))}
           </div>
           <div className="order__driver-offer-select-wrap order__driver-offer-select-wrap--compact">
-            <div
+            <button
+              type="button"
+              aria-expanded={offerEtaDropdownOpen}
               className={cn('order__driver-offer-select', { 'order__driver-offer-select--open': offerEtaDropdownOpen, 'order__driver-offer-select--active': !isQuickValue })}
               onClick={() => setOfferEtaDropdownOpen(prev => !prev)}
-              role="button"
-              tabIndex={0}
-              onKeyDown={event => {
-                if (event.key === 'Enter' || event.key === ' ') {
-                  event.preventDefault()
-                  setOfferEtaDropdownOpen(prev => !prev)
-                }
-              }}
             >
               <span>{isQuickValue ? t(TRANSLATION.DRIVER_OFFER_MORE_ETA) : offerEtaValue}</span>
               <i aria-hidden="true">▾</i>
-            </div>
+            </button>
             {offerEtaDropdownOpen && (
               <div className="order__driver-offer-select-list">
                 {moreOptions.map(option => (
-                  <div
+                  <button
+                    type="button"
+                    aria-pressed={offerEtaValue === option.value}
                     key={String(option.value)}
                     className={cn('order__driver-offer-select-option', { 'order__driver-offer-select-option--active': offerEtaValue === option.value })}
                     onClick={() => {
                       setValue('offerEta', String(option.value), { shouldValidate: true })
                       setOfferEtaDropdownOpen(false)
                     }}
-                    role="button"
-                    tabIndex={0}
-                    onKeyDown={event => {
-                      if (event.key === 'Enter' || event.key === ' ') {
-                        event.preventDefault()
-                        setValue('offerEta', String(option.value), { shouldValidate: true })
-                        setOfferEtaDropdownOpen(false)
-                      }
-                    }}
                   >
                     {option.label}
-                  </div>
+                  </button>
                 ))}
               </div>
             )}
@@ -1523,7 +1516,7 @@ const Order: React.FC<IProps> = ({
         <div className="order__hide-confirm-title">{t('driver_offer_cancel_and_hide_confirm')}</div>
         <Button
           text={t(TRANSLATION.YES)}
-          className="order_take-order-btn"
+          className="order_take-order-btn order-action--danger"
           onClick={confirmCancelOfferAndHide}
           label={message}
           status={status}
@@ -1554,6 +1547,11 @@ const Order: React.FC<IProps> = ({
         label={message}
         status={status}
       />
+    )
+
+    if (isCompletedOrder(order)) return (
+      <Button text={t(TRANSLATION.RATE)} className="order_take-order-btn"
+        onClick={onRateOrderClick} label={message} status={status} />
     )
 
     if (driver?.c_state === EBookingDriverState.Finished && driver?.c_rating) return (
@@ -1763,7 +1761,7 @@ const Order: React.FC<IProps> = ({
             TRANSLATION.DRIVER_VOTING_REFUSE_BOARDING :
             TRANSLATION.DRIVER_VOTING_REFUSE_ORDER,
           )}
-          className="order_hide-order-btn"
+          className="order_hide-order-btn order-action--danger"
           onClick={onVotingRefuseOrder}
           label={message}
           status={status}
@@ -1810,21 +1808,23 @@ const Order: React.FC<IProps> = ({
         text={t(TRANSLATION.ARRIVED)}
         className="order_take-order-btn"
         onClick={onArrivedClick}
+          disabled={!canMarkVotingArrived(order, effectiveDriverPosition, user?.u_id)}
         label={message}
         status={status}
       />
     )
     if (driver?.c_state === EBookingDriverState.Arrived) return <>
       <Button
-        text={t(TRANSLATION.WENT)}
+        text={driverJourneyCopy(language?.iso).board}
         className="order_take-order-btn"
+        disabled={!canMarkVotingArrived(order, effectiveDriverPosition, user?.u_id)}
         onClick={onStartedClick}
         label={message}
         status={status}
       />
       <Button
         text={t(TRANSLATION.CANCEL_ORDER)}
-        className="order_hide-order-btn"
+        className="order_hide-order-btn order-action--danger"
         onClick={() => setCancelDriverOrderModal(true)}
         label={message}
         status={status}
@@ -1861,11 +1861,13 @@ const Order: React.FC<IProps> = ({
 
   return status === EStatuses.Loading && !order ?
     <LoadFrame/> :
-    <PageSection className="order" scrollable>
+    <PageSection className="order order--direct" scrollable>
+      {boardingDialog}
       {!!order ?
         (
           <form className={cn({ 'order__form--offer': isOfferMode })} onSubmit={formHandleSubmit(handleSubmit)}>
             <ClientInfo order={order} client={client} user={user}/>
+            {[EBookingDriverState.Performer,EBookingDriverState.Arrived].includes(userAsDriver?.c_state!) && !isAtPickupPoint(effectiveDriverPosition,order?.b_start_latitude,order?.b_start_longitude) && <p className="pickup-guidance" role="status">{driverJourneyCopy(language?.iso)[effectiveDriverPosition?'near':'location']}</p>}
             <div className="order__from-to colored">
               <div className='estimate-time'>
                 {t(TRANSLATION.ESTIMATE_TIME)}:&nbsp;
@@ -1878,20 +1880,15 @@ const Order: React.FC<IProps> = ({
                 </label>
                 <div className="from__buttons">
                   {start?.shortAddress && (
-                    <img
-                      src={isFromAddressShort ? images.minusIcon : images.plusIcon}
-                      onClick={(e) => setIsFromAddressShort(prev => !prev)}
-                      alt='change address mode'
-                    />
+                    <button type="button" className="order-address-button"
+                      aria-label={isFromAddressShort ? addressCopy.expandAddress : addressCopy.collapseAddress}
+                      aria-expanded={!isFromAddressShort} onClick={() => setIsFromAddressShort(prev => !prev)}>
+                      {isFromAddressShort ? <Plus size={18} aria-hidden="true" /> : <Minus size={18} aria-hidden="true" />}
+                    </button>
                   )}
-                  <img
-                    src={images.markerYellow}
-                    alt="marker"
-                    className='address-marker'
-                    onClick={() => {
-                      openOrderPointOnMap('from')
-                    }}
-                  />
+                  <button type="button" className="order-address-button order-address-button--pickup"
+                    aria-label={`${t(TRANSLATION.FROM)}: ${t(TRANSLATION.MAP)}`}
+                    onClick={() => openOrderPointOnMap('from')}><MapPin size={20} aria-hidden="true" /></button>
                 </div>
               </div>
               <div className="order-fields">
@@ -1901,7 +1898,7 @@ const Order: React.FC<IProps> = ({
                       <a
                         className="phone-link"
                         href={`tel:${order.b_options.from_tel}`}
-                      >{order.b_options.from_tel}</a>
+                      >{formatPhoneNumber(order.b_options.from_tel)}</a>
                     )
                   }
                 </label>
@@ -1939,7 +1936,7 @@ const Order: React.FC<IProps> = ({
                 }
                 {
                   order.b_options?.from_tel && (
-                    <span className='way'><b>{t(TRANSLATION.PHONE_TO_CALL)}:</b> {order.b_options.from_tel}
+                    <span className='way'><b>{t(TRANSLATION.PHONE_TO_CALL)}:</b> {formatPhoneNumber(order.b_options.from_tel)}
                       <img
                         src={images.phone}
                         alt={t(TRANSLATION.PHONE)}
@@ -1958,22 +1955,15 @@ const Order: React.FC<IProps> = ({
                   </label>
                   <div className="to__buttons">
                     {destination?.shortAddress && (
-                      <img
-                        src={isToAddressShort ? images.minusIcon : images.plusIcon}
-                        onClick={() => setIsToAddressShort(prev => !prev)}
-                        alt='change address mode'
-                      />
+                      <button type="button" className="order-address-button"
+                        aria-label={isToAddressShort ? addressCopy.expandAddress : addressCopy.collapseAddress}
+                        aria-expanded={!isToAddressShort} onClick={() => setIsToAddressShort(prev => !prev)}>
+                        {isToAddressShort ? <Plus size={18} aria-hidden="true" /> : <Minus size={18} aria-hidden="true" />}
+                      </button>
                     )}
-                    <img
-                      src={images.markerGreen}
-                      alt="marker"
-                      className='address-marker'
-                      onClick={
-                        () => {
-                          openOrderPointOnMap('to')
-                        }
-                      }
-                    />
+                    <button type="button" className="order-address-button order-address-button--destination"
+                      aria-label={`${t(TRANSLATION.TO)}: ${t(TRANSLATION.MAP)}`}
+                      onClick={() => openOrderPointOnMap('to')}><MapPin size={20} aria-hidden="true" /></button>
                   </div>
                 </div>
               )}
@@ -2010,7 +2000,7 @@ const Order: React.FC<IProps> = ({
                 }
                 {
                   order.b_options?.to_tel && (
-                    <span className='way'><b>{t(TRANSLATION.PHONE_TO_CALL)}:</b> {order.b_options.to_tel}
+                    <span className='way'><b>{t(TRANSLATION.PHONE_TO_CALL)}:</b> {formatPhoneNumber(order.b_options.to_tel)}
                       <img
                         src={images.phone}
                         alt={t(TRANSLATION.PHONE)}
@@ -2062,6 +2052,7 @@ const Order: React.FC<IProps> = ({
             {
               driver && driver.u_id === user?.u_id && (
                 <ChatToggler
+                  text={t(TRANSLATION.CHAT)}
                   anotherUserID={order.u_id}
                   orderID={order.b_id}
                 />

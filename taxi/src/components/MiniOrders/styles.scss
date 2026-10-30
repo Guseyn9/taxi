@@ -111,7 +111,7 @@
 
     &--voting {
       background: transparent;
-      color: #7c3aed;
+      color: #b51218;
     }
 
     &--offer {
@@ -223,8 +223,8 @@
     }
 
     &--primary-voting {
-      background: #f3edff;
-      color: #7c3aed;
+      background: #f8f6f3;
+      color: #b51218;
     }
 
     &--primary-offer {
@@ -239,8 +239,8 @@
     }
 
     &--time-voting {
-      background: #f3edff;
-      color: #7c3aed;
+      background: #f8f6f3;
+      color: #b51218;
     }
 
     &--type {
@@ -555,7 +555,7 @@
 
 /* Client/passenger top strip: selected order plaque gets the same orange outline and bottom indicator as driver cards. */
 .mini-orders__card--selected {
-  border-color: #F59E0B !important;
+  border-color: #f59e0b !important;
   background: linear-gradient(180deg, #ffffff 0%, #fff8ef 100%) !important;
   box-shadow: 0 4px 16px rgba(245, 158, 11, .18) !important;
 }
@@ -568,7 +568,7 @@
   bottom: 0;
   height: 3px;
   border-radius: 999px 999px 0 0;
-  background: #F59E0B;
+  background: #f59e0b;
   pointer-events: none;
 }
 

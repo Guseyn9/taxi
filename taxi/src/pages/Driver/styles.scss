@@ -17,14 +17,14 @@
       font-weight: 600;
       font-size: 13px;
       color: rgb(0, 0, 0, 0.25);
-      background-color: #E7E7E7;
+      background-color: #e7e7e7;
       border-radius: 4px;
       cursor: pointer;
       padding: 8px 0;
 
       &--active {
-        background-color: #FF2400;
-        color: #FFFFFF;
+        background-color: #ff2400;
+        color: #ffffff;
       }
     }
 
@@ -32,7 +32,7 @@
       font-weight: 300;
       font-size: 17px;
       line-height: 20px;
-      color: #5E5E5E;
+      color: #5e5e5e;
     }
 
     label {
@@ -57,11 +57,11 @@
         font-weight: 300;
         font-size: 17px;
         line-height: 20px;
-        color: #5E5E5E;
+        color: #5e5e5e;
       }
 
       &:not(:last-child) {
-        border-right: 1px solid #F1F1F1;
+        border-right: 1px solid #f1f1f1;
         padding-right: 8px;
       }
 
@@ -76,16 +76,16 @@
         width: 24px;
         border-radius: 8px;
         margin-right: 4px;
-        border: 1px solid #FF2400;
+        border: 1px solid #ff2400;
       }
 
       .recomended {
-        background: #00A72F;
+        background: #00a72f;
         border: 1px solid transparent;
       }
 
       .requested {
-        background: #FFD12E;
+        background: #ffd12e;
         border: 1px solid transparent;
       }
     }
@@ -202,26 +202,26 @@
     &--profit {
       &--low {
         .order-marker-hint {
-          background: #C19276;
+          background: #c19276;
         }
         .order-profit-estimation {
-          color: #3E0C0C;
+          color: #3e0c0c;
         }
       }
       &--medium {
         .order-marker-hint {
-          background: #FFFB8E;
+          background: #fffb8e;
         }
         .order-profit-estimation {
-          color: #A37211;
+          color: #a37211;
         }
       }
       &--high {
         .order-marker-hint {
-          background: #A1FF97;
+          background: #a1ff97;
         }
         .order-profit-estimation {
-          color: #22A613;
+          color: #22a613;
         }
       }
     }
@@ -450,7 +450,7 @@
     max-width: calc(100% - 32px);
     margin: 0 auto;
     padding: 9px 18px;
-    background-color: #FF2400;
+    background-color: #ff2400;
     color: white;
     border: none;
     border-radius: 999px;
@@ -648,7 +648,7 @@
   margin-top: -14px;
   border-left: 8px solid transparent;
   border-right: 8px solid transparent;
-  border-bottom: 27px solid #0B81E8;
+  border-bottom: 27px solid #0b81e8;
   filter: drop-shadow(0 2px 4px rgba(0, 0, 0, .28));
   transform-origin: 50% 70%;
   pointer-events: none;
@@ -679,7 +679,7 @@
 }
 
 .driver-order-map-mode .order-marker--profit-negative .order-profit-estimation {
-  color: #8B1010 !important;
+  color: #8b1010 !important;
   font-weight: 700;
 }
 
@@ -776,7 +776,7 @@
 }
 
 .driver-order-map-mode .order-marker-hint__meta .competitors-num {
-  background: #d7b7ff;
+  background: #c8bdb5;
 }
 
 .driver-order-map-mode .order-marker-hint__meta .price {
@@ -981,7 +981,7 @@
 .page-section.driver--lite .driver-orders__list {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-  align-content: start;
+  align-content: flex-start;
   gap: 15px;
 }
 

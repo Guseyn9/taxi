@@ -1,5 +1,6 @@
 import React from 'react'
 import cn from 'classnames'
+import { X } from 'lucide-react'
 import { BrowserDriverEmulator, BrowserClientOrderEmulator, BrowserEmulatorSnapshot } from './browserEmulator'
 import emulationModeExactIcon from '../../assets/images/emulationModeExactIcon.png'
 import { t } from '../../localization'
@@ -32,6 +33,14 @@ interface IProps {
 }
 
 function DriverEmulatorPanel({ isOpen, autoStart, mode = 'drivers', onStatusChange, onClose }: IProps) {
+  const panelRef = React.useRef<HTMLDivElement>(null)
+  const titleId = React.useId()
+  React.useEffect(() => {
+    if (!isOpen) return
+    const previous = document.activeElement as HTMLElement | null
+    panelRef.current?.focus()
+    return () => previous?.focus()
+  }, [isOpen])
   const [status, setStatus] = React.useState<BrowserEmulatorSnapshot>(() => ({
     running: isBrowserEmulatorRunning(mode),
     logs: [],
@@ -168,16 +177,26 @@ function DriverEmulatorPanel({ isOpen, autoStart, mode = 'drivers', onStatusChan
   const logs = status.logs?.length ? status.logs.join('\n') : t('emulator_logs_empty')
 
   return (
-    <div className="driver-emulator-panel" role="dialog" aria-modal="true">
+    <div className="driver-emulator-panel" role="dialog" aria-modal="true" aria-labelledby={titleId} ref={panelRef} tabIndex={-1} onKeyDown={event => {
+      if(event.key === 'Escape'){event.preventDefault();event.stopPropagation();onClose()}
+      if(event.key === 'Tab'){
+        const nodes = Array.from(panelRef.current?.querySelectorAll<HTMLElement>('button:not(:disabled),[tabindex="0"]') || []).filter(node=>node.getClientRects().length)
+        const first=nodes[0],last=nodes[nodes.length-1]
+        if(event.shiftKey && (document.activeElement===first || document.activeElement===panelRef.current)){event.preventDefault();last?.focus()}
+        else if(!event.shiftKey && (document.activeElement===last || document.activeElement===panelRef.current)){event.preventDefault();first?.focus()}
+      }
+    }}>
       <div className="driver-emulator-panel__backdrop" onClick={onClose} />
       <div
         className="driver-emulator-panel__card"
         style={{ transform: dragY ? `translateY(${dragY}px)` : undefined }}
       >
+        <button type="button" className="rs-emulator-close" aria-label={t('close')} onClick={onClose}><X size={20}/></button>
         <div
           className="driver-emulator-panel__handle"
           role="button"
           tabIndex={0}
+          onKeyDown={event=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();onClose()}}}
           aria-label={t('emulator_swipe_down_to_close')}
           onTouchStart={(event) => startSwipe(event.touches[0].clientY)}
           onTouchMove={(event) => moveSwipe(event.touches[0].clientY)}
@@ -192,7 +211,7 @@ function DriverEmulatorPanel({ isOpen, autoStart, mode = 'drivers', onStatusChan
         <div className="driver-emulator-panel__head">
           <div className="driver-emulator-panel__title-wrap">
             <img src={emulationModeExactIcon} alt="" className="driver-emulator-panel__title-icon" />
-            <div className="driver-emulator-panel__title">{title}</div>
+            <div id={titleId} className="driver-emulator-panel__title">{title}</div>
             <div className="driver-emulator-panel__subtitle">{subtitle}</div>
           </div>
           <div className={cn('driver-emulator-panel__status', { 'driver-emulator-panel__status--running': running })}>

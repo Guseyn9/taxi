@@ -543,7 +543,7 @@
 
   &__section-title {
     margin-bottom: 10px;
-    color: #0f2c76;
+    color: #111111;
     font-size: 17px;
     line-height: 1.25;
     font-weight: 800;
@@ -607,7 +607,7 @@
       transform: none !important;
     }
 
-    img {
+    > img {
       display: block;
       width: 42px;
       height: 42px;
@@ -651,7 +651,7 @@
     scroll-snap-align: start;
     grid-template-columns: auto minmax(0, 1fr) auto;
     grid-template-rows: auto auto;
-    align-items: start;
+    align-items: flex-start;
     min-height: 104px;
     margin-bottom: 0;
     padding: 12px;
@@ -967,7 +967,7 @@
 
   &__driver-row {
       grid-template-columns: auto minmax(0, 1fr) auto;
-      align-items: start;
+      align-items: flex-start;
       gap: 9px;
       padding: 4px 4px 7px 0;
     }
@@ -1039,7 +1039,7 @@
     &__driver-actions {
       grid-column: 3;
       justify-self: end;
-      align-self: start;
+      align-self: flex-start;
       flex-direction: column;
       gap: 5px;
     }
@@ -1054,7 +1054,7 @@
     &__call {
       grid-column: auto;
       justify-self: end;
-      align-self: start;
+      align-self: flex-start;
       width: 40px;
       height: 40px;
       margin-top: 1px;
@@ -1158,7 +1158,7 @@
       padding: 6px 8px;
       border-radius: 13px;
 
-      img {
+      > img {
         width: 32px;
         height: 32px;
         min-width: 32px;

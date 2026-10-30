@@ -1,3 +1,8 @@
+import {displayFare,orderCurrency} from '../../design/reliability/rideData'
+import {displayAddress} from '../../design/addressPresentation'
+import { formatDriverRating } from '../../tools/driverRating'
+import { isAnyBrowserEmulatorOrder } from '../../tools/emulatorMode'
+import { serverPickupEta } from '../../pilot/rules'
 import React, { useEffect, useMemo, useState } from 'react'
 import cn from 'classnames'
 import { passengerGateway } from '../../platform/adapters/LegacyPassengerGateway'
@@ -271,15 +276,15 @@ function PassengerLiveOrder({
   const carText = getCarText(driverCar)
   const plate = driverCar?.registration_plate || selectedDriver?.c_id || '—'
   const avatarSrc = getAvatarSrc(driverUser, selectedDriver, avatarFailed)
-  const pickup = getCleanAddress(
+  const pickup = displayAddress(getCleanAddress(
     order.b_options?.fromShortAddress,
     order.b_start_address,
-  )
-  const destination = getCleanAddress(
+  ),languageIso,order.b_start_latitude,order.b_start_longitude)
+  const destination = displayAddress(getCleanAddress(
     order.b_options?.toShortAddress,
     order.b_destination_address,
-  )
-  const price = formatPayment(payment.value)
+  ),languageIso,order.b_destination_latitude,order.b_destination_longitude)
+  const price = displayFare(payment.value,orderCurrency(order,CURRENCY.NAME),languageIso,payment.estimated)
   const paymentWay = getPaymentWayText(order.b_payment_way)
   const selectedCandidate = candidateDrivers.find(candidate => candidate.u_id === activeCandidate) ?? null
   const requiredCarClassKind = getRequiredCarClassKind(order)
@@ -644,19 +649,22 @@ function PassengerLiveOrder({
                       )}
                     </span>
                     <span className="passenger-live-order__candidate-side">
-                      <strong>{offerOrder ? formatOfferPrice(offer.price) : formatDriverPrice(candidate)}</strong>
+                      <strong>{offerOrder ? formatOfferPrice(offer.price, orderCurrency(order,CURRENCY.NAME), languageIso) : formatDriverPrice(candidate, orderCurrency(order,CURRENCY.NAME), languageIso)}</strong>
                       <span className="passenger-live-order__candidate-class-row">
                         <span
                           className="passenger-live-order__driver-color-dot passenger-live-order__driver-color-dot--candidate"
+                          title={languageIso?.startsWith('ru') ? 'Маршрут водителя на карте' : 'Driver route on map'}
+                          role="img"
+                          aria-label={languageIso?.startsWith('ru') ? 'Маршрут водителя на карте' : 'Driver route on map'}
                           style={{ backgroundColor: candidateColor }}
-                          aria-hidden="true"
+
                         />
                         <CarClassBadge kind={candidateCarClassKind} compact className="passenger-live-order__candidate-class" />
                       </span>
                     </span>
                     {isExpandedCandidate && (
                       <small className="passenger-live-order__candidate-comment">
-                        {t(TRANSLATION.DRIVER_OFFER_COMMENT)}: {offer.comment || getCandidateFallbackComment(candidate, order)}
+                        {t(TRANSLATION.DRIVER_OFFER_COMMENT)}: {offer.comment || '—'}
                       </small>
                     )}
                   </button>
@@ -701,8 +709,11 @@ function PassengerLiveOrder({
                 {selectedDriver && (
                   <span
                     className="passenger-live-order__driver-color-dot"
+                    title={languageIso?.startsWith('ru') ? 'Маршрут водителя на карте' : 'Driver route on map'}
+                    role="img"
+                    aria-label={languageIso?.startsWith('ru') ? 'Маршрут водителя на карте' : 'Driver route on map'}
                     style={{ backgroundColor: getDriverColor(selectedDriver, order.drivers ?? [selectedDriver]) }}
-                    aria-hidden="true"
+
                   />
                 )}
                 <CarClassBadge kind={getCandidateCarClassKind(driverCar, order)} className="passenger-live-order__driver-class" />
@@ -907,7 +918,8 @@ function getSelectedDriver(order: IOrder, confirmedChoiceId?: IDriver['u_id'] | 
       return confirmedDriver
   }
 
-  const startedDriver = drivers.find(driver => driver.c_state === EBookingDriverState.Started)
+  const startedDrivers = drivers.filter(driver => driver.c_state === EBookingDriverState.Started)
+  const startedDriver = startedDrivers.length===1?startedDrivers[0]:null
   if (startedDriver)
     return startedDriver
 
@@ -1019,11 +1031,7 @@ function getPassengerStatusSubtitle(driver?: IDriver | null) {
 }
 
 function getDriverRating(driver?: IDriver | null) {
-  const rating = Number(driver?.c_rating)
-  if (Number.isFinite(rating) && rating > 0)
-    return rating.toFixed(1)
-
-  return driver ? '4.8' : '—'
+  return formatDriverRating(driver?.c_rating)
 }
 
 function getDriverName(driver?: IDriver | null, user?: IUser | null) {
@@ -1075,7 +1083,7 @@ function formatPayment(value: number | string) {
   if (typeof value === 'number' && Number.isFinite(value))
     return formatCurrency(value, { currencyDisplay: 'narrowSymbol' })
 
-  return String(value || `${CURRENCY.SIGN}0`)
+  return value === 0 ? formatCurrency(0) : String(value || '—')
 }
 
 function getPaymentWayText(paymentWay?: EPaymentWays) {
@@ -1090,29 +1098,17 @@ function getPaymentWayText(paymentWay?: EPaymentWays) {
   }
 }
 
-function formatDriverPrice(driver: IDriver) {
+function formatDriverPrice(driver: IDriver, currency: string, iso?: string) {
   const price = driver.c_options?.performers_price
   if (!price)
     return ''
 
-  return `${CURRENCY.SIGN}${price}`
+  return displayFare(price,currency,iso)
 }
 
 
-function getSyntheticOfferIndex(driver: IDriver, order?: IOrder | null) {
-  const source = `${driver.u_id || ''}_${driver.c_id || ''}_${order?.b_id || ''}`
-  return source.split('').reduce((sum, char) => sum + char.charCodeAt(0), 0)
-}
 
-function getSyntheticOfferEta(driver: IDriver, order?: IOrder | null) {
-  const variants = getDriverOfferEtaLabels()
-  return variants[getSyntheticOfferIndex(driver, order) % variants.length]
-}
 
-function getSyntheticOfferComment(driver: IDriver, order?: IOrder | null) {
-  const variants = getDriverOfferCommentLabels()
-  return variants[getSyntheticOfferIndex(driver, order) % variants.length]
-}
 
 function getDriverOfferInfo(driver: IDriver, order?: IOrder | null) {
   const rawDriver = driver as any
@@ -1126,7 +1122,8 @@ function getDriverOfferInfo(driver: IDriver, order?: IOrder | null) {
     Object.keys(offerObject).length ? offerObject :
       Object.keys(topDriverOfferObject).length ? topDriverOfferObject :
         topOfferObject
-  const storedOffer = getStoredCandidateOffer(order?.b_id, driver.u_id, driver.c_id)
+  const storedOffer = isAnyBrowserEmulatorOrder(order) ?
+    getStoredCandidateOffer(order?.b_id, driver.u_id, driver.c_id) : null
 
   return {
     price: getFirstFilledOfferValue(
@@ -1135,48 +1132,26 @@ function getDriverOfferInfo(driver: IDriver, order?: IOrder | null) {
       rawOffer.price,
       rawOffer.driver_price,
       rawOffer.performers_price,
-      storedOffer?.price,
       options.performers_price,
       rawDriver.performers_price,
       rawDriver.c_price,
       options.price,
+      storedOffer?.price,
     ),
-    eta: getFirstFilledOfferValue(
-      options.driver_offer_eta,
-      rawDriver.driver_offer_eta,
-      rawDriverData.driver_offer_eta,
-      rawDriverData.c_pickup_time,
-      rawDriverData.pickup_time,
-      rawOffer.eta,
-      rawOffer.pickup_time,
-      rawOffer.arrival_time,
-      rawOffer.time,
-      storedOffer?.eta,
-      getSyntheticOfferEta(driver, order),
-      options.eta,
-      rawDriver.eta,
-      rawDriver.pickup_time,
-      rawDriver.arrival_time,
-      rawDriver.c_eta,
-      rawDriver.c_pickup_time,
-      options.c_pickup_time,
-      options.pickup_time,
-      options.arrival_time,
-      options.time,
-    ),
+    eta: serverPickupEta(driver),
     seats: getFirstFilledOfferValue(
       options.driver_offer_free_seats,
       rawDriver.driver_offer_free_seats,
       rawOffer.freeSeats,
       rawOffer.free_seats,
       rawOffer.seats,
-      storedOffer?.freeSeats,
       options.freeSeats,
       rawDriver.freeSeats,
       rawDriver.free_seats,
       rawDriver.seats,
       options.free_seats,
       options.seats,
+      storedOffer?.freeSeats,
     ),
     comment: getFirstFilledOfferValue(
       options.driver_offer_comment,
@@ -1186,14 +1161,13 @@ function getDriverOfferInfo(driver: IDriver, order?: IOrder | null) {
       rawDriverData.comment,
       rawOffer.comment,
       rawOffer.driver_comment,
-      storedOffer?.comment,
-      getSyntheticOfferComment(driver, order),
       options.driver_comment,
       rawDriver.driver_comment,
       rawDriver.comment,
       rawDriver.c_comment,
       options.c_comment,
       options.comment,
+      storedOffer?.comment,
     ),
   }
 }
@@ -1271,12 +1245,11 @@ function sortCandidateDriversByEta(drivers: IDriver[], order?: IOrder | null) {
 }
 
 function getCandidatePickupEtaText(driver: IDriver, order?: IOrder | null, rawEta?: unknown) {
-  const eta = getFirstFilledOfferValue(rawEta, getDriverOfferInfo(driver, order).eta)
+  const eta = serverPickupEta(driver)
   if (eta !== undefined && eta !== null && String(eta).trim())
     return String(eta).trim()
 
-  const minutes = getCandidateEstimatedPickupMinutes(driver, order)
-  return minutes ? `≈ ${minutes} ${t(TRANSLATION.MINUTES)}` : '—'
+  return '—'
 }
 
 function getCandidatePickupEtaMinutes(driver: IDriver, order?: IOrder | null) {
@@ -1284,34 +1257,10 @@ function getCandidatePickupEtaMinutes(driver: IDriver, order?: IOrder | null) {
   if (eta !== Number.POSITIVE_INFINITY)
     return eta
 
-  return getCandidateEstimatedPickupMinutes(driver, order) ?? Number.POSITIVE_INFINITY
+  return Number.POSITIVE_INFINITY
 }
 
-function getCandidateEstimatedPickupMinutes(driver: IDriver, order?: IOrder | null) {
-  if (
-    !order?.b_start_latitude ||
-    !order?.b_start_longitude ||
-    !driver.c_latitude ||
-    !driver.c_longitude
-  )
-    return undefined
 
-  const distanceKm = distanceBetweenEarthCoordinates(
-    driver.c_latitude,
-    driver.c_longitude,
-    order.b_start_latitude,
-    order.b_start_longitude,
-  )
-
-  return Math.max(1, Math.round((distanceKm * 1.2 / 30) * 60))
-}
-
-function getCandidateFallbackComment(driver: IDriver, order?: IOrder | null) {
-  const comments = getDriverOfferCommentLabels()
-  const seed = String(order?.b_id ?? '') + String(driver.u_id ?? '') + String(driver.c_id ?? '')
-  const hash = seed.split('').reduce((sum, char) => sum + char.charCodeAt(0), 0)
-  return comments[hash % comments.length]
-}
 
 function parseOfferEtaMinutes(value: unknown) {
   if (!value)
@@ -1389,9 +1338,9 @@ function getFirstPositiveNumber(...values: unknown[]) {
   return undefined
 }
 
-function formatOfferPrice(price: unknown) {
+function formatOfferPrice(price: unknown, currency: string, iso?: string) {
   if (price === undefined || price === null || price === '')
     return ''
 
-  return `${CURRENCY.SIGN}${price}`
+  return displayFare(price,currency,iso)
 }

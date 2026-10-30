@@ -1,10 +1,11 @@
 import React from 'react'
 import cn from 'classnames'
 import SITE_CONSTANTS from '../../siteConstants'
+import { t, TRANSLATION } from '../../localization'
 import { ICar, IOrder } from '../../types/types'
-import { isIntercityOrderLocationClass, isOfferOrder } from '../../tools/driverOffer'
-import petitExactIcon from '../../assets/images/petit_exact.png'
-import grandExactIcon from '../../assets/images/grand_exact.png'
+import { isIntercityOrderLocationClass } from '../../tools/driverOffer'
+import VehicleArtwork from '../CarClassSlider/VehicleArtwork'
+import {taxiColor} from '../../design/maps/taxiPalette'
 import './styles.scss'
 
 export type CarClassBadgeKind = 'petit' | 'grand'
@@ -19,6 +20,7 @@ function getClassNameFromId(classId?: unknown) {
 
   const carClass = SITE_CONSTANTS.CAR_CLASSES[String(classId)] as any
   return normalizeText([
+    TRANSLATION.CAR_CLASSES[String(classId)] ? t(TRANSLATION.CAR_CLASSES[String(classId)]) : '',
     carClass?.name,
     carClass?.title,
     carClass?.label,
@@ -37,7 +39,7 @@ function getKindFromClassId(classId?: unknown): CarClassBadgeKind | null {
   if (text.includes('grand') || text.includes('grande') || text.includes('гранд'))
     return 'grand'
 
-  if (text.includes('petit') || text.includes('петит') || text.includes('econom') || text.includes('эконом'))
+  if (text.includes('petit') || text.includes('petti') || text.includes('петит') || text.includes('econom') || text.includes('эконом'))
     return 'petit'
 
   return null
@@ -51,7 +53,7 @@ export function getRequiredCarClassKind(order?: IOrder | null): CarClassBadgeKin
   if (byClass)
     return byClass
 
-  if (isOfferOrder(order) || isIntercityOrderLocationClass(order.b_location_class))
+  if (isIntercityOrderLocationClass(order.b_location_class))
     return 'grand'
 
   return 'petit'
@@ -69,15 +71,16 @@ interface IProps {
   kind: CarClassBadgeKind
   className?: string
   compact?: boolean
+  point?: readonly number[] | null
 }
 
-export default function CarClassBadge({ kind, className, compact }: IProps) {
+export default function CarClassBadge({ kind, className, compact, point }: IProps) {
   const label = kind === 'grand' ? 'GRAND' : 'PETIT'
-  const iconSrc = kind === 'grand' ? grandExactIcon : petitExactIcon
+  const color=taxiColor({point})
 
   return (
-    <span className={cn('car-class-badge', `car-class-badge--${kind}`, { 'car-class-badge--compact': compact }, className)} aria-label={`Класс авто ${label}`}>
-      <img src={iconSrc} alt="" className="car-class-badge__image" />
+    <span className={cn('car-class-badge', `car-class-badge--${kind}`, { 'car-class-badge--compact': compact }, className)} aria-label={label}>
+      <VehicleArtwork kind={kind} color={color} className="car-class-badge__image"/><small>{label}</small>
     </span>
   )
 }

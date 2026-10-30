@@ -1,4 +1,10 @@
+import ConnectionBar from './design/reliability/ConnectionBar'
 import React, { useEffect } from 'react'
+import { applyUiDocumentLanguage } from './design/ui-language'
+import './design/rtl.css'
+import { subscribeSessionRevocation } from './security/sessionTokens'
+import { ActionTypes as UserActionTypes } from './state/user/constants'
+import { clearOrders } from './state/orders/actionCreators'
 import { connect, ConnectedProps } from 'react-redux'
 import { Helmet } from 'react-helmet-async'
 import SITE_CONSTANTS from './siteConstants'
@@ -42,6 +48,13 @@ const App: React.FC<IProps> = ({
   user,
   initUser,
 }) => {
+  useEffect(() => { applyUiDocumentLanguage(language?.iso, document.documentElement) }, [language?.iso])
+  useEffect(() => subscribeSessionRevocation(() => {
+    store.dispatch({ type: UserActionTypes.LOGOUT_START })
+    store.dispatch(clearOrders())
+    store.dispatch({ type: UserActionTypes.LOGOUT_SUCCESS })
+  }), [])
+
   if ((window as any).ReactNativeWebView) {
     (window as any).ReactNativeWebView.postMessage(
       JSON.stringify({ type: 'SYSTEM', message: 'START' }),
@@ -117,6 +130,7 @@ const App: React.FC<IProps> = ({
     <React.Fragment>
       <Theme>
         {getMetaTags()}
+        <ConnectionBar/>
         <React.Fragment key={`routes-${language?.id || ''}-${language?.iso || ''}`}>
           <AppRoutes />
           <ModalHost languageIso={language?.iso} />

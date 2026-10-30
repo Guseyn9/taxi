@@ -1,4 +1,8 @@
+import LanguagePicker from './LanguagePicker'
+import {zoneCopy} from '../../admin/zones/copy'
+import {UserRound,ChevronRight} from 'lucide-react'
 import React, { useState } from 'react'
+import GraphDiagnostics from '../../graph/Diagnostics'
 import { connect, ConnectedProps } from 'react-redux'
 import { matchPath, useLocation } from 'react-router-dom'
 import cn from 'classnames'
@@ -6,7 +10,8 @@ import moment from 'moment'
 import { EBookingDriverState, EUserRoles, ILanguage, EStatuses } from '../../types/types'
 import config from '../../config'
 import images from '../../constants/images'
-import SITE_CONSTANTS from '../../siteConstants'
+import SITE_CONSTANTS, { CURRENCY } from '../../siteConstants'
+import { moroccoConfigMismatch, pilotCopy } from '../../pilot/rules'
 import { useInterval } from '../../tools/hooks'
 import { setCookie } from '../../utils/cookies'
 import { IRootState } from '../../state'
@@ -15,7 +20,7 @@ import { modalsActionCreators } from '../../state/modals'
 import { clientOrderSelectors } from '../../state/clientOrder'
 import { ordersSelectors } from '../../state/orders'
 import { userSelectors, userActionCreators } from '../../state/user'
-import { carsSelectors } from '../../state/cars'
+import { carsSelectors, carsActionCreators } from '../../state/cars'
 import {
   getDriverStatus,
   isDriverCarAdded,
@@ -49,12 +54,6 @@ import { usePlatformNavigator } from '../../platform/platform-interface'
 import { backendGateway } from '../../platform/adapters/LegacyBackendGateway'
 import './styles.scss'
 
-const FLAGS_IMAGES: Record<string, string> = {
-  ru: images.flagRu,
-  gb: images.flagGb,
-  fr: images.flagFr,
-  ma: images.flagMar,
-}
 
 interface IMenuItem {
   label: string
@@ -72,6 +71,7 @@ const mapStateToProps = (state: IRootState) => ({
 })
 
 const mapDispatchToProps = {
+  getUserCars: carsActionCreators.getUserCars,
   setLanguage: configActionCreators.setLanguage,
   setLoginModal: modalsActionCreators.setLoginModal,
   setProfileModal: modalsActionCreators.setProfileModal,
@@ -103,6 +103,7 @@ function Header({
   activeOrders,
   selectedOrder,
   primaryCar,
+  getUserCars,
   setLanguage,
   setLoginModal,
   setProfileModal,
@@ -111,7 +112,8 @@ function Header({
   logout,
   className,
 }: IProps) {
-  const [languagesOpened, setLanguagesOpened] = useState(false)
+  React.useEffect(() => { if (user?.u_role === EUserRoles.Driver) getUserCars() }, [user?.u_id, user?.u_role, getUserCars])
+
   const [seconds, setSeconds] = useState(0)
   const [menuOpened, setMenuOpened] = useState(false)
   const [statusMenuOpen, setStatusMenuOpen] = useState(false)
@@ -123,8 +125,6 @@ function Header({
   const [emulatorStatus, setEmulatorStatus] = useState<{ mode: 'drivers' | 'clients', running: boolean } | null>(() => getInitialEmulatorStatus(defaultEmulatorMode))
   const [emulatorInfoOpened, setEmulatorInfoOpened] = useState(false)
   const driverStatusRefreshedRef = React.useRef(false)
-  if (!menuOpened && languagesOpened)
-    setLanguagesOpened(false)
 
   const location = useLocation()
   const navigation = usePlatformNavigator()
@@ -202,20 +202,15 @@ function Header({
 
   const menuItems: IMenuItem[] = []
   menuItems.push({
-    label: t('profile'),
+    label: user ? t('profile') : t('sign_in'),
     action: () => {
-      setProfileModal({ isOpen: true })
+      if (user) setProfileModal({ isOpen: true })
+      else setLoginModal(true)
       setMenuOpened(false)
     },
   })
 
-  menuItems.push({
-    label: t('language'),
-    type: 'language',
-    action: () => {
-      setLanguagesOpened(prev => !prev)
-    },
-  })
+
 
 
   const isAuthorizedDriver = user?.u_role === EUserRoles.Driver
@@ -230,7 +225,13 @@ function Header({
       label: t('emulator_drivers'),
       action: () => startDriverEmulator('drivers'),
     })
+    if(!clientOrder)menuItems.push({label:({ru:'Тест анимации · без заказа',fr:'Test animation · sans commande',ar:'اختبار الحركة · بدون طلب'} as Record<string,string>)[language.iso.split('-')[0]]||'Animation test · no order',action:()=>{setMenuOpened(false);window.dispatchEvent(new Event('taxi.ui.map-demo'))}})
   }
+
+  if (user?.u_role === EUserRoles.Administrator) menuItems.push({
+    label: zoneCopy(language?.iso).title,
+    action: () => { setMenuOpened(false); navigation.navigatePath('/admin/zones') },
+  })
 
   if (isDriverArea) {
     menuItems.push({
@@ -258,7 +259,6 @@ function Header({
 
   const closeSideMenu = React.useCallback(() => {
     setMenuOpened(false)
-    setLanguagesOpened(false)
   }, [])
 
   const closeStatusMenu = React.useCallback(() => {
@@ -283,13 +283,6 @@ function Header({
 
 
   const detailedOrderID = matchPath({ path: '/driver-order/:id' }, location.pathname)?.params.id
-
-  let avatar = images.noUserAvatar
-  let avatarSize = '24px'
-  if (user) {
-    avatar = user.u_photo || images.noImgAvatar
-    avatarSize = user.u_photo ? 'cover' : '24px'
-  }
 
   const isDriver = user?.u_role === EUserRoles.Driver
   const hasCar = isDriverCarAdded(primaryCar)
@@ -502,7 +495,6 @@ function Header({
   const handleLanguageChange = (lang: ILanguage) => {
     setCookie('user_lang', lang.iso)
     setLanguage(lang)
-    setLanguagesOpened(false)
   }
 
   const isEmulationModeVisible = emulatorPanelOpened || Boolean(emulatorStatus?.running)
@@ -513,6 +505,29 @@ function Header({
   }, [])
   const driverAccountName = [user?.u_name, user?.u_family].filter(Boolean).join(' ').trim()
   const driverAccountLogin = user?.u_phone || user?.u_email || (user?.u_id ? `ID ${user.u_id}` : '')
+  const toolsLabel = ({ru:'Для тестирования',fr:'Outils de test',ar:'أدوات الاختبار'} as Record<string,string>)[language.iso.split('-')[0]] || 'Testing tools'
+  const menuListRef = React.useRef<HTMLUListElement>(null)
+  React.useEffect(()=>{
+    if(!menuOpened)return
+    const frame=requestAnimationFrame(()=>menuListRef.current?.querySelector<HTMLButtonElement>('button')?.focus())
+    const trap=(event:KeyboardEvent)=>{
+      if(event.key!=='Tab')return
+      const nodes=Array.from(menuListRef.current?.querySelectorAll<HTMLElement>('button:not(:disabled),summary')||[]).filter(node=>node.getClientRects().length)
+      const first=nodes[0],last=nodes[nodes.length-1]
+      if(event.shiftKey && document.activeElement===first){event.preventDefault();last?.focus()}
+      if(!event.shiftKey && document.activeElement===last){event.preventDefault();first?.focus()}
+    }
+    window.addEventListener('keydown',trap)
+    return()=>{
+      cancelAnimationFrame(frame)
+      window.removeEventListener('keydown',trap)
+      requestAnimationFrame(()=>{
+        // Do not steal focus from a dialog opened by a menu action.
+        if(document.activeElement===document.body||menuListRef.current?.contains(document.activeElement))
+          document.querySelector<HTMLButtonElement>('.burger-button')?.focus()
+      })
+    }
+  },[menuOpened])
 
   return (
     <header className={cn('header', className)}>
@@ -520,7 +535,7 @@ function Header({
         <div className="column">
           {
             detailedOrderID ?
-              <img src={images.returnIcon} className="menu-icon" alt={t(TRANSLATION.RETURN)} onClick={onReturn} /> :
+              <button type="button" className="rs-header-back" aria-label={t(TRANSLATION.RETURN)} onClick={onReturn}><img src={images.returnIcon} alt=""/></button> :
               (
                 <div className="menu__wrapper">
                   {menuOpened && (
@@ -531,14 +546,16 @@ function Header({
                       onClick={closeSideMenu}
                     />
                   )}
-                  <Burger onClick={toggleMenuOpened} isOpen={menuOpened} />
+                  <Burger onClick={toggleMenuOpened} isOpen={menuOpened} aria-label={t('navigation_menu')} />
                   <ul
+                    ref={menuListRef}
+                    hidden={!menuOpened}
+                    aria-label={t('navigation_menu')}
                     className={cn('menu__list', {
                       'menu__list--active': menuOpened,
-                      'menu__list--expanded': languagesOpened,
                     })}
                   >
-                    {menuItems.map((item, index) => (
+                    {menuItems.slice(0,1).map((item, index) => (
                       <li key={index} className="menu__item">
                         <button
                           onClick={() =>
@@ -546,44 +563,34 @@ function Header({
                               navigation.navigatePath(item.href) :
                               item.action?.(index)
                           }
-                          className="menu__button"
+                          type="button"
+                          className="menu__button menu__account"
                         >
-                          {item.label}
+                          <span className="menu__account-avatar" aria-hidden="true">{user?.u_photo ? <img src={user.u_photo} alt=""/> : <UserRound size={22}/>}</span>
+                          <span className="menu__account-copy"><strong>{driverAccountName || item.label}</strong>{driverAccountName && <span>{item.label}</span>}</span>
+                          <ChevronRight size={18} aria-hidden="true"/>
                         </button>
-                        {item.type === 'language' && languagesOpened && (
-                          <ul className="menu__languages">
-                            {languages.map(item =>
-                              <li
-                                key={item.id}
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  handleLanguageChange(item)
-                                }}
-                                className="menu__language-flag"
-                              >
-                                {item.logo in FLAGS_IMAGES &&
-                                  <img
-                                    src={FLAGS_IMAGES[item.logo]}
-                                    alt=""
-                                    className="menu__language-flag-icon"
-                                  />
-                                }
-                                <span className="menu__language-flag-text">
-                                  {item.native}
-                                </span>
-                              </li>,
-                            )}
-                          </ul>
-                        )}
+
                       </li>
                     ))}
+                    <li><details className="menu__tools"><summary>{toolsLabel}</summary>{menuItems.slice(1).map((item,index)=><button key={index} type="button" className="menu__button" onClick={()=>item.href?navigation.navigatePath(item.href):item.action?.(index+1)}>{item.label}</button>)}<GraphDiagnostics iso={language?.iso}/>
+                      {moroccoConfigMismatch(CURRENCY.NAME, SITE_CONSTANTS.DEFAULT_PHONE_MASK) &&
+                        <details className="service-config-diagnostics">
+                          <summary>{t('service_configuration')}</summary>
+                          <p>{pilotCopy(language?.iso).config}</p>
+                          <code dir="ltr">{CURRENCY.NAME} · {SITE_CONSTANTS.DEFAULT_PHONE_MASK}</code>
+                        </details>}
+                    </details></li>
                   </ul>
                 </div>
               )
           }
         </div>
       </div>
-      <div className='header-logo'><img src={images.logo} alt="" /></div>
+      <div className="header-logo" aria-label="Taxi">
+        <span className="rs-brand-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M5 17 17 5M6 5h11v11" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" /></svg></span>
+        <span className="rs-brand-name">taxi<span>.</span></span>
+      </div>
       <div className='header-avatar-wrapper'>
         {isEmulationModeVisible && (
           <button
@@ -596,12 +603,11 @@ function Header({
             <img src={emulationModeExactIcon} alt="" className="header-emulation-indicator__icon" />
           </button>
         )}
-        <span className='header-user-name'>{user?.u_city ? `${((window as any).data.cities[user?.u_city][language.iso ?? (window as any).data.langs[(window as any).default_lang].iso])},` : ''}</span>
-        <span className='header-user-lng'>{language.iso.toUpperCase()}</span>
-        <div
+        <LanguagePicker language={language} languages={languages} label={t('language')} onChange={handleLanguageChange} dismiss={menuOpened} onOpen={()=>{setMenuOpened(false);if(statusMenuOpen)closeStatusMenu()}}/>
+        {isDriver && <div
           className={cn('header-avatar-status', { 'header-avatar-status--driver': isDriver })}
         >
-          {isDriver ? (
+          {(
             <>
               <button
                 type="button"
@@ -637,13 +643,14 @@ function Header({
                     'header-driver-status-menu--closing': statusMenuClosing,
                     'header-driver-status-menu--active': statusMenuOpen,
                   })}
+                  hidden={!statusMenuOpen}
                 >
                   <div className="header-driver-status-menu__profile">
                     <div className="header-driver-status-menu__profile-title">
-                      Текущая учётка
+                      {t('account_summary')}
                     </div>
                     <div className="header-driver-status-menu__profile-main">
-                      {driverAccountName || driverAccountLogin || 'Водитель'}
+                      {driverAccountName || driverAccountLogin || t('driver')}
                     </div>
                     {driverAccountName && driverAccountLogin && (
                       <div className="header-driver-status-menu__profile-muted">
@@ -651,11 +658,11 @@ function Header({
                       </div>
                     )}
                     <div className="header-driver-status-menu__profile-row">
-                      <span>Версия</span>
+                      <span>{t('app_version')}</span>
                       <b>{(versionInfo as any).version}</b>
                     </div>
                     <div className="header-driver-status-menu__profile-row">
-                      <span>Дата</span>
+                      <span>{t('app_build_date')}</span>
                       <b>{buildDate}</b>
                     </div>
                   </div>
@@ -700,17 +707,8 @@ function Header({
                   )}
                 </div>
             </>
-          ) : (
-            <div
-              className="avatar"
-              onClick={e => setLoginModal(true)}
-              style={{
-                backgroundSize: avatarSize,
-                backgroundImage: `url(${avatar})`,
-              }}
-            />
           )}
-        </div>
+        </div>}
 
       </div>
       <DriverEmulatorPanel

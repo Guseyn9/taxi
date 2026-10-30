@@ -1,19 +1,22 @@
 import React from 'react'
+import {Menu,X} from 'lucide-react'
 import './styles.scss'
 
 interface IBurgerProps extends React.HTMLAttributes<HTMLButtonElement> {
     isOpen: boolean
 }
 
-export function Burger({ isOpen, onClick }: IBurgerProps) {
+export function Burger({ isOpen, onClick, ...props }: IBurgerProps) {
   return (
     <button
+      {...props}
+      type="button"
+      aria-label={props['aria-label'] || 'Menu'}
+      aria-expanded={isOpen}
       className='burger-button'
       onClick={onClick}
     >
-      <div className={'burger-button__line' + (isOpen ? ' burger-button__line__s' : ' burger-button__line__l')}></div>
-      <div className='burger-button__line burger-button__line__m'></div>
-      <div className={'burger-button__line' + (isOpen ? ' burger-button__line__l' : ' burger-button__line__s')}></div>
+      {isOpen ? <X size={24} strokeWidth={2} aria-hidden="true"/> : <Menu size={24} strokeWidth={2} aria-hidden="true"/>}
     </button>
   )
 }

@@ -1,4 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react'
+import { useSelector } from 'react-redux'
+import { configSelectors } from '../../state/config'
+import { sandboxCopy, parseSandboxSettings } from './copy'
 // import ErrorBoundary from '../components/ErrorBoundary'
 import 'jsoneditor/dist/jsoneditor.css'
 import _ from 'lodash'
@@ -9,6 +12,10 @@ import './styles.sass'
 import { useForm, useWatch } from 'react-hook-form'
 
 const Sandbox = () => {
+  const language = useSelector(configSelectors.language)
+  const copy = sandboxCopy(language?.iso)
+  const [fileError, setFileError] = useState<'invalid' | 'readError' | null>(null)
+  const fileInput = useRef<HTMLInputElement>(null)
   const [settings, setSettings] = useState<{[key: string]: any}>(
     {
       blocks: [{ text: 'hello world' }],
@@ -41,9 +48,13 @@ const Sandbox = () => {
       },
       settings,
     )
-    const defaultSettings = JSON.parse(localStorage.getItem('settings') || JSON.stringify(settings))
+    const saved = localStorage.getItem('settings')
+    const parsed = saved ? parseSandboxSettings(saved) : settings
+    if (saved && !parsed) setFileError('invalid')
+    const defaultSettings = parsed || settings
     editor.current.set(defaultSettings)
     setSettings(defaultSettings)
+    return () => { onChange.cancel(); editor.current?.destroy(); editor.current = null }
   }, [])
 
   const openFile = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -52,10 +63,15 @@ const Sandbox = () => {
       const reader = new window.FileReader()
       reader.readAsText(file, 'UTF-8')
       reader.onload = (event) => {
-        event.target && typeof event.target.result === 'string' && setSettings(JSON.parse(event.target.result))
+        const next = typeof event.target?.result === 'string' ? parseSandboxSettings(event.target.result) : null
+        if (!next) { setFileError('invalid'); return }
+        setFileError(null)
+        editor.current?.set(next)
+        setSettings(next)
+        updateFrameKey()
       }
       reader.onerror = () => {
-        window.alert('Ошибка при чтении файла')
+        setFileError('readError')
       }
     }
   }
@@ -82,7 +98,7 @@ const Sandbox = () => {
 
   return (
     <>
-      <div className="columns">
+      <div className="columns rs-sandbox">
         <div
           className="column column--editor"
           style={{ position: 'fixed', top: 0, left: 0 }}
@@ -96,37 +112,21 @@ const Sandbox = () => {
               alignItems: 'center',
             }}
           >
-            <label
-              htmlFor="json-file"
-              style={{ display: 'block', fontSize: 0 }}
-            >
-              <img
-                src="/assets/images/openFile.svg"
-                style={{ width: 20, margin: '5px 5px 0', cursor: 'pointer' }}
-                alt="open"
-              />
-            </label>
+            <button type="button" className="rs-sandbox-open" onClick={() => fileInput.current?.click()}>{copy.open}</button>
             <input
+              ref={fileInput}
               id="json-file"
+              aria-label={copy.open}
               type="file"
               name="json-file"
               accept="application/JSON"
               style={{ display: 'none' }}
               onChange={openFile}
             />
-            <img
-              src="/assets/images/saveFile.svg"
-              style={{ width: 20, margin: '5px 5px 0', cursor: 'pointer' }}
-              onClick={saveFile}
-              alt="save"
-            />
-            <img
-              src="/assets/images/refresh.svg"
-              style={{ width: 20, margin: '5px 5px 0', cursor: 'pointer' }}
-              onClick={updateFrameKey}
-              alt="refresh"
-            />
+            <button type="button" onClick={saveFile}>{copy.save}</button>
+            <button type="button" onClick={updateFrameKey}>{copy.refresh}</button>
           </div>
+          {fileError && <div role="alert" className="rs-sandbox-error">{copy[fileError]}</div>}
           <div className="settings-editor" id="settings-editor"></div>
         </div>
         <div
@@ -138,7 +138,7 @@ const Sandbox = () => {
             key={contentKey}
             style={{ position: 'relative', minHeight: '100vh' }}
           >
-            <form onSubmit={() => console.log('submit')}>
+            <form onSubmit={event => { event.preventDefault(); console.log('submit') }}>
               <ConstructorTab
                 form={form}
                 values={values}

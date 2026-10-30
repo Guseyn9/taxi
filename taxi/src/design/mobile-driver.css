@@ -1,0 +1,367 @@
+/* Driver-only presentation. The layout owns the viewport; this page owns one vertical scroll. */
+#root .driver-tabs {
+  flex: 0 0 auto;
+  gap: 4px;
+  margin: 0;
+  padding: 8px 12px;
+  background: #fff;
+  border-bottom: 1px solid #ededed;
+}
+#root .driver-tabs__tab {
+  min-height: 44px;
+  padding: 8px 12px;
+  border: 0;
+  border-radius: 10px;
+  background: #f6f6f6;
+  color: #585858;
+  font: 600 13px/1.4 Manrope, sans-serif;
+}
+#root .driver-tabs__tab--active { background: var(--drive-red,#b51218); color: #fff; }
+#root .driver-tabs__tab:focus-visible,
+#root .driver-section-heading button:focus-visible,
+#root .driver-status-legend summary:focus-visible {
+  outline: 3px solid var(--drive-red,#b51218);
+  outline-offset: 2px;
+}
+#root .page-section.driver--mobile-first {
+  flex: 1 1 auto;
+  display: block;
+  width: 100%;
+  min-height: 0;
+  height: auto !important;
+  max-height: none;
+  padding: 8px 12px max(20px, env(safe-area-inset-bottom, 0px));
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  background: #fff;
+  font-family: Manrope, sans-serif;
+  scroll-padding: 12px;
+  box-sizing: border-box;
+}
+#root .driver--mobile-first .driver-orders[hidden] { display: none !important; }
+#root .driver--mobile-first .driver-orders--ready.driver-orders--active,
+#root .driver--mobile-first .driver-orders--history.driver-orders--active {
+  display: block;
+  height: auto;
+  min-height: 0;
+  padding: 0 0 12px;
+  overflow: visible !important;
+}
+#root .driver--mobile-first .driver-orders__list {
+  height: auto;
+  min-height: 0;
+  overflow: visible !important;
+  padding: 4px 0;
+}
+#root .driver--mobile-first.driver--lite .driver-orders__list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+#root .driver--mobile-first .driver-orders--scroll.driver-orders--active {
+  display: flex;
+  flex-direction: row;
+  min-height: 0 !important;
+  height: auto;
+  max-height: none !important;
+  margin: 0;
+  padding: 4px 0 12px;
+  gap: 10px;
+  overflow-x: auto !important;
+  overflow-y: hidden !important;
+  scroll-snap-type: x proximity;
+}
+#root .driver--mobile-first .driver-orders--scroll .mini-order {
+  flex: 0 0 148px;
+  width: 148px;
+  min-width: 148px;
+  min-height: 138px !important;
+}
+#root .driver--mobile-first .driver-orders--scroll .status-card,
+#root .driver--mobile-first .driver-orders--scroll .driver-order-wide-mode-status-card {
+  flex: 0 0 min(360px, 88vw);
+  max-width: calc(100vw - 40px);
+}
+#root .driver-section-heading { margin: 4px 0; font: inherit; }
+#root .driver-section-heading button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 48px;
+  padding: 10px 0;
+  border: 0;
+  border-top: 1px solid #ededed;
+  background: #fff;
+  color: #181818;
+  text-align: start;
+  font: 700 15px/1.4 Manrope, sans-serif;
+  cursor: pointer;
+}
+#root .driver-section-heading button > svg { margin-inline-start: auto; }
+#root .driver-section-heading button[aria-expanded='true'] > svg { transform: rotate(180deg); }
+#root .driver-section-heading__count {
+  min-width: 24px;
+  padding: 2px 6px;
+  border-radius: 6px;
+  background: #f8f6f3;
+  color: var(--drive-red,#b51218);
+  text-align: center;
+  font-size: 12px;
+}
+#root .driver--mobile-first .driver-orders__free-seats {
+  padding: 2px 0;
+  margin: 0;
+  opacity: 1;
+  color: #6a6a6a;
+  font-size: 12px;
+  line-height: 1.6;
+}
+#root .driver-status-legend { margin: 0 0 8px; }
+#root .driver-status-legend summary {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: fit-content;
+  min-height: 44px;
+  color: #575757;
+  font-size: 12px;
+  font-weight: 600;
+  list-style: none;
+  cursor: pointer;
+}
+#root .driver-status-legend summary::-webkit-details-marker { display: none; }
+#root .driver-status-legend[open] summary svg { transform: rotate(180deg); }
+#root .driver--mobile-first .driver-statuses {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  padding: 0 0 12px;
+  margin: 0;
+  list-style: none;
+}
+#root .driver--mobile-first .driver-statuses li {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #575757;
+  font-size: 12px;
+  line-height: 1.5;
+}
+#root .driver--mobile-first .driver-statuses li > span {
+  padding: 0;
+  border: 0;
+  cursor: default;
+}
+#root .driver--mobile-first .driver-statuses li > span:first-child {
+  display: block;
+  flex: 0 0 12px;
+  width: 12px;
+  height: 12px;
+  border: 1px solid var(--drive-red,#b51218);
+  border-radius: 4px;
+}
+#root .driver--mobile-first .driver-statuses li > .requested { background: var(--drive-orange,#e87516); border-color: var(--drive-orange,#e87516); }
+#root .driver--mobile-first .driver-statuses li > .recomended { background: var(--drive-red,#b51218); }
+#root .driver-list-empty {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 24px 16px;
+  text-align: center;
+  color: #6a6a6a;
+  font-size: 13px;
+  line-height: 1.6;
+}
+#root .driver-list-empty svg { margin-bottom: 10px; color: var(--drive-red,#b51218); }
+#root .driver-list-empty strong { color: #272727; font-size: 14px; font-weight: 600; }
+#root .driver-list-empty p { margin: 4px 0 0; max-width: 32ch; font-size:13px; line-height:1.6; }
+#root .driver--mobile-first .driver-orders-empty--standalone {
+  margin: 0 0 6px;
+  padding: 10px 0;
+  color: #6a6a6a;
+  font-size: 12px;
+  line-height: 1.5;
+}
+@media (min-width: 640px) {
+  #root .page-section.driver--mobile-first { padding-inline: 20px; }
+  #root .driver--mobile-first.driver--lite .driver-orders__list {
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  }
+}
+@media (max-width: 359px) {
+  #root .page-section.driver--mobile-first { padding-inline: 8px; }
+  #root .driver-tabs { padding-inline: 8px; }
+  #root .driver-tabs__tab { padding-inline: 4px; }
+}
+
+/* Opt-in driver cards: readable route and price, with unchanged order actions. */
+#root .driver--mobile-first.driver--lite .driver-orders__list { grid-template-columns: 1fr; }
+#root .driver--mobile-first .driver-card--overview {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+  width: 100%;
+  min-width: 0;
+  min-height: 0 !important;
+  max-width: 100%;
+  margin: 0 0 10px;
+  padding: 14px;
+  --driver-profit-background: #fff;
+  --driver-profit-border: #e9e9e9;
+  border: 1px solid var(--driver-profit-border) !important;
+  border-radius: 12px;
+  background: var(--driver-profit-background) !important;
+  color: #222222;
+  box-shadow: none !important;
+  box-sizing: border-box;
+  filter: none;
+  opacity: 1;
+  transform: none;
+  transition: none;
+  text-align: start;
+}
+#root .driver--mobile-first .driver-card--overview:focus-visible {
+  outline: 3px solid var(--drive-red,#b51218);
+  outline-offset: 2px;
+}
+#root .driver--mobile-first .driver-card--overview.mini-order--selected,
+#root .driver--mobile-first .driver-card--overview.status-card--selected {
+  border-color: var(--drive-red,#b51218) !important;
+  box-shadow: inset 3px 0 0 var(--drive-red,#b51218) !important;
+}
+#root .driver--mobile-first .mini-order.driver-card--overview > :not(.driver-order-overview):not(.mini-order__chat-btn),
+#root .driver--mobile-first .status-card.driver-card--overview > .status-card__top,
+#root .driver--mobile-first .status-card.driver-card--overview > .status-card__route,
+#root .driver--mobile-first .status-card.driver-card--overview > .status-card__money { display: none; }
+#root .driver--mobile-first .driver-orders--scroll .driver-card--overview {
+  flex: 0 0 min(310px, 86vw);
+  width: min(310px, 86vw);
+  min-width: 0;
+  max-width: calc(100vw - 40px);
+  margin: 0;
+  scroll-snap-align: start;
+}
+#root .driver--mobile-first .driver-order-overview { min-width: 0; width: 100%; }
+#root .driver--mobile-first .driver-order-overview span,
+#root .driver--mobile-first .driver-order-overview small {
+  display: block;
+  min-width: 0;
+  font-family: Manrope, sans-serif;
+  text-align: start;
+  color: inherit;
+  line-height: 1.45;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+#root .driver--mobile-first .driver-order-overview__top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+}
+#root .driver--mobile-first .driver-order-overview__id {
+  max-width: 100%;
+  color: #757575;
+  font-size: 11px;
+  font-weight: 500;
+}
+#root .driver--mobile-first .driver-order-overview__price { font-size: 22px; font-weight: 800; }
+#root .driver--mobile-first .driver-order-overview__price small { display: inline; font-size: 12px; font-weight: 600; }
+#root .driver--mobile-first .driver-order-overview__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 5px 8px;
+  margin: 6px 0 12px;
+}
+#root .driver--mobile-first .driver-order-overview__meta span {
+  font-size: 11px;
+  font-weight: 600;
+}
+#root .driver--mobile-first .driver-order-overview__status {
+  padding: 3px 7px;
+  border-radius: 5px;
+  background: #f8f6f3;
+  color: var(--drive-red,#b51218);
+}
+#root .driver--mobile-first .driver-order-overview__status--8 { background: #f4f4f4; color: #6a6a6a; }
+#root .driver--mobile-first .driver-order-overview__class { color: #575757; }
+#root .driver--mobile-first .driver-order-overview__route { display: grid; gap: 10px; }
+#root .driver--mobile-first .driver-order-overview__route > div {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  min-width: 0;
+}
+#root .driver--mobile-first .driver-order-overview__route i {
+  flex: 0 0 8px;
+  width: 8px;
+  height: 8px;
+  margin-top: 7px;
+  border: 2px solid var(--drive-orange,#e87516);
+  border-radius: 50%;
+  box-sizing: border-box;
+}
+#root .driver--mobile-first .driver-order-overview__route > div:last-child i { border-color: var(--drive-red,#b51218); border-radius: 2px; }
+#root .driver--mobile-first .driver-order-overview__route p { min-width: 0; margin: 0; }
+#root .driver--mobile-first .driver-order-overview__route small { margin-bottom: 1px; color: #757575; font-size: 10px; }
+#root .driver--mobile-first .driver-order-overview__route span { font-size: 13px; font-weight: 600; }
+#root .driver--mobile-first .driver-card--overview .mini-order__profit {
+  margin: 0;
+  color: #6a6a6a;
+  font: 500 11px/1.5 Manrope, sans-serif;
+}
+#root .driver--mobile-first .driver-card--overview .mini-order__chat-btn {
+  align-self: flex-end;
+  width: 44px;
+  height: 44px;
+  margin: 0;
+  background: var(--drive-red,#b51218);
+  border-radius: 10px;
+  box-shadow: none;
+}
+#root .driver--mobile-first .driver-card--overview .status-card__offer-summary,
+#root .driver--mobile-first .driver-card--overview .status-card__comments {
+  max-width: 100%;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-family: Manrope, sans-serif;
+  font-size: 12px;
+  line-height: 1.5;
+}
+@media (min-width: 760px) {
+  #root .driver--mobile-first.driver--lite .driver-orders__list {
+    grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+  }
+}
+
+/* Existing profit ranks/percentiles determine colour; selection does not erase it. */
+#root .driver-card--overview.mini-order--profit--low,
+#root .driver-card--overview.status-card--profit--low { --driver-profit-background:#fff5ed; --driver-profit-border:#eac5a5; }
+#root .driver-card--overview.mini-order--profit--medium,
+#root .driver-card--overview.status-card--profit--medium { --driver-profit-background:#fffbe8; --driver-profit-border:#dfd18e; }
+#root .driver-card--overview.mini-order--profit--high,
+#root .driver-card--overview.status-card--profit--high { --driver-profit-background:#eaf8ed; --driver-profit-border:#9fcea9; }
+#root .driver-card--overview.mini-order--profit-p0,
+#root .driver-card--overview.status-card--profit-p0 { --driver-profit-background:#fff0ed; --driver-profit-border:#e6aaa0; }
+#root .driver-card--overview.mini-order--profit-p1,
+#root .driver-card--overview.status-card--profit-p1 { --driver-profit-background:#fff4e6; --driver-profit-border:#e6c095; }
+#root .driver-card--overview.mini-order--profit-p2,
+#root .driver-card--overview.status-card--profit-p2 { --driver-profit-background:#fffbe5; --driver-profit-border:#ded08b; }
+#root .driver-card--overview.mini-order--profit-p3,
+#root .driver-card--overview.status-card--profit-p3 { --driver-profit-background:#f0f8e9; --driver-profit-border:#b6d2a2; }
+#root .driver-card--overview.mini-order--profit-p4,
+#root .driver-card--overview.status-card--profit-p4 { --driver-profit-background:#e7f6e9; --driver-profit-border:#9ecba6; }
+#root .driver-card--overview.mini-order--profit-negative,
+#root .driver-card--overview.status-card--profit-negative { --driver-profit-background:#fff0ed; --driver-profit-border:#d99b91; }
+#root .driver--mobile-first .driver-order-overview__mode { padding:4px 7px;border:1px solid #c8bdb5;border-radius:6px;background:#fff;color:var(--drive-red,#b51218);font-size:11px;font-weight:700; }
+#root .driver--mobile-first .driver-order-overview__profit { display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:12px 0 0;padding:12px 0 0;border-top:1px solid var(--driver-profit-border,#e9e9e9); }
+#root .driver--mobile-first .driver-order-overview__profit>div { min-width:0; }
+#root .driver--mobile-first .driver-order-overview__profit dt { font-size:11px;line-height:16px;color:#585858; }
+#root .driver--mobile-first .driver-order-overview__profit dd { margin:4px 0 0;font-size:14px;line-height:20px;font-weight:800;color:#164d2b;unicode-bidi:isolate;overflow-wrap:anywhere; }
+#root .driver--mobile-first .driver-order-overview__profit[data-loss=true] dd { color:#a43222; }
+#root .driver--mobile-first .driver-order-overview__profit-note { display:block;font-size:11px;line-height:16px;margin-top:5px;color:#585858; }
