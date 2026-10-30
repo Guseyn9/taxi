@@ -1,0 +1,24 @@
+#root .zone-page {height:100%;overflow:auto;padding:24px;color:var(--drive-black,#101010);background:var(--drive-canvas,#f8f6f3);font:500 14px/1.5 Manrope,sans-serif}
+#root .zone-page h1 {font-size:28px;margin:0 0 8px}
+#root .zone-page p {margin:8px 0 16px;max-width:72ch;overflow-wrap:anywhere}
+#root .zone-page button,#root .zone-page input,#root .zone-page select,#root .zone-page textarea {font:inherit;border:1px solid #e0e0e0;border-radius:12px;padding:10px;min-height:44px;max-width:100%;color:inherit;background:white;box-sizing:border-box}
+#root .zone-page button {cursor:pointer}
+#root .zone-page button:disabled {opacity:.5;cursor:default}
+#root .zone-page :is(button,input,select,textarea):focus-visible {outline:2px solid #b51218;outline-offset:2px}
+#root .zone-page label {display:flex;flex-direction:column;gap:6px;margin-bottom:14px;min-width:0}
+#root .zone-tools {display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}
+#root .zone-tools button[type=submit] {background:#e87516;color:#101010;border-color:#e87516;font-weight:800}
+#root .zone-workspace {display:grid;grid-template-columns:240px minmax(0,1fr);gap:24px;max-width:1180px}
+#root .zone-workspace nav {display:flex;flex-direction:column;gap:8px;max-height:70vh;overflow:auto}
+#root .zone-workspace nav button {text-align:start;display:flex;flex-direction:column;overflow-wrap:anywhere}
+#root .zone-workspace nav button[aria-current=true] {background:#fff0ed;border-color:#b51218}
+#root .zone-editor {min-width:0;padding:20px;background:white;border-radius:20px}
+#root .zone-editor fieldset {min-width:0;border:0;margin:0;padding:0}
+#root .zone-editor legend {font-size:20px;font-weight:800;margin-bottom:16px}
+#root .zone-name-grid {display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+#root .zone-editor textarea {width:100%;font-family:monospace;direction:ltr}
+#root .zone-map {height:300px;overflow:hidden;border-radius:16px;border:1px solid #e0e0e0}
+#root .zone-editor .zone-confirm {flex-direction:row;align-items:center;gap:10px;min-height:44px}
+#root .zone-confirm input {flex:0 0 20px;min-height:20px;width:20px;height:20px}
+#root .zone-error {padding:12px;border:1px solid #e8b9a1;border-radius:12px;background:#fff4eb}
+@media(max-width:700px){#root .zone-page{padding:16px}#root .zone-workspace{grid-template-columns:1fr;gap:16px}#root .zone-workspace nav{max-height:180px}#root .zone-editor{padding:16px}#root .zone-map{height:240px}}
