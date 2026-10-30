@@ -20,6 +20,7 @@ import {
 const PassengerOrder = lazy(() => import('./pages/Passenger')) as any
 const Order = lazy(() => import('./pages/Order')) as any
 const DriverOrder = lazy(() => import('./pages/Driver')) as any
+const ZoneAdmin = lazy(() => import('./admin/zones'))
 
 const mapStateToProps = (state: IRootState) => ({
   status: configSelectors.status(state),
@@ -38,7 +39,7 @@ const AppRoutesWrapper: React.FC<IProps> = ({ status, user, language }) => {
   const languageIso = language?.iso
 
   return status === EStatuses.Success ?
-    <Suspense fallback={null}><AppRoutes user={user} languageIso={languageIso}/></Suspense> :
+    <Suspense fallback={<UnavailableBase status={EStatuses.Loading}/>}><AppRoutes user={user} languageIso={languageIso}/></Suspense> :
     <UnavailableBase status={status}/>
 }
 
@@ -51,9 +52,12 @@ const UnavailableBase = ({ status }: { status: EStatuses }) => {
       className="loading-frame"
       data-testid="app-config-unavailable"
       data-config-status={EStatuses[status]}
+      role="status"
+      aria-live="polite"
     >
-      <img src={images.error} alt={t(TRANSLATION.ERROR)}/>
-      <div className="loading-frame__title">{t(TRANSLATION.DATABASE_IS_UNAVAILABLE)}</div>
+      <img src={status === EStatuses.Loading || status === EStatuses.Default ? images.fetching : images.error} alt=""/>
+      <div className="loading-frame__title">{t(status === EStatuses.Loading || status === EStatuses.Default ? TRANSLATION.LOADING : TRANSLATION.DATABASE_IS_UNAVAILABLE)}</div>
+      {status !== EStatuses.Loading && status !== EStatuses.Default && <button type="button" className="rs-config-retry" onClick={()=>window.location.reload()}>{t('retry')}</button>}
     </div>
   </PageSection>
 }
@@ -104,7 +108,7 @@ const AppRoutes = ({ user, languageIso }: {user: IUser | null, languageIso?: str
   const routePath = (id: string) => platformInterface.navigationRegistry.require(id).path
   const defaultRoute = [EUserRoles.Client, EUserRoles.Agent].includes(user?.u_role as any) ?
     PLATFORM_ROUTES.PassengerOrder :
-    user?.u_role === EUserRoles.Driver ? PLATFORM_ROUTES.DriverOrders : null
+    user?.u_role === EUserRoles.Driver ? PLATFORM_ROUTES.DriverOrders : PLATFORM_ROUTES.PassengerOrder
 
   return <Routes>
     <Route
@@ -126,6 +130,7 @@ const AppRoutes = ({ user, languageIso }: {user: IUser | null, languageIso?: str
     <Route path={routePath(PLATFORM_ROUTES.DriverOrders)} element={<DriverOrder languageIso={languageIso} />} />
     <Route path={routePath(PLATFORM_ROUTES.DriverTest)} element={<DriverOrder languageIso={languageIso} />} />
     <Route path={routePath(PLATFORM_ROUTES.Sandbox)} element={<Sandbox />} />
+    <Route path="/admin/zones" element={<ZoneAdmin />} />
   </Routes>
 }
 
