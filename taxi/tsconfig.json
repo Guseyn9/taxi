@@ -22,6 +22,7 @@
     "downlevelIteration": true,
     "strictPropertyInitialization": false,
     "paths": {
+      "@/*": ["./src/*"],
       "react": ["./node_modules/@types/react"],
       "@mona-health/react-input-mask": ["./node_modules/@types/react-input-mask"]
     },

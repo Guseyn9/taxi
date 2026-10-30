@@ -170,9 +170,8 @@ module.exports = function(webpackEnv) {
             .replace(/\\/g, '/') :
         isEnvDevelopment &&
           (info => path.resolve(info.absoluteResourcePath).replace(/\\/g, '/')),
-      // this defaults to 'window', but by setting it to 'this' then
-      // module chunks which are built will work in web workers as well.
-      globalObject: 'this',
+      // A stable global in both the document and strict-mode dedicated worker chunks.
+      globalObject: 'self',
     },
     optimization: {
       minimize: isEnvProduction && process.env.WEBPACK_SKIP_MINIFY !== 'true',
@@ -255,6 +254,7 @@ module.exports = function(webpackEnv) {
         .map(ext => `.${ext}`)
         .filter(ext => useTypeScript || !ext.includes('ts')),
       alias: {
+        '@': paths.appSrc,
         // Support React Native Web
         // https://www.smashingmagazine.com/2016/08/a-glimpse-into-the-future-with-react-native-for-web/
         'react-native': 'react-native-web',
