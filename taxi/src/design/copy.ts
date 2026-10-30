@@ -1,0 +1,14 @@
+const copy = {
+  en: { expandAddress: 'Show full address', collapseAddress: 'Show short address', done: 'Done', pickupSearch: 'Enter pickup address', destinationSearch: 'Where to?', title: 'Where are we going?', options: 'Trip options', less: 'Hide options', pickClass: 'Choose your car', modes: 'Send a ride request', vote: 'Hail a taxi', offer: 'Offer a fare', order: 'Order taxi', pickup: 'Pickup', destination: 'Destination', hint: 'All options send your request immediately.', voteHelp: 'Take the first taxi to arrive', offerHelp: 'Set your own price', orderHelp: 'Standard ride request', menu: 'Open menu', onMap: 'Use the point under the map pin' },
+  ru: { expandAddress: 'Развернуть адрес', collapseAddress: 'Свернуть адрес', done: 'Готово', pickupSearch: 'Адрес подачи', destinationSearch: 'Адрес назначения', title: 'Куда поедем?', options: 'Параметры поездки', less: 'Скрыть параметры', pickClass: 'Выберите машину', modes: 'Отправить заказ', vote: 'Голосовать', offer: 'Своя цена', order: 'Заказать такси', pickup: 'Откуда', destination: 'Куда', hint: 'Каждая кнопка сразу отправляет заказ.', voteHelp: 'Еду на первом прибывшем такси', offerHelp: 'Предложить свою стоимость', orderHelp: 'Обычный заказ такси', menu: 'Открыть меню', onMap: 'Выбрать точку под меткой на карте' },
+  fr: { expandAddress: 'Afficher l’adresse complète', collapseAddress: 'Raccourcir l’adresse', done: 'Terminer', pickupSearch: 'Adresse de départ', destinationSearch: 'Où allez-vous ?', title: 'Où allons-nous ?', options: 'Options du trajet', less: 'Masquer les options', pickClass: 'Choisissez votre voiture', modes: 'Envoyer une demande', vote: 'Premier taxi', offer: 'Proposer un prix', order: 'Commander', pickup: 'Départ', destination: 'Destination', hint: 'Chaque bouton envoie la demande.', voteHelp: 'Prendre le premier taxi qui arrive', offerHelp: 'Fixer votre prix', orderHelp: 'Demande de trajet standard', menu: 'Ouvrir le menu', onMap: 'Utiliser le point sous le repère' },
+  ar: { expandAddress: 'عرض العنوان الكامل', collapseAddress: 'اختصار العنوان', done: 'تم', pickupSearch: 'عنوان الانطلاق', destinationSearch: 'إلى أين؟', title: 'إلى أين نذهب؟', options: 'خيارات الرحلة', less: 'إخفاء الخيارات', pickClass: 'اختر سيارتك', modes: 'أرسل طلب رحلة', vote: 'أول تاكسي', offer: 'اقترح أجرة', order: 'اطلب سيارة', pickup: 'نقطة الانطلاق', destination: 'الوجهة', hint: 'كل زر يرسل الطلب فوراً.', voteHelp: 'سأركب أول تاكسي يصل', offerHelp: 'حدد سعرك', orderHelp: 'طلب رحلة عادية', menu: 'افتح القائمة', onMap: 'اختر النقطة تحت علامة الخريطة' },
+}
+export function isRideRtl(iso?: string) {
+  const value = (iso || '').toLowerCase()
+  return value.includes('arab') || value === 'ar' || value.startsWith('ar-')
+}
+export function rideCopy(iso?: string) {
+  const base = (iso || '').toLowerCase().split('-')[0]
+  return isRideRtl(iso) ? copy.ar : copy[base as keyof typeof copy] || copy.en
+}

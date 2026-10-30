@@ -1,0 +1,82 @@
+import { ChatSendTracker } from './sendTracker'
+
+beforeEach(() => jest.useFakeTimers())
+afterEach(() => jest.useRealTimers())
+
+it('retains the draft when the socket rejects send', () => {
+  const tracker = new ChatSendTracker('1419_100', jest.fn())
+  tracker.connected()
+  const clearDraft = jest.fn()
+  expect(tracker.submit('hello', () => false, clearDraft)).toBe(false)
+  expect(clearDraft).not.toHaveBeenCalled()
+  expect(tracker.state).toEqual({ connection: 'error', delivery: 'failed', text: 'hello' })
+})
+
+it('handles thrown send errors and retains text without clearing input', () => {
+  const tracker = new ChatSendTracker('1419_100', jest.fn())
+  tracker.connected()
+  const clearDraft = jest.fn()
+  expect(() => tracker.submit('hello', () => { throw new Error('closed') }, clearDraft)).not.toThrow()
+  expect(tracker.state.delivery).toBe('failed')
+  expect(tracker.state.text).toBe('hello')
+  expect(clearDraft).not.toHaveBeenCalled()
+})
+
+it('confirms only a matching self echo, not socket acceptance or a connection event', () => {
+  const tracker = new ChatSendTracker('1419_100', jest.fn())
+  tracker.connected()
+  const clearDraft = jest.fn()
+  tracker.submit('hello', () => true, clearDraft)
+  expect(clearDraft).toHaveBeenCalledTimes(1)
+  expect(tracker.state.delivery).toBe('pending')
+  tracker.connected()
+  tracker.echo('1420_100', 'hello')
+  tracker.echo('1419_100', 'other')
+  expect(tracker.state.delivery).toBe('pending')
+  tracker.echo('1419_100', 'hello')
+  expect(tracker.state.delivery).toBe('confirmed')
+  jest.advanceTimersByTime(10000)
+  expect(tracker.state.delivery).toBe('confirmed')
+})
+
+it('marks unconfirmed after ten seconds and never resends automatically', () => {
+  const tracker = new ChatSendTracker('1419_100', jest.fn())
+  tracker.connected()
+  const send = jest.fn(() => true)
+  tracker.submit('keep this text', send, jest.fn())
+  jest.advanceTimersByTime(9999)
+  expect(tracker.state.delivery).toBe('pending')
+  jest.advanceTimersByTime(1)
+  expect(tracker.state.delivery).toBe('unconfirmed')
+  expect(tracker.state.text).toBe('keep this text')
+  jest.advanceTimersByTime(60000)
+  expect(send).toHaveBeenCalledTimes(1)
+  tracker.echo('1419_100', 'keep this text')
+  expect(tracker.state.delivery).toBe('confirmed')
+})
+
+it('does not send a second message while confirmation is pending', () => {
+  const tracker = new ChatSendTracker('1419_100', jest.fn())
+  tracker.connected()
+  const send = jest.fn(() => true)
+  tracker.submit('first', send, jest.fn())
+  expect(tracker.submit('second', send, jest.fn())).toBe(false)
+  expect(send).toHaveBeenCalledTimes(1)
+  expect(tracker.state.text).toBe('first')
+})
+
+it('cleans up the timer when the conversation closes', () => {
+  const change = jest.fn()
+  const tracker = new ChatSendTracker('1419_100', change)
+  tracker.submit('hello', () => true, jest.fn())
+  tracker.dispose()
+  change.mockClear()
+  jest.advanceTimersByTime(10000)
+  expect(change).not.toHaveBeenCalled()
+})
+it('bounds handshake waiting and never sends before joining the chat',()=>{
+ const tracker=new ChatSendTracker('me',jest.fn(),'previous unknown delivery'),send=jest.fn(()=>true)
+ expect(tracker.state.delivery).toBe('unconfirmed');expect(tracker.submit('draft',send,jest.fn())).toBe(false);expect(send).not.toHaveBeenCalled()
+ jest.advanceTimersByTime(10000);expect(tracker.state.connection).toBe('error')
+ tracker.connecting();tracker.connected();jest.advanceTimersByTime(10000);expect(tracker.state.connection).toBe('ready');tracker.dispose()
+})

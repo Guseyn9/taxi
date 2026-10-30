@@ -70,6 +70,10 @@ const CancelOrderModal: React.FC<IProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   useEffect(() => {
+    if (isOpen && !selectedOrder) setCancelModal(false)
+  }, [isOpen, selectedOrder, setCancelModal])
+
+  useEffect(() => {
     if (isOpen)
       setReason(REASONS[0]?.id ?? '0')
   }, [isOpen, REASONS])
@@ -110,30 +114,23 @@ const CancelOrderModal: React.FC<IProps> = ({
 
   return (
     <Overlay
-      isOpen={isOpen}
+      isOpen={isOpen && Boolean(selectedOrder)}
       onClick={() => setCancelModal(false)}
     >
       <div className="modal cancel-order-modal message-window">
+        <h2>{t(TRANSLATION.CANCEL_ORDER, { toUpper: false })}</h2>
         {!!selectedOrder && (
           <div className="cancel-order-modal__order-id">
             <OrderId orderId={selectedOrder} variant="full" />
           </div>
         )}
-        {
-          REASONS.map(item => {
-            const active = reason === item.id ? ' active' : ''
-            return (
-              <div
-                key={item.id}
-                onClick={e => setReason(item.id)}
-                className={cn('reason-item', { 'reason-item--active': active } )}
-                style={{ color: active ? SITE_CONSTANTS.PALETTE.primary.dark : undefined }}
-              >
-                {item.label}
-              </div>
-            )
-          })
-        }
+        <fieldset className="cancel-order-modal__reasons" disabled={isSubmitting}>
+          <legend className="sr-only">{t(TRANSLATION.CANCEL_ORDER, { toUpper: false })}</legend>
+          {REASONS.map(item => <label key={item.id} className={cn('reason-item', {'reason-item--active': reason === item.id})}>
+            <input type="radio" name="passenger-cancel-reason" checked={reason === item.id} onChange={() => setReason(item.id)} />
+            <span>{item.label}</span>
+          </label>)}
+        </fieldset>
         <div className="modal__buttons-block">
           <Button
             // Контракт для E2E (A.1.5): подтверждение отмены заказа пассажиром.
@@ -141,12 +138,14 @@ const CancelOrderModal: React.FC<IProps> = ({
             // класса — по подписи их не отличить (голосовой заказ показывает
             // тот же CANCEL/CANCEL_ORDER набор), а порядок как локатор
             // запрещён ТЗ.
+            intent="danger"
             data-testid="passenger-order-cancel-confirm"
             text={isSubmitting ? t(TRANSLATION.LOADING) : t(TRANSLATION.CANCEL_ORDER)}
             onClick={onDenial}
             disabled={isSubmitting}
           />
           <Button
+            intent="neutral"
             text={t(TRANSLATION.CANCEL)}
             onClick={() => setCancelModal(false)}
           />

@@ -126,11 +126,13 @@ const DriverTripCancelModal: React.FC<IProps> = ({
         })}
         <div className="modal__buttons-block">
           <Button
+            intent="danger"
             text={isSubmitting ? t(TRANSLATION.LOADING) : t(TRANSLATION.INTERRUPT_TRIP)}
             onClick={handleConfirm}
             disabled={isSubmitting}
           />
           <Button
+            intent="neutral"
             text={t(TRANSLATION.CANCEL)}
             onClick={handleClose}
             disabled={isSubmitting}

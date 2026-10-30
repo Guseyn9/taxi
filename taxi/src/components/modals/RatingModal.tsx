@@ -1,6 +1,8 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react'
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { connect, ConnectedProps } from 'react-redux'
-import Rating from 'react-rating'
+import { StarRating } from './StarRating'
+import { configSelectors } from '../../state/config'
+import { isRideRtl } from '../../design/copy'
 import moment from 'moment'
 import {
   calculateFinalPrice,
@@ -8,7 +10,6 @@ import {
   getOrderDriveStartedAt,
 } from '../../tools/order'
 import { useSimpleSelector } from '../../tools/hooks'
-import images from '../../constants/images'
 import { CURRENCY } from '../../siteConstants'
 import { backendGateway } from '../../platform/adapters/LegacyBackendGateway'
 import { IRootState } from '../../state'
@@ -19,15 +20,14 @@ import { orderSelectors } from '../../state/order'
 import { t, TRANSLATION } from '../../localization'
 import { writeFlowEvent } from '../../tools/flowLog'
 import Button from '../Button'
-import Input from '../Input'
 import OrderId from '../OrderId'
 import Overlay from './Overlay'
 import './styles.scss'
 
-const RatingComponent = Rating as React.ComponentType<any>
 
 const mapStateToProps = (state: IRootState) => ({
   isOpen: modalsSelectors.isRatingModalOpen(state),
+  language: configSelectors.language(state),
   orderID: modalsSelectors.ratingModalOrderID(state),
   selectedOrder: clientOrderSelectors.selectedOrder(state),
   detailedOrder: orderSelectors.order(state),
@@ -41,7 +41,8 @@ const connector = connect(mapStateToProps, mapDispatchToProps)
 
 interface IProps extends ConnectedProps<typeof connector> {}
 
-function RatingModal({
+export function RatingModal({
+  language,
   isOpen,
   orderID,
   selectedOrder,
@@ -51,8 +52,19 @@ function RatingModal({
   const [stars, setStars] = useState(0)
   const [tips, setTips] = useState('')
   const [comment, setComment] = useState('')
+  const [pending, setPending] = useState(false)
+  const [submissionError, setSubmissionError] = useState('')
+  const inFlight = useRef(false)
+  const submission = useRef(0)
 
   const _orderID = orderID || detailedOrder?.b_id || selectedOrder
+  useEffect(() => {
+    submission.current++
+    inFlight.current = false
+    setPending(false)
+    setSubmissionError('')
+    return () => { submission.current++ }
+  }, [isOpen, _orderID])
   const order = useSimpleSelector(useCallback((state: IRootState) =>
     detailedOrder ??
     (_orderID ? ordersSelectors.order(state, _orderID) : undefined)
@@ -96,7 +108,12 @@ function RatingModal({
     }
   }, [isOpen, _orderID, order?.b_id])
 
-  const onRating = () => {
+  const onRating = async() => {
+    if (!_orderID || stars === 0 || inFlight.current) return
+    inFlight.current = true
+    const request = ++submission.current
+    setPending(true)
+    setSubmissionError('')
     if (_orderID) {
       writeFlowEvent('LEAVE_REVIEW', {
         orderId: _orderID,
@@ -120,22 +137,28 @@ function RatingModal({
           hasComment: Boolean(comment),
         },
       })
-      backendGateway.setOrderRating(_orderID, stars)
-        .catch(error => {
-          writeFlowEvent('REVIEW_SCREEN_FAILED', {
-            orderId: _orderID,
-            screen: 'RatingModal',
-            uiState: 'ReviewSubmitFailed',
-            data: {
-              reason: 'rating_api_error',
-              message: error instanceof Error ? error.message : String(error),
-            },
-          })
-          console.error(error)
+      try {
+        await backendGateway.setOrderRating(_orderID, stars)
+        if (submission.current === request) setRatingModal({ isOpen: false })
+      } catch (error) {
+        writeFlowEvent('REVIEW_SCREEN_FAILED', {
+          orderId: _orderID,
+          screen: 'RatingModal',
+          uiState: 'ReviewSubmitFailed',
+          data: {
+            reason: 'rating_api_error',
+            message: error instanceof Error ? error.message : String(error),
+          },
         })
+        if (submission.current === request) setSubmissionError(t(TRANSLATION.ERROR))
+        console.error(error)
+      } finally {
+        if (submission.current === request) {
+          inFlight.current = false
+          setPending(false)
+        }
+      }
     }
-
-    setRatingModal({ isOpen: false })
   }
 
   const [finalPriceFormula, finalPrice] = useMemo(() => {
@@ -175,9 +198,11 @@ function RatingModal({
     >
       <div
         className="modal rating-modal"
+        dir={isRideRtl(language?.iso) ? 'rtl' : undefined}
       >
-        <form>
-          <fieldset>
+        <form aria-busy={pending} onSubmit={event => { event.preventDefault(); onRating() }}>
+          <fieldset disabled={pending}>
+            <legend>{t(TRANSLATION.RATING_HEADER)}!</legend>
             {finalPriceFormula !== 'err' && (
               <div>
                 <div className="final-price">
@@ -188,7 +213,6 @@ function RatingModal({
                 </div>
               </div>
             )}
-            <legend>{t(TRANSLATION.RATING_HEADER)}!</legend>
             {!!_orderID && (
               <div className="rating-modal__order-id">
                 <OrderId orderId={_orderID} variant="full" />
@@ -196,35 +220,14 @@ function RatingModal({
             )}
             <h3>{t(TRANSLATION.YOUR_RATING)}</h3>
             <div className="rating">
-              {/* TODO make rating wrapper component */}
-              <RatingComponent
-                onChange={setStars}
-                initialRating={stars}
-                className="rating-stars"
-                emptySymbol={<img src={images.starEmpty} className="icon" alt={t(TRANSLATION.EMPTY_STAR)}/>}
-                fullSymbol={<img src={images.starFull} className="icon" alt={t(TRANSLATION.FULL_STAR)}/>}
-              />
+              <StarRating value={stars} onChange={setStars} label={t(TRANSLATION.YOUR_RATING)} />
               <p>({t(TRANSLATION.ONLY_ONE_TIME)})</p>
-              {/* TODO connect to API */}
-              <Input
-                inputProps={{
-                  placeholder: t(TRANSLATION.ADD_TAXES),
-                  value: tips,
-                  onChange: (e: React.ChangeEvent<HTMLInputElement>) => setTips(e.target.value.toString()),
-                }}
-              />
-              <Input
-                inputProps={{
-                  placeholder: t(TRANSLATION.WRITE_COMMENT),
-                  value: comment,
-                  onChange: (e: React.ChangeEvent<HTMLInputElement>) => setComment(e.target.value.toString()),
-                }}
-              />
+              {submissionError && <p className="rating-modal__submit-error" role="alert">{submissionError}</p>}
               <Button
-                text={t(TRANSLATION.RATE)}
+                type="submit"
+                text={t(pending ? TRANSLATION.LOADING : TRANSLATION.RATE)}
                 className="rating-modal_rating-btn"
-                onClick={onRating}
-                disabled={stars === 0}
+                disabled={stars === 0 || pending}
               />
             </div>
           </fieldset>

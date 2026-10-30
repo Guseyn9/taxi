@@ -5,6 +5,7 @@ import { IRootState } from '../../state'
 import { modalsActionCreators } from '../../state/modals'
 import { userSelectors } from '../../state/user'
 import './styles.scss'
+import { Button as ShadcnButton } from '../ui/button'
 import { EColorTypes, EStatuses } from '../../types/types'
 import { getStatusClassName } from '../../tools/utils'
 import { gradient } from '../../tools/theme'
@@ -42,6 +43,7 @@ interface IProps
   label?: string,
   status?: EStatuses,
   colorType?: EColorTypes,
+  intent?: 'primary' | 'neutral' | 'danger',
   checkLogin?: boolean
 }
 
@@ -60,6 +62,7 @@ function Button({
   setLoginModal,
   colorType = EColorTypes.Default,
   checkLogin = true,
+  intent = 'primary',
   ...buttonProps
 }: IProps) {
   const handleButtonClick = useCallback((
@@ -90,10 +93,11 @@ function Button({
     <>
       {label && <span className={`button__label button__label--${getStatusClassName(status)}`}>{label}</span>}
       <div {...wrapperProps} className={cn('button__wrapper', wrapperProps.className)}>
-        <button
+        <ShadcnButton
           {...buttonProps}
           className={cn(
             'button',
+            { 'button--danger': intent === 'danger', 'button--secondary': intent === 'neutral' },
             { disabled: buttonProps.disabled },
             { 'button--accent': colorType === EColorTypes.Accent },
             { 'button--size--fixed': fixedSize },
@@ -125,7 +129,7 @@ function Button({
           )}
           {text}
           {svg}
-        </button>
+        </ShadcnButton>
       </div>
     </>
   )

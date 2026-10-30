@@ -1,6 +1,13 @@
+import {useDriverDepartures,driverJourneyCopy} from '../../tools/driverPickupJourney'
+import {displayFare,orderCurrency} from '../../design/reliability/rideData'
+import {cardPresentation} from '../../design/reliability/cardPresentation'
+import {displayAddress} from '../../design/addressPresentation'
+import { useBoardingGate } from '../../pilot/BoardingGate'
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { connect, ConnectedProps } from 'react-redux'
-import OrderId from '../OrderId'
+import Overlay from './Overlay'
+import { isRideRtl } from '../../design/copy'
+import { ChevronDown, ChevronUp, MapPin, MessageCircle, X } from 'lucide-react'
 import { useForm } from 'react-hook-form'
 import cn from 'classnames'
 import { backendGateway } from '../../platform/adapters/LegacyBackendGateway'
@@ -633,16 +640,16 @@ function getOrderRoutePoints(order: any) {
 function formatApproximateRouteDuration(minutes?: number | null, isLoading?: boolean) {
   const normalizedMinutes = normalizeRouteDurationMinutes(minutes)
   if (!normalizedMinutes)
-    return isLoading ? 'рассчитывается' : '—'
+    return isLoading ? t('duration_calculating') : '—'
 
   const hours = Math.floor(normalizedMinutes / 60)
   const mins = normalizedMinutes % 60
 
   if (hours <= 0)
-    return `${normalizedMinutes} мин`
+    return `${normalizedMinutes} ${t('duration_minute_short')}`
   if (mins <= 0)
-    return `${hours} ч`
-  return `${hours} ч ${mins} мин`
+    return `${hours} ${t('duration_hour_short')}`
+  return `${hours} ${t('duration_hour_short')} ${mins} ${t('duration_minute_short')}`
 }
 
 
@@ -787,8 +794,11 @@ function CardModalContent({
   // Команда посадки в полёте: карточка ещё открыта, но подтверждать код повторно
   // уже нечего (см. confirmVotingCode ниже).
   const [boardingPending, setBoardingPending] = useState(false)
+  const { requestBoarding, boardingDialog } = useBoardingGate()
+  const confirmBoardingCommand = (orderId: IOrder['b_id'], code: string, updateState = true) => driverMapGateway.confirmBoarding(orderId, code, updateState)
   const boardingPendingRef = useRef(false)
   const now = useReliableNow(Boolean(active && order), 1000)
+  const summary = cardPresentation(order, currentLanguage?.iso)
   const [votingCloseHandled, setVotingCloseHandled] = useState(false)
   const storedRouteDurationMinutes = getStoredRouteDurationMinutes(order)
   const [calculatedRouteDurationMinutes, setCalculatedRouteDurationMinutes] = useState<number | undefined>(undefined)
@@ -800,7 +810,7 @@ function CardModalContent({
 
   useEffect(() => {
     const routePoints = getOrderRoutePoints(order)
-    if (!active || !routePoints) {
+    if (!active || !routePoints || summary.terminal) {
       setCalculatedRouteDurationMinutes(undefined)
       setIsRouteDurationLoading(false)
       return
@@ -830,6 +840,7 @@ function CardModalContent({
     }
   }, [
     active,
+    summary.terminal,
     order?.b_id,
     order?.b_start_latitude,
     order?.b_start_longitude,
@@ -905,20 +916,12 @@ function CardModalContent({
     isVotingMode &&
     (votingParticipationByState || votingParticipationIds.includes(orderId)),
   )
-  // Boarding stage: the driver has tapped "На месте". Deliberately NOT keyed on
-  // c_state === Arrived — "Поехал" sets that state, and here it means "en route to
-  // the passenger", so it would flip the card into boarding mode the moment the
-  // driver departs. Reaching the pickup only enables "На месте"; pressing it is
-  // what starts boarding.
-  const isVotingArrived = Boolean(isVotingMode && votingArrivedIds.includes(orderId))
-  // Departure stage: the driver has tapped "Поехал" (mirrors the map's own
-  // Performer -> Arrived transition). Until then, the pickup-leg actions
-  // ("На месте", navigation, refuse) don't apply yet — only "Поехал" does.
-  const hasVotingDeparted = Boolean(
-    isVotingMode &&
-    userAsDriver &&
-    userAsDriver.c_state >= EBookingDriverState.Arrived,
-  )
+  const departure = useDriverDepartures(String(user?.u_id ?? ''))
+  // Arrived is a physical arrival confirmed by the server, never departure.
+  const isVotingArrived = Boolean(isVotingMode && userAsDriver?.c_state === EBookingDriverState.Arrived)
+  const hasVotingDeparted = Boolean(isVotingMode && userAsDriver && (
+    userAsDriver.c_state >= EBookingDriverState.Arrived || departure.ids.includes(String(orderId))
+  ))
   const driverPosition = useDriverPosition()
   // The route emulator moves the map marker without touching device GPS, so trust
   // the map's published position first and fall back to the Redux geoposition.
@@ -1192,6 +1195,7 @@ function CardModalContent({
   })
 
   const onArrivedClick = () => orderMutation(async() => {
+    if (!canMarkVotingArrived(order, effectiveDriverPosition, user?.u_id)) return
     await driverMapGateway.arrive(orderId)
   })
 
@@ -1263,11 +1267,14 @@ function CardModalContent({
     })
   }
 
-  const onStartedClick = () => orderMutation(async() => {
-    await driverMapGateway.start(orderId)
-    navigate(PLATFORM_ROUTES.DriverOrders, { query: { tab: EDriverTabs.Map } })
-    closeModal()
-  })
+  const onStartedClick = () => {
+    if (!order || !canMarkVotingArrived(order, effectiveDriverPosition, user?.u_id)) return
+    requestBoarding(order, async code => {
+      await confirmBoardingCommand(orderId, code)
+      navigate(PLATFORM_ROUTES.DriverOrders, { query: { tab: EDriverTabs.Map } })
+      closeModal()
+    }, async () => getDriverDoorNumber(userAsDriver, await backendGateway.getUserCar(user!.u_id)))
+  }
 
   const onCompleteOrderClick = () => orderMutation(async() => {
     await driverMapGateway.finish(orderId)
@@ -1303,6 +1310,7 @@ function CardModalContent({
   })
 
   const arrivedVotingOrder = () => orderMutation(async() => {
+    if (!canMarkVotingArrived(order, effectiveDriverPosition, user?.u_id)) return
     const updateState = userAsDriver?.c_state !== EBookingDriverState.Arrived && (
       userAsDriver?.c_state === EBookingDriverState.Performer ||
       userAsDriver?.c_state === EBookingDriverState.Started
@@ -1316,13 +1324,7 @@ function CardModalContent({
     setVotingArrivedIds(nextIds)
   })
 
-  const onVotingWentClick = () => orderMutation(async() => {
-    await driverMapGateway.arrive(orderId, {
-      voting: true,
-      updateState: true,
-      tolerateNotAppointed: true,
-    })
-  })
+  const onVotingWentClick = () => { departure.depart(String(orderId)) }
 
   const openVotingNavigation = () => {
     setMapModal({
@@ -1353,6 +1355,7 @@ function CardModalContent({
   }
 
   const confirmVotingCode = formHandleSubmit(({ votingNumber }) => orderMutation(async() => {
+    if (!canMarkVotingArrived(order, effectiveDriverPosition, user?.u_id)) return
     // Карточка закрывается только после успеха, поэтому до него повторное
     // нажатие отправило бы по тому же заказу вторую команду посадки. Флаг в
     // рефе, а не в состоянии: два клика подряд успевают пройти до перерисовки.
@@ -1360,13 +1363,21 @@ function CardModalContent({
       return
 
     const enteredCode = normalizeDriverDoorNumber(votingNumber)
-
-    if (!isBoardingCodeAccepted(order?.b_driver_code, enteredCode)) {
-      setMessageModal({
-        isOpen: true,
-        message: t(TRANSLATION.WRONG_BOARDING_CODE),
-        status: EStatuses.Fail,
-      })
+    boardingPendingRef.current = true
+    setBoardingPending(true)
+    let expectedCode = normalizeDriverDoorNumber(order?.b_driver_code)
+    try {
+      if (!expectedCode) expectedCode = getDriverDoorNumber(userAsDriver, await backendGateway.getUserCar(user!.u_id))
+    } catch {
+      boardingPendingRef.current = false
+      setBoardingPending(false)
+      setMessageModal({ isOpen: true, message: t(TRANSLATION.ERROR), status: EStatuses.Fail })
+      return
+    }
+    if (!expectedCode || !isBoardingCodeAccepted(expectedCode, enteredCode)) {
+      boardingPendingRef.current = false
+      setBoardingPending(false)
+      setMessageModal({ isOpen: true, message: t(TRANSLATION.WRONG_BOARDING_CODE), status: EStatuses.Fail })
       return
     }
 
@@ -1376,7 +1387,7 @@ function CardModalContent({
       await confirmDriverBoarding({
         orderId,
         code: enteredCode,
-        confirmBoarding: (id, code) => driverMapGateway.confirmBoarding(id, code),
+        confirmBoarding: (id, code) => confirmBoardingCommand(id, code),
         syncOrderState: syncBoardedOrderState,
         onBoarded: id => {
           saveStartedVotingOrderId(id)
@@ -1466,6 +1477,7 @@ function CardModalContent({
               <button
                 key={String(option.value)}
                 type="button"
+                aria-pressed={offerEtaValue === option.value}
                 className={cn('order__driver-offer-eta-chip', { 'order__driver-offer-eta-chip--active': offerEtaValue === option.value })}
                 onClick={() => {
                   setValue('offerEta', String(option.value), { shouldValidate: true })
@@ -1477,43 +1489,30 @@ function CardModalContent({
             ))}
           </div>
           <div className="order__driver-offer-select-wrap order__driver-offer-select-wrap--compact">
-            <div
+            <button
+              type="button"
+              aria-expanded={offerEtaDropdownOpen}
               className={cn('order__driver-offer-select', { 'order__driver-offer-select--open': offerEtaDropdownOpen, 'order__driver-offer-select--active': !isQuickValue })}
               onClick={() => setOfferEtaDropdownOpen(prev => !prev)}
-              role="button"
-              tabIndex={0}
-              onKeyDown={event => {
-                if (event.key === 'Enter' || event.key === ' ') {
-                  event.preventDefault()
-                  setOfferEtaDropdownOpen(prev => !prev)
-                }
-              }}
             >
               <span>{isQuickValue ? t(TRANSLATION.DRIVER_OFFER_MORE_ETA) : offerEtaValue}</span>
               <i aria-hidden="true">▾</i>
-            </div>
+            </button>
             {offerEtaDropdownOpen && (
               <div className="order__driver-offer-select-list">
                 {moreOptions.map(option => (
-                  <div
+                  <button
+                    type="button"
+                    aria-pressed={offerEtaValue === option.value}
                     key={String(option.value)}
                     className={cn('order__driver-offer-select-option', { 'order__driver-offer-select-option--active': offerEtaValue === option.value })}
                     onClick={() => {
                       setValue('offerEta', String(option.value), { shouldValidate: true })
                       setOfferEtaDropdownOpen(false)
                     }}
-                    role="button"
-                    tabIndex={0}
-                    onKeyDown={event => {
-                      if (event.key === 'Enter' || event.key === ' ') {
-                        event.preventDefault()
-                        setValue('offerEta', String(option.value), { shouldValidate: true })
-                        setOfferEtaDropdownOpen(false)
-                      }
-                    }}
                   >
                     {option.label}
-                  </div>
+                  </button>
                 ))}
               </div>
             )}
@@ -1622,6 +1621,10 @@ function CardModalContent({
           onClick={closeModal}
         />
       )
+
+    // A terminal booking must not expose live trip commands even if a driver snapshot is stale.
+    if (order.b_state === EBookingStates.Completed)
+      return <Button {...actionButtonProps} text={t(TRANSLATION.RATE)} onClick={onRateOrderClick} />
 
     if (shouldUseOfferFlow) {
       if (currentDriverOffer && !currentOfferExpired && currentDriverOffer.status !== 'expired') {
@@ -1804,45 +1807,52 @@ function CardModalContent({
       return <>
         <Button
           {...actionButtonProps}
-          svg={<Icon src="whatsapp" width="20" height="20" fill="white" />}
+          text={t(TRANSLATION.CHAT)}
+          aria-label={t(TRANSLATION.CHAT)}
+          intent="neutral"
+          svg={<MessageCircle aria-hidden="true" size={20} />}
           onClick={openChatModal}
-          wrapperProps={{ style: { maxWidth: '20%' } }}
         />
         <Button
           {...actionButtonProps}
           text={t(TRANSLATION.ARRIVED)}
           onClick={onArrivedClick}
+          disabled={!canMarkVotingArrived(order, effectiveDriverPosition, user?.u_id)}
         />
         <Button
           {...actionButtonProps}
-          // Контракт для E2E (A.1.4): все три кнопки этой ветки имеют один
-          // класс, у иконок нет опознавательных атрибутов, а подписи у этой
-          // кнопки нет вовсе — отличить её от кнопки чата можно только
-          // позицией. Отказ от назначенного заказа идёт именно здесь.
+          // Preserve the existing cancellation entry point while making its purpose visible.
           data-testid="driver-order-cancel-open"
-          svg={<Icon src="chat" width="20" height="20" fill="white" />}
+          text={t(TRANSLATION.CANCEL_ORDER)}
+          aria-label={t(TRANSLATION.CANCEL_ORDER)}
+          intent="danger"
+          svg={<X aria-hidden="true" size={20} />}
           onClick={() => setCancelDriverOrderModal(true)}
-          wrapperProps={{ style: { maxWidth: '20%' } }}
         />
       </>
     if (userAsDriver?.c_state === EBookingDriverState.Arrived)
       return <>
         <Button
           {...actionButtonProps}
-          svg={<Icon src="whatsapp" width="20" height="20" fill="white" />}
+          text={t(TRANSLATION.CHAT)}
+          aria-label={t(TRANSLATION.CHAT)}
+          intent="neutral"
+          svg={<MessageCircle aria-hidden="true" size={20} />}
           onClick={openChatModal}
-          wrapperProps={{ style: { maxWidth: '20%' } }}
         />
         <Button
           {...actionButtonProps}
-          text={t(TRANSLATION.WENT)}
+          text={driverJourneyCopy(currentLanguage?.iso).board}
+          disabled={!canMarkVotingArrived(order, effectiveDriverPosition, user?.u_id)}
           onClick={onStartedClick}
         />
         <Button
           {...actionButtonProps}
-          svg={<Icon src="chat" width="20" height="20" fill="white" />}
+          text={t(TRANSLATION.CANCEL_ORDER)}
+          aria-label={t(TRANSLATION.CANCEL_ORDER)}
+          intent="danger"
+          svg={<X aria-hidden="true" size={20} />}
           onClick={() => setCancelDriverOrderModal(true)}
-          wrapperProps={{ style: { maxWidth: '20%' } }}
         />
       </>
     if (userAsDriver?.c_state === EBookingDriverState.Started)
@@ -1941,18 +1951,20 @@ function CardModalContent({
   }
 
   const getStatusText = () => {
+    if (summary.terminal) return summary.label || ''
     if (isVotingMode) return t(TRANSLATION.VOTER)
     return ''
   }
 
   const getStatusTextColor = () => {
+    if (summary.terminal) return '#63636b'
     if (isVotingMode) return '#FF2400'
     // 'reccomended': return '#00A72F'\
     return 'rgba(0, 0, 0, 0.25)'
   }
   const price = calculateFinalPrice(order)
   const payment = getPayment(order)
-  const paymentAmount = getSafePaymentAmount(price, payment.value)
+  const paymentAmount = getSafePaymentAmount(payment.value, price)
   const offerCount = getOfferCount(order)
   const offerCommentText = getOfferCommentText(order)
   const offerDesiredPrice = getOfferDesiredPrice(order, paymentAmount)
@@ -2017,17 +2029,7 @@ function CardModalContent({
   const _type = order?.b_payment_way === EPaymentWays.Credit ?
     TRANSLATION.CARD :
     TRANSLATION.CASH
-  const _value = order?.b_options?.customer_price ?
-    (
-      t(_type) + '. ' +
-      t(TRANSLATION.CUSTOMER_PRICE) +
-      ` ${order.b_options.customer_price} ${CURRENCY.SIGN}`
-    ) :
-    (
-      t(_type) + '. ' +
-      t(TRANSLATION.FIXED) + '. ' +
-      formatPaymentAmount(paymentAmount)
-    )
+  const _value = `${t(_type)} · ${displayFare(paymentAmount,orderCurrency(order,CURRENCY.NAME),undefined,payment.estimated)}`
 
   const fromFullAddress = getSafeAddressValue(
     address?.address,
@@ -2079,9 +2081,19 @@ function CardModalContent({
     normalizeComparableAddress(toFullAddress) !== normalizeComparableAddress(toShortAddress),
   )
 
+  const passengerName = [order?.user?.u_family, order?.user?.u_name, order?.user?.u_middle]
+    .map(value => String(value || '').trim()).filter(Boolean).join(' ')
+  const addressCopy = currentLanguage?.iso?.startsWith('ru') ? { full: 'Полный адрес', short: 'Краткий адрес' }
+    : currentLanguage?.iso?.startsWith('fr') ? { full: 'Adresse complète', short: 'Adresse courte' }
+      : currentLanguage?.iso?.startsWith('ar') ? { full: 'العنوان الكامل', short: 'العنوان المختصر' }
+        : { full: 'Full address', short: 'Short address' }
+
   return (
-    <div
-      className={cn(
+    <>
+    <Overlay
+      isOpen={active}
+      onClick={closeModal}
+      wrapperClassName={cn(
         'status-card__modal',
         order?.profitRank !== undefined && `status-card__modal--profit--${{
           [EOrderProfitRank.Low]: 'low',
@@ -2089,55 +2101,20 @@ function CardModalContent({
           [EOrderProfitRank.High]: 'high',
         }[order.profitRank]}`,
       )}
-      data-active={active}
-      onClick={outsideClick}
     >
-      <div>
-
-        <div className='top' >
-          <div
-            className="avatar"
-            style={{
-              backgroundSize: avatarSize,
-              backgroundImage: `url(${avatar})`,
-            }}
-          />
-          <div className="name" >
-            <p>
-              {order?.user?.u_family?.trimStart()}
-              {order?.user?.u_name?.trimStart()}
-              {order?.user?.u_middle?.trimStart()}
-              <span>
-                ({order?.u_id}) ({bookingStates[order?.b_state as any]})
-              </span>
-            </p>
+      <div className="card-modal__surface" dir={isRideRtl(currentLanguage?.iso) ? 'rtl' : undefined}>
+        <div className="top card-modal__heading">
+          <div className="avatar" aria-hidden="true" style={{ backgroundSize: avatarSize, backgroundImage: `url(${avatar})` }} />
+          <div className="name">
+            <h2>{t(TRANSLATION.ORDER)} <bdi>№{order?.b_id || orderId}</bdi></h2>
+            <p>{passengerName || t(TRANSLATION.PASSENGER)}</p>
           </div>
-          <div className='stars' >
-            {[1,2,3,4].map(num =>
-              <Icon
-                key={num}
-                src="filledStar"
-                width="10"
-                height="10"
-                fill="#FF2400"
-              />,
-            )}
-            {[1].map(num =>
-              <Icon
-                key={num}
-                src="star"
-                width="10"
-                height="10"
-                stroke="#FF2400"
-              />,
-            )}
-            <span>24/20</span>
-          </div>
-          <b style={{ color: getStatusTextColor() }}><OrderId orderId={order?.b_id} variant="full" /> {getStatusText()}</b>
+          {getStatusText() && <b className="card-modal__status" style={{ color: getStatusTextColor() }}>{getStatusText()}</b>}
         </div>
 
         <div className='address' >
-          <b>{translateWithFallback(TRANSLATION.APPROXIMATE_TIME, currentLanguage, { ru: 'Ожидаемое время', en: 'Estimate time' })}: {routeDurationText}</b>
+          {[EBookingDriverState.Performer,EBookingDriverState.Arrived].includes(userAsDriver?.c_state!) && !isAtPickupPoint(effectiveDriverPosition,order?.b_start_latitude,order?.b_start_longitude) && <p className="pickup-guidance" role="status">{driverJourneyCopy(currentLanguage?.iso)[effectiveDriverPosition?'near':'location']}</p>}
+          {!summary.terminal && <b>{summary.duration}: {routeDurationText === '—' ? '—' : `≈ ${routeDurationText}`}</b>}
           <div className="address__content">
             <div className="address__title">
               {translateWithFallback(TRANSLATION.ADDRESSES, currentLanguage, { ru: 'Адрес отправления и прибытия', en: 'Departure and Arrival Address' })}
@@ -2147,19 +2124,15 @@ function CardModalContent({
               <span className="address__label">{t(TRANSLATION.FROM)}:</span>
               {getSafeAddressValue(fromAddressText) ?
                 <>
-                  <span className="address__value">{fromAddressText}</span>
+                  <span className="address__value" dir="auto">{isFromAddressShort ? displayAddress(fromAddressText,currentLanguage?.iso,order?.b_start_latitude,order?.b_start_longitude) : fromFullAddress}</span>
                   {canToggleFromAddress ?
-                    <img
+                    <button
+                      type="button"
                       className="address__toggle"
-                      src={isFromAddressShort ? images.plusIcon : images.minusIcon}
                       onClick={fromAddressToggleHandler}
-                      role="button"
-                      tabIndex={0}
-                      onKeyDown={(event) => {
-                        if (event.key === 'Enter' || event.key === ' ') fromAddressToggleHandler(event as any)
-                      }}
-                      alt={isFromAddressShort ? 'show full from address' : 'show short from address'}
-                    /> :
+                      aria-expanded={!isFromAddressShort}
+                      aria-label={`${isFromAddressShort ? addressCopy.full : addressCopy.short}: ${t(TRANSLATION.FROM)}`}
+                    >{isFromAddressShort ? <ChevronDown aria-hidden="true" size={18} /> : <ChevronUp aria-hidden="true" size={18} />}</button> :
                     <span />
                   }
                 </> :
@@ -2168,51 +2141,37 @@ function CardModalContent({
                   <span />
                 </>
               }
-              <span
+              <button
+                type="button"
+                aria-label={`${t(TRANSLATION.MAP)}: ${t(TRANSLATION.FROM)}`}
                 onClick={() => {
                   openOrderPointOnMap('from')
                 }}
-                className="svg"
-              >
-                <Icon
-                  src="locationPoint"
-                  width="18"
-                  height="19"
-                  fill="#FF9900"
-                />
-              </span>
+                className="svg card-modal__map-button"
+              ><MapPin aria-hidden="true" size={20} /></button>
             </div>
 
             <div className="address__row address__row--to">
               <span className="address__label">{t(TRANSLATION.TO)}:</span>
-              <span className="address__value">{toAddressText}</span>
+              <span className="address__value" dir="auto">{isToAddressShort ? displayAddress(toAddressText,currentLanguage?.iso,order?.b_destination_latitude,order?.b_destination_longitude) : toFullAddress}</span>
               {canToggleToAddress ?
-                <img
+                <button
+                  type="button"
                   className="address__toggle"
-                  src={isToAddressShort ? images.plusIcon : images.minusIcon}
                   onClick={toAddressToggleHandler}
-                  role="button"
-                  tabIndex={0}
-                  onKeyDown={(event) => {
-                    if (event.key === 'Enter' || event.key === ' ') toAddressToggleHandler(event as any)
-                  }}
-                  alt={isToAddressShort ? 'show full destination address' : 'show short destination address'}
-                /> :
+                  aria-expanded={!isToAddressShort}
+                  aria-label={`${isToAddressShort ? addressCopy.full : addressCopy.short}: ${t(TRANSLATION.TO)}`}
+                >{isToAddressShort ? <ChevronDown aria-hidden="true" size={18} /> : <ChevronUp aria-hidden="true" size={18} />}</button> :
                 <span />
               }
-              <span
+              <button
+                type="button"
+                aria-label={`${t(TRANSLATION.MAP)}: ${t(TRANSLATION.TO)}`}
                 onClick={() => {
                   openOrderPointOnMap('to')
                 }}
-                className="svg"
-              >
-                <Icon
-                  src="locationPoint"
-                  width="18"
-                  height="19"
-                  fill="#00B100"
-                />
-              </span>
+                className="svg card-modal__map-button"
+              ><MapPin aria-hidden="true" size={20} /></button>
             </div>
           </div>
         </div>
@@ -2336,7 +2295,9 @@ function CardModalContent({
         </div>
 
       </div>
-    </div>
+    </Overlay>
+    {boardingDialog}
+    </>
   )
 }
 
@@ -2499,19 +2460,9 @@ function getSafeCalculationText(order: IOrder | null, language: { iso?: string }
   if (isValidCalculationValue(formula))
     return formula
 
-  const price = order?.b_options?.pricingModel?.price ??
-    order?.b_options?.customer_price ??
-    order?.b_price_estimate ??
-    order?.b_options?.submitPrice
-
-  if (isValidCalculationValue(price))
-    return typeof price === 'number' ? formatCurrency(price) : String(price)
-
   const payment = getPayment(order)
-  if (isValidCalculationValue(payment.text))
-    return payment.text
-  if (isValidCalculationValue(payment.value))
-    return formatPaymentAmount(payment.value)
+  if (isValidCalculationValue(payment.text)) return payment.text
+  if (isValidCalculationValue(payment.value)) return displayFare(payment.value,orderCurrency(order,CURRENCY.NAME),language?.iso,payment.estimated)
 
   if (typeof order?.profit === 'number')
     return `${translateWithFallback(
