@@ -3,6 +3,7 @@ import { EStatuses, ILanguage } from '../../types/types'
 import { Record } from 'immutable'
 import { TAction } from '../../types'
 import SITE_CONSTANTS from '../../siteConstants'
+import { getCookie } from '../../utils/cookies'
 
 export const record = Record<IConfigState>({
   status: EStatuses.Loading,
@@ -26,7 +27,11 @@ export default function reducer(state = new record(), action: TAction) {
         .set('status', EStatuses.Fail)
 
     case ActionTypes.SET_CONFIG_SUCCESS:
+      // Remote configuration can add languages after INIT_USER has already run.
+      // Restore the guest's selection from the now complete language list.
+      const savedLanguage = SITE_CONSTANTS.LANGUAGES.find(i => i.iso === getCookie('user_lang'))
       return state
+        .set('language', savedLanguage || state.get('language'))
         .set('status', EStatuses.Success)
     case ActionTypes.SET_CONFIG_FAIL:
       return state

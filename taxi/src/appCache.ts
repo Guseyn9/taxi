@@ -2,6 +2,15 @@ import version from './version.json'
 import { writeRawLog } from './tools/rawLog'
 
 const APP_CACHE_VERSION_KEY = 'gruzvill_app_cache_version'
+// Compatibility state is needed until the backend represents choice and pickup
+// stages explicitly. Never erase an active trip merely because the page reloads.
+const TRIP_CONTINUITY_KEYS = new Set([
+  'driverOffers', 'driverVotingParticipations', 'driverVotingArrived',
+  'driverStartedVotingOrderIds', 'passengerConfirmedDriverChoices',
+  'passengerConfirmedDriverChoiceStartedAt', 'passengerPickupEtaByOrderDriver',
+  'passengerRejectedDriverChoices', 'passengerChoiceOrderModes',
+  'passengerChoiceSearchRestartedAt', 'passengerChoiceWaitingExtensionSeconds',
+])
 const STARTUP_CLEANUP_VERSION = '2026-06-04-safe-startup-cleanup-v1'
 const STARTUP_CLEANUP_VERSION_KEY = 'gruzvill_startup_cleanup_version'
 
@@ -145,6 +154,7 @@ function storageKeys(storage: Storage | null) {
 function safeRemoveStorageItem(storage: Storage | null, key: string, storageType: string, reason: string) {
   if (!storage) return false
   if (AUTH_AND_USER_KEYS.includes(key)) return false
+  if (TRIP_CONTINUITY_KEYS.has(key)) return false
 
   try {
     if (storage.getItem(key) === null) return false
@@ -417,7 +427,7 @@ export function resetStaleAppCache() {
     removedLocalKeys,
     removedVersionedLocalKeys,
     removedSessionKeys,
-    authPreserved: Boolean(localStorage?.getItem('state.user.tokens')),
+    authPreserved: Boolean(sessionStorage?.getItem('state.user.tokens') || localStorage?.getItem('state.user.tokens')),
   })
 
   runAsyncCleanup(nextVersion, isNewBuild || isNewCleanupVersion)

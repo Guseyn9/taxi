@@ -325,6 +325,7 @@ export const getOrders: <TType extends EOrderTypes>(
     `${Config.API_URL}/drive${URLAdditionalPath}` +
     (queryParams.length > 0 ? `?${queryParams.join('&')}` : ''),
     formData,
+    {timeout:15000},
   )
   if (response.code === '404' && [
     'used car not found',
@@ -364,7 +365,7 @@ const _getOrder = (
   { formData }: IApiMethodArguments,
   id: IOrder['b_id'],
 ): Promise<IOrder | null> => {
-  return axios.post(`${Config.API_URL}/drive/get/${id}?fields=00000000u1`, formData)
+  return axios.post(`${Config.API_URL}/drive/get/${id}?fields=00000000u1`, formData, {timeout:15000})
     .then(res => res.data.data)
     .then(res => (res.booking && res.booking[id] && convertOrder(res.booking[id])) || null)
 }

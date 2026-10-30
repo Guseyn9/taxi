@@ -15,6 +15,7 @@ export interface RealtimeSocket {
 export type RealtimeSocketFactory = (url: string) => RealtimeSocket
 
 export interface RealtimeConnectionHandlers {
+  readonly onState?: (state: 'connecting' | 'open' | 'closed') => void
   readonly onOpen?: () => void
   readonly onMessage: (data: unknown) => void
   readonly onError?: (error: unknown) => void
@@ -23,6 +24,7 @@ export interface RealtimeConnectionHandlers {
 export interface ReconnectingWebSocketOptions {
   readonly initialDelayMs?: number
   readonly maxDelayMs?: number
+  readonly connectTimeoutMs?: number
 }
 
 const browserSocketFactory: RealtimeSocketFactory = url =>
@@ -33,6 +35,8 @@ export class ReconnectingWebSocketClient {
   private readonly socketFactory: RealtimeSocketFactory
   private readonly initialDelayMs: number
   private readonly maxDelayMs: number
+  private readonly connectTimeoutMs: number
+  private connectTimer: ReturnType<typeof setTimeout> | null = null
   private socket: RealtimeSocket | null = null
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null
   private connectionRevision = 0
@@ -42,6 +46,7 @@ export class ReconnectingWebSocketClient {
     socketFactory: RealtimeSocketFactory = browserSocketFactory,
     options: ReconnectingWebSocketOptions = {},
   ) {
+    this.connectTimeoutMs = Math.max(1000, options.connectTimeoutMs ?? 10000)
     this.socketFactory = socketFactory
     this.initialDelayMs = Math.max(0, options.initialDelayMs ?? 1000)
     this.maxDelayMs = Math.max(this.initialDelayMs, options.maxDelayMs ?? 30000)
@@ -57,6 +62,7 @@ export class ReconnectingWebSocketClient {
         return
 
       this.reconnectTimer = null
+      handlers.onState?.('connecting')
       let socket: RealtimeSocket
       try {
         socket = this.socketFactory(url)
@@ -67,10 +73,19 @@ export class ReconnectingWebSocketClient {
       }
 
       this.socket = socket
+      this.connectTimer = setTimeout(() => {
+        if(this.socket!==socket || revision!==this.connectionRevision)return
+        handlers.onError?.(new Error('WebSocket connection timed out'))
+        handlers.onState?.('closed')
+        this.detachSocket(socket,true)
+        scheduleReconnect()
+      },this.connectTimeoutMs)
       socket.onopen = () => {
         if (this.socket !== socket || revision !== this.connectionRevision)
           return
+        this.clearConnectTimer()
         this.attempt = 0
+        handlers.onState?.('open')
         handlers.onOpen?.()
       }
       socket.onmessage = event => {
@@ -81,12 +96,14 @@ export class ReconnectingWebSocketClient {
         if (this.socket !== socket || revision !== this.connectionRevision)
           return
         handlers.onError?.(error)
+        handlers.onState?.('closed')
         this.detachSocket(socket, true)
         scheduleReconnect()
       }
       socket.onclose = () => {
         if (this.socket !== socket || revision !== this.connectionRevision)
           return
+        handlers.onState?.('closed')
         this.detachSocket(socket)
         scheduleReconnect()
       }
@@ -124,7 +141,13 @@ export class ReconnectingWebSocketClient {
       this.detachSocket(this.socket, true)
   }
 
+  private clearConnectTimer(): void {
+    if(this.connectTimer)clearTimeout(this.connectTimer)
+    this.connectTimer=null
+  }
+
   private detachSocket(socket: RealtimeSocket, close = false): void {
+    this.clearConnectTimer()
     socket.onopen = null
     socket.onclose = null
     socket.onmessage = null

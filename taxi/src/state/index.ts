@@ -1,3 +1,4 @@
+import {readHealthMiddleware} from '../design/reliability/readHealth'
 import { createStore, applyMiddleware } from 'redux'
 import thunk, { ThunkDispatch } from 'redux-thunk'
 import { composeWithDevTools } from '@redux-devtools/extension'
@@ -15,7 +16,7 @@ const configureStore = () => {
     composeWithDevTools
   const store = createStore(
     rootReducer,
-    composeEnhancers(applyMiddleware(thunk, sagaMiddleware)),
+    composeEnhancers(applyMiddleware(thunk, readHealthMiddleware, sagaMiddleware)),
   )
 
   sagaMiddleware.run(rootSaga)

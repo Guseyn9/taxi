@@ -99,12 +99,7 @@ export const LEGACY_LOG_REASONS: ILegacyReasonEntry[] = [
     meaning: 'заказ пришёл с бэкенда без объяснимой клиентом причины',
     replacedBy: [check('pickupDistance'), field('stage:API_RESPONSE')],
   },
-  {
-    reason: 'emulator_not_running',
-    source: 'state/orders/sagas.ts: getActiveOrdersSaga',
-    meaning: 'водителю показан пустой список, потому что эмулятор не запущен',
-    replacedBy: [check('emulatorGate')],
-  },
+  
   {
     reason: 'poll_diff_applied',
     source: 'state/orders/sagas.ts: writeActiveOrderDiffFlowEvents',

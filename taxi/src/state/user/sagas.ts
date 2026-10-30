@@ -1,3 +1,5 @@
+import {verifySession} from '../../design/reliability/sessionRecovery'
+import {markAuthRetry} from '../../design/reliability/readHealth'
 import { all, takeEvery, put } from 'redux-saga/effects'
 import { TAction } from '../../types'
 import { EStatuses, EUserRoles, ITokens } from '../../types/types'
@@ -16,6 +18,7 @@ import {
 import { uploadRegisterFiles, uploadFiles } from './helpers'
 import { ActionTypes } from './constants'
 import { setUser } from './actionCreators'
+import { saveSessionTokens, loadSessionTokens, clearSessionTokens } from '../../security/sessionTokens'
 
 export const saga = function* () {
   yield all([
@@ -59,7 +62,8 @@ function* loginSaga(data: TAction) {
 
     if (result.user === null) throw new Error('wrong login response')
 
-    localStorage.setItem('state.user.tokens', JSON.stringify(result.tokens))
+    if (!result.tokens) throw new Error('Invalid session credentials')
+    saveSessionTokens(result.tokens)
 
 
     if(result.user.u_role === EUserRoles.Client || result.user.u_role === EUserRoles.Agent) {
@@ -89,7 +93,8 @@ function* googleLoginSaga(data: TAction) {
     const result = yield* call(API.googleLogin, data.payload)
 
     if (!result) throw new Error('Wrong login response')
-    localStorage.setItem('state.user.tokens', JSON.stringify(result.tokens))
+    if (!result.tokens) throw new Error('Invalid session credentials')
+    saveSessionTokens(result.tokens)
 
     yield put({
       type: ActionTypes.GOOGLE_LOGIN_SUCCESS,
@@ -118,7 +123,7 @@ function* registerSaga(data: TAction) {
       token: response.token,
       u_hash: response.u_hash,
     }
-    localStorage.setItem('state.user.tokens', JSON.stringify(tokens))
+    saveSessionTokens(tokens)
 
     const isDriverRegistration = Number(data.payload?.u_role) === EUserRoles.Driver
 
@@ -176,7 +181,7 @@ function* logoutSaga() {
   yield put({ type: ActionTypes.LOGOUT_START })
   try {
     localStorage.removeItem('state.user.user')
-    localStorage.removeItem('state.user.tokens')
+    clearSessionTokens()
 
     yield* call(API.logout)
     yield put({ type: ActionTypes.LOGOUT_SUCCESS })
@@ -197,11 +202,14 @@ function* remindPasswordSaga(data: TAction) {
   }
 }
 
+let restoringSession=false
 function* initUserSaga() {
+  if(restoringSession)return
+  restoringSession=true
   try {
-    const rawTokens = localStorage.getItem('state.user.tokens')
-    const tokens: ITokens = rawTokens !== null ? JSON.parse(rawTokens) : {}
-    if (!tokens.token || !tokens.u_hash) {
+    const tokens = loadSessionTokens()
+    if (!tokens) {
+      markAuthRetry(false)
       // Проверяем язык в куках
       const savedLang = getCookie('user_lang')
       if (savedLang) {
@@ -217,11 +225,12 @@ function* initUserSaga() {
     }
     yield put({ type: ActionTypes.SET_TOKENS, payload: tokens })
 
-    const user = yield* call(API.getAuthorizedUser)
-    if (!user) {
-      localStorage.removeItem('state.user.tokens')
-      return
-    }
+    const result = yield* call(()=>verifySession(tokens,API.getAuthorizedUser,loadSessionTokens))
+    if(result.kind==='stale')return
+    if(result.kind==='retry'){markAuthRetry(true);return}
+    if(result.kind==='invalid'){clearSessionTokens();yield put({type:ActionTypes.SET_TOKENS,payload:null});yield put(setUser(null));markAuthRetry(false);return}
+    markAuthRetry(false)
+    const user=result.user
 
     // Устанавливаем язык из пользователя или из куки
     if (user?.u_lang) {
@@ -251,8 +260,8 @@ function* initUserSaga() {
     yield put(setUser(user))
   } catch (error) {
     console.error('Error in initUserSaga:', error)
-    localStorage.removeItem('state.user.tokens')
-  }
+    markAuthRetry(true)
+  } finally {restoringSession=false}
 }
 
 function* whatsappSignUpSaga(data: TAction) {

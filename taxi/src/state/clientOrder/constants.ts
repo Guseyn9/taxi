@@ -14,11 +14,13 @@ export const ActionTypes = {
   SET_FROM: `${prefix}/SET_FROM`,
   SET_FROM_SUCCESS: `${prefix}/SET_FROM_SUCCESS`,
   SET_FROM_POLYGONS: `${prefix}/SET_FROM_POLYGONS`,
+  SET_FROM_ZONE_STATUS: `${prefix}/SET_FROM_ZONE_STATUS`,
 
   SET_TO_REQUEST: `${prefix}/SET_TO_REQUEST`,
   SET_TO: `${prefix}/SET_TO`,
   SET_TO_SUCCESS: `${prefix}/SET_TO_SUCCESS`,
   SET_TO_POLYGONS: `${prefix}/SET_TO_POLYGONS`,
+  SET_TO_ZONE_STATUS: `${prefix}/SET_TO_ZONE_STATUS`,
 
   SET_CAR_CLASS: `${prefix}/SET_CAR_CLASS`,
   SET_SEATS: `${prefix}/SET_SEATS_COUNT`,
@@ -34,14 +36,18 @@ export const ActionTypes = {
   RESET: `${prefix}/RESET`,
 } as const
 
+export type ZoneCheckStatus = 'idle' | 'checking' | 'ready' | 'error'
+
 export interface IClientOrderState {
   from: IAddressPoint | null
   fromPolygons: IPolygon['id'][] | null
   fromLoading: boolean
+  fromZoneStatus: ZoneCheckStatus
 
   to: IAddressPoint | null
   toPolygons: IPolygon['id'][] | null
   toLoading: boolean
+  toZoneStatus: ZoneCheckStatus
 
   carClass: ICarClass['id']
   seats: number

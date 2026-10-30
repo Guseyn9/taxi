@@ -16,7 +16,7 @@ import { useEffect, useMemo, useState } from 'react'
 
 import { IOrder } from '../types/types'
 import { PROFIT_UPDATE_INTERVAL_MS } from '../constants/orders'
-import { userPrimaryCar } from '../state/cars/selectors'
+import { userDrivenCar } from '../state/cars/selectors'
 import { geoposition } from '../state/geolocation/selectors'
 import { wayGraph } from '../state/areas/selectors'
 import {
@@ -82,7 +82,7 @@ function useSampledDriverPoint(): TDriverPosition | undefined {
  */
 export function useLiveEstimatedOrders(orders: IOrder[] | null): IOrder[] | null {
   const point = useSampledDriverPoint()
-  const car = useSimpleSelector(userPrimaryCar)
+  const car = useSimpleSelector(userDrivenCar)
   const graph = useSimpleSelector(wayGraph)
 
   return useMemo(() => {
@@ -99,7 +99,7 @@ export function useLiveEstimatedOrders(orders: IOrder[] | null): IOrder[] | null
 /** То же самое для карточки одного заказа. */
 export function useLiveEstimatedOrder(order: IOrder | null): IOrder | null {
   const point = useSampledDriverPoint()
-  const car = useSimpleSelector(userPrimaryCar)
+  const car = useSimpleSelector(userDrivenCar)
   const graph = useSimpleSelector(wayGraph)
 
   return useMemo(() => {

@@ -14,10 +14,12 @@ const defaultRecord: IClientOrderState = {
   from: null,
   fromPolygons: null,
   fromLoading: false,
+  fromZoneStatus: 'idle',
 
   to: null,
   toPolygons: null,
   toLoading: false,
+  toZoneStatus: 'idle',
 
   carClass: SITE_CONSTANTS.DEFAULT_CAR_CLASS,
   seats: 1,
@@ -188,6 +190,7 @@ export default function reducer(
         type === ActionTypes.SET_FROM_POLYGONS ? 'fromPolygons' : 'toPolygons',
         payload,
       )
+      .set(type === ActionTypes.SET_FROM_POLYGONS ? 'fromZoneStatus' : 'toZoneStatus', 'ready')
     state = reducer(state, {
       type: ActionTypes.SET_LOCATION_CLASS,
       payload: { id: state.locationClass, mode: 'auto' },
@@ -196,9 +199,14 @@ export default function reducer(
   }
 
   switch (type) {
+    case ActionTypes.SET_FROM_ZONE_STATUS:
+      return state.set('fromZoneStatus', payload)
+    case ActionTypes.SET_TO_ZONE_STATUS:
+      return state.set('toZoneStatus', payload)
     case ActionTypes.SET_FROM_REQUEST:
       return state
         .set('fromPolygons', defaultRecord.fromPolygons)
+        .set('fromZoneStatus', 'checking')
         .set('fromLoading', true)
     case ActionTypes.SET_FROM:
       state = state
@@ -213,6 +221,7 @@ export default function reducer(
     case ActionTypes.SET_TO_REQUEST:
       return state
         .set('toPolygons', defaultRecord.toPolygons)
+        .set('toZoneStatus', 'checking')
         .set('toLoading', true)
     case ActionTypes.SET_TO:
       state = state
@@ -252,6 +261,7 @@ export default function reducer(
         .set('seats', defaultRecord.seats)
         .set('to', defaultRecord.to)
         .set('toPolygons', defaultRecord.toPolygons)
+        .set('toZoneStatus', 'idle')
         .set('comments', defaultRecord.comments)
         .set('time', defaultRecord.time)
         .set('locationClassSelectionMode', defaultRecord.locationClassSelectionMode)

@@ -1,0 +1,10 @@
+#root .rs-zone-checks {display:grid;gap:8px;margin:12px 0}
+#root .rs-zone-check {display:flex;align-items:center;gap:10px;padding:12px;border:1px solid var(--drive-line);border-radius:14px;background:var(--drive-canvas);color:var(--drive-muted);font:500 12px/18px Manrope,sans-serif}
+#root .rs-zone-check[data-state=error] {background:#fff6ed;border-color:#f4d9bb;color:#75421c}
+#root .rs-zone-check>svg {flex:0 0 18px;align-self:flex-start;margin-top:2px}
+#root .rs-zone-check>div {flex:1;min-width:0}
+#root .rs-zone-check strong {display:block;font-size:12px;font-weight:700;line-height:18px}
+#root .rs-zone-check p {margin:2px 0 0;overflow-wrap:anywhere;color:inherit;font:500 12px/18px Manrope,sans-serif}
+#root .rs-zone-check button {display:flex;align-items:center;justify-content:center;gap:6px;flex-shrink:0;min-height:44px;padding:8px;border:1px solid #dec7ae;border-radius:10px;background:#fff;color:#75421c;font:700 12px/18px Manrope,sans-serif;cursor:pointer}
+#root .rs-zone-check button:focus-visible {outline:2px solid var(--drive-red);outline-offset:2px}
+@media(max-width:359px) {#root .rs-zone-check {flex-wrap:wrap}#root .rs-zone-check>div {flex:1 1 calc(100% - 28px)}#root .rs-zone-check button {margin-inline-start:28px}}

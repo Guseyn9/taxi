@@ -132,10 +132,8 @@ beforeEach(() => {
   jest.resetModules()
   jest.useFakeTimers()
   window.localStorage.clear()
-  // Штатный переключатель внешнего эмулятора (tools/emulatorMode.ts): без него
-  // список водителя принудительно пуст и до веток с машиной сага не доходит.
-  window.localStorage.setItem(
-    require('../../../tools/emulatorMode').EXTERNAL_EMULATOR_FLAG_KEY, '1')
+  // Normal driver mode: no emulator flags. Requests and recovery must work here.
+
 })
 
 afterEach(() => {

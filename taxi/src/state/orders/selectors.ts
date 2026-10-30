@@ -1,3 +1,5 @@
+import { orderMatchesCar } from '../../pilot/rules'
+import { mergeDriverHistory } from '../../tools/recentDriverHistory'
 import { List as ImmutableList, is } from 'immutable'
 import { createSelector, weakMapMemoize } from 'reselect'
 import { IOrder, ICar, EBookingDriverState, EUserRoles } from '../../types/types'
@@ -19,7 +21,7 @@ import {
 import { MAX_DRIVER_VISIBLE_ORDER_DISTANCE_KM } from '../../constants/orders'
 import { IRootState } from '../'
 import { geoposition } from '../geolocation/selectors'
-import { userPrimaryCar } from '../cars/selectors'
+import { userDrivenCar } from '../cars/selectors'
 import { user as currentUser } from '../user/selectors'
 import { wayGraph } from '../areas/selectors'
 import { moduleName } from './constants'
@@ -30,25 +32,7 @@ const GEOLOCATION_CHANGE_THRESHOLD_METERS = 100
 // Реэкспорт сохраняет прежнее место импорта для саг и остального кода.
 export { MAX_DRIVER_VISIBLE_ORDER_DISTANCE_KM }
 
-function shouldUseStrictEmulatorOnlyOrders(user: any) {
-  return user?.u_role === EUserRoles.Driver
-}
-
-function shouldForceEmptyDriverOrders(user: any) {
-  return shouldUseStrictEmulatorOnlyOrders(user) && !isAnyBrowserEmulatorModeRunning() && !isExternalEmulatorEnabled()
-}
-
-function filterOrdersForStrictDriverEmulatorMode(
-  orders: IOrder[] | null,
-  kind: 'active' | 'ready' | 'history',
-  user: any,
-): IOrder[] | null {
-  if (!shouldUseStrictEmulatorOnlyOrders(user))
-    return filterOrdersForBrowserEmulator(orders, kind) as IOrder[] | null
-
-  if (shouldForceEmptyDriverOrders(user))
-    return []
-
+function filterOrdersForStrictDriverEmulatorMode(orders: IOrder[] | null, kind: 'active' | 'ready' | 'history', user: any): IOrder[] | null {
   return filterOrdersForBrowserEmulator(orders, kind) as IOrder[] | null
 }
 
@@ -198,7 +182,6 @@ export function order(
   const driverEmulatorMode = isBrowserEmulatorRunning('drivers')
   const user = currentUser(state)
 
-  if (shouldUseStrictEmulatorOnlyOrders(user) && !clientEmulatorMode && !driverEmulatorMode && !isExternalEmulatorEnabled()) return undefined
   if (clientEmulatorMode && !isLocalBrowserEmulatorOrder(currentOrder, 'clients')) return undefined
   if (driverEmulatorMode && !isLocalBrowserEmulatorOrder(currentOrder, 'drivers')) return undefined
   if (!clientEmulatorMode && !driverEmulatorMode && shouldHideOrderFromNormalMode(currentOrder)) return undefined
@@ -214,7 +197,7 @@ export function order(
   const filteredOrder = filterOrderDriversForBrowserEmulator(currentOrder)
   const currentGeoPosition = geoposition(state)
   const currentGeolocation = currentGeoPosition ? geopositionToPoint(currentGeoPosition) : undefined
-  const currentCar = userPrimaryCar(state)
+  const currentCar = userDrivenCar(state)
   const currentWayGraph = wayGraph(state)
 
   if (currentGeolocation && currentCar)
@@ -290,11 +273,11 @@ const activeOrdersIds = (state: IRootState) =>
   moduleSelector(state).activeOrders
 const pureActiveOrders = ordersGroupSelector(activeOrdersIds)
 export const activeOrders = createSelector(
-  [pureActiveOrders, approximatedCoords, userPrimaryCar, wayGraph, currentUser],
+  [pureActiveOrders, approximatedCoords, userDrivenCar, wayGraph, currentUser],
   (orders, geolocation, car, graph, user): IOrder[] | null => {
     const estimated = estimatedOrders(orders, geolocation, car, graph)?.toArray() ?? null
     const filtered = filterOrdersForStrictDriverEmulatorMode(estimated, 'active', user)
-    const restored = shouldUseStrictEmulatorOnlyOrders(user) ? filtered : restoreDriverRelatedOrdersAfterEmulatorFilter(estimated, filtered, user)
+    const restored = restoreDriverRelatedOrdersAfterEmulatorFilter(estimated, filtered, user)
     const distanceFiltered = filterOrdersByDriverDistance(restored, user)
     const trainingScoped = filterActiveOrdersByTrainingDriver(distanceFiltered, user)
 
@@ -306,14 +289,15 @@ const readyOrdersIds = (state: IRootState) =>
   moduleSelector(state).readyOrders
 const pureReadyOrders = ordersGroupSelector(readyOrdersIds)
 export const readyOrders = createSelector(
-  [pureReadyOrders, approximatedCoords, userPrimaryCar, wayGraph, currentUser],
+  [pureReadyOrders, approximatedCoords, userDrivenCar, wayGraph, currentUser],
   (orders, geolocation, car, graph, user): IOrder[] | null => {
     const filtered = filterOrdersForStrictDriverEmulatorMode(
       estimatedOrders(orders, geolocation, car, graph)?.toArray() ?? null,
       'ready',
       user,
     )
-    const trainingScoped = filterReadyOrdersByTrainingDriver(filtered, user)
+    const compatible = user?.u_role === EUserRoles.Driver ? filtered?.filter(order => orderMatchesCar(order, car)) ?? null : filtered
+    const trainingScoped = filterReadyOrdersByTrainingDriver(compatible, user)
 
     return sortOrdersByProfit(filterOrdersByDriverDistance(trainingScoped, user))
   },
@@ -323,6 +307,6 @@ const historyOrdersIds = (state: IRootState) =>
   moduleSelector(state).historyOrders
 const pureHistoryOrders = ordersGroupSelector(historyOrdersIds)
 export const historyOrders = createSelector(
-  [pureHistoryOrders, currentUser],
-  (orders, user): IOrder[] | null => filterOrdersForStrictDriverEmulatorMode(orders?.toArray() ?? null, 'history', user),
+  [pureHistoryOrders, currentUser, (state: IRootState) => moduleSelector(state).recentDriverHistory],
+  (orders, user, recent): IOrder[] | null => filterOrdersForStrictDriverEmulatorMode(mergeDriverHistory(orders?.toArray() ?? null, recent, String(user?.u_id ?? '')), 'history', user),
 )

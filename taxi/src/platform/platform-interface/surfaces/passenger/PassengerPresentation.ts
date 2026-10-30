@@ -76,6 +76,10 @@ export function resolvePassengerUiState(facts: PassengerUiFacts): PassengerUiSta
   if (isCreatingAnotherOrder || (!selectedOrder && !submittedOrderId))
     return 'DRAFT'
 
+  // Terminal booking status wins over stale candidates and driver snapshots.
+  if (selectedOrder?.b_canceled || selectedOrder?.b_state === EBookingStates.Canceled) return 'CANCELLED'
+  if (selectedOrder?.b_completed || selectedOrder?.b_state === EBookingStates.Completed) return 'TRIP_FINISHED'
+
   if (
     selectedOrder &&
     (isChoiceOrder(selectedOrder) ||
@@ -94,14 +98,10 @@ export function resolvePassengerUiState(facts: PassengerUiFacts): PassengerUiSta
   if (!selectedOrder)
     return 'DRAFT'
 
-  if (selectedOrder.b_state === EBookingStates.Canceled)
-    return 'CANCELLED'
-
   const driver = facts.selectedDriver ?? getSelectedSimpleDriver(selectedOrder)
 
   if (
-    driver?.c_state === EBookingDriverState.Finished ||
-    selectedOrder.b_state === EBookingStates.Completed
+    driver?.c_state === EBookingDriverState.Finished
   )
     return 'TRIP_FINISHED'
 

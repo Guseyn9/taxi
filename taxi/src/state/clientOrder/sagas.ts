@@ -137,6 +137,14 @@ function* setPointSaga(action: TAction) {
   let value: IAddressPoint = action.payload
   yield put({ type: setAction, payload: value })
 
+  const zoneStatusAction = type === EPointType.From ?
+    ActionTypes.SET_FROM_ZONE_STATUS : ActionTypes.SET_TO_ZONE_STATUS
+  if (!value) {
+    yield put({ type: zoneStatusAction, payload: 'idle' })
+    yield put({ type: type === EPointType.From ? ActionTypes.SET_FROM_SUCCESS : ActionTypes.SET_TO_SUCCESS })
+    return
+  }
+
   if (action.payload.isCurrent && navigator.geolocation) {
     try {
       const position = yield* call(getCurrentPosition)
@@ -207,7 +215,8 @@ function* setPointSaga(action: TAction) {
     }),
 
     call(function*() {
-      if (value.latitude && value.longitude) {
+      if (typeof value.latitude === 'number' && Number.isFinite(value.latitude) &&
+          typeof value.longitude === 'number' && Number.isFinite(value.longitude)) {
         try {
           const polygons = yield* call(API.getPolygonsIdsOnPoint, [
             value.latitude,
@@ -220,9 +229,10 @@ function* setPointSaga(action: TAction) {
             payload: polygons,
           })
         } catch (error) {
+          yield put({ type: zoneStatusAction, payload: 'error' })
           console.error(error)
         }
-      }
+      } else yield put({ type: zoneStatusAction, payload: 'idle' })
     }),
   ])
 

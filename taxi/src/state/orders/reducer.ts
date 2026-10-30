@@ -7,6 +7,7 @@ import _ from 'lodash'
 import { TAction } from '../../types'
 import { IOrder } from '../../types/types'
 import { ActionTypes, IOrderState, IOrdersState } from './constants'
+import { retainDriverHistory } from '../../tools/recentDriverHistory'
 
 const OrderRecord = ImmutableRecord<IOrderState>({
   value: null,
@@ -21,6 +22,7 @@ const defaultRecord: IOrdersState = {
   activeOrders: null,
   readyOrders: null,
   historyOrders: null,
+  recentDriverHistory: null,
 }
 
 export const ReducerRecord = ImmutableRecord<IOrdersState>(defaultRecord)
@@ -30,6 +32,8 @@ export default function(
   { type, payload }: TAction,
 ) {
   switch (type) {
+    case ActionTypes.RETAIN_DRIVER_HISTORY:
+      return state.set('recentDriverHistory', retainDriverHistory(state.recentDriverHistory, payload.owner, payload.order))
 
     case ActionTypes.WATCH_ORDER:
     case ActionTypes.MUTATION_START: {
@@ -143,6 +147,7 @@ export default function(
         'activeOrders',
         'readyOrders',
         'historyOrders',
+        'recentDriverHistory',
       ]
       for (const key of keys)
         state = state.set(key, defaultRecord[key])

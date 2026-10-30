@@ -1,6 +1,7 @@
 import { RecordOf, List as ImmutableList, Map as ImmutableMap } from 'immutable'
 import { appName } from '../../constants'
 import { IOrder } from '../../types/types'
+import { RecentDriverHistory } from '../../tools/recentDriverHistory'
 
 export const moduleName = 'orders'
 
@@ -31,6 +32,7 @@ export const ActionTypes = {
   GET_ORDER_SUCCESS: `${prefix}/GET_ORDER_SUCCESS`,
   GET_ORDER_NOT_FOUND: `${prefix}/GET_ORDER_NOT_FOUND`,
   GET_ORDER_FAIL: `${prefix}/GET_ORDER_FAIL`,
+  RETAIN_DRIVER_HISTORY: `${prefix}/RETAIN_DRIVER_HISTORY`,
   CREATE_SUCCESS: `${prefix}/CREATE_SUCCESS`,
   MUTATION_START: `${prefix}/MUTATION_START`,
   MUTATION_FAIL: `${prefix}/MUTATION_FAIL`,
@@ -52,4 +54,5 @@ export interface IOrdersState {
   activeOrders: ImmutableList<IOrder['b_id']> | null
   readyOrders: ImmutableList<IOrder['b_id']> | null
   historyOrders: ImmutableList<IOrder['b_id']> | null
+  recentDriverHistory: RecentDriverHistory | null
 }

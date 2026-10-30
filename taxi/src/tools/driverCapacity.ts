@@ -1,3 +1,4 @@
+import { terminalBooking } from '../design/reliability/rideData'
 import SITE_CONSTANTS from '../siteConstants'
 import { EBookingDriverState, ICar, IOrder, IUser } from '../types/types'
 
@@ -45,7 +46,7 @@ function isSameUser(driverID: unknown, userID?: IUser['u_id']) {
 
 /** Заказ, который водитель уже выполняет, — его пассажиры занимают места. */
 export function isSeatsOccupyingOrder(order: IOrder, userID?: IUser['u_id']): boolean {
-  return !!order?.drivers?.some(driver =>
+  return !terminalBooking(order) && !!order?.drivers?.some(driver =>
     isSameUser(driver.u_id, userID) &&
     SEATS_OCCUPYING_STATES.includes(driver.c_state),
   )
@@ -88,6 +89,7 @@ export function canDriverTakeOrderBySeats(
   freeSeats: number,
   userID?: IUser['u_id'],
 ): boolean {
+  if (terminalBooking(order)) return false
   if (isDriverParticipatingOrder(order, userID))
     return true
 

@@ -71,3 +71,10 @@ describe('ReconnectingWebSocketClient', () => {
     expect(factory).toHaveBeenCalledTimes(1)
   })
 })
+it('times out a hung connection, notifies close immediately and cancels all timers on stop',()=>{
+ jest.useFakeTimers();const sockets=[];const factory=()=>{const socket=createSocket();sockets.push(socket);return socket};const states=[],errors=[]
+ const client=new ReconnectingWebSocketClient(factory,{initialDelayMs:100,connectTimeoutMs:1000})
+ const stop=client.connect('wss://example.test',{onMessage:jest.fn(),onState:s=>states.push(s),onError:e=>errors.push(e)})
+ jest.advanceTimersByTime(1000);expect(errors).toHaveLength(1);expect(states).toContain('closed');expect(sockets[0].close).toHaveBeenCalledTimes(1)
+ jest.advanceTimersByTime(100);expect(sockets).toHaveLength(2);stop();jest.advanceTimersByTime(10000);expect(sockets).toHaveLength(2);jest.useRealTimers()
+})
