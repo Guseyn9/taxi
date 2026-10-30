@@ -3,6 +3,7 @@ name: E2E
 # The same Playwright tests used locally, run automatically against the live backend.
 on:
   pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
   push:
     branches:
       - main
@@ -13,6 +14,8 @@ permissions:
 
 jobs:
   e2e:
+    # Draft review stacks must not create trips on the shared live backend.
+    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
     name: Playwright E2E
     runs-on: ubuntu-latest
     # The live backend uses a shared test driver and vehicle. GitHub concurrency
