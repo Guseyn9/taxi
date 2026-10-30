@@ -61,6 +61,7 @@ process.env.NODE_PATH = (process.env.NODE_PATH || '')
 const REACT_APP = /^REACT_APP_/i;
 
 function getClientEnvironment(publicUrl) {
+  require('../tools/client-env-policy.js').assertBrowserEnvironment(process.env);
   const raw = Object.keys(process.env)
     .filter(key => REACT_APP.test(key))
     .reduce(
