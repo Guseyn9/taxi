@@ -1,0 +1,12 @@
+html:has(.qa-map-priority),body:has(.qa-map-priority),#root:has(.qa-map-priority){height:100%;overflow:hidden;margin:0}
+.qa-map-priority{height:100dvh;display:flex;flex-direction:column;background:white;font-family:Manrope,sans-serif}
+.qa-map-priority>header{height:60px;flex:none;padding:10px 16px;box-sizing:border-box;font-size:14px;font-weight:700;background:white}
+.qa-map-priority>header small{display:block;font-size:10px;color:#666;font-weight:400}
+.qa-map-priority .passenger{position:relative;flex:1;min-height:0;width:100%;overflow:hidden}
+.qa-map-priority .passenger__form-map-container{position:absolute;inset:0;width:100%;height:100%}
+.qa-map-priority .map-container__leaflet-host{height:100%;width:100%}
+.qa-map-priority__plaque{position:absolute;left:12px;top:12px;z-index:730;padding:14px;border:1px solid #ddd;border-radius:14px;background:white;font-size:12px;font-weight:700}
+.qa-map-priority .passenger__form-container{position:absolute;left:0;right:0;bottom:0;width:100%;z-index:740;display:flex;flex-direction:column}
+.qa-map-priority .qa-map-priority__form{display:flex;flex:1;min-height:0}
+.qa-map-priority__pickup{color:#b51218;font-size:22px;text-shadow:0 0 3px white}
+@media(min-width:900px){.qa-map-priority .passenger__form-container{width:400px;left:16px;bottom:16px}.qa-map-priority .passenger__draggable{padding:16px;background:white;border-radius:20px}}

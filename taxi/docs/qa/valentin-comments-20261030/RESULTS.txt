@@ -1,0 +1,8 @@
+Frontend tests: 673/673 passed, 136 suites.
+TypeScript: passed.
+Production application build: passed.
+Backend command boundary: passed (failures=[]).
+Browser: collapse by button, expand by pointer swipe, denied location notice, map bottom/picker 390x844 and 360x640, exact active-order switching using local fixtures.
+No real new backend bookings were created in this acceptance pass.
+
+Map-priority check: real locked form with two synthetic moving markers. 360x640: map 285.6px, sheet 294.4px, driver select bottom 548.4px inside body bottom 557px.
