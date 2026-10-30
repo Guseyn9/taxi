@@ -5,7 +5,7 @@
   flex-direction: column;
   overflow-y: auto;
   overflow-x: hidden;
-  background: #FFFFFF;
+  background: #ffffff;
   margin: 0;
   box-sizing: border-box;
 
@@ -25,7 +25,7 @@
     border-radius: 13px;
     width: 100%;
     box-sizing: border-box;
-    border: 2px solid #1E58EB;
+    border: 2px solid #1e58eb;
 
     legend {
       margin: 0 auto;
@@ -139,7 +139,7 @@
     left: 50%;
     top: 112px;
     bottom: auto;
-    z-index: 10001;
+    z-index: 650;
     display: inline-flex;
     align-items: center;
     gap: 6px;
@@ -153,7 +153,14 @@
     line-height: 1.15;
     transform: translateX(-50%);
     pointer-events: none;
-    white-space: nowrap;
+    white-space: normal;
+    width: max-content;
+    box-sizing: border-box;
+    flex-wrap: wrap;
+    justify-content: center;
+    text-align: center;
+    border-radius: 12px;
+    line-height: 1.5;
 
     b {
       font-weight: 500;
@@ -317,4 +324,10 @@
   box-shadow: 0 1px 4px rgba(0, 0, 0, .35);
   z-index: 2;
   pointer-events: none;
+}
+
+/* RAF owns heading interpolation; CSS easing would restart on every frame. */
+.smooth-rotating-marker .smooth-rotating-marker__image,
+.smooth-rotating-marker .smooth-rotating-marker__fallback-arrow {
+  transition: none !important;
 }

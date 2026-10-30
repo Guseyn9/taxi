@@ -1,0 +1,30 @@
+#root .rs-map-controls{position:absolute;top:24px;right:24px;z-index:650;display:flex;align-items:flex-start;gap:8px}
+#root .rs-map-region{height:42px;min-width:142px;max-width:180px;padding:0 32px 0 14px;background:#fff;color:#121212;border:1px solid #e9e9e9;border-radius:10px;font:600 13px Manrope,sans-serif;line-height:normal;cursor:pointer;box-shadow:none}
+#root .rs-map-zoom{display:flex;flex-direction:column;border:1px solid #e9e9e9;border-radius:10px;background:white;overflow:hidden}
+#root .rs-map-zoom button{display:grid;place-items:center;width:40px;height:40px;padding:0;background:white;color:#121212;border:0;border-radius:0;box-shadow:none}
+#root .rs-map-zoom button+button{border-top:1px solid #e9e9e9}
+#root .rs-map-zoom button:hover{background:#fff0ed;color:var(--drive-red,#b51218)}
+#root .rs-map-status{position:absolute;right:24px;top:116px;z-index:650;font-size:11px;line-height:1.5;color:#666666;display:flex;align-items:center;gap:8px;max-width:220px;background:#fff;border:1px solid #e9e9e9;border-radius:8px;padding:6px 10px}
+#root .rs-map-status[data-status=ready]{display:none}
+#root .rs-map-status button{display:flex;gap:4px;align-items:center;color:var(--drive-red,#b51218);font-size:11px;padding:3px}
+#root .maplibregl-map{background:#f7f6f3}
+#root .passenger .leaflet-bottom{bottom:var(--rs-map-covered-bottom,0px)}
+#root .leaflet-control-attribution{background:rgba(255,255,255,.92);color:#666666;font:10px/1.5 Manrope,sans-serif;padding:2px 5px;border-radius:5px 0 0}
+#root .leaflet-control-attribution a{color:#666666}
+#root .leaflet-control-attribution a:hover{color:var(--drive-red,#b51218)}
+#root .map-container__center-marker{width:28px;height:38px}
+@media(max-width:899px){#root .rs-map-controls{top:12px;right:12px;gap:6px}#root .rs-map-region{min-width:122px;max-width:160px;height:40px;padding-left:12px;font-size:12px}#root .rs-map-zoom button{width:36px;height:36px}#root .rs-map-status{top:92px;right:12px;max-width:210px}#root .leaflet-control-attribution{font-size:8px}}
+#root .leaflet-container .leaflet-control-attribution{display:block!important;font-size:10px!important;line-height:1.5!important;max-width:calc(100vw - 16px)}
+@media(max-width:899px){#root .leaflet-container .leaflet-control-attribution{font-size:8px!important}}
+#root .leaflet-control-attribution *{font-size:inherit!important;line-height:inherit!important}
+/* One continuous map behind the floating booking card. */
+@media(min-width:900px){#root .passenger .passenger__form-map-container{left:0;right:0;width:100%}#root .passenger{background:transparent}}
+@media(min-width:1400px){#root .passenger .passenger__form-map-container{left:0;width:100%}}
+@media(max-width:899px){
+ #root .passenger .map-container__leaflet-host>.map{height:var(--rs-map-visible-height,100%)!important}
+ #root .rs-map-controls{left:12px;right:12px;justify-content:space-between}
+ #root .rs-map-region{width:120px;min-width:120px;max-width:120px;padding-left:10px;padding-right:20px}
+}
+#root .rs-map-zoom button{width:44px;height:44px;min-width:44px;min-height:44px}
+#root .rs-map-region{height:44px}
+.ride-map-recovery{height:100%;min-height:180px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:24px;background:#f5f5f5;text-align:center;color:#121212;font:14px/1.5 Manrope,sans-serif}.ride-map-recovery p{max-width:320px;margin:0;color:#666666;font-size:12px}.ride-map-recovery button{min-height:44px;padding:10px 18px;border:1px solid #e9e9e9;border-radius:10px;background:white;color:var(--drive-red,#b51218);font-weight:700}.ride-map-recovery button:focus-visible{outline:2px solid var(--drive-red,#b51218);outline-offset:2px}
