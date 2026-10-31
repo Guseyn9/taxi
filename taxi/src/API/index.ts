@@ -34,11 +34,13 @@ export {
   whatsappSignUp,
   googleLogin,
   logout,
+  startDemo,
 } from './auth'
 export {
   getUser,
   getUsers,
   getAuthorizedUser,
+  getAuthorizedUserWithTokens,
   editUser,
   editUserAfterRegister,
 } from './user'
