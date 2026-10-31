@@ -1,7 +1,11 @@
-/* Drive v2. Manrope + red, charcoal and ginger. */
+/* Scarlet Porcelain: red actions, wine surfaces, porcelain controls. Vehicle livery is independent. */
 :root {
- --drive-red:#b51218; --drive-soft:#fff0ed; --drive-orange:#e87516; --drive-black:#101010; --drive-white:#fff;
- --drive-muted:#656565; --drive-line:#e7e7e7; --drive-canvas:#f8f8f8;
+ --drive-red:#b51218; --drive-soft:#fcecea; --drive-orange:#e87516; --drive-black:#101010; --drive-white:#fffcfa;
+ --drive-muted:#656565; --drive-line:#e8dedc; --drive-canvas:#faf7f5;
+ --drive-wine:#48070f; --drive-wine-deep:#300b12; --drive-wine-raised:#68242d;
+ --drive-wine-hover:#78303b; --drive-wine-line:#94545c; --drive-on-wine:#fff8f5;
+ --drive-on-wine-muted:#e6cbd0; --drive-disabled:#57252d; --drive-disabled-text:#ddbdc3;
+ --drive-dark-surface:linear-gradient(135deg,#580811 0%,#300b12 100%);
  --drive-space:4px; --drive-control:52px; --drive-radius:18px; --drive-sheet-radius:28px;
  --rs-primary:var(--drive-red); --rs-primary-hover:color-mix(in srgb,var(--drive-red),black 20%); --rs-selected:var(--drive-soft); --rs-orange:var(--drive-orange);
  --rs-ink:var(--drive-black); --rs-muted:var(--drive-muted); --rs-line:var(--drive-line); --rs-canvas:var(--drive-canvas);

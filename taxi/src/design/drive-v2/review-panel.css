@@ -77,7 +77,7 @@
 #root .passenger .passenger-voting-form[data-options-view=true] .rs-booking-preferences{gap:8px}
 #root .passenger .passenger-voting-form[data-options-view=true] .rs-booking-preferences .car-class-slider{margin:0}
 #root .passenger .passenger-voting-form[data-options-view=true] .car-class-slider__slide{height:72px!important;min-height:72px!important}
-#root .passenger .passenger-voting-form[data-options-view=true] .rs-options-back{background:#242424;color:white;border:1px solid #444;font-size:12px}
+#root .passenger .passenger-voting-form[data-options-view=true] .rs-options-back{background:var(--drive-wine-raised);color:var(--drive-on-wine);border:1px solid var(--drive-wine-line);font-size:12px}
 #root .passenger .passenger-voting-form[data-options-view=true] .rs-ride-footer{flex:none;padding-top:12px!important}
 #root .passenger .passenger-voting-form[data-options-view=true] .passenger-voting-form__comments-btn img{background:transparent}
 @media(max-width:899px) and (min-height:501px){

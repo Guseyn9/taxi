@@ -1,0 +1,14 @@
+/* Investor screens share the approved Scarlet Porcelain palette. */
+.investor-app{background:var(--drive-canvas)}
+.investor-panel{background:var(--drive-white);border-color:var(--drive-line)}
+.investor-panel-footer{background:var(--drive-white)}
+.investor-mode>span.is-current{background:var(--drive-wine);border-color:var(--drive-wine);color:white}
+.investor-car-options button.is-selected,.driver-demo-context>span:last-child,.driver-demo-status-icon,.investor-boarding>strong{background:var(--drive-soft)}
+.investor-app:not(.driver-demo) .investor-panel:has(.investor-car-options){background:var(--drive-dark-surface);color:var(--drive-on-wine)}
+.investor-app:not(.driver-demo) .investor-panel:has(.investor-car-options) :is(.investor-kind,.investor-options,.investor-options button,.investor-demo-price-note){color:var(--drive-on-wine-muted)}
+.investor-app:not(.driver-demo) .investor-panel:has(.investor-car-options) .investor-addresses{background:var(--drive-white);color:var(--drive-black)}
+.investor-app:not(.driver-demo) .investor-panel:has(.investor-car-options) .investor-options svg{color:var(--drive-on-wine)}
+.investor-app:not(.driver-demo) .investor-panel:has(.investor-car-options) .investor-mode>span{background:var(--drive-wine-raised);border-color:var(--drive-wine-line);color:var(--drive-on-wine-muted)}
+.investor-app:not(.driver-demo) .investor-panel:has(.investor-car-options) .investor-mode>span.is-current{background:var(--drive-red);color:white}
+.investor-app:not(.driver-demo) .investor-panel:has(.investor-car-options) .investor-panel-footer{background:transparent;border-color:var(--drive-wine-line)}
+.investor-app:not(.driver-demo) .investor-panel:has(.investor-car-options) .investor-kind svg{color:var(--drive-on-wine-muted)}

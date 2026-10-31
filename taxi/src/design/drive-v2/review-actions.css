@@ -7,14 +7,17 @@
 #root .rs-booking-action__submit svg{display:block;flex:none;width:20px;height:20px;margin:0;color:var(--drive-red)}
 #root .rs-booking-action__submit span{display:block;flex:none;width:100%;min-width:0;white-space:normal;overflow-wrap:normal;text-align:center;font:700 12px/16px Manrope,sans-serif}
 #root .rs-booking-action__detail{display:flex;flex:none;align-items:center;justify-content:center;width:100%;min-height:28px;max-width:100%;color:#666;font:500 10px/12px Manrope,sans-serif;white-space:normal;text-align:center}
+#root .passenger-voting-form[data-locked=false] .rs-booking-action:not(.rs-booking-action--preferred):not([data-disabled=true]){background:var(--drive-wine-raised);border-color:var(--drive-wine-line);color:var(--drive-on-wine)}
+#root .passenger-voting-form[data-locked=false] .rs-booking-action:not(.rs-booking-action--preferred) :is(.rs-booking-action__detail,.rs-booking-action__submit svg){color:inherit}
+#root .passenger-voting-form[data-locked=false] .rs-booking-action:not([data-disabled=true]):hover{filter:brightness(1.08)}
 #root .rs-booking-action--preferred{background:var(--drive-red);border-color:var(--drive-red);color:white}
 #root .rs-booking-action--preferred .rs-booking-action__submit svg{color:inherit}
 #root .rs-booking-action--preferred .rs-booking-action__detail{color:#fff}
 #root .rs-booking-action__help{position:absolute;inset:0 0 auto auto;width:44px;height:44px;padding:0;display:grid;place-items:center;border:0;background:transparent;color:inherit;cursor:pointer}
 #root .rs-booking-action button:focus-visible{outline:2px solid currentColor;outline-offset:-4px}
-#root .rs-booking-action[data-disabled=true]{background:#242424;border-color:#444;color:#c6c6c6}
-#root .rs-booking-action[data-disabled=true] .rs-booking-action__detail{color:#aaa}
-#root .rs-booking-action[data-disabled=true] .rs-booking-action__submit svg{color:#c6c6c6}
+#root .rs-booking-action[data-disabled=true]{background:var(--drive-disabled);border-color:var(--drive-wine-line);color:var(--drive-disabled-text)}
+#root .rs-booking-action[data-disabled=true] .rs-booking-action__detail{color:var(--drive-disabled-text)}
+#root .rs-booking-action[data-disabled=true] .rs-booking-action__submit svg{color:var(--drive-disabled-text)}
 #root .rs-booking-action__submit:disabled{opacity:1;cursor:not-allowed}
 #root .rs-booking-action__submit[aria-busy=true] svg{animation:booking-action-spin 1s linear infinite}
 @keyframes booking-action-spin{to{transform:rotate(360deg)}}
