@@ -14,7 +14,6 @@ import MiniOrders from '../../components/MiniOrders'
 import Map from '../../components/Map'
 import Layout from '../../components/Layout'
 import PageSection from '../../components/PageSection'
-import BoundaryButtons from '../../components/BoundaryButtons'
 import PassengerLiveOrder from '../../components/PassengerLiveOrder'
 import VotingForm, { IRequestOrderDraft } from './VotingForm'
 import './styles.scss'
@@ -83,7 +82,7 @@ function Passenger({
   const minimizedPartRef = useRef<HTMLElement>(null)
   const formSlidersRef = useRef<HTMLElement[]>([])
   const [isExpanded,setIsExpanded] = useState(false)
-  const [sheetCollapsed,setSheetCollapsed] = useState(false)
+  const [sheetCollapsed,setSheetCollapsed] = useState(()=>window.matchMedia('(max-width:899px)').matches)
 
   const setPointAsMapCenter = useCallback((type: 'from' | 'to') => {
     if (!mapCenter.current)
@@ -844,7 +843,7 @@ function Passenger({
     submittedOrderId, handleLockedCancel, handleNewOrderClick, effectivePassengerUiConfig,
   ])
 
-  useEffect(()=>{setSheetCollapsed(false)},[selectedOrder?.b_id,mapPicker])
+  useEffect(()=>{if(selectedOrder || mapPicker)setSheetCollapsed(false)},[selectedOrder?.b_id,mapPicker])
 
   const handlePlaqueClick = useCallback((order:IOrder)=>{
     setMapPicker(null)
@@ -896,7 +895,6 @@ function Passenger({
             'passenger__form-container--pinned': shouldPinPassengerPanel,
           })}
         >
-          {useMemo(() => <BoundaryButtons />, [languageIso])}
           <Card
             className={cn('passenger__draggable', {
               'passenger__draggable--live-order': showLiveOrderPanel,

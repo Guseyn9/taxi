@@ -96,6 +96,9 @@ function BoundaryButtons({
     })
   }
 
+  // A category is an override of a location-derived result, not the first step.
+  if (![from,to].some(point=>point && Number.isFinite(point.latitude) && Number.isFinite(point.longitude))) return null
+
   return (
     <div
       className={cn('boundary-buttons', {

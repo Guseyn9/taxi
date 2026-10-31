@@ -44,6 +44,7 @@ import {getPayment} from '../tools/utils'
 import './cjm-styles.css'
 import '../design/drive-v2/palette-finish.css'
 import '../design/drive-v2/review-actions.css'
+import '../design/drive-v2/review-panel.css'
 
 const language={id:'1',iso:'ru',name:'Русский'}
 localizationStore.dispatch({type:ActionTypes.SET_LANGUAGE,payload:language})
