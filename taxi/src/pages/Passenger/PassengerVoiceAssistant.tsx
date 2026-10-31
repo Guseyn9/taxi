@@ -281,7 +281,6 @@ export const PassengerVoiceAssistant: React.FC<IProps> = ({
         activeRef.current = false
         stepRef.current = 'idle'
         setActive(false)
-        setStep('idle')
         const currentCopy = VOICE_COPY[languageKey(propsRef.current.languageIso)]
         setMessage(error instanceof Error && error.message === 'NO_SPEECH_RESULT' ?
           currentCopy.noSpeech : currentCopy.failed)
@@ -333,7 +332,6 @@ export const PassengerVoiceAssistant: React.FC<IProps> = ({
     stepRef.current = 'idle'
     channelRef.current?.stop()
     setActive(false)
-    setStep('idle')
     setMessage(VOICE_COPY[languageKey(languageIso)].cancelled)
   }
 
