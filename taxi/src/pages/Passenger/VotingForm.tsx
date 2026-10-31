@@ -1,3 +1,4 @@
+import BoundaryButtons from '../../components/BoundaryButtons'
 import LockedRouteSummary from '../../design/LockedRouteSummary'
 import {markPendingOffer} from '../../pilot/pendingOffer'
 import {usePendingOffer} from '../../pilot/usePendingOffer'
@@ -1748,7 +1749,7 @@ const VotingForm = function VotingForm({
       )}
 
         {!locked && <div className="rs-trip-options-row">
-          {!optionsView && <ShortInfo hideCarClass />}
+          {!optionsView && <ShortInfo />}
           <UiButton type="button" variant="ghost" size="sm" className="rs-options-toggle"
             aria-label={uiCopy.options}
             ref={optionsToggleRef}
@@ -1772,6 +1773,10 @@ const VotingForm = function VotingForm({
 
       </div>
 
+      {!locked && optionsView && <div className="rs-booking-preferences">
+        <BoundaryButtons />
+        <CarClassSlider />
+      </div>}
       {!locked && optionsView && <div className="passenger-voting-form__seats-and-time">
         <div className="passenger-voting-form__seats">
           <span className="passenger-voting-form__seats-title">

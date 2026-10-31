@@ -9,8 +9,8 @@
 #root .passenger-voting-form[data-locked=false] .rs-request-context>.rs-request-hint {font-size:13px;line-height:18px}
 #root .passenger-voting-form[data-locked=false] .rs-request-submit {font-size:15px}
 #root .passenger-voting-form[data-options-view=true] .passenger-voting-form__group {display:none!important}
-#root .passenger__form-container:has(.passenger-voting-form[data-options-view=true]) .boundary-buttons {display:none!important}
-#root .passenger:has(.passenger-voting-form[data-options-view=true]) :is(.rs-map-controls,.map-container__locate-button,.rs-map-marker-preview) {display:none!important}
+#root .passenger-voting-form[data-options-view=true] .rs-booking-preferences .boundary-buttons {display:flex!important}
+
 #root .passenger__draggable:has(.passenger-voting-form[data-options-view=true]) {
   height:calc(var(--taxi-viewport-height,100dvh) - 120px);
   max-height:calc(var(--taxi-viewport-height,100dvh) - 120px)!important;

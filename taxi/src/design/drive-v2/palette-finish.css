@@ -76,7 +76,6 @@ body button:focus-visible,body [role=button]:focus-visible,body a:focus-visible 
  #root .passenger__form-container{transform:none!important}
  #root .passenger__form-container[data-sheet-collapsed=true]{top:auto!important;bottom:0!important;height:auto!important;max-height:none!important}
  #root .passenger__form-container[data-sheet-collapsed=true] .passenger__draggable{height:auto!important;max-height:none!important;padding:12px 16px!important;overflow:hidden!important}
- #root .passenger__form-container[data-sheet-collapsed=true] .passenger__draggable>:not(.passenger-sheet-handle){display:none!important}
  #root .passenger__form-container[data-sheet-collapsed=true] .passenger-sheet-handle{height:44px;min-height:44px;margin:0}
  #root .passenger:has([data-sheet-collapsed=true]) .passenger__form-placeholder{display:none}
 }
