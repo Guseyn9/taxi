@@ -878,13 +878,15 @@ function Passenger({
 
         {miniOrdersContent}
 
-        <PassengerVoiceAssistant
-          languageIso={languageIso}
-          getMapSearchCenter={getMapSearchCenter}
-          setFrom={setFrom}
-          setTo={setTo}
-          onSubmitOrder={handleVoiceSubmit}
-        />
+        {!selectedOrder && !waitingForSubmittedOrder && (
+          <PassengerVoiceAssistant
+            languageIso={languageIso}
+            getMapSearchCenter={getMapSearchCenter}
+            setFrom={setFrom}
+            setTo={setTo}
+            onSubmitOrder={handleVoiceSubmit}
+          />
+        )}
 
         {useMemo(() =>
           <Map
