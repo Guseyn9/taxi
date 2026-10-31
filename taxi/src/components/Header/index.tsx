@@ -574,7 +574,7 @@ function Header({
 
                       </li>
                     ))}
-                    <li><details className="menu__tools"><summary>{toolsLabel}</summary>{menuItems.slice(1).map((item,index)=><button key={index} type="button" className="menu__button" onClick={()=>item.href?navigation.navigatePath(item.href):item.action?.(index+1)}>{item.label}</button>)}<GraphDiagnostics iso={language?.iso}/><TestMapArea/>
+                    <li><details className="menu__tools"><summary>{toolsLabel}</summary>{menuItems.slice(1).map((item,index)=><button key={index} type="button" className="menu__button" onClick={()=>item.href?navigation.navigatePath(item.href):item.action?.(index+1)}>{item.label}</button>)}<GraphDiagnostics iso={language?.iso}/><TestMapArea iso={language?.iso}/>
                       {moroccoConfigMismatch(CURRENCY.NAME, SITE_CONSTANTS.DEFAULT_PHONE_MASK) &&
                         <details className="service-config-diagnostics">
                           <summary>{t('service_configuration')}</summary>

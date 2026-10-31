@@ -32,3 +32,9 @@ test('business text is never rewritten by the frontend',()=>{
  window.data={lang_vls:{client_intercity_order_mode:{ru:'Предложение'}}}
  expect(t('client_intercity_order_mode')).toBe('Предложение')
 })
+
+it('booking state descriptions supplied by the service also keep priority',()=>{
+ configSelectors.language.mockReturnValue({id:1,iso:'ru'})
+ window.data={booking_driver_states:{1:{ru:'DB considering'}}}
+ expect(t('booking_driver_states.1')).toBe('DB considering')
+})

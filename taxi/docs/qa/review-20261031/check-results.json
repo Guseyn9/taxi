@@ -1,0 +1,30 @@
+{
+  "date": "2026-10-31",
+  "base": "a86596cfc389545cbe266b7440d6d2747941c370",
+  "source_sha256": "131156a7903d3bdc219ca486c4cc33f1ccab1ae2290a904a6f9b59ba4f45cd9e",
+  "install": {
+    "command": "npm ci --ignore-scripts --no-audit --no-fund",
+    "packages": 2115,
+    "result": "pass"
+  },
+  "unit": {
+    "suites": 140,
+    "tests": 692,
+    "result": "pass"
+  },
+  "typescript": "pass",
+  "production_build": "pass",
+  "boundary": {
+    "ok": true,
+    "unchangedCoreFiles": 229,
+    "unchangedBusinessHandlers": 64,
+    "failures": []
+  },
+  "browser": "six viewport sizes; map controls; registration layout; three-mode fixtures; multi booking switch; IndexedDB after reload",
+  "not_run": [
+    "real backend trips",
+    "physical devices",
+    "microphone/speech",
+    "200-400 driver load"
+  ]
+}

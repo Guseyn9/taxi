@@ -10,11 +10,14 @@ export function selectTestMapArea(value:string){
  return true
 }
 /** Camera-only test aid. It never writes geolocation, service polygons or vehicle livery. */
-export default function TestMapArea(){
+export default function TestMapArea({iso}:{iso?:string}){
+ const locale=(iso||'en').split('-')[0]
+ const label=({ru:'Тестовая позиция карты',fr:'Position de test',ar:'موقع اختبار الخريطة'} as Record<string,string>)[locale]||'Test map location'
+ const country=({ru:'Марокко',fr:'Maroc',ar:'المغرب'} as Record<string,string>)[locale]||'Morocco'
  const [value,setValue]=useState(savedMapArea)
- return <label className="test-map-area">{t('test_map_area',{fallback:'Test map location'})}
+ return <label className="test-map-area">{t('test_map_area',{fallback:label})}
  <select value={value} onChange={event=>{if(selectTestMapArea(event.target.value))setValue(event.target.value)}}>
-  <option value="morocco">{t('morocco',{fallback:'Morocco'})}</option>
+  <option value="morocco">{t('morocco',{fallback:country})}</option>
   {moroccoCities.map(city=><option key={city.id} value={city.id}>{city.name}</option>)}
  </select></label>
 }

@@ -12,3 +12,6 @@ execFileSync(process.execPath,['tools/build-cjm.cjs'],{cwd:root,env:{...env,QA_B
 fs.copyFileSync('docs/qa/Taxi_QA_3_scenarios.pdf','build/review/qa-report.pdf');
 
 execFileSync(process.execPath,['tools/build-investor.cjs'],{cwd:root,env:{...env,INVESTOR_BUILD_MODE:'production',INVESTOR_OUTPUT_DIR:'build/investor'},stdio:'inherit'});
+
+// Curated screenshots and report only; no account data or raw logs.
+fs.cpSync('docs/qa/review-20261031','build/review/20261031',{recursive:true});

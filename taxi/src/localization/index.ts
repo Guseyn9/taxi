@@ -2168,12 +2168,11 @@ function t(id: string, options: IOptions = {}) {
 
     let result = ''
 
-    if (category === CATEGORIES.BOOKING_DRIVER_STATES && key === '1') {
+    const _data = (window as any).data
+    if (category === CATEGORIES.BOOKING_DRIVER_STATES && key === '1' && !_data?.[category]?.[key]) {
       const consideringText = getFallbackText('client_searching_driver', language)
       return applyOptions(consideringText, options)
     }
-
-    const _data = (window as any).data
 
     if (!_data)
       return applyOptions(options.fallback ?? getFallbackText(key, language), options)

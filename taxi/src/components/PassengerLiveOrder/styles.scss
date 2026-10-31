@@ -647,7 +647,10 @@
   }
 
   &__candidates--offer &__candidate {
-    flex: 0 0 min(330px, 86vw);
+    flex: 0 0 min(330px, 100%);
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
     scroll-snap-align: start;
     grid-template-columns: auto minmax(0, 1fr) auto;
     grid-template-rows: auto auto;

@@ -23,9 +23,11 @@
 - [13. Полезная свёрнутая форма и параметры](13-booking-panel.md)
 - [14. Карта: гео, центр, fullscreen, тестовый город](14-map-controls.md)
 - [15. Расцветка по классу и локации](15-vehicle-livery.md)
-- [16. Приёмка и review голосового PR](16-acceptance.md)
+- [16. Проверка голосового PR](16-acceptance.md)
 
 Каждое исправление — отдельная ветка поверх предыдущей. Main не затрагивается. Не переписываем чужую голосовую ветку.
+
+- [17. Итоговая проверка и задачи backend](17-acceptance-evidence.md)
 
 ## Инварианты
 
@@ -39,3 +41,17 @@
 8. Геолокация не может обойти запрет браузера. Повторный запрос и инструкция обязательны, разрешение не выдаём программно.
 9. Демо явно обозначено и не создаёт настоящих заказов. Пул анонимов, lease/TTL и запрет реальных заказов обеспечиваются сервером.
 10. Нельзя объявить пилот 200–400 водителей готовым по unit/fixture тестам.
+
+## Review PR после замечаний 31.10
+
+| ТЗ | PR | База |
+|---|---|---|
+| 11. Локализация | [#42](https://github.com/Guseyn9/taxi/pull/42) | review/10-qa-review |
+| 12. Способы заказа | [#43](https://github.com/Guseyn9/taxi/pull/43) | review/11-service-localization |
+| 13. Нижняя панель | [#44](https://github.com/Guseyn9/taxi/pull/44) | review/12-booking-actions |
+| 14. Карта | [#45](https://github.com/Guseyn9/taxi/pull/45) | review/13-booking-panel |
+| 15. Ливрея | [#46](https://github.com/Guseyn9/taxi/pull/46) | review/14-map-controls |
+| 16. Голосовой PR | [#47](https://github.com/Guseyn9/taxi/pull/47) | review/15-vehicle-livery |
+| 17. Приёмка | review/17-acceptance-evidence | review/16-voice-validation |
+
+PR #47 содержит локальную review-интеграцию #41; ветка автора и main не переписаны. Общий результат: [отчёт](../qa/review-20261031/README.md). Новые PR — Draft, live E2E не запускается.

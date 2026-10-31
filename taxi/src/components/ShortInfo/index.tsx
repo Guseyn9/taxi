@@ -101,6 +101,7 @@ export function ShortInfo({
               'short-info__item',
               { 'short-info__item--active': active },
             )}
+            data-info-kind={name}
           >
             <Icon className="short-info__icon" src={name} />
             <span className="short-info__text">{value}</span>
