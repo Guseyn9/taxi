@@ -1,0 +1,72 @@
+.passenger-voice {
+  position: absolute;
+  z-index: 5;
+  top: 58px;
+  right: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+  max-width: min(360px, calc(100% - 24px));
+  pointer-events: none;
+}
+
+.passenger-voice__toggle,
+.passenger-voice__panel {
+  pointer-events: auto;
+  border: 1px solid rgba(20, 24, 32, 0.12);
+  box-shadow: 0 6px 22px rgba(20, 24, 32, 0.16);
+}
+
+.passenger-voice__toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  min-height: 44px;
+  padding: 0 16px;
+  border-radius: 24px;
+  background: #17191f;
+  color: #fff;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.passenger-voice--active .passenger-voice__toggle {
+  background: #8b2424;
+}
+
+.passenger-voice__panel {
+  width: min(360px, calc(100vw - 24px));
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: #fff;
+  color: #17191f;
+}
+
+.passenger-voice__message,
+.passenger-voice__transcript {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.passenger-voice__transcript {
+  margin-top: 7px;
+  color: #646b76;
+}
+
+@media (max-width: 560px) {
+  .passenger-voice {
+    top: 58px;
+    right: 10px;
+    max-width: calc(100% - 20px);
+  }
+
+  .passenger-voice__toggle {
+    min-height: 42px;
+    padding: 0 13px;
+  }
+}
