@@ -196,7 +196,6 @@ export const PassengerVoiceAssistant: React.FC<IProps> = ({
 }) => {
   const copy = VOICE_COPY[languageKey(languageIso)]
   const [active, setActive] = useState(false)
-  const [step, setStep] = useState<VoiceStep>('idle')
   const [message, setMessage] = useState(copy.ready)
   const [transcript, setTranscript] = useState('')
   const channelRef = useRef<BrowserVoiceChannel | null>(null)
@@ -222,7 +221,7 @@ export const PassengerVoiceAssistant: React.FC<IProps> = ({
 
     if (currentStep === 'pickup' || currentStep === 'destination') {
       try {
-        const point = isCurrentLocationPhrase(text) ?
+        const point: IAddressPoint = isCurrentLocationPhrase(text) ?
           { isCurrent: true } :
           await normalizePoint(text, propsRef.current.getMapSearchCenter())
         if (currentStep === 'pickup')
@@ -232,7 +231,6 @@ export const PassengerVoiceAssistant: React.FC<IProps> = ({
 
         const nextStep: VoiceStep = currentStep === 'pickup' ? 'destination' : 'confirmation'
         stepRef.current = nextStep
-        setStep(nextStep)
         await speak(nextStep === 'destination' ? currentCopy.destination : currentCopy.confirmation)
       } catch (error) {
         await speak(currentCopy.addressNotFound)
@@ -245,7 +243,6 @@ export const PassengerVoiceAssistant: React.FC<IProps> = ({
         activeRef.current = false
         stepRef.current = 'idle'
         setActive(false)
-        setStep('idle')
         await speak(currentCopy.cancelled)
         return
       }
@@ -256,18 +253,15 @@ export const PassengerVoiceAssistant: React.FC<IProps> = ({
       }
 
       stepRef.current = 'submitting'
-      setStep('submitting')
       await speak(currentCopy.submitting)
       const submitted = await propsRef.current.onSubmitOrder()
       if (submitted) {
         activeRef.current = false
         stepRef.current = 'idle'
         setActive(false)
-        setStep('idle')
-        await speak(currentCopy.success)
+            await speak(currentCopy.success)
       } else {
         stepRef.current = 'confirmation'
-        setStep('confirmation')
         await speak(currentCopy.validation)
       }
     }
@@ -328,7 +322,6 @@ export const PassengerVoiceAssistant: React.FC<IProps> = ({
     activeRef.current = true
     stepRef.current = 'pickup'
     setActive(true)
-    setStep('pickup')
     setTranscript('')
     await speak(currentCopy.pickup)
     if (activeRef.current)
