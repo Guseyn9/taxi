@@ -324,3 +324,49 @@
     }
   }
 }
+
+
+.login-modal__demo-entry,
+.login-modal__demo-resume {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.login-modal__demo-resume p {
+  margin: 0;
+  color: #596174;
+  font-size: 14px;
+  line-height: 1.45;
+  text-align: center;
+}
+
+.login-modal__demo-label {
+  margin: 4px 0 12px;
+  color: #596174;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: .04em;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.login-modal_demo-btn {
+  width: 100%;
+  min-height: 46px;
+  margin: 0;
+  border: 1px solid #AEB6C4 !important;
+  border-radius: 10px !important;
+  background: #FFFFFF !important;
+  color: #1D2A50 !important;
+  box-shadow: none !important;
+  text-transform: none !important;
+}
+
+.login-modal_demo-btn:hover,
+.login-modal_demo-btn:focus {
+  background: #F5F7FA !important;
+  color: #1D2A50 !important;
+}
