@@ -8,7 +8,7 @@ on:
       - .github/workflows/refresh-npm-lock.yml
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   refresh-lock:
@@ -21,10 +21,16 @@ jobs:
       - name: Regenerate npm lockfile
         working-directory: taxi
         run: npm install --package-lock-only --ignore-scripts --no-audit --no-fund
-      - name: Upload regenerated lockfile
-        uses: actions/upload-artifact@v4
-        with:
-          name: regenerated-taxi-package-lock
-          path: taxi/package-lock.json
-          if-no-files-found: error
-          retention-days: 1
+      - name: Verify clean install
+        working-directory: taxi
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Commit lockfile and remove temporary workflow
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          rm .github/workflows/refresh-npm-lock.yml
+          git add taxi/package-lock.json .github/workflows/refresh-npm-lock.yml
+          git commit -m "fix: synchronize taxi npm lockfile"
+          git push origin HEAD:feat/passenger-web-voice
