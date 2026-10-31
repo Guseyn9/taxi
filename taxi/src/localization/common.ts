@@ -729,5 +729,13 @@ export default {
   DRIVER_OFFER_STATUS: 'driver_offer_status',
   DRIVER_OFFER_TRAVEL_TIME: 'driver_offer_travel_time',
   DRIVER_ORDER_CANCELLED_BY_CLIENT: 'driver_order_cancelled_by_client',
+  DEMO_START: 'demo_start',
+  DEMO_RESUME: 'demo_resume',
+  DEMO_MODE: 'demo_mode',
+  DEMO_RESUME_HINT: 'demo_resume_hint',
+  DEMO_SWITCH_TO_CLIENT: 'demo_switch_to_client',
+  DEMO_SWITCH_TO_DRIVER: 'demo_switch_to_driver',
+  DEMO_NO_FREE_ACCOUNTS: 'demo_no_free_accounts',
+  DEMO_SESSION_EXPIRED: 'demo_session_expired',
   FINAL_PRICE: 'final_price',
 } as const
