@@ -1,7 +1,7 @@
 {
   "date": "2026-10-31",
   "base": "a86596cfc389545cbe266b7440d6d2747941c370",
-  "source_sha256": "131156a7903d3bdc219ca486c4cc33f1ccab1ae2290a904a6f9b59ba4f45cd9e",
+  "source_sha256": "544f541465f2db4439a15acd269187229cf561343a66c7456079a553e6986d1d",
   "install": {
     "command": "npm ci --ignore-scripts --no-audit --no-fund",
     "packages": 2115,
@@ -9,7 +9,7 @@
   },
   "unit": {
     "suites": 140,
-    "tests": 692,
+    "tests": 694,
     "result": "pass"
   },
   "typescript": "pass",
@@ -26,5 +26,7 @@
     "physical devices",
     "microphone/speech",
     "200-400 driver load"
-  ]
+  ],
+  "source_hash_scope": "src/** sorted relative paths and content",
+  "icon_revision": "v4: author reference photos; targeted class/view and paint regression tests"
 }
