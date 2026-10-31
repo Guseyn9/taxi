@@ -2087,6 +2087,54 @@ const FALLBACK_TRANSLATIONS: Record<string, Record<string, string>> = {
     fr: 'Temps de trajet',
     ar: 'وقت الرحلة',
   },
+  demo_start: {
+    ru: 'Попробовать без регистрации',
+    en: 'Try without registration',
+    fr: 'Essayer sans inscription',
+    ar: 'جرّب دون تسجيل',
+  },
+  demo_resume: {
+    ru: 'Продолжить DEMO',
+    en: 'Continue DEMO',
+    fr: 'Continuer la démo',
+    ar: 'متابعة العرض التجريبي',
+  },
+  demo_mode: {
+    ru: 'Демонстрационный режим',
+    en: 'Demo mode',
+    fr: 'Mode démo',
+    ar: 'الوضع التجريبي',
+  },
+  demo_resume_hint: {
+    ru: 'Восстанавливаем вашу демонстрационную сессию. Войти под обычной учётной записью из DEMO нельзя.',
+    en: 'Restore your demo session. Normal account login is unavailable inside DEMO.',
+    fr: 'Restaurez votre session démo. La connexion à un compte normal est désactivée en mode démo.',
+    ar: 'استعد جلستك التجريبية. تسجيل الدخول بحساب عادي غير متاح في الوضع التجريبي.',
+  },
+  demo_switch_to_client: {
+    ru: 'Переключиться на пассажира',
+    en: 'Switch to passenger',
+    fr: 'Passer au passager',
+    ar: 'التبديل إلى الراكب',
+  },
+  demo_switch_to_driver: {
+    ru: 'Переключиться на водителя',
+    en: 'Switch to driver',
+    fr: 'Passer au conducteur',
+    ar: 'التبديل إلى السائق',
+  },
+  demo_no_free_accounts: {
+    ru: 'Сейчас нет свободной демо-сессии. Попробуйте позже.',
+    en: 'No demo session is available right now. Please try again later.',
+    fr: 'Aucune session démo n’est disponible pour le moment. Réessayez plus tard.',
+    ar: 'لا توجد جلسة تجريبية متاحة الآن. حاول مرة أخرى لاحقًا.',
+  },
+  demo_session_expired: {
+    ru: 'Демонстрационная сессия завершилась. Запустите DEMO заново.',
+    en: 'The demo session has expired. Start DEMO again.',
+    fr: 'La session démo a expiré. Relancez la démo.',
+    ar: 'انتهت الجلسة التجريبية. ابدأ العرض التجريبي مجددًا.',
+  },
 }
 
 function getLanguageInfo() {
