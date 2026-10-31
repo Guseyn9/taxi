@@ -57,8 +57,13 @@ describe('BrowserVoiceChannel', () => {
   })
 
   it('reports an empty recognition result instead of silently looping', async() => {
-    ;(window as any).SpeechRecognition = MockSpeechRecognition
-    MockSpeechRecognition.prototype.autoResult = null
+    class EmptyRecognition extends MockSpeechRecognition {
+      constructor() {
+        super()
+        this.autoResult = null
+      }
+    }
+    ;(window as any).SpeechRecognition = EmptyRecognition
     const channel = new BrowserVoiceChannel({ dispatch: jest.fn() } as any)
 
     await expect(channel.listenOnce('ru-RU')).rejects.toThrow('NO_SPEECH_RESULT')
