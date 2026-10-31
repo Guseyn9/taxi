@@ -711,6 +711,7 @@ export interface IAddressPoint {
   latitude?: number,
   longitude?: number
   isAddressResolving?: boolean
+  isCurrent?: boolean
   resolveAddress?: boolean
 }
 

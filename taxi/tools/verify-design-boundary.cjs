@@ -32,7 +32,10 @@ const allowedCore=new Map([
  ['src/tools/driverBoarding.test.ts','Regression for 111 versus 000'],
  ['src/tools/legacyLogReasons.ts','Remove obsolete emulator_not_running reason'],
  ['src/tools/phoneUtils.ts','Correct display formatting without changing API phone normalization'],
- ['src/localization/index.ts','Normalize regional locale tags for bundled UI copy; preserve server data lookup'],
+ ['src/localization/index.ts','Service DB translations precede offline fallback; no configuration writes'],
+ ['src/state/clientOrder/orderFormResolvers.ts','Frontend availability: hide immediate Voting for intercity/delayed routes; class algorithm unchanged'],
+ ['src/state/clientOrder/__tests__/orderFormResolvers.test.js','Regression coverage for service mode availability'],
+ ['src/types/types.ts','Optional isCurrent coordinate-request marker; every other byte checked'],
  ['src/App.tsx','UI language/RTL, cross-tab logout and connection banner; original App preserved after removing explicit additions'],
  ['src/API/way.ts','Load the same local road data through worker/cache; remote backend commands unchanged'],
  ['src/state/areas/selectors.ts','Attach prepared graph views and preserve multi-area routing'],
@@ -45,6 +48,9 @@ function compare(dir){for(const entry of fs.readdirSync(path.join(original,dir),
  const relative=path.join(dir,entry.name);if(entry.isDirectory())compare(relative);else{files++;if(!fs.existsSync(path.join(current,relative))||!fs.readFileSync(path.join(original,relative)).equals(fs.readFileSync(path.join(current,relative)))){if(allowedCore.has(relative))intentionalFrontendChanges.push({file:relative,reason:allowedCore.get(relative)});else failures.push(relative);}}
 }}
 for(const dir of ['src/API','src/state','src/platform','src/tools','src/types','src/localization'])compare(dir);
+
+const pointTypes='src/types/types.ts';
+if(fs.readFileSync(path.join(current,pointTypes),'utf8').replace('  isCurrent?: boolean\n','')!==fs.readFileSync(path.join(original,pointTypes),'utf8'))failures.push(pointTypes+' :: unexpected schema change');
 
 // Narrow UI-state exceptions: reconstruct the original and compare every other byte.
 const capacityFile='src/tools/driverCapacity.ts';
