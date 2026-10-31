@@ -37,7 +37,7 @@ describe('Order form resolver chain', () => {
     const modes = resolveOrderModes({ time: 'now' }, { tripType: 'INTERCITY' }, { validatedSelectedClassId: 'x', fallbackClassId: 'x' })
     expect(modes.preferOfferMode).toBe(true)
     expect(modes.recommendedMode).toBe('offer')
-    expect(modes.allowedModes).toEqual(['vote', 'offer', 'order'])
+    expect(modes.allowedModes).toEqual(['offer', 'order'])
   })
 
   it('keeps button layout deterministic for city routes', () => {
@@ -47,4 +47,14 @@ describe('Order form resolver chain', () => {
     expect(layout.compactModes).toEqual(['offer'])
     expect(layout.emphasizedMode).toBe('vote')
   })
+})
+
+it('filters prohibited modes out of every button layout',()=>{
+ const layout=resolveButtonLayout({allowedModes:['offer','order'],recommendedMode:'offer',preferOfferMode:true,reasons:['intercity']})
+ expect(layout.items.map(x=>x.mode)).toEqual(['offer','order'])
+ expect(layout.compactModes).not.toContain('vote')
+})
+it('delayed pickup cannot silently turn into immediate Voting',()=>{
+ const modes=resolveOrderModes({time:Date.now()+3600000},{tripType:'CITY'},{validatedSelectedClassId:'x'})
+ expect(modes.allowedModes).not.toContain('vote')
 })

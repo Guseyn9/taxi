@@ -35,6 +35,7 @@ import './design/drive-v2/booking-fit.css'
 import './design/drive-v2/auth-layout.css'
 import './design/drive-v2/dark-booking.css'
 import './design/drive-v2/palette-finish.css'
+import './design/drive-v2/review-actions.css'
 
 createRoot(document.getElementById('root') as HTMLElement).render(
   <React.StrictMode>

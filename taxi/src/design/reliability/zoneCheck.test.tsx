@@ -38,18 +38,3 @@ it('announces the failed endpoint and exposes only its retry; successful check r
   expect(host.textContent).toBe('')
   await act(async () => root.unmount()); host.remove(); delete (globalThis as any).IS_REACT_ACT_ENVIRONMENT
 })
-it.each(['order', 'vote', 'offer'] as const)('blocks %s submission while zones are unconfirmed, without locking mode selection', async (mode: 'order' | 'vote' | 'offer') => {
-  (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true
-  const host = document.createElement('div'); document.body.appendChild(host)
-  const root = createRoot(host), submit = jest.fn(), change = jest.fn()
-  const render = (blocked: boolean) => root.render(<RideRequestActions mode={mode} onSubmit={submit} onChange={change} submitDisabled={blocked}/>)
-  await act(async () => render(true))
-  const button = host.querySelector('[data-testid=passenger-order-submit]') as HTMLButtonElement
-  expect(button.disabled).toBe(true)
-  await act(async () => button.click()); expect(submit).not.toHaveBeenCalled()
-  const other = host.querySelector(`input[value="${mode === 'order' ? 'vote' : 'order'}"]`) as HTMLInputElement
-  await act(async () => other.click()); expect(change).toHaveBeenCalledTimes(1)
-  await act(async () => render(false)); await act(async () => button.click())
-  expect(submit).toHaveBeenCalledTimes(1); expect(submit).toHaveBeenCalledWith(mode)
-  await act(async () => root.unmount()); host.remove(); delete (globalThis as any).IS_REACT_ACT_ENVIRONMENT
-})

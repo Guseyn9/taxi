@@ -119,8 +119,8 @@ export function resolveRouteFacts(facts: OrderFormFacts): RouteFacts {
   const locationClassData = configuredLocationClasses.find(({ id }) => String(id) === String(effectiveLocationClass)) ?? null
 
   return {
-    hasFrom: Boolean(facts.from?.latitude && facts.from?.longitude),
-    hasTo: Boolean(facts.to?.latitude && facts.to?.longitude),
+    hasFrom: Boolean(facts.from && Number.isFinite(facts.from.latitude) && Number.isFinite(facts.from.longitude)),
+    hasTo: Boolean(facts.to && Number.isFinite(facts.to.latitude) && Number.isFinite(facts.to.longitude)),
     isLoading,
     isRouteResolved: Boolean(!isLoading && facts.from && facts.to),
     algorithmLocationClasses,
@@ -188,7 +188,8 @@ export function resolveOrderModes(
     reasons.push('class_fallback')
 
   return {
-    allowedModes: ['vote', 'offer', 'order'],
+    // Voting means an immediate ride with the first arriving taxi.
+    allowedModes: routeFacts.tripType === 'INTERCITY' || isDelayedPickupTime(facts.time) ? ['offer', 'order'] : ['vote', 'offer', 'order'],
     recommendedMode: preferOfferMode ? 'offer' : 'vote',
     preferOfferMode,
     reasons,
@@ -208,10 +209,10 @@ export function resolveButtonLayout(orderModeResolution: OrderModeResolution): B
   ]
 
   return {
-    primary: items.filter(item => !item.compact).map(item => item.mode),
-    compactModes: items.filter(item => item.compact).map(item => item.mode),
+    primary: items.filter(item => orderModeResolution.allowedModes.includes(item.mode) && !item.compact).map(item => item.mode),
+    compactModes: items.filter(item => orderModeResolution.allowedModes.includes(item.mode) && item.compact).map(item => item.mode),
     emphasizedMode: orderModeResolution.recommendedMode,
-    items,
+    items: items.filter(item => orderModeResolution.allowedModes.includes(item.mode)),
   }
 }
 
