@@ -73,7 +73,7 @@ export default function Showcase(){
     </>:<>
      {stage===2?<div className="investor-search"><span className="investor-search-ring"><Navigation size={30}/></span><h2>Подбираем водителя</h2><p>Ваш маршрут отправлен.<br/>Как только водитель примет заказ,<br/>вы увидите его на карте.</p></div>:<>
       {stage===6?<div className="investor-success"><span><Check size={34}/></span><p>Спасибо за поездку</p></div>:<div className="investor-eta"><strong>{stage===3?'3':stage===4?'✓':'4'}</strong><span>{stage===3?'минуты до подачи':stage===4?'машина у точки посадки':'минуты до прибытия'}<small>{stage===3?'Водитель едет к вам':stage===4?'Можно выходить':'Едем на Place Al Amal'}</small></span></div>}
-      <div className="investor-driver"><div className="investor-driver-avatar"><UserRound size={27}/></div><div><strong>Юсеф <span>Демо</span></strong><small>Dacia Logan · жёлтый</small></div><img src="/maps/taxi-top.svg" alt="Такси Dacia Logan"/></div>
+      <div className="investor-driver"><div className="investor-driver-avatar"><UserRound size={27}/></div><div><strong>Юсеф <span>Демо</span></strong><small>Городское такси · красное</small></div><img src={taxiPicture(taxiColor({point:pickup}),'side','petit')} alt="ПЕТИТ · демо"/></div>
       {stage!==6&&<div className="investor-contact"><Button variant="secondary" onClick={()=>showNotice('Демонстрация: звонок водителю не выполняется')}><Phone size={18}/> Позвонить</Button><Button variant="secondary" onClick={()=>showNotice('Демонстрация: сообщения не отправляются')}><MessageCircle size={18}/> Написать</Button></div>}
      </>}
      <RouteFields filled compact/>

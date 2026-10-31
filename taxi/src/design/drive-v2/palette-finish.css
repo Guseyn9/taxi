@@ -66,8 +66,6 @@ body button:focus-visible,body [role=button]:focus-visible,body a:focus-visible 
 #root .driver--lite .driver-orders__list .driver-order-overview__profit{padding:6px 0 0!important;background:transparent!important;border-radius:0}
 #root .driver--lite .driver-orders__list .driver-order-overview__profit dd{white-space:normal;overflow-wrap:normal}
 
-.map-location-feedback{position:absolute;z-index:750;left:12px;right:64px;top:84px;max-width:420px;display:flex;align-items:flex-start;gap:12px;padding:12px;background:white;color:#222;border:1px solid #ddd;border-radius:12px;box-shadow:0 4px 16px #0002;font:500 12px/1.5 Manrope,sans-serif}
-.map-location-feedback button{flex:none;width:32px;height:32px;border:0;border-radius:50%;background:#f4f4f4;color:#222;font-size:22px}
 .passenger-sheet-handle{display:none}
 @media(max-width:899px){
  #root .passenger-sheet-handle{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;width:100%;height:32px;min-height:32px;padding:4px;margin:-8px 0 0;border:0;background:transparent;color:inherit;cursor:pointer;touch-action:none}
@@ -80,7 +78,6 @@ body button:focus-visible,body [role=button]:focus-visible,body a:focus-visible 
  #root .passenger:has([data-sheet-collapsed=true]) .passenger__form-placeholder{display:none}
 }
 /* Location failures stay above map controls, with a reachable dismiss action. */
-.map-location-feedback{position:fixed;top:68px;z-index:1200;right:12px}
 #root .passenger__draggable:has(.passenger-voting-form[data-locked=false]) .passenger-sheet-handle{color:#fff}
 #root .passenger-sheet-handle strong{color:inherit}
 
@@ -166,20 +163,8 @@ body button:focus-visible,body [role=button]:focus-visible,body a:focus-visible 
  #root .passenger-voting-form[data-locked=true] .passenger-voting-form__group:has(.locked-route-summary[open]) .passenger-voting-form__candidate-list{grid-row:3}
 }
 /* A body portal keeps the location message out of map/sheet stacking contexts. */
-.map-location-feedback{z-index:1600;box-sizing:border-box}
-@media(min-width:900px){.map-location-feedback{top:calc(184px + env(safe-area-inset-top,0px));left:auto;right:24px;width:320px;max-width:calc(100vw - 48px)}}
 
-@media(max-width:899px){
- .layout>.map-location-feedback{position:relative!important;inset:auto!important;order:1;flex:0 0 auto;width:auto;max-width:none;margin:8px 12px;box-shadow:none}
- .layout:has(>.map-location-feedback)>.layout__content{order:2}
-}
 
-.map-location-feedback__content{flex:1;min-width:0}
-.map-location-feedback__content p{margin:0}
-.map-location-feedback button.map-location-feedback__allow{width:auto;height:auto;min-height:44px;max-width:100%;margin-top:10px;padding:10px 14px;border-radius:10px;background:#b51218;color:#fff;font:700 12px/1.4 Manrope,sans-serif;white-space:normal;cursor:pointer}
-.map-location-feedback button.map-location-feedback__allow:disabled{opacity:.65;cursor:wait}
-.map-location-feedback__allow:focus-visible{outline:2px solid #111;outline-offset:3px}
-.map-location-feedback__content p.map-location-feedback__help{margin-top:10px;font-size:11px;line-height:1.6;color:#555}
 /* Compact preferences retain touch targets and fit ordinary phone/laptop heights. */
 #root .passenger__draggable:has(.passenger-voting-form[data-options-view=true]){padding:16px!important;height:auto!important;max-height:calc(var(--taxi-viewport-height,100dvh) - 84px)!important}
 #root .passenger-voting-form[data-options-view=true]{gap:10px}

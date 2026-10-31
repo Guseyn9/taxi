@@ -2,8 +2,10 @@ import {getRequiredCarClassKind} from '../CarClassBadge'
 import {visibleMapPoint} from '../../design/maps/mapCenter'
 import {createPortal} from 'react-dom'
 import {bookingFramePoints} from '../../design/maps/bookingFrame'
-import {requestFreshLocation} from '../../design/maps/freshLocation'
+import {requestFreshLocation,requestInitialLocation} from '../../design/maps/freshLocation'
 import LocationFeedback from '../../design/maps/LocationFeedback'
+import MapLocationAction from '../Header/MapLocationAction'
+import {Navigation2} from 'lucide-react'
 import {taxiColor,taxiPicture,DEFAULT_TAXI_COLOR} from '../../design/maps/taxiPalette'
 import MapBoundary from '../../design/maps/MapBoundary'
 import {displayAddress} from '../../design/addressPresentation'
@@ -880,6 +882,7 @@ interface IProps extends ConnectedProps<typeof connector> {
   forceFreeMode?: boolean
   initialOverview?: boolean
   showDraftCenterMarker?: boolean
+  onPickLocation?: () => void
 }
 
 function Map({
@@ -939,6 +942,7 @@ function MapContent({
   language,
   initialOverview = false,
   showDraftCenterMarker = true,
+  onPickLocation,
   isOpen = true,
   type,
   defaultCenter,
@@ -1352,11 +1356,13 @@ function MapContent({
     const handleLocationFound = (e: L.LocationEvent) => {
       if (cancelled || !isLeafletMapConnected(map)) return
       geoAllowed.current=true
+      setLocating(false)
       setLocationError(null)
       const point = {
         latitude: e.latlng.lat,
         longitude: e.latlng.lng,
       }
+      if(!isInMoroccoView([point.latitude,point.longitude]))setLocationError(4)
       setUserCoordinates(point)
       saveLastBrowserGeolocation(point)
       setUserCoordinatesAccuracy(e.accuracy)
@@ -1365,28 +1371,26 @@ function MapContent({
     }
 
     const handleLocationError = (e: L.ErrorEvent) => {
-      if(!cancelled){if(e.code===1)geoAllowed.current=false;setLocationError(e.code || 2)}
+      if(!cancelled){setLocating(false);if(e.code===1)geoAllowed.current=false;setLocationError(e.code || 2)}
     }
 
     map.once('locationfound', handleLocationFound)
     map.once('locationerror', handleLocationError)
     // Request permission on first launch; browsers retain existing grant/denial.
-    const locate = () => {if(!cancelled&&navigator.geolocation&&isLeafletMapConnected(map))map.locate({timeout:10000,enableHighAccuracy:true,maximumAge:0})}
-    if(navigator.permissions?.query)navigator.permissions.query({name:'geolocation'}).then(permission=>{
-      if(permission.state==='denied'){if(!cancelled)setLocationError(1);return}
-      locate()
-    }).catch(locate)
-    else locate()
+    setLocating(true)
+    const locate = () => {if(cancelled)return;if(!navigator.geolocation){setLocating(false);setLocationError(0);return};if(isLeafletMapConnected(map))map.locate({timeout:10000,enableHighAccuracy:true,maximumAge:0})}
+    const cancelInitial=requestInitialLocation(navigator.permissions,locate,()=>{setLocating(false);setLocationError(1)})
 
     return () => {
       cancelled = true
+      cancelInitial()
       safeLeafletAction(() => {
         map.off('locationfound', handleLocationFound)
         map.off('locationerror', handleLocationError)
         map.stopLocate()
       })
     }
-  }, [map, defaultCenter])
+  }, [map])
 
   useInterval(() => {
     if (document.hidden || !geoAllowed.current || passengerGeoRequestPendingRef.current) return
@@ -2316,9 +2320,11 @@ function MapContent({
     setLocating(true)
     requestFreshLocation(navigator.geolocation,({coords})=>{
       if(!isLeafletMapConnected(map))return
-      setLocating(false);setLocationError(null);geoAllowed.current=true;cameraMoved.current=true
+      setLocating(false);geoAllowed.current=true
       const point={latitude:coords.latitude,longitude:coords.longitude}
-      if(!validMapPoint([point.latitude,point.longitude]))return
+      if(!validMapPoint([point.latitude,point.longitude])){setLocationError(2);return}
+      if(!isInMoroccoView([point.latitude,point.longitude])){setLocationError(4);return}
+      setLocationError(null);cameraMoved.current=true
       setUserCoordinates(point);setUserCoordinatesAccuracy(coords.accuracy);saveLastBrowserGeolocation(point)
       safeLeafletAction(()=>map.setView([point.latitude,point.longitude],Math.max(map.getZoom(),16)))
     },error=>{if(isLeafletMapConnected(map)){setLocating(false);if(error.code===1)geoAllowed.current=false;setLocationError(error.code)}})
@@ -2327,8 +2333,8 @@ function MapContent({
   return (
     <>
       <RsaleBasemap initialOverview={initialOverview} showRegionControls={!isModal} />
-      {locationError!==null&&createPortal(<LocationFeedback code={locationError} iso={language?.iso} busy={locating} onAllow={centerOnUser} onClose={()=>setLocationError(null)}/>,!isModal ? document.querySelector('.layout') || document.body : document.body)}
-      {Boolean(navigator.geolocation) &&
+      {locationError!==null&&createPortal(<LocationFeedback code={locationError} iso={language?.iso} busy={locating} onAllow={centerOnUser} onClose={()=>setLocationError(null)} onPickMap={onPickLocation?()=>{setLocationError(null);onPickLocation()}:undefined}/>,!isModal ? document.querySelector('.layout') || document.body : document.body)}
+      {Boolean(navigator.geolocation) && <MapLocationAction enabled={!isModal&&Boolean(containerClassName?.includes('passenger__form-map-container'))}>
         <button
           type="button"
           className={cn('map-container__locate-button', {
@@ -2346,9 +2352,10 @@ function MapContent({
           disabled={locating}
           aria-busy={locating}
           aria-label={t(TRANSLATION.SHOW_MY_LOCATION)}
+          title={t(TRANSLATION.SHOW_MY_LOCATION)}
         >
-          <img src={images.mapLocationButton} alt="" />
-        </button>
+          {!isModal&&containerClassName?.includes('passenger__form-map-container')?<><Navigation2 size={18} aria-hidden="true"/><span className="header-location-label">GPS</span></>:<img src={images.mapLocationButton} alt="" />}
+        </button></MapLocationAction>
       }
       {
         showRouteInfo && (

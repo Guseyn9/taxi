@@ -2,14 +2,23 @@
 #root .rs-booking-actions{display:flex;flex-direction:column;gap:8px;min-width:0}
 #root .rs-booking-actions__list{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
 #root .rs-booking-actions__list:has(>.rs-booking-action:nth-child(2):last-child){grid-template-columns:repeat(2,minmax(0,1fr))}
-#root .rs-booking-action{position:relative;display:flex;align-items:stretch;min-width:0;background:#242424;border:1px solid #444;border-radius:14px;overflow:hidden;color:white}
-#root .rs-booking-action__submit{display:flex;flex-direction:column;align-items:center;justify-content:center;flex:1;width:100%;min-width:0;height:76px;min-height:76px;gap:4px;border:0;border-radius:0;background:transparent;color:inherit;padding:8px 4px;font-size:12px;white-space:normal;line-height:16px}
-#root .rs-booking-action__submit svg{display:block;flex:none;min-height:20px;margin-inline-end:28px}
-#root .rs-booking-action__submit span{display:block;width:100%;min-width:0;white-space:normal;overflow-wrap:normal;text-align:center}
-#root .rs-booking-action--preferred{background:var(--drive-red);border-color:var(--drive-red)}
+#root .rs-booking-action{position:relative;display:flex;align-items:stretch;min-width:0;background:#fff;border:1px solid #dedede;border-radius:16px;overflow:hidden;color:#111}
+#root .rs-booking-action__submit{display:flex;flex-direction:column;align-items:center;justify-content:center;flex:1;width:100%;min-width:0;height:88px;min-height:88px;gap:3px;border:0;border-radius:0;background:transparent;color:inherit;padding:8px 6px;font-size:12px;white-space:normal;line-height:16px}
+#root .rs-booking-action__submit svg{display:block;flex:none;width:20px;height:20px;margin:0;color:var(--drive-red)}
+#root .rs-booking-action__submit span{display:block;flex:none;width:100%;min-width:0;white-space:normal;overflow-wrap:normal;text-align:center;font:700 12px/16px Manrope,sans-serif}
+#root .rs-booking-action__detail{display:flex;flex:none;align-items:center;justify-content:center;width:100%;min-height:28px;max-width:100%;color:#666;font:500 10px/12px Manrope,sans-serif;white-space:normal;text-align:center}
+#root .rs-booking-action--preferred{background:var(--drive-red);border-color:var(--drive-red);color:white}
+#root .rs-booking-action--preferred .rs-booking-action__submit svg{color:inherit}
+#root .rs-booking-action--preferred .rs-booking-action__detail{color:#fff}
 #root .rs-booking-action__help{position:absolute;inset:0 0 auto auto;width:44px;height:44px;padding:0;display:grid;place-items:center;border:0;background:transparent;color:inherit;cursor:pointer}
-#root .rs-booking-action button:focus-visible{outline:2px solid white;outline-offset:-4px}
-#root .rs-booking-action__submit:disabled{opacity:.5;cursor:not-allowed}
+#root .rs-booking-action button:focus-visible{outline:2px solid currentColor;outline-offset:-4px}
+#root .rs-booking-action[data-disabled=true]{background:#242424;border-color:#444;color:#c6c6c6}
+#root .rs-booking-action[data-disabled=true] .rs-booking-action__detail{color:#aaa}
+#root .rs-booking-action[data-disabled=true] .rs-booking-action__submit svg{color:#c6c6c6}
+#root .rs-booking-action__submit:disabled{opacity:1;cursor:not-allowed}
+#root .rs-booking-action__submit[aria-busy=true] svg{animation:booking-action-spin 1s linear infinite}
+@keyframes booking-action-spin{to{transform:rotate(360deg)}}
+@media(prefers-reduced-motion:reduce){#root .rs-booking-action__submit[aria-busy=true] svg{animation:none}}
 .rs-booking-help{width:min(440px,calc(100vw - 24px));padding:24px;display:flex;flex-direction:column;gap:16px;background:white;color:#111}
 .rs-booking-help h2{font-size:22px;line-height:1.3;margin:0}
 .rs-booking-help p{font-size:15px;line-height:1.5;margin:0}
@@ -17,3 +26,16 @@
 .rs-booking-help>button{min-height:48px;background:#b51218;color:white}
 @media(max-width:399px){#root .rs-booking-actions__list{gap:4px}}
 @media(min-width:900px){#root .passenger-voice{right:72px}}
+/* Two quiet map rows: endpoint tools first, voice below. */
+#root .rs-map-center-actions{gap:0;padding:3px;border:1px solid #e5e5e5;border-radius:14px;background:#fff;box-shadow:0 2px 10px #0001}
+#root .rs-map-center-actions button{display:flex;align-items:center;justify-content:center;flex:1;min-width:0;gap:5px;border:0;background:transparent;min-height:44px;padding:8px;border-radius:10px;font-size:12px;line-height:18px;font-weight:700;white-space:normal}
+#root .rs-map-center-actions button+button{border-inline-start:1px solid #eee;border-start-start-radius:0;border-end-start-radius:0}
+#root .rs-map-center-actions svg{color:var(--drive-red);flex:none}
+#root .passenger-voice{top:68px;right:72px;max-width:min(320px,calc(100% - 88px))}
+#root .passenger-voice__toggle{min-height:44px;padding:8px 12px;border:1px solid #e5e5e5;border-radius:12px;background:white;color:#111;box-shadow:0 2px 10px #0001;font-size:12px;line-height:18px;gap:7px}
+#root .passenger-voice__toggle span{font:700 12px/18px Manrope,sans-serif}
+#root .passenger-voice__toggle svg{width:17px;height:17px;color:var(--drive-red)}
+#root .passenger-voice--active .passenger-voice__toggle{background:#fff0ed;border-color:var(--drive-red);color:var(--drive-red)}
+#root .passenger--picking-location .passenger-voice{display:none}
+#root .passenger:has([data-map-preview=active]) :is(.rs-map-center-actions,.passenger-voice){display:none!important}
+@media(max-width:899px){#root .passenger-voice{left:12px;right:auto;max-width:calc(100% - 76px)}}

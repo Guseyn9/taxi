@@ -1,8 +1,9 @@
-import React,{useEffect,useState} from 'react'
-import {CarFront,Users,HandCoins,HelpCircle} from 'lucide-react'
+import React,{useEffect,useId,useState} from 'react'
+import {CarFront,Users,HandCoins,HelpCircle,Loader2} from 'lucide-react'
 import {Button} from '../components/ui/button'
 import Overlay from '../components/modals/Overlay'
 import {journeyCopy} from './journeyCopy'
+import {bookingActionCopy} from './bookingActionCopy'
 type Mode='order'|'vote'|'offer'
 interface Props {
  mode:Mode;onChange:(mode:Mode)=>void;onSubmit:(mode:Mode)=>void
@@ -12,6 +13,7 @@ interface Props {
 /** A main action submits once; the separate help action never creates a booking. */
 export function RideRequestActions({mode,onChange,onSubmit,disabled,submitDisabled,pending,error,iso,priceField,allowedModes=['order','vote','offer']}:Props){
  const copy=journeyCopy(iso)
+ const details=bookingActionCopy(iso),hintId=useId()
  const [dialog,setDialog]=useState<{mode:Mode,price:boolean}|null>(null)
  useEffect(()=>{if(dialog&&!allowedModes.includes(dialog.mode))setDialog(null)},[dialog,allowedModes])
  const choices=[{mode:'order' as Mode,Icon:CarFront},{mode:'vote' as Mode,Icon:Users},{mode:'offer' as Mode,Icon:HandCoins}].filter(choice=>allowedModes.includes(choice.mode))
@@ -22,12 +24,13 @@ export function RideRequestActions({mode,onChange,onSubmit,disabled,submitDisabl
  }
  return <div className="rs-booking-actions">
   <div className="rs-booking-actions__list" aria-label={copy.mode}>
-   {choices.map(({mode:choice,Icon})=><div key={choice} className={`rs-booking-action${mode===choice?' rs-booking-action--preferred':''}`}>
+   {choices.map(({mode:choice,Icon})=><div key={choice} className={`rs-booking-action${mode===choice?' rs-booking-action--preferred':''}`} data-disabled={Boolean(disabled||pending||submitDisabled)}>
     <Button type="button" data-testid={`passenger-order-mode-${choice}`} className="rs-booking-action__submit"
+     aria-label={copy[choice]} aria-describedby={`${hintId}-${choice}`} aria-busy={Boolean(pending&&mode===choice)}
      disabled={disabled||pending||submitDisabled} onClick={()=>{
       if(choice==='offer'&&priceField){onChange('offer');setDialog({mode:choice,price:true})}
       else submit(choice)
-     }}><Icon aria-hidden="true" size={19}/><span>{copy[choice]}</span></Button>
+     }}>{pending&&mode===choice?<Loader2 aria-hidden="true" size={20}/>:<Icon aria-hidden="true" size={20}/>}<span className="rs-booking-action__label">{copy[choice]}</span><small id={`${hintId}-${choice}`} className="rs-booking-action__detail">{details[choice]}</small></Button>
     <button type="button" className="rs-booking-action__help" aria-label={`${copy.help}: ${copy[choice]}`} data-testid={`passenger-order-help-${choice}`}
      aria-haspopup="dialog" onClick={()=>setDialog({mode:choice,price:false})}><HelpCircle size={18} aria-hidden="true"/></button>
    </div>)}

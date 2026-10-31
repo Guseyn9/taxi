@@ -604,6 +604,7 @@ function Header({
             <img src={emulationModeExactIcon} alt="" className="header-emulation-indicator__icon" />
           </button>
         )}
+        <div className="header-location-slot" data-header-location-slot />
         <LanguagePicker language={language} languages={languages} label={t('language')} onChange={handleLanguageChange} dismiss={menuOpened} onOpen={()=>{setMenuOpened(false);if(statusMenuOpen)closeStatusMenu()}}/>
         {isDriver && <div
           className={cn('header-avatar-status', { 'header-avatar-status--driver': isDriver })}

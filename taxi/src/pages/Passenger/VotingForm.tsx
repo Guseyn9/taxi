@@ -14,7 +14,7 @@ import { verifyCreatedOffer } from '../../pilot/verifyOffer'
 import { serverPickupEta, validOfferPrice, pilotCopy } from '../../pilot/rules'
 import { CardHeader, CardTitle } from '../../components/ui/card'
 import { Button as UiButton } from '../../components/ui/button'
-import { ChevronDown, SlidersHorizontal, Info } from 'lucide-react'
+import { ChevronDown, ChevronRight, Clock3, SlidersHorizontal, Info } from 'lucide-react'
 import Overlay from '../../components/modals/Overlay'
 import { rideCopy, isRideRtl } from '../../design/copy'
 import React, {
@@ -1781,8 +1781,8 @@ const VotingForm = function VotingForm({
 
       {!locked && optionsView && <div className="rs-booking-preferences">
         <BoundaryButtons />
+        <div className="rs-preferences-heading"><span>{uiCopy.pickClass}</span><button type="button" className="ride-service-help-button" aria-label={serviceCopy(languageIso).classes} onClick={()=>setServiceHelpOpen(true)}><Info size={18} aria-hidden="true"/></button></div>
         <CarClassSlider />
-        <button type="button" className="rs-classes-explainer" onClick={()=>setServiceHelpOpen(true)}>{serviceCopy(languageIso).classes}</button>
       </div>}
       {!locked && optionsView && <div className="passenger-voting-form__seats-and-time">
         <div className="passenger-voting-form__seats">
@@ -1812,7 +1812,7 @@ const VotingForm = function VotingForm({
             className="passenger-voting-form__time-btn"
             onClick={() => setPickTimeModal(true)}
           >
-            <Icon src="alarm" className="passenger-voting-form__time-icon" />
+            <Clock3 size={22} aria-hidden="true" />
           </button>
         </div>
       </div>}
@@ -1836,7 +1836,7 @@ const VotingForm = function VotingForm({
             className="passenger-voting-form__comments-btn"
             onClick={() => setCommentsModal(true)}
           >
-            <img src={images.seatSliderArrowRight} width={16} />
+            <ChevronRight size={22} aria-hidden="true" />
           </button>
         </div>
       )}

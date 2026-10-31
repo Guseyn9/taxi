@@ -1,0 +1,17 @@
+.map-location-feedback{position:fixed;z-index:1600;top:184px;right:24px;width:320px;max-width:calc(100vw - 24px);box-sizing:border-box;padding:12px 14px;background:#fff;color:#111;border:1px solid #e5e5e5;border-radius:16px;box-shadow:0 4px 20px #0001;font:500 12px/18px Manrope,sans-serif}
+.map-location-feedback__heading{display:flex;align-items:center;gap:8px;min-height:32px}
+.map-location-feedback__heading>svg{flex:none;color:#b51218}
+.map-location-feedback__heading strong{flex:1;min-width:0;font-size:13px;line-height:18px;font-weight:750}
+.map-location-feedback button{font:700 12px/18px Manrope,sans-serif;cursor:pointer;border:0}
+.map-location-feedback button:focus-visible,.map-location-feedback summary:focus-visible{outline:2px solid #b51218;outline-offset:2px}
+.map-location-feedback button.map-location-feedback__close{display:grid;place-items:center;flex:none;width:44px;height:44px;margin:-6px -6px -6px 0;padding:0;border-radius:12px;background:transparent;color:#555}
+.map-location-feedback>p{margin:6px 0 10px;color:#666;font:500 12px/18px Manrope,sans-serif}
+.map-location-feedback__actions{display:flex;gap:8px;flex-wrap:wrap}
+.map-location-feedback__actions button{flex:1;min-height:44px;padding:8px 12px;border-radius:10px;background:#f5f5f5;color:#111;white-space:normal}
+.map-location-feedback__actions button.map-location-feedback__pick,.map-location-feedback__actions button:only-child{background:#b51218;color:white}
+.map-location-feedback__actions button:disabled{opacity:.6;cursor:wait}
+.map-location-feedback details{margin-top:8px;color:#666}
+.map-location-feedback summary{cursor:pointer;padding:4px 0;font-size:11px}
+.map-location-feedback details p{margin:6px 0 0;font-size:11px;line-height:17px}
+.layout:has(.passenger-voting-form[data-options-view=true])>.map-location-feedback{display:none}
+@media(max-width:899px){.layout>.map-location-feedback{position:relative;inset:auto;order:1;flex:none;align-self:stretch;width:auto;max-width:none;margin:8px 12px;box-shadow:none}.layout:has(>.map-location-feedback)>.layout__content{order:2}}

@@ -25,7 +25,9 @@ export function taxiColor({city,point,palette,cityPalette,kind='petit',classPale
  if(configured)return configured
  if(kind==='grand')return GRAND_TAXI_COLOR
  const location=point?cityAtPoint(point):city
- return safeTaxiColor(cityPalette)||CITY_TAXI_COLORS[location||'']||safeTaxiColor(palette)||DEFAULT_TAXI_COLOR
+ // A service UI theme is not a city/class livery. In particular its blue
+ // primary must not replace the approved default artwork in map previews.
+ return safeTaxiColor(cityPalette)||CITY_TAXI_COLORS[location||'']||DEFAULT_TAXI_COLOR
 }
 export function taxiPicture(color:string,view:'top'|'side'='top',kind:TaxiKind='petit'):string {
  const body=safeTaxiColor(color)||'#666670'

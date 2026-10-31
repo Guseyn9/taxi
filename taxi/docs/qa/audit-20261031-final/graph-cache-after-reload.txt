@@ -1,0 +1,86 @@
+- main:
+  - button "Закрыть"
+  - button "Меню" [expanded]:
+  - list "Меню":
+    - button "Войти":
+      - strong: Войти
+    - generic "Для тестирования −"
+    - button "Эмулятор водителей"
+    - button "Тест анимации · без заказа"
+    - button "Лог интерфейса"
+    - button "Лог маршрута"
+    - button "Все журналы одним файлом"
+    - button "Проверить граф дорог"
+    - status: "Граф дорог: ready"
+    - term: "Источник:"
+    - definition: indexeddb
+    - term: "Узлов:"
+    - definition: "69892"
+    - term: "В worker:"
+    - definition: 16.0 ms
+    - term: "JSON:"
+    - definition: 0.0 ms
+    - term: "Построение:"
+    - definition: 0.0 ms
+    - term: "Подключение в UI:"
+    - definition: 0.2 ms
+    - term: "Кеш сохранён:"
+    - definition: "true"
+    - text: Тестовая позиция карты
+    - combobox "Тестовая позиция карты":
+      - option "Марокко"
+      - option "Casablanca"
+      - option "Rabat"
+      - option "Marrakech"
+      - option "Tanger"
+      - option "Fès"
+      - option "Agadir" [selected]
+    - generic "Настройки сервиса +"
+  - generic "Taxi":
+    - generic: taxi.
+  - button "Показать моё местоположение":
+    - generic: GPS
+  - 'button "Язык: Русский"':
+    - generic: RU
+  - button "Заказать голосом":
+    - generic: Заказать голосом
+  - region "Map"
+  - link "OpenFreeMap":
+    - /url: https://openfreemap.org/
+  - text: · ©
+  - link "OpenStreetMap":
+    - /url: https://www.openstreetmap.org/copyright
+  - text: contributors ·
+  - link "OpenMapTiles":
+    - /url: https://openmaptiles.org/
+  - button "Развернуть карту":
+  - generic "Точка под меткой":
+    - button "Подать сюда":
+      - text: Подать сюда
+    - button "Ехать сюда":
+      - text: Ехать сюда
+  - button "Развернуть форму"
+  - generic: "Откуда:"
+  - combobox "Откуда"
+  - 'button "Выбрать точку под меткой на карте: Откуда"':
+  - generic: "Куда:"
+  - combobox "Куда"
+  - 'button "Выбрать точку под меткой на карте: Куда"':
+  - generic: Сейчас
+  - generic: "1"
+  - generic: ГРАНД
+  - button "Параметры поездки":
+    - text: Параметры поездки
+  - generic "Как заказать?":
+    - button "Заказать" [disabled]:
+      - generic: Заказать
+      - generic: По расчётной цене
+    - 'button "О способе заказа: Заказать"':
+    - button "Голосовать" [disabled]:
+      - generic: Голосовать
+      - generic: Кто приедет первым
+    - 'button "О способе заказа: Голосовать"':
+    - button "Своя цена" [disabled]:
+      - generic: Своя цена
+      - generic: Предложить сумму
+    - 'button "О способе заказа: Своя цена"':
