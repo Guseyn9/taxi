@@ -1,3 +1,4 @@
+import TestMapArea from '../../design/maps/TestMapArea'
 import LanguagePicker from './LanguagePicker'
 import {zoneCopy} from '../../admin/zones/copy'
 import {UserRound,ChevronRight} from 'lucide-react'
@@ -573,7 +574,7 @@ function Header({
 
                       </li>
                     ))}
-                    <li><details className="menu__tools"><summary>{toolsLabel}</summary>{menuItems.slice(1).map((item,index)=><button key={index} type="button" className="menu__button" onClick={()=>item.href?navigation.navigatePath(item.href):item.action?.(index+1)}>{item.label}</button>)}<GraphDiagnostics iso={language?.iso}/>
+                    <li><details className="menu__tools"><summary>{toolsLabel}</summary>{menuItems.slice(1).map((item,index)=><button key={index} type="button" className="menu__button" onClick={()=>item.href?navigation.navigatePath(item.href):item.action?.(index+1)}>{item.label}</button>)}<GraphDiagnostics iso={language?.iso}/><TestMapArea/>
                       {moroccoConfigMismatch(CURRENCY.NAME, SITE_CONSTANTS.DEFAULT_PHONE_MASK) &&
                         <details className="service-config-diagnostics">
                           <summary>{t('service_configuration')}</summary>

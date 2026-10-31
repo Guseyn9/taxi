@@ -1,3 +1,4 @@
+import {visibleMapPoint} from '../../design/maps/mapCenter'
 import {createPortal} from 'react-dom'
 import {bookingFramePoints} from '../../design/maps/bookingFrame'
 import {requestFreshLocation} from '../../design/maps/freshLocation'
@@ -1451,15 +1452,28 @@ function MapContent({
         return
 
       safeLeafletAction(() => {
-        const { lat, lng } = map.getCenter()
-        setCenter([lat, lng])
+        const container=map.getContainer(),box=container.getBoundingClientRect()
+        const surface=container.closest('.passenger')
+        const sheet=surface?.classList.contains('taxi-map-fullscreen')?null:
+          surface?.querySelector('.rs-location-picker,.passenger__draggable')?.getBoundingClientRect()??null
+        const point=visibleMapPoint(box,sheet,window.matchMedia('(min-width:900px), (min-width:600px) and (max-height:500px)').matches)
+        container.style.setProperty('--rs-center-x',`${point[0]}px`)
+        container.style.setProperty('--rs-center-y',`${point[1]}px`)
+        const {lat,lng}=map.containerPointToLatLng(point)
+        setCenter([lat,lng])
       })
     }
 
     syncCenter()
-    safeLeafletAction(() => map.on('moveend', syncCenter))
+    safeLeafletAction(() => map.on('moveend resize', syncCenter))
+    const observer=new ResizeObserver(syncCenter)
+    observer.observe(map.getContainer())
+    const surface=map.getContainer().closest('.passenger')
+    const sheet=surface?.querySelector('.passenger__form-container')
+    if(sheet)observer.observe(sheet)
     return () => {
-      safeLeafletAction(() => map.off('moveend', syncCenter))
+      observer.disconnect()
+      safeLeafletAction(() => map.off('moveend resize', syncCenter))
     }
   }, [map, setCenter])
 
@@ -2512,8 +2526,8 @@ function MapContent({
       {shouldShowCenterMarker && <img
         src={PASSENGER}
         className="map-container__center-marker"
-        alt="Пассажир: точка подачи"
-        tabIndex={0}
+        alt=""
+        aria-hidden="true"
       />}
       {/* {!disableButtons && <div className={cn('modal-buttons',{'z-indexed': isModal})}>
         {!!setFrom && (

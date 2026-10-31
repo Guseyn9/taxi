@@ -28,3 +28,17 @@
 #root .rs-map-zoom button{width:44px;height:44px;min-width:44px;min-height:44px}
 #root .rs-map-region{height:44px}
 .ride-map-recovery{height:100%;min-height:180px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:24px;background:#f5f5f5;text-align:center;color:#121212;font:14px/1.5 Manrope,sans-serif}.ride-map-recovery p{max-width:320px;margin:0;color:#666666;font-size:12px}.ride-map-recovery button{min-height:44px;padding:10px 18px;border:1px solid #e9e9e9;border-radius:10px;background:white;color:var(--drive-red,#b51218);font-weight:700}.ride-map-recovery button:focus-visible{outline:2px solid var(--drive-red,#b51218);outline-offset:2px}
+/* Live map has navigation controls only. Test camera presets live in the menu. */
+#root .rs-map-controls{left:auto;right:12px;flex-direction:column;gap:8px;justify-content:flex-start}
+#root .rs-map-fullscreen{background:white;color:#111;width:44px;height:44px;min-height:44px}
+#root .rs-map-center-actions{position:absolute;z-index:650;inset:12px auto auto 12px;display:flex;gap:6px;max-width:calc(100% - 76px)}
+#root .rs-map-center-actions button{background:white;color:#111;border:1px solid #ddd;min-height:44px;padding:8px 12px}
+#root .map-container__center-marker{left:var(--rs-center-x,50%);top:var(--rs-center-y,50%);width:30px;height:40px}
+#root .taxi-map-fullscreen .passenger__form-container,#root .taxi-map-fullscreen .passenger__form-placeholder{display:none!important}
+#root .taxi-map-fullscreen .passenger__form-map-container{inset:0!important;width:100%!important;height:100%!important}
+#root .taxi-map-fullscreen .map-container__leaflet-host>.map{height:100%!important}
+#root .taxi-map-fullscreen .passenger__mini-orders{display:none!important}
+.test-map-area{display:flex;flex-direction:column;gap:8px;padding:12px 16px;color:#555;font:500 12px/1.4 Manrope,sans-serif}
+.test-map-area select{width:100%;min-height:44px;padding:8px;border:1px solid #ddd;border-radius:10px;background:white;color:#111}
+@media(max-width:899px){#root .passenger .rs-map-controls .rs-map-zoom{display:none!important}#root .rs-map-center-actions{top:12px;left:12px}}
+@media(min-width:900px){#root .passenger .rs-map-center-actions{left:auto;right:72px}}

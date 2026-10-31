@@ -5,15 +5,15 @@ import { useSelector } from 'react-redux'
 import { maplibreGL } from '@maplibre/maplibre-gl-leaflet'
 import { setWorkerUrl, setWorkerCount } from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
-import { Plus, Minus, RotateCcw } from 'lucide-react'
+import { Plus, Minus, RotateCcw, Maximize2, Minimize2 } from 'lucide-react'
 import { configSelectors } from '../../state/config'
 import { Button } from '../../components/ui/button'
 import { createMapStyle, MAP_ATTRIBUTION } from './rsale-style'
 import { MOROCCO_VIEW, MOROCCO_ZOOM, MOROCCO_MAX_ZOOM, moroccoCities, canApplyInitialOverview, moroccoMinimumZoom } from './morocco'
 import './maps.css'
 import OnMapPreview from './markers/OnMapPreview'
-import RegionPicker from './RegionPicker'
-import {savedMapArea} from './passengerCamera'
+import {TEST_MAP_AREA_EVENT} from './TestMapArea'
+
 
 setWorkerUrl('/maps/maplibre-gl-worker.mjs')
 setWorkerCount(2)
@@ -51,7 +51,7 @@ export default function RsaleBasemap({ initialOverview = false, showRegionContro
   const copy = mapCopy(locale)
   const [status, setStatus] = useState<'loading' | 'ready' | 'fallback'>('loading')
   const [revision, setRevision] = useState(0)
-  const [area, setArea] = useState(savedMapArea)
+  const [fullMap,setFullMap]=useState(false)
   const controls = useRef<HTMLDivElement>(null)
   const initialViewApplied = useRef(false)
   const cameraChanged = useRef(false)
@@ -139,9 +139,7 @@ export default function RsaleBasemap({ initialOverview = false, showRegionContro
       if (initialOverview && status !== 'loading' && !initialViewApplied.current) {
         initialViewApplied.current = true
         if (canApplyInitialOverview(initialOverview, cameraChanged.current)) {
-          const city=moroccoCities.find(item=>item.id===area)
-          if(city)map.setView([city.position[0],city.position[1]],13,{animate:false})
-          else map.fitBounds(MOROCCO_VIEW, { ...viewportPadding(map), animate: false })
+          map.fitBounds(MOROCCO_VIEW, { ...viewportPadding(map), animate: false })
         }
       }
     })
@@ -155,20 +153,33 @@ export default function RsaleBasemap({ initialOverview = false, showRegionContro
     }
   }, [])
 
+  useEffect(()=>{
+    const select=(event:Event)=>{
+      const value=(event as CustomEvent).detail
+      const city=moroccoCities.find(item=>item.id===value)
+      if(value!=='morocco'&&!city)return
+      cameraChanged.current=true
+      if(city)map.setView([city.position[0],city.position[1]],13,{animate:false})
+      else map.fitBounds(MOROCCO_VIEW,{...viewportPadding(map),animate:false})
+    }
+    window.addEventListener(TEST_MAP_AREA_EVENT,select)
+    return()=>window.removeEventListener(TEST_MAP_AREA_EVENT,select)
+  },[map])
+  useEffect(()=>{
+    const surface=map.getContainer().closest('.passenger,.driver')
+    surface?.classList.toggle('taxi-map-fullscreen',fullMap)
+    const frame=requestAnimationFrame(()=>map.invalidateSize({pan:false}))
+    const escape=(event:KeyboardEvent)=>{if(event.key==='Escape')setFullMap(false)}
+    window.addEventListener('keydown',escape)
+    return()=>{cancelAnimationFrame(frame);surface?.classList.remove('taxi-map-fullscreen');window.removeEventListener('keydown',escape)}
+  },[fullMap,map])
+
   return <>
     {showRegionControls && <OnMapPreview onCameraChange={()=>{cameraChanged.current=true}}/>}
     {showRegionControls && <div className="rs-map-controls" ref={controls}>
-      <RegionPicker label={copy.area} value={area} regions={[{id:'morocco',label:copy.country},...moroccoCities.map(city=>({id:city.id,label:city.name}))]} onChange={value => {
-        cameraChanged.current = true
-        setArea(value)
-        try{localStorage.setItem('taxi.ui.map-area',value)}catch{}
-        window.dispatchEvent(new Event('taxi.ui.map-area-changed'))
-        if (value === 'morocco') map.fitBounds(MOROCCO_VIEW, { ...viewportPadding(map), animate: false })
-        else {
-          const city = moroccoCities.find(item => item.id === value)
-          if (city) map.setView([city.position[0], city.position[1]], 13, { animate: false })
-        }
-      }}/>
+      <Button type="button" variant="outline" size="icon" className="rs-map-fullscreen" aria-pressed={fullMap}
+        aria-label={locale==='ru'?(fullMap?'Вернуться к форме':'Развернуть карту'):(fullMap?'Return to booking':'Expand map')}
+        onClick={()=>setFullMap(value=>!value)}>{fullMap?<Minimize2 aria-hidden="true"/>:<Maximize2 aria-hidden="true"/>}</Button>
       <div className="rs-map-zoom">
         <Button type="button" variant="outline" size="icon" aria-label={copy.zoomIn} disabled={zoomLimits.atMax} onClick={() => { cameraChanged.current = true; map.zoomIn() }}><Plus aria-hidden="true" /></Button>
         <Button type="button" variant="outline" size="icon" aria-label={copy.zoomOut} disabled={zoomLimits.atMin} onClick={() => { cameraChanged.current = true; map.zoomOut() }}><Minus aria-hidden="true" /></Button>
