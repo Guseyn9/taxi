@@ -299,10 +299,13 @@ function* startDemoSaga(data: TAction) {
   yield put({ type: ActionTypes.LOGIN_START })
   try {
     const clientKey = localStorage.getItem('demo.client_key') || undefined
-    const result = yield* call(loadDemoSession, clientKey, 'client')
+    const preferredRole: TDemoRole = localStorage.getItem('demo.active_role') === 'driver' ?
+      'driver' :
+      'client'
+    const result = yield* call(loadDemoSession, clientKey, preferredRole)
     yield put({ type: ActionTypes.LOGIN_SUCCESS, payload: result })
     yield put(setLoginModal(false))
-    data.payload.navigate('/passenger-order')
+    data.payload.navigate(preferredRole === 'driver' ? '/driver-order' : '/passenger-order')
   } catch (error: any) {
     if (['400', '403', '503'].includes(String(error?.code))) {
       clearDemoStorage()
