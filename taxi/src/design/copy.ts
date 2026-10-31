@@ -1,3 +1,4 @@
+import {serviceText} from './serviceText'
 const copy = {
   en: { expandAddress: 'Show full address', collapseAddress: 'Show short address', done: 'Done', pickupSearch: 'Enter pickup address', destinationSearch: 'Where to?', title: 'Where are we going?', options: 'Trip options', less: 'Hide options', pickClass: 'Choose your car', modes: 'Send a ride request', vote: 'Hail a taxi', offer: 'Offer a fare', order: 'Order taxi', pickup: 'Pickup', destination: 'Destination', hint: 'All options send your request immediately.', voteHelp: 'Take the first taxi to arrive', offerHelp: 'Set your own price', orderHelp: 'Standard ride request', menu: 'Open menu', onMap: 'Use the point under the map pin' },
   ru: { expandAddress: 'Развернуть адрес', collapseAddress: 'Свернуть адрес', done: 'Готово', pickupSearch: 'Адрес подачи', destinationSearch: 'Адрес назначения', title: 'Куда поедем?', options: 'Параметры поездки', less: 'Скрыть параметры', pickClass: 'Выберите машину', modes: 'Отправить заказ', vote: 'Голосовать', offer: 'Своя цена', order: 'Заказать такси', pickup: 'Откуда', destination: 'Куда', hint: 'Каждая кнопка сразу отправляет заказ.', voteHelp: 'Еду на первом прибывшем такси', offerHelp: 'Предложить свою стоимость', orderHelp: 'Обычный заказ такси', menu: 'Открыть меню', onMap: 'Выбрать точку под меткой на карте' },
@@ -10,5 +11,5 @@ export function isRideRtl(iso?: string) {
 }
 export function rideCopy(iso?: string) {
   const base = (iso || '').toLowerCase().split('-')[0]
-  return isRideRtl(iso) ? copy.ar : copy[base as keyof typeof copy] || copy.en
+  return serviceText(isRideRtl(iso) ? copy.ar : copy[base as keyof typeof copy] || copy.en,'booking_ui',{vote:'vote',offer:'client_offer_short_button',order:'to_order',pickup:'from',destination:'to',done:'ready',options:'trip_options'})
 }
