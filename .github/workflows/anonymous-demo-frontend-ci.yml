@@ -27,4 +27,4 @@ jobs:
         run: npx tsc --noEmit
 
       - name: Production build
-        run: npm run build:nix
+        run: CI=false npm run build:nix
