@@ -206,6 +206,10 @@ function* logoutSaga() {
 }
 
 function* remindPasswordSaga(data: TAction) {
+  if (localStorage.getItem('demo.client_key')) {
+    yield put({ type: ActionTypes.REMIND_PASSWORD_FAIL })
+    return
+  }
   yield put({ type: ActionTypes.REMIND_PASSWORD_START })
   try {
     yield* call(API.remindPassword, data.payload)
@@ -423,6 +427,10 @@ function* initUserSaga() {
 }
 
 function* whatsappSignUpSaga(data: TAction) {
+  if (localStorage.getItem('demo.client_key')) {
+    yield put({ type: ActionTypes.WHATSAPP_SIGNUP_FAIL })
+    return
+  }
   try {
     const result = yield* call(API.whatsappSignUp, data.payload)
     if (!result) throw new Error('Wrong whatsappSignUp response')
