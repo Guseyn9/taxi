@@ -84,9 +84,11 @@ function LoginModal({
           <legend>
             {user ?
               t(TRANSLATION.PROFILE) :
-              tab === 'sign-in' ?
-                t(TRANSLATION.SIGN_IN_HEADER) :
-                t(TRANSLATION.SIGNUP)
+              hasDemoKey ?
+                t(TRANSLATION.DEMO_MODE) :
+                tab === 'sign-in' ?
+                  t(TRANSLATION.SIGN_IN_HEADER) :
+                  t(TRANSLATION.SIGNUP)
             }
           </legend>
 
