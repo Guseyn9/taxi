@@ -77,7 +77,7 @@ const App: React.FC<IProps> = ({
     heartbeat()
     const interval = window.setInterval(heartbeat, 5 * 60 * 1000)
     return () => window.clearInterval(interval)
-  }, [tokens?.token, tokens?.u_hash])
+  }, [tokens?.token, tokens?.u_hash, initUser])
 
   useEffect(() => {
     const driverSnapshotProvider = user?.u_role === EUserRoles.Driver ?
