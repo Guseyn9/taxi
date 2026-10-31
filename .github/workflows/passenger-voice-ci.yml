@@ -1,0 +1,40 @@
+name: Passenger Voice CI
+
+on:
+  pull_request:
+    branches:
+      - review/10-qa-review
+    paths:
+      - 'taxi/src/platform/voice-channel/**'
+      - 'taxi/src/pages/Passenger/**'
+      - 'taxi/src/types/types.ts'
+      - 'taxi/package.json'
+      - 'taxi/package-lock.json'
+      - '.github/workflows/passenger-voice-ci.yml'
+
+jobs:
+  passenger-voice:
+    name: Passenger voice unit test and production build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: taxi
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: taxi/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci --ignore-scripts --no-audit --no-fund
+
+      - name: Run browser voice channel tests
+        run: npm run test:nix -- --runInBand --runTestsByPath src/platform/voice-channel/__tests__/BrowserVoiceChannel.test.ts
+
+      - name: Build passenger web app
+        run: npm run build:nix
