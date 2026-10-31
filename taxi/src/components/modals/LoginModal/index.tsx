@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react'
 import { connect, ConnectedProps } from 'react-redux'
 import { useLocation } from 'react-router-dom'
+import { usePlatformNavigator } from '../../../platform/platform-interface'
 import { EStatuses } from '../../../types/types'
 import { IRootState } from '../../../state'
 import {
@@ -13,6 +14,7 @@ import { t, TRANSLATION } from '../../../localization'
 import Tabs from '../../tabs/Tabs'
 import VersionInfo from '../../version-info'
 import LoadFrame from '../../LoadFrame'
+import Button from '../../Button'
 import Overlay from '../Overlay'
 import LoginForm from './Login'
 import RegisterForm from './Register'
@@ -24,12 +26,14 @@ const mapStateToProps = (state: IRootState) => ({
   isOpen: modalsSelectors.isLoginModalOpen(state),
   user: userSelectors.user(state),
   status: userSelectors.status(state),
+  message: userSelectors.message(state),
   tab: userSelectors.tab(state),
 })
 
 const mapDispatchToProps = {
   setLoginModal: modalsActionCreators.setLoginModal,
   setTab: userActionCreators.setTab,
+  startDemo: userActionCreators.startDemo,
 }
 
 const connector = connect(mapStateToProps, mapDispatchToProps)
@@ -40,12 +44,16 @@ function LoginModal({
   isOpen,
   user,
   status,
+  message,
   tab,
   setTab,
   setLoginModal,
+  startDemo,
 }: IProps) {
   const location = useLocation()
-  const _TABS = user ?
+  const { navigatePath: navigate } = usePlatformNavigator()
+  const hasDemoKey = Boolean(localStorage.getItem('demo.client_key'))
+  const _TABS = user || hasDemoKey ?
     [] :
     LOGIN_TABS.map((item, index) => ({
       ...item,
@@ -91,16 +99,45 @@ function LoginModal({
               />
             , [_TABS, tab, setTab])}
 
-            {useMemo(() => user ?
-              <LogoutForm /> :
-              tab === 'sign-in' ?
-                <LoginForm
-                  isOpen={isOpen}
-                /> :
-                <RegisterComponent
-                  isOpen={isOpen}
+            {useMemo(() => {
+              if (user) return <LogoutForm />
+
+              const demoButton = (
+                <Button
+                  type="button"
+                  text={t(hasDemoKey ? TRANSLATION.DEMO_RESUME : TRANSLATION.DEMO_START)}
+                  fixedSize={false}
+                  className="login-modal_demo-btn"
+                  skipHandler={true}
+                  disabled={status === EStatuses.Loading}
+                  onClick={() => startDemo({ navigate })}
                 />
-            , [user, tab, isOpen])}
+              )
+
+              if (hasDemoKey) {
+                return (
+                  <div className="login-modal__demo-resume">
+                    <p>{t(TRANSLATION.DEMO_RESUME_HINT)}</p>
+                    {status === EStatuses.Fail && message && (
+                      <div className="error">{message}</div>
+                    )}
+                    {demoButton}
+                  </div>
+                )
+              }
+
+              return (
+                <>
+                  {tab === 'sign-in' ?
+                    <LoginForm isOpen={isOpen} /> :
+                    <RegisterComponent isOpen={isOpen} />
+                  }
+                  <div className="login-modal__demo-entry">
+                    {demoButton}
+                  </div>
+                </>
+              )
+            }, [user, tab, isOpen, hasDemoKey, status, message, startDemo, navigate])}
           </div>
         </fieldset>
         <VersionInfo/>
