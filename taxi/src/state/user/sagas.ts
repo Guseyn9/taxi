@@ -359,6 +359,7 @@ function* initUserSaga() {
       if (['400', '403', '503'].includes(String(error?.code))) {
         clearDemoStorage()
         localStorage.removeItem('state.user.tokens')
+        yield put({ type: ActionTypes.LOGOUT_START })
       }
       yield put({
         type: ActionTypes.LOGIN_FAIL,
