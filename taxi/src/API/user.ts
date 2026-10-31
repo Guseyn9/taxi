@@ -1,5 +1,5 @@
 import axios from 'axios'
-import { IUser } from '../types/types'
+import { ITokens, IUser } from '../types/types'
 import { convertUser, reverseConvertUser } from '../tools/convert'
 import { addToFormData, apiMethod, IApiMethodArguments } from '../tools/api'
 import Config from '../config'
@@ -70,6 +70,26 @@ const _getAuthorizedUser = (
     })
 }
 export const getAuthorizedUser = apiMethod<typeof _getAuthorizedUser>(_getAuthorizedUser)
+
+/**
+ * Loads a profile using an explicit token pair without changing the active
+ * Redux credentials. DEMO needs to hydrate both leased roles before selecting
+ * which one is active in the UI.
+ */
+export const getAuthorizedUserWithTokens = (tokens: ITokens): Promise<IUser | null> => {
+  const formData = new FormData()
+  addToFormData(formData, {
+    token: tokens.token,
+    u_hash: tokens.u_hash,
+  })
+
+  return axios.post(`${Config.API_URL}/user/authorized`, formData)
+    .then(res => res.data?.data)
+    .then(res => {
+      const user = firstObjectValue<IUser>(res?.user)
+      return user ? convertUser(user) || null : null
+    })
+}
 
 type TEditUser = Partial<Pick<IUser, 'u_id' | 'token' | 'u_hash'>>
 export type TEditClient = TEditUser & Partial<Pick<IUser,
