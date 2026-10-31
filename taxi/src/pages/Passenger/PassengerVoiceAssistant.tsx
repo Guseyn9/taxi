@@ -133,7 +133,8 @@ function speechLanguage(languageIso?: string): string {
 }
 
 function includesAny(value: string, phrases: string[]): boolean {
-  return phrases.some(phrase => value.includes(phrase))
+  const normalized = ` ${value.replace(/[.,!?;:]/g, ' ').replace(/\\s+/g, ' ').trim()} `
+  return phrases.some(phrase => normalized.includes(` ${phrase} `))
 }
 
 function isCurrentLocationPhrase(text: string): boolean {
@@ -232,7 +233,7 @@ export const PassengerVoiceAssistant: React.FC<IProps> = ({
         const nextStep: VoiceStep = currentStep === 'pickup' ? 'destination' : 'confirmation'
         stepRef.current = nextStep
         await speak(nextStep === 'destination' ? currentCopy.destination : currentCopy.confirmation)
-      } catch (error) {
+      } catch {
         await speak(currentCopy.addressNotFound)
       }
       return
