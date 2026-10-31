@@ -263,7 +263,7 @@ const _startDemo = (
   clientKey?: string,
 ): Promise<IDemoStartResponse> => {
   addToFormData(formData, { client_key: clientKey })
-  return axios.post(`${Config.SERVER_URL}/demo/start`, formData)
+  return axios.post(`${Config.SERVER_URL}/demo/start/`, formData)
     .then(res => res.data)
 }
 
