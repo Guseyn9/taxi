@@ -228,14 +228,31 @@ function clearDemoStorage() {
   ].forEach(key => localStorage.removeItem(key))
 }
 
+function generateDemoClientKey(): string {
+  if (!window.crypto || !window.crypto.getRandomValues)
+    throw new Error(t(TRANSLATION.DEMO_SESSION_EXPIRED))
+
+  const bytes = new Uint8Array(32)
+  window.crypto.getRandomValues(bytes)
+  let key = ''
+  for (let i = 0; i < bytes.length; i++)
+    key += ('0' + bytes[i].toString(16)).slice(-2)
+  return key
+}
+
 function* loadDemoSession(clientKey?: string, role: TDemoRole = 'client') {
-  const response = yield* call(API.startDemo, clientKey)
+  const requestedKey = clientKey || localStorage.getItem('demo.client_key') || generateDemoClientKey()
+  // Persist before the network call so a lost response cannot allocate another
+  // account pair on the next attempt.
+  localStorage.setItem('demo.client_key', requestedKey)
+  const response = yield* call(API.startDemo, requestedKey)
   const session = response?.data?.session
   const clientKeyFromResponse = response?.data?.client_key
   const clientTokens = session?.client
   const driverTokens = session?.driver
 
-  if (response?.status !== 'success' || !session || !clientKeyFromResponse ||
+  if (response?.status !== 'success' || !session ||
+      clientKeyFromResponse !== requestedKey ||
       !clientTokens?.token || !clientTokens?.u_hash ||
       !driverTokens?.token || !driverTokens?.u_hash) {
     const error: any = new Error(
