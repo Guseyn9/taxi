@@ -7,6 +7,7 @@ import {setWorkerUrl, setWorkerCount} from 'maplibre-gl'
 import {Car, CarTaxiFront, ArrowUpRight, Menu, UserRound, MapPin, Clock3, UsersRound, SlidersHorizontal, Check, Phone, MessageCircle, ShieldCheck, Star, Navigation, Flag, Plus, Minus, Play, Pause, ChevronRight, X, Banknote, ArrowLeft} from 'lucide-react'
 import {Button} from '../../components/ui/button'
 import SmoothRotatingMarker from '../../components/SmoothRotatingMarker'
+import VehicleArtwork from '../../components/CarClassSlider/VehicleArtwork'
 import {createMapStyle, MAP_ATTRIBUTION} from '../maps/rsale-style'
 import {PASSENGER} from '../maps/markers/assets'
 import roads from './routes.json'
@@ -67,7 +68,7 @@ export default function Showcase(){
     {stage<2?<>
      <RouteFields filled={stage===1} onFill={()=>change(1)}/>
      <h2>Выберите машину</h2>
-     <div className="investor-car-options"><button className="is-selected" aria-pressed="true"><Car className="investor-car-art" size={64} strokeWidth={1.4}/><span>ПЕТИТ <Check size={18}/></span><small>По городу · до 3 мест</small></button><button onClick={()=>showNotice('В этом сценарии показана городская поездка ПЕТИТ')}><Car className="investor-car-art" size={64} strokeWidth={1.4}/><span>ГРАНД</span><small>Между городами</small></button></div>
+     <div className="investor-car-options"><button className="is-selected" aria-pressed="true"><VehicleArtwork className="investor-car-art" kind="petit" color={taxiColor({point:pickup})}/><span>ПЕТИТ <Check size={18}/></span><small>По городу · до 3 мест</small></button><button onClick={()=>showNotice('В этом сценарии показана городская поездка ПЕТИТ')}><VehicleArtwork className="investor-car-art" kind="grand" color={taxiColor({point:pickup,kind:'grand'})}/><span>ГРАНД</span><small>Между городами</small></button></div>
      <div className="investor-options"><span><Clock3 size={19}/> Сейчас</span><span><UsersRound size={19}/> 1</span><button onClick={()=>showNotice('Сценарий: один пассажир, наличные, без дополнительных остановок')}><SlidersHorizontal size={18}/> Параметры</button></div>
     </>:<>
      {stage===2?<div className="investor-search"><span className="investor-search-ring"><Navigation size={30}/></span><h2>Подбираем водителя</h2><p>Ваш маршрут отправлен.<br/>Как только водитель примет заказ,<br/>вы увидите его на карте.</p></div>:<>

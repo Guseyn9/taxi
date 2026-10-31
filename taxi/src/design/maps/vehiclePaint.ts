@@ -20,3 +20,10 @@ export function paintLiveryPixel(r:number,g:number,b:number,color:string,stripe?
  }
  return paintPixel(r,g,b,color)
 }
+
+/** Future class-specific body colour: retain the approved yellow/checker livery. */
+export function paintGrandPixel(r:number,g:number,b:number,color:string):[number,number,number]{
+ const hi=Math.max(r,g,b),lo=Math.min(r,g,b)
+ if(lo<150 || hi-lo>hi*.12)return [r,g,b]
+ return [1,3,5].map(i=>Math.round(parseInt(color.slice(i,i+2),16)*hi/255)) as [number,number,number]
+}

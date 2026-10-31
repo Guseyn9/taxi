@@ -1,0 +1,42 @@
+[
+  {
+    "kind": "petit",
+    "view": "side",
+    "prompt": "Use case: precise-object-edit / stylized 3D UI asset. Image 1 is the existing taxi icon to replace, used only for camera framing and general presentation; image 2 is the AUTHORITATIVE shape and livery reference. Rebuild image 1 into the vehicle described below using image 2. A small red five-door hatchback in the exact recognizable silhouette of the RED compact taxi in reference photo 2: short rear, moderately tall passenger cabin, sloping short hood, black unpainted lower bumper, black handles and mirrors, small conventional wheels. Plain vivid deep-red body, a small white circular taxi permit on front door (abstract, no lettering), small yellow taxi roof sign. REMOVE the orange side stripe from edit target 1. No orange side stripe. The rear is short: clearly compact, not a sedan or van. Style: clean simplified 3D product illustration for a mobile taxi app, slightly rounded forms, low detail, large readable color areas, soft studio lighting, no photoreal textures, no over-detailed grille or reflections. Keep recognizable real-world vehicle proportions. Camera: low front three-quarter SIDE view, nose points RIGHT, see mostly left side, both near wheels visible. Entire car centered and fully inside a wide 2:1 canvas with only 6% padding; vehicle fills about 88% canvas width. Transparent background and actual alpha; only a very subtle contact shadow. No road, people, labels, surrounding scene, logos or watermark. One vehicle only.",
+    "tool": "image_gen.imagegen",
+    "transparent_background": true,
+    "referencePhoto": "codex-clipboard-3f8f89d6-c38b-4d45-9b34-83b1aab124b0.png",
+    "output": "public/design-v2/vehicles/petit-agadir-side-v4.png",
+    "deliveryMaxDimension": 640
+  },
+  {
+    "kind": "petit",
+    "view": "top",
+    "prompt": "Use case: precise-object-edit, alternate orthographic camera view of an existing vehicle UI asset. Image 1 is the approved SIDE icon. Image 2 is the real vehicle/livery reference. Render the SAME vehicle as image 1, with the same body shape, recognizable proportions and livery, as a STRICT DIRECTLY OVERHEAD TOP VIEW for a moving taxi map marker. Front bumper / hood points straight UP (north at 12 o'clock); rear bumper is at bottom. No angle, no isometric perspective, not side view. A small red five-door hatchback in the exact recognizable silhouette of the RED compact taxi in reference photo 2: short rear, moderately tall passenger cabin, sloping short hood, black unpainted lower bumper, black handles and mirrors, small conventional wheels. Plain vivid deep-red body, a small white circular taxi permit on front door (abstract, no lettering), small yellow taxi roof sign. REMOVE the orange side stripe from edit target 1. No orange side stripe. The rear is short: clearly compact, not a sedan or van. Clearly see the hood, roof, windshield, rear window and black mirrors/tyres. Grand must preserve WHITE roof and YELLOW hood/front fenders and rear quarters with small black/yellow checkered strips along side edges; no blue. Petit plain RED, small yellow TAXI roof sign and short compact hatchback body. Simplified clean 3D icon style, gentle highlights, readable at 44px. Entire single vehicle fully contained within a square transparent canvas, including all mirrors; center it, car fills 88% height and about 48% width. Minimal soft contact shadow. True transparent alpha. No background, road, floor, people, text labels, watermark or extra objects.",
+    "tool": "image_gen.imagegen",
+    "transparent_background": true,
+    "referencePhoto": "codex-clipboard-3f8f89d6-c38b-4d45-9b34-83b1aab124b0.png",
+    "output": "public/design-v2/vehicles/petit-agadir-top-v4.png",
+    "deliveryMaxDimension": 192
+  },
+  {
+    "kind": "grand",
+    "view": "side",
+    "prompt": "Use case: precise-object-edit / stylized 3D UI asset. Image 1 is the existing taxi icon to replace, used only for camera framing and general presentation; image 2 is the AUTHORITATIVE shape and livery reference. Rebuild image 1 into the vehicle described below using image 2. A tall WHITE AND YELLOW taxi passenger van / compact high-roof MPV, matching the exact distinctive silhouette and livery in photo 2: short sloping hood, high nearly horizontal roof, tall rear passenger compartment, vertical squared rear, black roof rails, long sliding side door. White roof, white front and sliding doors, white central side panels. Vivid YELLOW front fender/hood corner and YELLOW rear quarter/wheel arch. A thin black-and-yellow checkerboard taxi band runs just below the side windows from front to rear. Black plastic front/rear bumpers and lower rub strip, grey conventional wheels. Small subtle white round permit on sliding door, no lettering. Not red, not cream with a blue stripe. The van must be visibly much taller and boxier than a Petit hatchback. Style: clean simplified 3D product illustration for a mobile taxi app, slightly rounded forms, low detail, large readable color areas, soft studio lighting, no photoreal textures, no over-detailed grille or reflections. Keep recognizable real-world vehicle proportions. Camera: low front three-quarter SIDE view, nose points RIGHT, see mostly left side, both near wheels visible. Entire car centered and fully inside a wide 2:1 canvas with only 6% padding; vehicle fills about 88% canvas width. Transparent background and actual alpha; only a very subtle contact shadow. No road, people, labels, surrounding scene, logos or watermark. One vehicle only.",
+    "tool": "image_gen.imagegen",
+    "transparent_background": true,
+    "referencePhoto": "codex-clipboard-6a058e57-ced3-4f9f-8eab-7be055322e08.png",
+    "output": "public/design-v2/vehicles/grand-agadir-side-v4.png",
+    "deliveryMaxDimension": 640
+  },
+  {
+    "kind": "grand",
+    "view": "top",
+    "prompt": "Use case: precise-object-edit, alternate orthographic camera view of an existing vehicle UI asset. Image 1 is the approved SIDE icon. Image 2 is the real vehicle/livery reference. Render the SAME vehicle as image 1, with the same body shape, recognizable proportions and livery, as a STRICT DIRECTLY OVERHEAD TOP VIEW for a moving taxi map marker. Front bumper / hood points straight UP (north at 12 o'clock); rear bumper is at bottom. No angle, no isometric perspective, not side view. A tall WHITE AND YELLOW taxi passenger van / compact high-roof MPV, matching the exact distinctive silhouette and livery in photo 2: short sloping hood, high nearly horizontal roof, tall rear passenger compartment, vertical squared rear, black roof rails, long sliding side door. White roof, white front and sliding doors, white central side panels. Vivid YELLOW front fender/hood corner and YELLOW rear quarter/wheel arch. A thin black-and-yellow checkerboard taxi band runs just below the side windows from front to rear. Black plastic front/rear bumpers and lower rub strip, grey conventional wheels. Small subtle white round permit on sliding door, no lettering. Not red, not cream with a blue stripe. The van must be visibly much taller and boxier than a Petit hatchback. Clearly see the hood, roof, windshield, rear window and black mirrors/tyres. Grand must preserve WHITE roof and YELLOW hood/front fenders and rear quarters with small black/yellow checkered strips along side edges; no blue. Petit plain RED, small yellow TAXI roof sign and short compact hatchback body. Simplified clean 3D icon style, gentle highlights, readable at 44px. Entire single vehicle fully contained within a square transparent canvas, including all mirrors; center it, car fills 88% height and about 48% width. Minimal soft contact shadow. True transparent alpha. No background, road, floor, people, text labels, watermark or extra objects.",
+    "tool": "image_gen.imagegen",
+    "transparent_background": true,
+    "referencePhoto": "codex-clipboard-6a058e57-ced3-4f9f-8eab-7be055322e08.png",
+    "output": "public/design-v2/vehicles/grand-agadir-top-v4.png",
+    "deliveryMaxDimension": 192
+  }
+]

@@ -71,7 +71,7 @@ export function CarClassSlider({ carClasses, carClass, locationClass, locationCl
             })}
           >
             <div className="car-class-slider__icon">
-              <VehicleArtwork kind={isPetitCarClass(cc) ? 'petit' : 'grand'} color={taxiColor({kind:isPetitCarClass(cc)?'petit':'grand',point:fromPoint?.latitude!==undefined&&fromPoint?.longitude!==undefined?[fromPoint.latitude,fromPoint.longitude]:null,palette:SITE_CONSTANTS.PALETTE?.primary?.main})}/>
+              <VehicleArtwork kind={isPetitCarClass(cc) ? 'petit' : 'grand'} color={taxiColor({kind:isPetitCarClass(cc)?'petit':'grand',point:fromPoint?.latitude!==undefined&&fromPoint?.longitude!==undefined?[fromPoint.latitude,fromPoint.longitude]:null,palette:fromPoint?.latitude!==undefined&&fromPoint?.longitude!==undefined?SITE_CONSTANTS.PALETTE?.primary?.main:undefined})}/>
             </div>
             <span className="car-class-slider__title">
               {t(TRANSLATION.CAR_CLASSES[cc.id]).replace(/petti/ig, 'PETIT')}
