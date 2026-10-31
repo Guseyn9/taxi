@@ -33,10 +33,6 @@ export const switchDemoRole = (payload: {
   return { type: ActionTypes.DEMO_SWITCH_ROLE_REQUEST, payload }
 }
 
-export const setTokens = (payload: IUserState['tokens']) => {
-  return { type: ActionTypes.SET_TOKENS, payload }
-}
-
 export const logout = () => {
   return { type: ActionTypes.LOGOUT_REQUEST }
 }
