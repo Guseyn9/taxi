@@ -1,0 +1,30 @@
+name: Anonymous DEMO frontend CI
+
+on:
+  push:
+    branches:
+      - feat/anonymous-demo-mode
+
+jobs:
+  typecheck-build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: taxi
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: taxi/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: TypeScript check
+        run: npx tsc --noEmit
+
+      - name: Production build
+        run: npm run build:nix
