@@ -35,13 +35,28 @@
  #root .passenger-voting-form[data-options-view=true] :is(.passenger-voting-form__time,.passenger-voting-form__comments){min-height:60px;padding:8px!important}
 }
 @media(max-width:359px){#root .passenger-voting-form[data-locked=false] .rs-options-toggle{font-size:0}#root .passenger-voting-form[data-locked=false] .rs-options-toggle svg{width:20px}}
-@media(min-width:600px) and (max-width:899px) and (max-height:500px){
- #root .passenger__form-container:has(.passenger-voting-form[data-locked=false]){top:8px!important;bottom:8px!important;left:auto!important;right:8px!important;width:calc(100vw - 220px)!important;height:calc(100% - 16px)!important;max-height:100%!important}
+@media(min-width:500px) and (max-width:1023px) and (max-height:500px){
+ #root .passenger{--landscape-form-width:clamp(300px,52vw,480px)}
+ #root .passenger:not(.taxi-map-fullscreen):not(.passenger--picking-location) .passenger__form-map-container{inset:0 auto 0 0!important;width:calc(100% - var(--landscape-form-width) - 24px)!important;height:100%!important}
+ #root .passenger__form-container:has(.passenger-voting-form[data-locked=false]){top:8px!important;bottom:8px!important;left:auto!important;right:8px!important;width:var(--landscape-form-width)!important;height:calc(100% - 16px)!important;max-height:100%!important}
  #root .passenger__form-container .passenger__draggable:has(.passenger-voting-form[data-locked=false]){max-height:100%!important;height:100%!important;padding:8px!important;overflow:hidden!important}
  #root .passenger-voting-form[data-locked=false]{height:100%;overflow:hidden!important;flex:1 1 auto!important}
  #root .passenger-voting-form[data-locked=false] .rs-ride-body{overflow-y:auto!important;flex:1 1 auto!important}
  #root .passenger-voting-form[data-locked=false] .rs-ride-heading{display:none!important}
  #root .passenger-sheet-handle{display:none!important}
+ #root .passenger-voting-form[data-locked=false][data-options-view=false]{gap:8px!important}
+ #root .passenger-voting-form[data-locked=false][data-options-view=false] .passenger-voting-form__group{display:flex!important;flex-direction:column;gap:4px}
+ #root .passenger-voting-form[data-locked=false][data-options-view=false] .passenger-voting-form__car-class{display:none!important}
+ #root .passenger-voting-form[data-locked=false][data-options-view=false] .rs-ride-body{flex:0 1 auto!important}
+ #root .passenger-voting-form[data-locked=false][data-options-view=false] .rs-ride-footer{margin-top:0!important;padding:0!important}
+ #root .passenger-voting-form[data-locked=false][data-options-view=false] .rs-options-toggle{min-height:44px;font-size:12px;gap:4px;padding:4px}
+ #root .passenger-voting-form[data-locked=false][data-options-view=false] .rs-trip-options-row{gap:4px;min-height:44px}
+ #root .passenger:not(.passenger--picking-location) .rs-map-center-actions{left:12px!important;right:auto!important;width:calc(100vw - var(--landscape-form-width) - 88px);max-width:280px}
+ #root .passenger .passenger-voice{left:12px!important;right:auto!important;max-width:calc(100vw - var(--landscape-form-width) - 32px)}
+ #root .passenger .passenger-voice__toggle{white-space:normal;text-align:start}
+}
+@media(min-width:500px) and (max-width:699px) and (max-height:500px){
+ #root .passenger-voting-form[data-locked=false][data-options-view=false] .rs-options-toggle{font-size:0;gap:0;min-width:44px}
 }
 
 #root .passenger-voting-form[data-locked=false] .short-info__item[data-info-kind=car]{display:flex!important}

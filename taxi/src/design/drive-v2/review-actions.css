@@ -37,4 +37,5 @@
 #root .passenger-voice__toggle svg{width:17px;height:17px;color:var(--drive-red)}
 #root .passenger-voice--active .passenger-voice__toggle{background:#fff0ed;border-color:var(--drive-red);color:var(--drive-red)}
 #root .passenger--picking-location .passenger-voice{display:none}
+#root .passenger:has([data-map-preview=active]) :is(.rs-map-center-actions,.passenger-voice){display:none!important}
 @media(max-width:899px){#root .passenger-voice{left:12px;right:auto;max-width:calc(100% - 76px)}}
