@@ -35,6 +35,7 @@ export {
   googleLogin,
   logout,
   startDemo,
+  demoHeartbeat,
 } from './auth'
 export {
   getUser,
