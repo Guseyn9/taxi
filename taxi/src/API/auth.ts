@@ -268,3 +268,13 @@ const _startDemo = (
 }
 
 export const startDemo = apiMethod<typeof _startDemo>(_startDemo, { authRequired: false })
+
+export const demoHeartbeat = (tokens: ITokens) => {
+  const formData = new FormData()
+  addToFormData(formData, {
+    token: tokens.token,
+    u_hash: tokens.u_hash,
+  })
+  return axios.post(`${Config.SERVER_URL}/demo/heartbeat/`, formData)
+    .then(res => res.data)
+}
