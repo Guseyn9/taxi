@@ -20,6 +20,23 @@ export const googleLogin = (payload: Parameters<typeof API.googleLogin>[0] & {
   return { type: ActionTypes.GOOGLE_LOGIN_REQUEST, payload }
 }
 
+export const startDemo = (payload: {
+  navigate: (location: string) => void
+}) => {
+  return { type: ActionTypes.DEMO_START_REQUEST, payload }
+}
+
+export const switchDemoRole = (payload: {
+  role: 'client' | 'driver',
+  navigate: (location: string) => void
+}) => {
+  return { type: ActionTypes.DEMO_SWITCH_ROLE_REQUEST, payload }
+}
+
+export const setTokens = (payload: IUserState['tokens']) => {
+  return { type: ActionTypes.SET_TOKENS, payload }
+}
+
 export const logout = () => {
   return { type: ActionTypes.LOGOUT_REQUEST }
 }
