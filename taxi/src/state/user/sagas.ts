@@ -231,10 +231,11 @@ function clearDemoStorage() {
 function* loadDemoSession(clientKey?: string, role: TDemoRole = 'client') {
   const response = yield* call(API.startDemo, clientKey)
   const session = response?.data?.session
+  const clientKeyFromResponse = response?.data?.client_key
   const clientTokens = session?.client
   const driverTokens = session?.driver
 
-  if (response?.status !== 'success' || !session ||
+  if (response?.status !== 'success' || !session || !clientKeyFromResponse ||
       !clientTokens?.token || !clientTokens?.u_hash ||
       !driverTokens?.token || !driverTokens?.u_hash) {
     const error: any = new Error(
@@ -246,7 +247,7 @@ function* loadDemoSession(clientKey?: string, role: TDemoRole = 'client') {
     throw error
   }
 
-  localStorage.setItem('demo.client_key', response.data.client_key)
+  localStorage.setItem('demo.client_key', clientKeyFromResponse)
   localStorage.setItem('demo.client.tokens', JSON.stringify(clientTokens))
   localStorage.setItem('demo.driver.tokens', JSON.stringify(driverTokens))
 
