@@ -43,6 +43,7 @@ type SpeechWindow = Window & {
  */
 export class BrowserVoiceChannel {
   private recognition: SpeechRecognitionLike | null = null
+  private cancelPending: (() => void) | null = null
 
   constructor(private readonly runtime: PlatformInterfaceRuntime) {}
 
@@ -71,8 +72,11 @@ export class BrowserVoiceChannel {
       let hasResult = false
       let dispatchPending = false
       let ended = false
+      let cancelCurrent: (() => void) | null = null
 
       const cleanup = () => {
+        if (cancelCurrent && this.cancelPending === cancelCurrent)
+          this.cancelPending = null
         if (this.recognition === recognition)
           this.recognition = null
         recognition.onresult = null
@@ -93,6 +97,8 @@ export class BrowserVoiceChannel {
         cleanup()
         reject(error)
       }
+      cancelCurrent = () => fail(new Error('VOICE_STOPPED'))
+      this.cancelPending = cancelCurrent
 
       recognition.onresult = event => {
         const result = event.results?.[event.resultIndex]?.[0]
@@ -159,6 +165,8 @@ export class BrowserVoiceChannel {
 
   stopRecognition(): void {
     const recognition = this.recognition
+    this.cancelPending?.()
+    this.cancelPending = null
     this.recognition = null
     if (recognition) {
       recognition.onresult = null
