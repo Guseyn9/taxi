@@ -1,0 +1,34 @@
+{
+  "at844": {
+    "width": 844,
+    "height": 390,
+    "mapWidth": 381.1171875,
+    "panelLeft": 397.125,
+    "panelWidth": 438.875,
+    "commandsBottom": 324,
+    "carSummaryVisible": true,
+    "overflow": false,
+    "fullscreenWidth": 844,
+    "escapeRestored": true
+  },
+  "at667": {
+    "width": 667,
+    "height": 375,
+    "mapWidth": 296.15625,
+    "panelLeft": 312.1640625,
+    "commandsBottom": 324,
+    "overflow": false
+  },
+  "at912": {
+    "commandsBottom": [
+      328,
+      328,
+      328
+    ],
+    "height": 412,
+    "mapWidth": 413.7578125,
+    "overflow": false,
+    "panelLeft": 429.765625,
+    "width": 912
+  }
+}

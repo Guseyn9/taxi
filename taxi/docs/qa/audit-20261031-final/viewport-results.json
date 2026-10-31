@@ -1,0 +1,161 @@
+{
+  "form": [
+    {
+      "actions": [
+        {
+          "bottom": 559,
+          "id": "passenger-order-mode-order",
+          "y": 471
+        },
+        {
+          "bottom": 559,
+          "id": "passenger-order-mode-vote",
+          "y": 471
+        },
+        {
+          "bottom": 559,
+          "id": "passenger-order-mode-offer",
+          "y": 471
+        }
+      ],
+      "height": 568,
+      "overflowX": false,
+      "overflowY": false,
+      "width": 320
+    },
+    {
+      "actions": [
+        {
+          "bottom": 631,
+          "id": "passenger-order-mode-order",
+          "y": 543
+        },
+        {
+          "bottom": 631,
+          "id": "passenger-order-mode-vote",
+          "y": 543
+        },
+        {
+          "bottom": 631,
+          "id": "passenger-order-mode-offer",
+          "y": 543
+        }
+      ],
+      "height": 640,
+      "overflowX": false,
+      "overflowY": false,
+      "width": 360
+    },
+    {
+      "actions": [
+        {
+          "bottom": 1007,
+          "id": "passenger-order-mode-order",
+          "y": 919
+        },
+        {
+          "bottom": 1007,
+          "id": "passenger-order-mode-vote",
+          "y": 919
+        },
+        {
+          "bottom": 1007,
+          "id": "passenger-order-mode-offer",
+          "y": 919
+        }
+      ],
+      "height": 1024,
+      "overflowX": false,
+      "overflowY": false,
+      "width": 768
+    },
+    {
+      "actions": [
+        {
+          "bottom": 373,
+          "id": "passenger-order-mode-order",
+          "y": 285
+        },
+        {
+          "bottom": 373,
+          "id": "passenger-order-mode-vote",
+          "y": 285
+        },
+        {
+          "bottom": 373,
+          "id": "passenger-order-mode-offer",
+          "y": 285
+        }
+      ],
+      "height": 390,
+      "overflowX": false,
+      "overflowY": false,
+      "width": 844
+    },
+    {
+      "actions": [
+        {
+          "bottom": 548,
+          "id": "passenger-order-mode-order",
+          "y": 460
+        },
+        {
+          "bottom": 548,
+          "id": "passenger-order-mode-vote",
+          "y": 460
+        },
+        {
+          "bottom": 548,
+          "id": "passenger-order-mode-offer",
+          "y": 460
+        }
+      ],
+      "height": 900,
+      "overflowX": false,
+      "overflowY": false,
+      "width": 1440
+    }
+  ],
+  "options": [
+    {
+      "bodyHeight": 336,
+      "bodyScroll": 569,
+      "doneBottom": 552,
+      "height": 568,
+      "overflowX": false,
+      "width": 320
+    },
+    {
+      "bodyHeight": 612,
+      "bodyScroll": 612,
+      "doneBottom": 828,
+      "height": 844,
+      "overflowX": false,
+      "width": 390
+    },
+    {
+      "bodyHeight": 792,
+      "bodyScroll": 792,
+      "doneBottom": 1008,
+      "height": 1024,
+      "overflowX": false,
+      "width": 768
+    },
+    {
+      "bodyHeight": 142,
+      "bodyScroll": 492,
+      "doneBottom": 358.015625,
+      "height": 390,
+      "overflowX": false,
+      "width": 844
+    },
+    {
+      "bodyHeight": 648,
+      "bodyScroll": 648,
+      "doneBottom": 872,
+      "height": 900,
+      "overflowX": false,
+      "width": 1440
+    }
+  ]
+}

@@ -9,7 +9,9 @@ const mapDist=path.join(path.dirname(require.resolve('maplibre-gl/package.json')
 for(const name of ['maplibre-gl-worker.mjs','maplibre-gl-shared.mjs'])fs.copyFileSync(path.join(mapDist,name),path.join('public/maps',name));
 run('scripts/build.js');
 execFileSync(process.execPath,['tools/build-cjm.cjs'],{cwd:root,env:{...env,QA_BUILD_MODE:'production',QA_OUTPUT_DIR:'build/qa'},stdio:'inherit'});
-fs.copyFileSync('docs/qa/Taxi_QA_3_scenarios.pdf','build/review/qa-report.pdf');
+fs.copyFileSync('docs/qa/Taxi_QA_3_scenarios.pdf','build/review/qa-report-20261030.pdf');
+fs.copyFileSync('docs/qa/audit-20261031-final/REPORT.pdf','build/review/qa-report.pdf');
+fs.cpSync('docs/qa/audit-20261031-final','build/review/final-20261031',{recursive:true});
 
 execFileSync(process.execPath,['tools/build-investor.cjs'],{cwd:root,env:{...env,INVESTOR_BUILD_MODE:'production',INVESTOR_OUTPUT_DIR:'build/investor'},stdio:'inherit'});
 
