@@ -269,12 +269,18 @@ const VotingForm = function VotingForm({
     setSubmitError(null)
 
     const {
+      allowedModes: currentAllowedModes,
+      locationClass: currentLocationClass,
       zonesReady: currentZonesReady,
       carClass,
       seats,
       pickupPrice: currentPickupPrice,
       customerPrice: currentCustomerPrice,
     } = readSubmissionState()
+    if (!currentAllowedModes.includes(mode)) {
+      setSubmitError(t('booking_ui_mode_unavailable',{fallback:journeyCopy(languageIso).unavailable}))
+      return
+    }
     const currentPickupPriceNumber = Number(currentPickupPrice ?? 0)
     const currentCustomerPriceNumber = Number(currentCustomerPrice ?? 0)
     const safePickupPrice = Number.isFinite(currentPickupPriceNumber) ?
@@ -377,7 +383,7 @@ const VotingForm = function VotingForm({
       b_passengers_count: seats,
       b_car_class: carClass,
       b_payment_way: EPaymentWays.Cash,
-      b_location_class: algorithmLocationClass ?? locationClass,
+      b_location_class: currentLocationClass ?? effectiveLocationClassId,
       b_max_waiting: isVoting ? getChoiceWaitingIntervalSeconds() : 7200,
       b_options: {
         fromShortAddress: submitFrom?.shortAddress || orderFromAddress,
@@ -1280,8 +1286,9 @@ const VotingForm = function VotingForm({
     }
   }, [phone, setPhone])
 
-  const effectiveMode = selectedMode ?? (preferOfferMode ? 'offer' : 'order')
-  const submitButtons = <RideRequestActions mode={effectiveMode} iso={languageIso}
+  const allowedModes = orderFormLayout.orderModeResolution.allowedModes
+  const effectiveMode = selectedMode && allowedModes.includes(selectedMode) ? selectedMode : (preferOfferMode ? 'offer' : 'order')
+  const submitButtons = <RideRequestActions mode={effectiveMode} iso={languageIso} allowedModes={allowedModes}
     submitDisabled={!zonesReady}
     disabled={!available} pending={submitting} error={submitError}
     priceField={<div ref={priceInputRef} className="rs-request-price">

@@ -98,6 +98,8 @@ export const passengerLiveOrderConnector = connect(
 export type PassengerLiveOrderStoreProps = ConnectedProps<typeof passengerLiveOrderConnector>
 
 export interface PassengerOrderSubmissionState {
+  readonly allowedModes: readonly ('order'|'vote'|'offer')[]
+  readonly locationClass: string | number | null
   readonly zonesReady: boolean
   readonly carClass: ReturnType<typeof clientOrderSelectors.carClass>
   readonly seats: ReturnType<typeof clientOrderSelectors.seats>
@@ -111,6 +113,8 @@ export function usePassengerOrderSubmissionReader(): () => PassengerOrderSubmiss
   return () => {
     const state = store.getState()
     return {
+      allowedModes: clientOrderSelectors.orderFormLayout(state).orderModeResolution.allowedModes,
+      locationClass: clientOrderSelectors.orderFormLayout(state).routeFacts.effectiveLocationClass,
       zonesReady: clientOrderSelectors.zonesReady(state),
       carClass: clientOrderSelectors.carClass(state),
       seats: clientOrderSelectors.seats(state),
