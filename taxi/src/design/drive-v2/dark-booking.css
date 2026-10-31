@@ -1,24 +1,24 @@
 /* Booking sheet inversion: dark shell, light controls. Geometry is unchanged. */
-#root .passenger__draggable:has(.passenger-voting-form[data-locked=false]) {background:#101010!important;border-color:#242424!important}
+#root .passenger__draggable:has(.passenger-voting-form[data-locked=false]) {background:var(--drive-dark-surface)!important;border-color:var(--drive-wine)!important}
 #root .passenger-voting-form[data-locked=false] {color:#fff}
 #root .passenger-voting-form[data-locked=false] :is(.rs-ride-heading>div,.passenger-voting-form__car-class-title,.rs-options-toggle,.ride-service-help-button) {color:#fff!important}
-#root .passenger-voting-form[data-locked=false] :is(.short-info,.short-info__item,.rs-trip-options-row) {color:#c8c8c8}
-#root .passenger-voting-form[data-locked=false] .passenger-voting-form__location-wrapper {background:#fff!important;border:1px solid #e7e7e7!important}
+#root .passenger-voting-form[data-locked=false] :is(.short-info,.short-info__item,.rs-trip-options-row) {color:var(--drive-on-wine-muted)}
+#root .passenger-voting-form[data-locked=false] .passenger-voting-form__location-wrapper {background:var(--drive-white)!important;border:1px solid #e7e7e7!important}
 #root .passenger-voting-form[data-locked=false] .passenger-voting-form__location-wrapper :is(.input__field-wrapper,.input__wrapper,.rs-address-input,.input) {background:transparent!important;color:#171717!important;border-color:#e4e4e4!important;caret-color:var(--drive-red,#b51218)}
 #root .passenger-voting-form[data-locked=false] .passenger-voting-form__location-wrapper :is(.input__label,label,.rs-address-source>summary) {color:#656565!important}
 #root .passenger-voting-form[data-locked=false] .passenger-voting-form__location-wrapper input::placeholder {color:#555!important;opacity:1}
-#root .passenger-voting-form[data-locked=false] .passenger-voting-form__location-wrapper .rs-map-pick-button {background:#fff0ed!important;color:var(--drive-red,#b51218)!important;border:1px solid #efd8d5!important}
+#root .passenger-voting-form[data-locked=false] .passenger-voting-form__location-wrapper .rs-map-pick-button {background:var(--drive-soft)!important;color:var(--drive-red,#b51218)!important;border:1px solid #efd8d5!important}
 #root .passenger-voting-form[data-locked=false] .passenger-voting-form__location-wrapper .input__field-wrapper+.input__field-wrapper {border-color:#e4e4e4!important}
-#root .passenger-voting-form[data-locked=false] :is(.car-class-slider__slide,.rs-request-mode) {background:#fff!important;color:#171717!important}
-#root .passenger-voting-form[data-locked=false] :is(.car-class-slider__slide--active,.rs-request-mode--selected,.rs-request-mode[aria-checked=true],.rs-request-mode[aria-pressed=true]) {background:#fff0ed!important;color:#a90000!important}
+#root .passenger-voting-form[data-locked=false] :is(.car-class-slider__slide,.rs-request-mode) {background:var(--drive-white)!important;color:#171717!important}
+#root .passenger-voting-form[data-locked=false] :is(.car-class-slider__slide--active,.rs-request-mode--selected,.rs-request-mode[aria-checked=true],.rs-request-mode[aria-pressed=true]) {background:var(--drive-soft)!important;color:var(--drive-red)!important}
 #root .passenger-voting-form[data-locked=false] .car-class-slider__value {color:#656565!important}
 #root .passenger-voting-form[data-locked=false] .rs-request-context {color:#171717}
 #root .passenger-voting-form[data-locked=false] .rs-request-hint {color:#656565!important}
 #root .passenger-voting-form[data-locked=false] .rs-request-submit {background:var(--drive-red,#b51218)!important;color:#fff!important}
 #root .passenger-voting-form[data-locked=false] .rs-request-submit:disabled {opacity:.55}
-#root .passenger__draggable:has(.passenger-voting-form[data-locked=false]) .passenger__swipe-line {background:#686868}
-#root .passenger-voting-form[data-locked=false] .short-info__text {color:#c8c8c8!important}
+#root .passenger__draggable:has(.passenger-voting-form[data-locked=false]) .passenger__swipe-line {background:var(--drive-wine-line)}
+#root .passenger-voting-form[data-locked=false] .short-info__text {color:var(--drive-on-wine-muted)!important}
 #root .passenger-voting-form[data-locked=false] .short-info__icon {filter:brightness(0) invert(1);opacity:.8}
-#root .passenger-voting-form[data-locked=false] .short-info__line {background:#555;border-color:#555}
-#root .passenger-voting-form[data-locked=false] .rs-request-submit:disabled {background:#713136!important;color:#dabfc1!important;opacity:1}
-#root .passenger-voting-form[data-locked=false] .rs-phone-field .input__label {color:#c8c8c8!important}
+#root .passenger-voting-form[data-locked=false] .short-info__line {background:var(--drive-wine-line);border-color:var(--drive-wine-line)}
+#root .passenger-voting-form[data-locked=false] .rs-request-submit:disabled {background:var(--drive-disabled)!important;color:var(--drive-disabled-text)!important;opacity:1}
+#root .passenger-voting-form[data-locked=false] .rs-phone-field .input__label {color:var(--drive-on-wine-muted)!important}

@@ -12,6 +12,7 @@ execFileSync(process.execPath,['tools/build-cjm.cjs'],{cwd:root,env:{...env,QA_B
 fs.copyFileSync('docs/qa/Taxi_QA_3_scenarios.pdf','build/review/qa-report-20261030.pdf');
 fs.copyFileSync('docs/qa/audit-20261031-final/REPORT.pdf','build/review/qa-report.pdf');
 fs.cpSync('docs/qa/audit-20261031-final','build/review/final-20261031',{recursive:true});
+fs.cpSync('docs/qa/palette-1-20261031','build/review/palette-1-20261031',{recursive:true});
 
 execFileSync(process.execPath,['tools/build-investor.cjs'],{cwd:root,env:{...env,INVESTOR_BUILD_MODE:'production',INVESTOR_OUTPUT_DIR:'build/investor'},stdio:'inherit'});
 

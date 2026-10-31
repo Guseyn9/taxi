@@ -1,18 +1,18 @@
 /* Shared interaction palette. Red = chosen/action; ginger = focus/accent. */
-:root {--taxi-red:var(--drive-red,#b51218);--taxi-red-hover:color-mix(in srgb,var(--drive-red,#b51218),black 20%);--taxi-ginger:var(--drive-orange,#e87516);--taxi-ink:#101010;--taxi-soft:#fff0ed;--taxi-line:#e4e4e4}
+:root {--taxi-red:var(--drive-red,#b51218);--taxi-red-hover:color-mix(in srgb,var(--drive-red,#b51218),black 20%);--taxi-ginger:var(--drive-orange,#e87516);--taxi-ink:#101010;--taxi-soft:var(--drive-soft);--taxi-line:#e4e4e4}
 #root .passenger-voting-form[data-locked=false] .rs-request-modes {
- padding:4px;gap:4px;background:#222;border:1px solid #3b3b3b;border-radius:16px;
+ padding:4px;gap:4px;background:var(--drive-wine-raised);border:1px solid var(--drive-wine-line);border-radius:16px;
 }
 #root .passenger-voting-form[data-locked=false] .rs-request-mode {
  min-width:0;background:transparent!important;color:#e9e9e9!important;border:0!important;border-radius:11px;
 }
-#root .passenger-voting-form[data-locked=false] .rs-request-mode:hover {background:#333!important}
+#root .passenger-voting-form[data-locked=false] .rs-request-mode:hover {background:var(--drive-wine-hover)!important}
 #root .passenger-voting-form[data-locked=false] .rs-request-mode--selected {
  background:var(--taxi-red)!important;color:#fff!important;box-shadow:0 1px 3px #0003;
 }
 #root .passenger-voting-form[data-locked=false] .rs-request-mode:has(input:focus-visible) {outline:2px solid var(--taxi-ginger);outline-offset:1px}
-#root .passenger-voting-form[data-locked=false] .rs-request-context:has(.rs-request-hint:not(.sr-only)) {background:#1e1e1e;border:1px solid #303030;border-radius:14px}
-#root .passenger-voting-form[data-locked=false] .rs-request-hint:not(.sr-only) {color:#c8c8c8!important;background:transparent!important}
+#root .passenger-voting-form[data-locked=false] .rs-request-context:has(.rs-request-hint:not(.sr-only)) {background:var(--drive-wine-deep);border:1px solid var(--drive-wine-line);border-radius:14px}
+#root .passenger-voting-form[data-locked=false] .rs-request-hint:not(.sr-only) {color:var(--drive-on-wine-muted)!important;background:transparent!important}
 #root .car-class-slider__icon:has(img) {background:none!important}
 /* The picker uses the page's remaining height, not a second full viewport under the header. */
 #root .layout {height:var(--taxi-viewport-height,100dvh)!important;min-height:0}
@@ -109,7 +109,7 @@ body button:focus-visible,body [role=button]:focus-visible,body a:focus-visible 
 .locked-route-summary>summary>svg{flex:none;color:var(--drive-red)}
 .locked-route-summary>summary>small{min-width:0;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px;font-weight:500;color:var(--drive-muted)}
 .locked-route-summary[open]>summary>svg:last-child{transform:rotate(180deg)}
-.locked-route-summary__details{border-top:1px solid var(--drive-line);padding:8px;background:#101010;color:#fff;border-radius:0 0 12px 12px}
+.locked-route-summary__details{border-top:1px solid var(--drive-line);padding:8px;background:var(--drive-wine);color:var(--drive-on-wine);border-radius:0 0 12px 12px}
 @media(max-width:899px) and (min-height:501px){
  #root .passenger__form-container:has(.passenger-voting-form[data-locked=true]){top:auto!important;bottom:0!important;height:auto!important;max-height:44dvh!important;gap:0!important}
  #root .passenger__draggable:has(.passenger-voting-form[data-locked=true]){display:flex;flex-direction:column;height:auto!important;max-height:44dvh!important;min-height:0;padding:8px 12px max(8px,env(safe-area-inset-bottom))!important;overflow:hidden!important;background:#fff!important}

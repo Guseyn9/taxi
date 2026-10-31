@@ -20,6 +20,7 @@ import '../design/drive-v2/control-layout.css'
 import '../design/drive-v2/journey-layout.css'
 import '../design/drive-v2/booking-fit.css'
 import '../design/drive-v2/auth-layout.css'
+import '../design/drive-v2/dark-booking.css'
 import '../design/trip3d/trip3d.css'
 import '../pages/Driver/styles.scss'
 /** Separate, read-only QA entry. No App/bootstrap, network commands or real orders. */
