@@ -1,0 +1,18 @@
+First open
+Источник: network
+Узлов: 69892
+В worker: 258.9 ms
+JSON: 15.1 ms
+Построение: 83.9 ms
+Подключение в UI: 0.2 ms
+Кеш сохранён: true
+
+After reload
+Источник: indexeddb
+Узлов: 69892
+В worker: 16.4 ms
+JSON: 0.0 ms
+Построение: 0.0 ms
+Подключение в UI: 0.1 ms
+Кеш сохранён: true
+

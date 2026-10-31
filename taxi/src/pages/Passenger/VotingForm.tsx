@@ -1547,6 +1547,8 @@ const VotingForm = function VotingForm({
                   // из перевода и зависит от языка.
                   data-testid="passenger-voting-candidate"
                   data-driver-id={candidate.u_id}
+                >
+                <button
                   onClick={() => setActiveCandidate(prev => prev === candidate.u_id ? null : candidate.u_id)}
                   onPointerDown={() => setHeldCandidate(candidate.u_id)}
                   onPointerUp={() => setHeldCandidate(null)}
@@ -1558,16 +1560,10 @@ const VotingForm = function VotingForm({
                   onTouchStart={() => setHeldCandidate(candidate.u_id)}
                   onTouchEnd={() => setHeldCandidate(null)}
                   onTouchCancel={() => setHeldCandidate(null)}
-                  role="button"
                   aria-expanded={isExpandedCandidate}
-                  tabIndex={0}
-                  onKeyDown={event => {
-                    if (event.target !== event.currentTarget) return
-                    if (event.key === 'Enter' || event.key === ' ') {
-                      event.preventDefault()
-                      setActiveCandidate(prev => prev === candidate.u_id ? null : candidate.u_id)
-                    }
-                  }}
+                  type="button"
+                  className="passenger-voting-form__candidate-profile"
+                  aria-label={`${serviceCopy(languageIso).details}: ${getDriverName(candidate,candidateUser)}`}
                 >
                   <img
                     src={getAvatarSrc(candidateUser, candidate)}
@@ -1600,6 +1596,7 @@ const VotingForm = function VotingForm({
                       </>
                     )}
                   </span>
+                </button>
                   <span className="passenger-voting-form__candidate-side">
                     {sideValue ? (
                       <span
@@ -1785,6 +1782,7 @@ const VotingForm = function VotingForm({
       {!locked && optionsView && <div className="rs-booking-preferences">
         <BoundaryButtons />
         <CarClassSlider />
+        <button type="button" className="rs-classes-explainer" onClick={()=>setServiceHelpOpen(true)}>{serviceCopy(languageIso).classes}</button>
       </div>}
       {!locked && optionsView && <div className="passenger-voting-form__seats-and-time">
         <div className="passenger-voting-form__seats">

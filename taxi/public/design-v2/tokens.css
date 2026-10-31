@@ -1,9 +1,9 @@
-/* Drive v2. Manrope + five primitive brand colours. */
+/* Drive v2. Manrope + red, charcoal and ginger. */
 :root {
- --drive-purple:#5b2dda; --drive-lilac:#ede6ff; --drive-orange:#ff8534; --drive-black:#101010; --drive-white:#fff;
- --drive-muted:#64616b; --drive-line:#e6e3eb; --drive-canvas:#f8f7fa;
+ --drive-red:#b51218; --drive-soft:#fff0ed; --drive-orange:#e87516; --drive-black:#101010; --drive-white:#fff;
+ --drive-muted:#656565; --drive-line:#e7e7e7; --drive-canvas:#f8f8f8;
  --drive-space:4px; --drive-control:52px; --drive-radius:18px; --drive-sheet-radius:28px;
- --rs-primary:var(--drive-purple); --rs-primary-hover:#4820b4; --rs-selected:var(--drive-lilac); --rs-orange:var(--drive-orange);
+ --rs-primary:var(--drive-red); --rs-primary-hover:color-mix(in srgb,var(--drive-red),black 20%); --rs-selected:var(--drive-soft); --rs-orange:var(--drive-orange);
  --rs-ink:var(--drive-black); --rs-muted:var(--drive-muted); --rs-line:var(--drive-line); --rs-canvas:var(--drive-canvas);
- --primary:256 70% 52%; --accent:260 100% 95%; --ring:256 70% 52%; --radius:18px;
+ --primary:358 82% 39%; --accent:12 100% 96%; --ring:358 82% 39%; --radius:18px;
 }
