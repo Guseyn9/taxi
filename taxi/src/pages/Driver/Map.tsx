@@ -1,3 +1,4 @@
+import {getCandidateCarClassKind} from '../../components/CarClassBadge'
 import {taxiColor,taxiPicture} from '../../design/maps/taxiPalette'
 import {useLiveEstimatedOrders} from '../../tools/liveOrderProfit'
 import {driverPickupStage,performPickupStage,useDriverDepartures,driverJourneyCopy} from '../../tools/driverPickupJourney'
@@ -2901,7 +2902,7 @@ function DriverOrderMapModeContent({
         currentPosition && (
           <SmoothRotatingMarker
             position={currentPosition}
-            iconUrl={taxiPicture(taxiColor({point:routeOrder?.b_start_latitude!=null && routeOrder?.b_start_longitude!=null ? [Number(routeOrder.b_start_latitude),Number(routeOrder.b_start_longitude)] : currentPosition}))}
+            iconUrl={taxiPicture(taxiColor({kind:getCandidateCarClassKind(driverCar,routeOrder),point:routeOrder?.b_start_latitude!=null && routeOrder?.b_start_longitude!=null ? [Number(routeOrder.b_start_latitude),Number(routeOrder.b_start_longitude)] : currentPosition}),'top',getCandidateCarClassKind(driverCar,routeOrder))}
             className="driver-arrow-divicon smooth-rotating-marker rs-taxi-marker"
             iconAnchor={[20, 20]}
             popupAnchor={[0, -22]}
