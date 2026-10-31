@@ -126,25 +126,37 @@ function speechLanguage(languageIso?: string): string {
   } as Record<string, string>)[key]
 }
 
+function includesAny(value: string, phrases: string[]): boolean {
+  return phrases.some(phrase => value.includes(phrase))
+}
+
 function isCurrentLocationPhrase(text: string): boolean {
-  const value = text.toLocaleLowerCase()
-  return /\b(отсюда|здесь|тут|с моего местоположения|с текущего местоположения)\b/u.test(value) ||
-    /\b(ici|depuis ma position|à ma position actuelle)\b/u.test(value) ||
-    /\b(here|from here|my current location)\b/u.test(value) ||
-    /\b(aquí|desde aquí|mi ubicación actual)\b/u.test(value) ||
-    /(من هنا|هنا|موقعي الحالي)/u.test(value)
+  const value = text.toLocaleLowerCase().trim()
+  return includesAny(value, [
+    'отсюда', 'здесь', 'тут', 'с моего местоположения', 'с текущего местоположения',
+    'ici', 'depuis ma position', 'à ma position actuelle',
+    'here', 'from here', 'my current location',
+    'aquí', 'desde aquí', 'mi ubicación actual',
+    'من هنا', 'هنا', 'موقعي الحالي',
+  ])
 }
 
 function isConfirmation(text: string): boolean {
   const value = text.toLocaleLowerCase().trim()
-  return /\b(да|подтверждаю|заказать|верно|давай|oui|confirmer|yes|confirm|order|sí|confirmar)\b/u.test(value) ||
-    /(نعم|أؤكد|اطلب)/u.test(value)
+  return includesAny(value, [
+    'да', 'подтверждаю', 'заказать', 'верно', 'давай',
+    'oui', 'confirmer', 'yes', 'confirm', 'order', 'sí', 'confirmar',
+    'نعم', 'أؤكد', 'اطلب',
+  ])
 }
 
 function isRejection(text: string): boolean {
   const value = text.toLocaleLowerCase().trim()
-  return /\b(нет|не надо|отмена|отбой|non|annuler|no|cancel)\b/u.test(value) ||
-    /(لا|إلغاء)/u.test(value)
+  return includesAny(value, [
+    'нет', 'не надо', 'отмена', 'отбой',
+    'non', 'annuler', 'no', 'cancel',
+    'لا', 'إلغاء',
+  ])
 }
 
 const normalizePoint = async (
