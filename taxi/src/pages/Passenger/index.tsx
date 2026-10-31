@@ -875,11 +875,15 @@ function Passenger({
             })}
             forceFreeMode={passengerUiFsmEnabled ? passengerUiConfig.mapMode === 'draft' : isCreatingAnotherOrder}
             setCenter={setMapCenter}
-            showDraftCenterMarker={Boolean(mapPicker)}
+            showDraftCenterMarker={!selectedOrder}
           />
         , [setMapCenter, selectedOrder?.b_id, showLiveOrderPanel, isCreatingAnotherOrder, passengerUiFsmEnabled, passengerUiConfig.mapMode, languageIso, mapPicker])}
 
         <div className="passenger__form-placeholder" />
+        {!selectedOrder && !waitingForSubmittedOrder && !mapPicker && <div className="rs-map-center-actions" aria-label={copy.map}>
+          <UiButton type="button" variant="outline" onClick={setFromAsMapCenter} data-testid="map-center-from">{t(TRANSLATION.FROM)}</UiButton>
+          <UiButton type="button" variant="outline" onClick={setToAsMapCenter} data-testid="map-center-to">{t(TRANSLATION.TO)}</UiButton>
+        </div>}
 
         {mapPicker && <section className="rs-location-picker" aria-label={mapPicker==='from'?copy.mapPickup:copy.mapDestination}>
           <div className="rs-location-picker__heading"><UiButton type="button" variant="ghost" size="icon" aria-label={copy.back} onClick={()=>setMapPicker(null)}><ArrowLeft aria-hidden="true"/></UiButton><h2>{mapPicker==='from'?copy.mapPickup:copy.mapDestination}</h2></div>
