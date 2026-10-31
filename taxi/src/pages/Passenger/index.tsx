@@ -26,7 +26,7 @@ import { usePassengerSurface } from '../../platform/platform-interface'
 import { journeyCopy } from '../../design/journeyCopy'
 import { tripToRestore,rememberedTrip,rememberTrip } from '../../design/restoreTrip'
 import { Button as UiButton } from '../../components/ui/button'
-import { ArrowLeft,MapPin } from 'lucide-react'
+import { ArrowLeft,MapPin,Crosshair,Flag } from 'lucide-react'
 import PassengerVoiceAssistant from './PassengerVoiceAssistant'
 
 function getReverseGeocodeText(response: any) {
@@ -895,13 +895,14 @@ function Passenger({
             forceFreeMode={passengerUiFsmEnabled ? passengerUiConfig.mapMode === 'draft' : isCreatingAnotherOrder}
             setCenter={setMapCenter}
             showDraftCenterMarker={!selectedOrder}
+            onPickLocation={!selectedOrder?pickFrom:undefined}
           />
         , [setMapCenter, selectedOrder?.b_id, showLiveOrderPanel, isCreatingAnotherOrder, passengerUiFsmEnabled, passengerUiConfig.mapMode, languageIso, mapPicker])}
 
         <div className="passenger__form-placeholder" />
         {!selectedOrder && !waitingForSubmittedOrder && !mapPicker && <div className="rs-map-center-actions" aria-label={copy.map}>
-          <UiButton type="button" variant="outline" onClick={setFromAsMapCenter} data-testid="map-center-from">{t(TRANSLATION.FROM)}</UiButton>
-          <UiButton type="button" variant="outline" onClick={setToAsMapCenter} data-testid="map-center-to">{t(TRANSLATION.TO)}</UiButton>
+          <UiButton type="button" variant="outline" onClick={setFromAsMapCenter} data-testid="map-center-from"><Crosshair size={17} aria-hidden="true"/>{t(TRANSLATION.FROM)}</UiButton>
+          <UiButton type="button" variant="outline" onClick={setToAsMapCenter} data-testid="map-center-to"><Flag size={17} aria-hidden="true"/>{t(TRANSLATION.TO)}</UiButton>
         </div>}
 
         {mapPicker && <section className="rs-location-picker" aria-label={mapPicker==='from'?copy.mapPickup:copy.mapDestination}>
