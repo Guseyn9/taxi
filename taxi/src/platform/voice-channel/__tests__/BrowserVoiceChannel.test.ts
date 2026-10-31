@@ -1,7 +1,6 @@
 import { BrowserVoiceChannel, VOICE_TRANSCRIPT_RECEIVED } from '../BrowserVoiceChannel'
 
 class MockSpeechRecognition {
-  static instance: MockSpeechRecognition
   lang = ''
   interimResults = false
   maxAlternatives = 1
@@ -10,10 +9,6 @@ class MockSpeechRecognition {
   onerror: ((event: any) => void) | null = null
   onend: (() => void) | null = null
   autoResult: string | null = 'Отсюда'
-
-  constructor() {
-    MockSpeechRecognition.instance = this
-  }
 
   start() {
     if (this.autoResult) {
