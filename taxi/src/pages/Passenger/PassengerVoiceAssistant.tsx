@@ -20,6 +20,7 @@ interface IVoiceCopy {
   start: string
   stop: string
   ready: string
+  submitting: string
   pickup: string
   destination: string
   confirmation: string
@@ -37,6 +38,7 @@ const VOICE_COPY: Record<string, IVoiceCopy> = {
     start: 'Заказать голосом',
     stop: 'Остановить',
     ready: 'Голосовой заказ готов',
+    submitting: 'Оформляю заказ.',
     pickup: 'Назовите адрес подачи или скажите «отсюда».',
     destination: 'Куда вас отвезти? Назовите адрес назначения.',
     confirmation: 'Проверьте точки подачи и назначения на карте. Если всё верно, скажите «подтверждаю».',
@@ -52,6 +54,7 @@ const VOICE_COPY: Record<string, IVoiceCopy> = {
     start: 'Commander à la voix',
     stop: 'Arrêter',
     ready: 'Commande vocale prête',
+    submitting: 'J’envoie votre commande.',
     pickup: 'Indiquez le lieu de prise en charge ou dites « ici ».',
     destination: 'Quelle est votre destination ?',
     confirmation: 'Vérifiez les deux points sur la carte. Si tout est correct, dites « confirmer ».',
@@ -67,6 +70,7 @@ const VOICE_COPY: Record<string, IVoiceCopy> = {
     start: 'اطلب بالصوت',
     stop: 'إيقاف',
     ready: 'الطلب الصوتي جاهز',
+    submitting: 'جارٍ إرسال طلبك.',
     pickup: 'اذكر مكان الانطلاق أو قل «من هنا».',
     destination: 'إلى أين تريد الذهاب؟ اذكر الوجهة.',
     confirmation: 'تحقق من نقطتي الانطلاق والوصول على الخريطة. إذا كان كل شيء صحيحاً، قل «أؤكد».',
@@ -82,6 +86,7 @@ const VOICE_COPY: Record<string, IVoiceCopy> = {
     start: 'Order by voice',
     stop: 'Stop',
     ready: 'Voice ordering is ready',
+    submitting: 'Submitting your order.',
     pickup: 'Say the pickup address, or say “from here”.',
     destination: 'Where would you like to go?',
     confirmation: 'Check the pickup and destination on the map. If correct, say “confirm”.',
@@ -97,6 +102,7 @@ const VOICE_COPY: Record<string, IVoiceCopy> = {
     start: 'Pedir por voz',
     stop: 'Detener',
     ready: 'El pedido por voz está listo',
+    submitting: 'Enviando tu pedido.',
     pickup: 'Di la dirección de recogida o di «aquí».',
     destination: '¿A dónde quieres ir?',
     confirmation: 'Comprueba los puntos en el mapa. Si todo está correcto, di «confirmar».',
@@ -251,7 +257,7 @@ export const PassengerVoiceAssistant: React.FC<IProps> = ({
 
       stepRef.current = 'submitting'
       setStep('submitting')
-      await speak(currentCopy.ready)
+      await speak(currentCopy.submitting)
       const submitted = await propsRef.current.onSubmitOrder()
       if (submitted) {
         activeRef.current = false
