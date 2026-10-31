@@ -76,7 +76,7 @@ interface IProps {
 
 export default function CarClassBadge({ kind, className, compact, point }: IProps) {
   const label = kind === 'grand' ? 'GRAND' : 'PETIT'
-  const color=taxiColor({point})
+  const color=taxiColor({point,kind,palette:SITE_CONSTANTS.PALETTE?.primary?.main})
 
   return (
     <span className={cn('car-class-badge', `car-class-badge--${kind}`, { 'car-class-badge--compact': compact }, className)} aria-label={label}>

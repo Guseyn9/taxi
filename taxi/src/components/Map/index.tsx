@@ -1,3 +1,4 @@
+import {getRequiredCarClassKind} from '../CarClassBadge'
 import {visibleMapPoint} from '../../design/maps/mapCenter'
 import {createPortal} from 'react-dom'
 import {bookingFramePoints} from '../../design/maps/bookingFrame'
@@ -2466,7 +2467,7 @@ function MapContent({
             )}
             <SmoothRotatingMarker
               position={driverPosition}
-              iconUrl={taxiPicture(taxiColor({point:Number.isFinite(selectedStartLat) && Number.isFinite(selectedStartLng) ? [selectedStartLat,selectedStartLng] : driverPosition,palette:DEFAULT_TAXI_COLOR}))}
+              iconUrl={taxiPicture(taxiColor({kind:getRequiredCarClassKind(selectedActiveOrder),point:Number.isFinite(selectedStartLat) && Number.isFinite(selectedStartLng) ? [selectedStartLat,selectedStartLng] : driverPosition,palette:DEFAULT_TAXI_COLOR}),'top',getRequiredCarClassKind(selectedActiveOrder))}
               className="client-driver-marker smooth-rotating-marker rs-taxi-marker"
               iconAnchor={[20, 20]}
               popupAnchor={[0, -22]}

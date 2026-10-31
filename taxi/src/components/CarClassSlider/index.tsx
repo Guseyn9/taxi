@@ -1,4 +1,5 @@
-import {useTaxiColor} from '../../design/maps/useTaxiColor'
+import {taxiColor} from '../../design/maps/taxiPalette'
+import SITE_CONSTANTS from '../../siteConstants'
 import VehicleArtwork from './VehicleArtwork'
 import { Check } from 'lucide-react'
 import React, { useRef, useMemo, useEffect } from 'react'
@@ -32,7 +33,6 @@ interface IProps extends ConnectedProps<typeof connector> {}
 
 export function CarClassSlider({ carClasses, carClass, locationClass, locationClasses, setCarClass, fromPoint }: IProps) {
 
-  const vehicleColor = useTaxiColor(fromPoint?.latitude !== undefined && fromPoint?.longitude !== undefined ? [fromPoint.latitude,fromPoint.longitude] : undefined)
   const disabled = carClasses === null
   const prevCarClasses = useRef(carClasses ?? [])
   if (carClasses === null)
@@ -71,7 +71,7 @@ export function CarClassSlider({ carClasses, carClass, locationClass, locationCl
             })}
           >
             <div className="car-class-slider__icon">
-              <VehicleArtwork kind={isPetitCarClass(cc) ? 'petit' : 'grand'} color={vehicleColor}/>
+              <VehicleArtwork kind={isPetitCarClass(cc) ? 'petit' : 'grand'} color={taxiColor({kind:isPetitCarClass(cc)?'petit':'grand',point:fromPoint?.latitude!==undefined&&fromPoint?.longitude!==undefined?[fromPoint.latitude,fromPoint.longitude]:null,palette:SITE_CONSTANTS.PALETTE?.primary?.main})}/>
             </div>
             <span className="car-class-slider__title">
               {t(TRANSLATION.CAR_CLASSES[cc.id]).replace(/petti/ig, 'PETIT')}

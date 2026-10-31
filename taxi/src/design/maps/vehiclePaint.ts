@@ -11,3 +11,12 @@ export function paintPixel(r:number,g:number,b:number,color:string):[number,numb
  const rgb=h<1?[chroma,x,0]:h<2?[x,chroma,0]:h<3?[0,chroma,x]:h<4?[0,x,chroma]:h<5?[x,0,chroma]:[chroma,0,x]
  return rgb.map(v=>Math.round((v+m)*255)) as [number,number,number]
 }
+
+/** Grand's blue side band is distinct from the city's Petit paint. */
+export function paintLiveryPixel(r:number,g:number,b:number,color:string,stripe?:string):[number,number,number]{
+ if(stripe&&r>g*1.35&&g>b*1.5&&g>45){
+  const shade=Math.max(.3,Math.min(1.2,Math.max(r,g,b)/235))
+  return [1,3,5].map(i=>Math.min(255,Math.round(parseInt(stripe.slice(i,i+2),16)*shade))) as [number,number,number]
+ }
+ return paintPixel(r,g,b,color)
+}

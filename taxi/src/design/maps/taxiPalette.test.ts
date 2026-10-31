@@ -16,3 +16,10 @@ it('both assets carry the same safe body color and keep windows and wheels separ
 })
 
 it('uses the red base before a city-specific palette is configured',()=>{expect(taxiColor({city:'casablanca'})).toBe('#A90000');expect(taxiColor({city:'rabat',cityPalette:'#123456'})).toBe('#123456')})
+
+it('Grand has a separate light livery; class override is validated independently of Petit',()=>{
+ expect(taxiColor({city:'agadir',kind:'grand',palette:'#A90000'})).toBe('#E8E2D5')
+ expect(taxiColor({kind:'grand',classPalette:'#FFFFFF'})).toBe('#FFFFFF')
+ expect(taxiColor({kind:'grand',classPalette:'url(evil)'})).toBe('#E8E2D5')
+ expect(decodeURIComponent(taxiPicture('#E8E2D5','top','grand'))).toContain('#2261A6')
+})
