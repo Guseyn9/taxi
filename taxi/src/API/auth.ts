@@ -236,3 +236,35 @@ const _logout = (
   return axios.post(`${Config.API_URL}/logout/?`)
 }
 export const logout = apiMethod<typeof _logout>(_logout, { authRequired: false })
+
+export interface IDemoAccountCredentials extends ITokens {
+  id_user: number | string
+}
+
+export interface IDemoSessionResponse {
+  id_demo_session: string
+  expires_in: number
+  client: IDemoAccountCredentials
+  driver: IDemoAccountCredentials
+}
+
+export interface IDemoStartResponse {
+  code: string
+  status: 'success' | 'error'
+  message?: string
+  data?: {
+    client_key: string
+    session: IDemoSessionResponse
+  }
+}
+
+const _startDemo = (
+  { formData }: IApiMethodArguments,
+  clientKey?: string,
+): Promise<IDemoStartResponse> => {
+  addToFormData(formData, { client_key: clientKey })
+  return axios.post(`${Config.SERVER_URL}/demo/start`, formData)
+    .then(res => res.data)
+}
+
+export const startDemo = apiMethod<typeof _startDemo>(_startDemo, { authRequired: false })
