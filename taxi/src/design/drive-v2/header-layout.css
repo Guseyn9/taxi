@@ -25,6 +25,15 @@
 #root .header .rs-brand-name {color:var(--drive-black);font-size:26px;line-height:32px;white-space:nowrap}
 #root .header .rs-brand-mark {width:30px;height:30px;flex:0 0 30px}
 #root .header .header-avatar-wrapper {grid-column:3;justify-self:end;min-width:0;height:44px;gap:8px}
+#root .header .header-location-slot{display:flex;align-items:center;justify-content:center;flex:none;width:64px;height:44px}
+#root .header .header-location-slot:empty{display:none}
+#root .header .header-location-slot .map-container__locate-button{position:static;inset:auto;display:flex;align-items:center;justify-content:center;gap:6px;flex:none;width:64px;height:44px;min-width:44px;min-height:44px;margin:0;padding:8px;border:1px solid var(--drive-line);border-radius:12px;background:var(--drive-canvas);box-shadow:none;transform:none;z-index:auto}
+#root .header .header-location-slot .map-container__locate-button img{display:block;width:20px;height:20px;margin:0}
+#root .header .header-location-slot .map-container__locate-button svg{display:block;flex:none;width:18px;height:18px;color:var(--drive-black);fill:currentColor;stroke-width:1.5}
+#root .header .header-location-label{color:var(--drive-black);font:700 11px/16px Manrope,sans-serif}
+#root .header .header-location-slot .map-container__locate-button:hover{background:var(--drive-soft)}
+#root .header .header-location-slot .map-container__locate-button:focus-visible{outline:2px solid var(--drive-red);outline-offset:2px}
+#root .header .header-location-slot .map-container__locate-button:disabled{opacity:.5;cursor:wait}
 #root .header .header-language__trigger {
   display:flex;align-items:center;justify-content:center;gap:7px;
   min-width:64px;height:44px;min-height:44px;padding:8px;
@@ -52,6 +61,10 @@ html[dir=rtl] #root .menu__account>svg {transform:rotate(180deg)}
   #root .header .rs-brand-name {font-size:24px}
 }
 @media(max-width:359px) {
+  #root .header:has(.header-location-slot:not(:empty)){column-gap:4px}
+  #root .header:has(.header-location-slot:not(:empty)) .header-avatar-wrapper{gap:2px}
+  #root .header:has(.header-location-slot:not(:empty)) .header-language__trigger{min-width:56px}
+  #root .header:has(.header-location-slot:not(:empty)) .header-emulation-indicator{width:28px;flex-basis:28px}
   #root .header .header-logo {gap:6px}
   #root .header .rs-brand-name {font-size:22px}
   #root .header:has(.header-driver-status) .rs-brand-name {display:none}

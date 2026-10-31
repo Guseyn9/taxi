@@ -1,0 +1,95 @@
+[
+  {
+    "details": [
+      {
+        "inside": true,
+        "overflow": false,
+        "text": "По расчётной цене"
+      },
+      {
+        "inside": true,
+        "overflow": false,
+        "text": "Кто приедет первым"
+      },
+      {
+        "inside": true,
+        "overflow": false,
+        "text": "Предложить сумму"
+      }
+    ],
+    "footerVisible": true,
+    "gpsSize": [
+      64,
+      44
+    ],
+    "headerClear": true,
+    "headerGPS": 1,
+    "height": 568,
+    "mapGPS": 0,
+    "mapToolsClear": true,
+    "overflow": false,
+    "width": 320
+  },
+  {
+    "details": [
+      {
+        "inside": true,
+        "overflow": false,
+        "text": "По расчётной цене"
+      },
+      {
+        "inside": true,
+        "overflow": false,
+        "text": "Кто приедет первым"
+      },
+      {
+        "inside": true,
+        "overflow": false,
+        "text": "Предложить сумму"
+      }
+    ],
+    "footerVisible": true,
+    "gpsSize": [
+      64,
+      44
+    ],
+    "headerClear": true,
+    "headerGPS": 1,
+    "height": 844,
+    "mapGPS": 0,
+    "mapToolsClear": true,
+    "overflow": false,
+    "width": 390
+  },
+  {
+    "details": [
+      {
+        "inside": true,
+        "overflow": false,
+        "text": "По расчётной цене"
+      },
+      {
+        "inside": true,
+        "overflow": false,
+        "text": "Кто приедет первым"
+      },
+      {
+        "inside": true,
+        "overflow": false,
+        "text": "Предложить сумму"
+      }
+    ],
+    "footerVisible": true,
+    "gpsSize": [
+      64,
+      44
+    ],
+    "headerClear": true,
+    "headerGPS": 1,
+    "height": 900,
+    "mapGPS": 0,
+    "mapToolsClear": true,
+    "overflow": false,
+    "width": 1440
+  }
+]

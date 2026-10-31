@@ -1,15 +1,15 @@
 {
   "date": "2026-10-31",
   "base": "a86596cfc389545cbe266b7440d6d2747941c370",
-  "source_sha256": "11eaa4ebf77c0c9f41e5d55be7812df790a7c2b1b1f479e58daf80758770c458",
+  "source_sha256": "3209c483be2e1d1837bd64b1593e1d886620d33447961ffde5f89c642aa1f8bf",
   "install": {
     "command": "npm ci --ignore-scripts --no-audit --no-fund",
     "packages": 2115,
     "result": "pass"
   },
   "unit": {
-    "suites": 140,
-    "tests": 703,
+    "suites": 141,
+    "tests": 708,
     "result": "pass"
   },
   "typescript": "pass",
@@ -29,5 +29,5 @@
   ],
   "source_hash_scope": "src/** sorted relative paths and content",
   "icon_revision": "v4: author reference photos; targeted class/view and paint regression tests",
-  "latest_ui_review": "map-options/README.md"
+  "latest_ui_review": "header-buttons/README.md"
 }

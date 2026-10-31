@@ -4,6 +4,8 @@ import {createPortal} from 'react-dom'
 import {bookingFramePoints} from '../../design/maps/bookingFrame'
 import {requestFreshLocation,requestInitialLocation} from '../../design/maps/freshLocation'
 import LocationFeedback from '../../design/maps/LocationFeedback'
+import MapLocationAction from '../Header/MapLocationAction'
+import {Navigation2} from 'lucide-react'
 import {taxiColor,taxiPicture,DEFAULT_TAXI_COLOR} from '../../design/maps/taxiPalette'
 import MapBoundary from '../../design/maps/MapBoundary'
 import {displayAddress} from '../../design/addressPresentation'
@@ -2332,7 +2334,7 @@ function MapContent({
     <>
       <RsaleBasemap initialOverview={initialOverview} showRegionControls={!isModal} />
       {locationError!==null&&createPortal(<LocationFeedback code={locationError} iso={language?.iso} busy={locating} onAllow={centerOnUser} onClose={()=>setLocationError(null)} onPickMap={onPickLocation?()=>{setLocationError(null);onPickLocation()}:undefined}/>,!isModal ? document.querySelector('.layout') || document.body : document.body)}
-      {Boolean(navigator.geolocation) &&
+      {Boolean(navigator.geolocation) && <MapLocationAction enabled={!isModal&&Boolean(containerClassName?.includes('passenger__form-map-container'))}>
         <button
           type="button"
           className={cn('map-container__locate-button', {
@@ -2350,9 +2352,10 @@ function MapContent({
           disabled={locating}
           aria-busy={locating}
           aria-label={t(TRANSLATION.SHOW_MY_LOCATION)}
+          title={t(TRANSLATION.SHOW_MY_LOCATION)}
         >
-          <img src={images.mapLocationButton} alt="" />
-        </button>
+          {!isModal&&containerClassName?.includes('passenger__form-map-container')?<><Navigation2 size={18} aria-hidden="true"/><span className="header-location-label">GPS</span></>:<img src={images.mapLocationButton} alt="" />}
+        </button></MapLocationAction>
       }
       {
         showRouteInfo && (

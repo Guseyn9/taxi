@@ -37,3 +37,19 @@ test('unconfirmed zones block every command but leave explanations accessible',a
  await act(async()=>host.querySelector('[data-testid="passenger-order-help-order"]').click())
  expect(document.querySelector('[role=dialog]')).not.toBeNull()
 })
+test('short descriptions explain each mode without changing its accessible action label',async()=>{
+ await render()
+ for(const mode of ['order','vote','offer']){
+  const button=host.querySelector(`[data-testid="passenger-order-mode-${mode}"]`)
+  expect(button.getAttribute('aria-label')).toBe(button.querySelector('.rs-booking-action__label').textContent)
+  expect(document.getElementById(button.getAttribute('aria-describedby'))).toBe(button.querySelector('.rs-booking-action__detail'))
+ }
+ expect(host.querySelector('[data-testid="passenger-order-mode-vote"] small').textContent).toContain('First taxi to arrive')
+})
+test('pending state identifies the submitted mode and blocks duplicate commands',async()=>{
+ await render({mode:'offer',pending:true})
+ const busy=host.querySelectorAll('[aria-busy=true]')
+ expect(busy).toHaveLength(1);expect(busy[0].getAttribute('data-testid')).toBe('passenger-order-mode-offer')
+ for(const button of host.querySelectorAll('.rs-booking-action__submit')){expect(button.disabled).toBe(true);await act(async()=>button.click())}
+ expect(submit).not.toHaveBeenCalled();expect(change).not.toHaveBeenCalled()
+})
