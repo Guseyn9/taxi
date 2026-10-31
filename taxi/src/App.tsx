@@ -2,6 +2,7 @@ import React, { useEffect } from 'react'
 import { connect, ConnectedProps } from 'react-redux'
 import { Helmet } from 'react-helmet-async'
 import SITE_CONSTANTS from './siteConstants'
+import * as API from './API'
 import store, { IRootState } from './state'
 import { configSelectors } from './state/config'
 import { userActionCreators } from './state/user'
@@ -25,6 +26,7 @@ const mapStateToProps = (state: IRootState) => ({
   configStatus: configSelectors.status(state),
   language: configSelectors.language(state),
   user: userSelectors.user(state),
+  tokens: userSelectors.tokens(state),
 })
 
 const mapDispatchToProps = {
@@ -40,6 +42,7 @@ const App: React.FC<IProps> = ({
   configStatus,
   language,
   user,
+  tokens,
   initUser,
 }) => {
   if ((window as any).ReactNativeWebView) {
@@ -57,6 +60,24 @@ const App: React.FC<IProps> = ({
       clearInterval(interval)
     }
   }, [])
+
+  useEffect(() => {
+    if (!localStorage.getItem('demo.client_key') || !tokens?.token || !tokens?.u_hash)
+      return
+
+    const heartbeat = () => {
+      API.demoHeartbeat(tokens)
+        .then(response => {
+          if (response?.status === 'error' && ['403', '404'].includes(String(response?.code)))
+            initUser()
+        })
+        .catch(() => null)
+    }
+
+    heartbeat()
+    const interval = window.setInterval(heartbeat, 5 * 60 * 1000)
+    return () => window.clearInterval(interval)
+  }, [tokens?.token, tokens?.u_hash])
 
   useEffect(() => {
     const driverSnapshotProvider = user?.u_role === EUserRoles.Driver ?
