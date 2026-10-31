@@ -4,6 +4,10 @@
 
 Add a voice modality directly to the existing Passenger Web screen. The map and the normal booking form remain visible and usable. Voice only fills the same pickup/destination fields and requests submission through the existing form.
 
+## Relationship to the shared Voice Assistant
+
+The current Voice Assistant repository keeps its scenario/dialogue runtime inside its demo application and does not yet expose that runtime as an importable package for Taxi. This first integration therefore uses a small browser transport over the Taxi Interaction Contract and keeps the passenger-specific dialogue in the Passenger application. The transport can later be replaced by the shared Voice SDK without changing the form, geocoder, or order-submission path.
+
 ## Runtime path
 
 1. Browser microphone input is converted into the Interaction Action `voice.transcript.received`.
