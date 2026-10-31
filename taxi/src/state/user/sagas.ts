@@ -15,11 +15,13 @@ import {
 } from '../modals/actionCreators'
 import { uploadRegisterFiles, uploadFiles } from './helpers'
 import { ActionTypes } from './constants'
-import { setUser } from './actionCreators'
+import { setMessage, setStatus, setUser } from './actionCreators'
 
 export const saga = function* () {
   yield all([
     takeEvery(ActionTypes.LOGIN_REQUEST, loginSaga),
+    takeEvery(ActionTypes.DEMO_START_REQUEST, startDemoSaga),
+    takeEvery(ActionTypes.DEMO_SWITCH_ROLE_REQUEST, switchDemoRoleSaga),
     takeEvery(ActionTypes.GOOGLE_LOGIN_REQUEST, googleLoginSaga),
     takeEvery(ActionTypes.REGISTER_REQUEST, registerSaga),
     takeEvery(ActionTypes.LOGOUT_REQUEST, logoutSaga),
@@ -31,6 +33,10 @@ export const saga = function* () {
 }
 
 function* loginSaga(data: TAction) {
+  if (localStorage.getItem('demo.client_key')) {
+    yield put({ type: ActionTypes.LOGIN_FAIL, payload: t(TRANSLATION.DEMO_MODE) })
+    return
+  }
   yield put({ type: ActionTypes.LOGIN_START })
   try {
     const result = yield* call(API.login, data.payload)
@@ -83,6 +89,10 @@ function* loginSaga(data: TAction) {
 }
 
 function* googleLoginSaga(data: TAction) {
+  if (localStorage.getItem('demo.client_key')) {
+    yield put({ type: ActionTypes.LOGIN_FAIL, payload: t(TRANSLATION.DEMO_MODE) })
+    return
+  }
   yield put({ type: ActionTypes.GOOGLE_LOGIN_START })
   try {
 
@@ -104,6 +114,10 @@ function* googleLoginSaga(data: TAction) {
 }
 
 function* registerSaga(data: TAction) {
+  if (localStorage.getItem('demo.client_key')) {
+    yield put({ type: ActionTypes.REGISTER_FAIL, payload: t(TRANSLATION.DEMO_MODE) })
+    return
+  }
   yield put({ type: ActionTypes.REGISTER_START })
   try {
     const { uploads, u_details, u_car, ...payload } = data.payload
@@ -173,6 +187,10 @@ function* registerSaga(data: TAction) {
 }
 
 function* logoutSaga() {
+  if (localStorage.getItem('demo.client_key')) {
+    yield put({ type: ActionTypes.LOGOUT_FAIL })
+    return
+  }
   yield put({ type: ActionTypes.LOGOUT_START })
   try {
     localStorage.removeItem('state.user.user')
@@ -197,7 +215,138 @@ function* remindPasswordSaga(data: TAction) {
   }
 }
 
+type TDemoRole = 'client' | 'driver'
+
+function clearDemoStorage() {
+  [
+    'demo.client_key',
+    'demo.client.tokens',
+    'demo.driver.tokens',
+    'demo.client.user',
+    'demo.driver.user',
+    'demo.active_role',
+  ].forEach(key => localStorage.removeItem(key))
+}
+
+function* loadDemoSession(clientKey?: string, role: TDemoRole = 'client') {
+  const response = yield* call(API.startDemo, clientKey)
+  const session = response?.data?.session
+  const clientTokens = session?.client
+  const driverTokens = session?.driver
+
+  if (response?.status !== 'success' || !session ||
+      !clientTokens?.token || !clientTokens?.u_hash ||
+      !driverTokens?.token || !driverTokens?.u_hash) {
+    const error: any = new Error(
+      String(response?.code) === '503' ?
+        t(TRANSLATION.DEMO_NO_FREE_ACCOUNTS) :
+        response?.message || t(TRANSLATION.DEMO_SESSION_EXPIRED),
+    )
+    error.code = response?.code
+    throw error
+  }
+
+  localStorage.setItem('demo.client_key', response.data.client_key)
+  localStorage.setItem('demo.client.tokens', JSON.stringify(clientTokens))
+  localStorage.setItem('demo.driver.tokens', JSON.stringify(driverTokens))
+
+  const clientUser = yield* call(API.getAuthorizedUserWithTokens, clientTokens)
+  const driverUser = yield* call(API.getAuthorizedUserWithTokens, driverTokens)
+  if (!clientUser || !driverUser) {
+    const error: any = new Error(t(TRANSLATION.DEMO_SESSION_EXPIRED))
+    error.code = '403'
+    throw error
+  }
+
+  localStorage.setItem('demo.client.user', JSON.stringify(clientUser))
+  localStorage.setItem('demo.driver.user', JSON.stringify(driverUser))
+
+  const activeRole: TDemoRole = role === 'driver' ? 'driver' : 'client'
+  const activeTokens = activeRole === 'driver' ? driverTokens : clientTokens
+  const activeUser = activeRole === 'driver' ? driverUser : clientUser
+  localStorage.setItem('demo.active_role', activeRole)
+  localStorage.setItem('state.user.tokens', JSON.stringify(activeTokens))
+
+  return {
+    user: activeUser,
+    tokens: activeTokens,
+  }
+}
+
+function* startDemoSaga(data: TAction) {
+  yield put({ type: ActionTypes.LOGIN_START })
+  try {
+    const clientKey = localStorage.getItem('demo.client_key') || undefined
+    const result = yield* call(loadDemoSession, clientKey, 'client')
+    yield put({ type: ActionTypes.LOGIN_SUCCESS, payload: result })
+    yield put(setLoginModal(false))
+    data.payload.navigate('/passenger-order')
+  } catch (error: any) {
+    if (['400', '403', '503'].includes(String(error?.code))) {
+      clearDemoStorage()
+    }
+    yield put({
+      type: ActionTypes.LOGIN_FAIL,
+      payload: error?.message || t(TRANSLATION.DEMO_SESSION_EXPIRED),
+    })
+  }
+}
+
+function* switchDemoRoleSaga(data: TAction) {
+  yield put(setStatus(EStatuses.Loading))
+  yield put(setMessage(''))
+  try {
+    const clientKey = localStorage.getItem('demo.client_key')
+    if (!clientKey) {
+      const error: any = new Error(t(TRANSLATION.DEMO_SESSION_EXPIRED))
+      error.code = '403'
+      throw error
+    }
+    const role: TDemoRole = data.payload.role === 'driver' ? 'driver' : 'client'
+    const result = yield* call(loadDemoSession, clientKey, role)
+    yield put({ type: ActionTypes.LOGIN_SUCCESS, payload: result })
+    data.payload.navigate(role === 'driver' ? '/driver-order' : '/passenger-order')
+  } catch (error: any) {
+    if (['400', '403', '503'].includes(String(error?.code))) {
+      clearDemoStorage()
+      localStorage.removeItem('state.user.tokens')
+      yield put({ type: ActionTypes.LOGOUT_START })
+      yield put({
+        type: ActionTypes.LOGIN_FAIL,
+        payload: error?.message || t(TRANSLATION.DEMO_SESSION_EXPIRED),
+      })
+      yield put(setLoginModal(true))
+      return
+    }
+    yield put(setStatus(EStatuses.Fail))
+    yield put(setMessage(error?.message || t(TRANSLATION.DEMO_SESSION_EXPIRED)))
+  }
+}
+
 function* initUserSaga() {
+  const demoClientKey = localStorage.getItem('demo.client_key')
+  if (demoClientKey) {
+    yield put(setStatus(EStatuses.Loading))
+    try {
+      const preferredRole = localStorage.getItem('demo.active_role') === 'driver' ?
+        'driver' :
+        'client'
+      const result = yield* call(loadDemoSession, demoClientKey, preferredRole)
+      yield put({ type: ActionTypes.LOGIN_SUCCESS, payload: result })
+    } catch (error: any) {
+      if (['400', '403', '503'].includes(String(error?.code))) {
+        clearDemoStorage()
+        localStorage.removeItem('state.user.tokens')
+      }
+      yield put({
+        type: ActionTypes.LOGIN_FAIL,
+        payload: error?.message || t(TRANSLATION.DEMO_SESSION_EXPIRED),
+      })
+      yield put(setLoginModal(true))
+    }
+    return
+  }
+
   try {
     const rawTokens = localStorage.getItem('state.user.tokens')
     const tokens: ITokens = rawTokens !== null ? JSON.parse(rawTokens) : {}
