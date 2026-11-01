@@ -282,7 +282,7 @@ export const PassengerVoiceAssistant: React.FC<IProps> = ({
 
   const speak = async(text: string) => {
     setMessage(text)
-    if (!textMode)
+    if (!textModeRef.current)
       await channelRef.current?.speak(text, speechLanguage(propsRef.current.languageIso))
   }
 
