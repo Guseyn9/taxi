@@ -1,0 +1,22 @@
+{
+  "description": "Deterministic coordinates for voice-ordering acceptance tests only. These fixtures stand in for correctly resolved addresses; they do not test geocoding.",
+  "city": "Agadir, Morocco",
+  "points": {
+    "pickup": {
+      "label": "Agadir city centre",
+      "latitude": 30.4202,
+      "longitude": -9.5982
+    },
+    "destination": {
+      "label": "Agadir Marina",
+      "latitude": 30.4270,
+      "longitude": -9.6210
+    }
+  },
+  "rules": [
+    "Use the same two points in every deterministic voice-flow test.",
+    "Treat the coordinates as already correctly recognized and resolved.",
+    "Do not use these fixtures as a production location or override browser geolocation.",
+    "Do not assert geocoder quality or address matching in this test suite."
+  ]
+}
