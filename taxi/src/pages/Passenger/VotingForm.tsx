@@ -117,6 +117,7 @@ interface IProps extends PassengerVotingFormStoreProps {
   minimizedPartRef: React.Ref<HTMLElement>
   noSwipeElementsRef: React.Ref<HTMLElement[]>
   uiConfig?: PassengerUiConfig
+  onVoiceSubmitReady?: (submit: (() => Promise<boolean>) | null) => void
 }
 
 const VotingForm = function VotingForm({
@@ -162,6 +163,7 @@ const VotingForm = function VotingForm({
   noSwipeElementsRef,
   uiConfig,
   getMapSearchCenter,
+  onVoiceSubmitReady,
 }: IProps) {
 
   const uiCopy = rideCopy(language?.iso)
@@ -262,9 +264,9 @@ const VotingForm = function VotingForm({
     return fallback
   }
 
-  const submit = useCallback(async(mode: TClientOrderMode = 'order') => {
+  const submit = useCallback(async(mode: TClientOrderMode = 'order'): Promise<boolean> => {
     if (locked || submissionPending.current)
-      return
+      return false
 
     setSubmitError(null)
 
@@ -289,7 +291,7 @@ const VotingForm = function VotingForm({
     if (isOffer && !validOfferPrice(currentCustomerPrice)) {
       setSubmitError(pilotCopy(languageIso).offerPrice)
       requestAnimationFrame(()=>priceInputRef.current?.querySelector<HTMLInputElement>('input[data-price-key="customer"]')?.focus({preventScroll:true}))
-      return
+      return false
     }
 
     const submitFrom = from
@@ -323,17 +325,17 @@ const VotingForm = function VotingForm({
         field?.scrollIntoView({block:'center',behavior:'smooth'})
         field?.focus({preventScroll:true})
       })
-      return
+      return false
     }
 
     if (!currentZonesReady) {
       setSubmitError(zoneCheckCopy(languageIso).blocked)
-      return
+      return false
     }
 
     if (!user) {
       setLoginModal(true)
-      return
+      return false
     }
 
     const commentObj: any = {}
@@ -430,7 +432,7 @@ const VotingForm = function VotingForm({
           refreshActiveOrders()
           setSubmitError(pilotCopy(languageIso).offerMode)
           setSubmitting(false)
-          return
+          return false
         }
         verifiedOffer = verification === 'verified'
         if (!verifiedOffer) setMessageModal({ isOpen: true, status: EStatuses.Fail, message: pilotCopy(languageIso).offerUnverified })
@@ -442,9 +444,11 @@ const VotingForm = function VotingForm({
       if (!isVoting && !isOffer)
         resetClientOrder()
       onSubmit(data, draft)
+      return true
     } catch (error) {
       setSubmitError(getSafeSubmitErrorMessage(error))
       console.error(error)
+      return false
     } finally {
       submissionPending.current = false
       setSubmitting(false)
@@ -455,6 +459,11 @@ const VotingForm = function VotingForm({
     locationClass, algorithmLocationClass, readSubmissionState, setLoginModal, createOrder, languageIso,
     setIsExpanded, onSubmit, resetClientOrder,
   ])
+
+  useEffect(() => {
+    onVoiceSubmitReady?.(() => submit('order'))
+    return () => onVoiceSubmitReady?.(null)
+  }, [onVoiceSubmitReady, submit])
 
   const [submitting, setSubmitting] = useState(false)
   const [canceling, setCanceling] = useState(false)

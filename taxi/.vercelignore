@@ -1,8 +1,7 @@
+.git
 node_modules
 build
-.git
-.idea
-.vscode
-*.zip
+.preview
+.env*
+e2e
 *.log
-.env
