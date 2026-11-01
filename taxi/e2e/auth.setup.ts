@@ -69,10 +69,10 @@ async function signIn(
 
   await signInButton.click()
 
-  // Приложение хранит токены здесь (state/user/sagas.ts) — ждём именно их,
+  // saveSessionTokens записывает токены в sessionStorage (security/sessionTokens.ts) — ждём именно их,
   // а не таймер.
   await expect
-    .poll(() => page.evaluate(() => localStorage.getItem('state.user.tokens')), { timeout: 60_000 })
+    .poll(() => page.evaluate(() => sessionStorage.getItem('state.user.tokens')), { timeout: 60_000 })
     .toBeTruthy()
 
   fs.mkdirSync(path.dirname(storage), { recursive: true })
