@@ -70,3 +70,42 @@
     padding: 0 13px;
   }
 }
+
+
+.passenger-voice__mode,
+.passenger-voice__text-form {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: min(360px, calc(100vw - 24px));
+  pointer-events: auto;
+}
+
+.passenger-voice__mode button,
+.passenger-voice__text-form button {
+  min-height: 42px;
+  padding: 0 14px;
+  border: 1px solid rgba(20, 24, 32, 0.16);
+  border-radius: 10px;
+  background: #fff;
+  color: #17191f;
+  font: inherit;
+  cursor: pointer;
+}
+
+.passenger-voice__text-form input {
+  min-width: 0;
+  flex: 1;
+  min-height: 42px;
+  padding: 0 12px;
+  border: 1px solid rgba(20, 24, 32, 0.2);
+  border-radius: 10px;
+  background: #fff;
+  color: #17191f;
+  font: inherit;
+}
+
+.passenger-voice__text-form button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
