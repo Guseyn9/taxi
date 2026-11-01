@@ -44,8 +44,10 @@ async function signIn(
 
   await expectAppBooted(page)
 
-  // Вход открывается аватаром в шапке (components/Header/index.tsx).
-  await page.locator('header .avatar').first().click()
+  // В текущем Header вход находится в первом пункте бокового меню:
+  // сначала открываем меню, затем выбираем пункт аккаунта.
+  await page.locator('header .burger-button').click()
+  await page.locator('header .menu__account').click()
 
   const login = page.locator('input[name="login"]')
   await expect(login).toBeVisible()
