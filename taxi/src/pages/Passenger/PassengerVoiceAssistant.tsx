@@ -64,6 +64,9 @@ interface IVoiceCopy {
   unsupported: string
   noSpeech: string
   failed: string
+  switchToText: string
+  switchToVoice: string
+  send: string
 }
 
 const VOICE_COPY: Record<string, IVoiceCopy> = {
@@ -83,6 +86,7 @@ const VOICE_COPY: Record<string, IVoiceCopy> = {
     unsupported: 'В этом браузере голосовой ввод не поддерживается. Используйте поля заказа на экране.',
     noSpeech: 'Не удалось распознать речь. Нажмите кнопку и повторите.',
     failed: 'Ошибка голосового ввода. Попробуйте ещё раз или используйте экран.',
+    switchToText: 'Ввести текстом', switchToVoice: 'Вернуться к голосу', send: 'Отправить',
   },
   fr: {
     start: 'Commander à la voix',
@@ -100,6 +104,7 @@ const VOICE_COPY: Record<string, IVoiceCopy> = {
     unsupported: 'La saisie vocale n’est pas prise en charge par ce navigateur. Utilisez le formulaire à l’écran.',
     noSpeech: 'Aucune parole reconnue. Appuyez sur le bouton et réessayez.',
     failed: 'Erreur de saisie vocale. Réessayez ou utilisez le formulaire.',
+    switchToText: 'Saisir par texte', switchToVoice: 'Revenir à la voix', send: 'Envoyer',
   },
   ar: {
     start: 'اطلب بالصوت',
@@ -117,6 +122,7 @@ const VOICE_COPY: Record<string, IVoiceCopy> = {
     unsupported: 'الإدخال الصوتي غير مدعوم في هذا المتصفح. استخدم نموذج الطلب على الشاشة.',
     noSpeech: 'لم يتم التعرف على الكلام. اضغط الزر وحاول مرة أخرى.',
     failed: 'حدث خطأ في الإدخال الصوتي. حاول مرة أخرى أو استخدم الشاشة.',
+    switchToText: 'اكتب النص', switchToVoice: 'العودة إلى الصوت', send: 'إرسال',
   },
   en: {
     start: 'Order by voice',
@@ -134,6 +140,7 @@ const VOICE_COPY: Record<string, IVoiceCopy> = {
     unsupported: 'Voice input is not supported in this browser. Use the on-screen order form.',
     noSpeech: 'No speech was recognized. Press the button and try again.',
     failed: 'Voice input failed. Try again or use the screen.',
+    switchToText: 'Use text input', switchToVoice: 'Return to voice', send: 'Send',
   },
   es: {
     start: 'Pedir por voz',
@@ -151,6 +158,7 @@ const VOICE_COPY: Record<string, IVoiceCopy> = {
     unsupported: 'Este navegador no admite entrada de voz. Utiliza el formulario en pantalla.',
     noSpeech: 'No se reconoció la voz. Pulsa el botón e inténtalo de nuevo.',
     failed: 'Error de entrada de voz. Inténtalo de nuevo o utiliza la pantalla.',
+    switchToText: 'Escribir texto', switchToVoice: 'Volver a la voz', send: 'Enviar',
   },
 }
 
@@ -261,6 +269,8 @@ export const PassengerVoiceAssistant: React.FC<IProps> = ({
   const [active, setActive] = useState(false)
   const [message, setMessage] = useState(copy.ready)
   const [transcript, setTranscript] = useState('')
+  const [textMode, setTextMode] = useState(false)
+  const [textInput, setTextInput] = useState('')
   const channelRef = useRef<BrowserVoiceChannel | null>(null)
   const activeRef = useRef(false)
   const stepRef = useRef<VoiceStep>('idle')
@@ -271,7 +281,8 @@ export const PassengerVoiceAssistant: React.FC<IProps> = ({
 
   const speak = async(text: string) => {
     setMessage(text)
-    await channelRef.current?.speak(text, speechLanguage(propsRef.current.languageIso))
+    if (!textMode)
+      await channelRef.current?.speak(text, speechLanguage(propsRef.current.languageIso))
   }
 
   transcriptHandlerRef.current = async(text: string) => {
@@ -341,18 +352,21 @@ export const PassengerVoiceAssistant: React.FC<IProps> = ({
     if (!channel)
       return
 
-    while (activeRef.current) {
+    while (activeRef.current && !textMode) {
       try {
         await channel.listenOnce(speechLanguage(propsRef.current.languageIso))
       } catch (error) {
-        if (!activeRef.current)
+        if (!activeRef.current || textMode)
           break
+        if (error instanceof Error && error.message === 'NO_SPEECH_RESULT') {
+          // Silence is not a dialogue timeout. Keep the current step and listen again.
+          await new Promise(resolve => window.setTimeout(resolve, 500))
+          continue
+        }
         activeRef.current = false
-        stepRef.current = 'idle'
         setActive(false)
         const currentCopy = VOICE_COPY[languageKey(propsRef.current.languageIso)]
-        setMessage(error instanceof Error && error.message === 'NO_SPEECH_RESULT' ?
-          currentCopy.noSpeech : currentCopy.failed)
+        setMessage(currentCopy.failed)
         break
       }
     }
@@ -387,18 +401,51 @@ export const PassengerVoiceAssistant: React.FC<IProps> = ({
       return
     }
 
+    const isNewDialogue = stepRef.current === 'idle'
     activeRef.current = true
-    stepRef.current = 'pickup'
+    setTextMode(false)
     setActive(true)
-    setTranscript('')
-    await speak(currentCopy.pickup)
+    if (isNewDialogue) {
+      stepRef.current = 'pickup'
+      setTranscript('')
+      await speak(currentCopy.pickup)
+    }
     if (activeRef.current)
       void listenLoopRef.current()
+  }
+
+  const switchToText = () => {
+    setTextMode(true)
+    channelRef.current?.stopRecognition()
+    setMessage(VOICE_COPY[languageKey(languageIso)][stepRef.current === 'pickup' ? 'pickup' : stepRef.current === 'destination' ? 'destination' : 'confirmation'])
+  }
+
+  const switchToVoice = () => {
+    const channel = channelRef.current
+    if (!channel || !channel.isRecognitionSupported()) {
+      setMessage(VOICE_COPY[languageKey(languageIso)].unsupported)
+      return
+    }
+    setTextMode(false)
+    if (!activeRef.current)
+      activeRef.current = true
+    setActive(true)
+    void listenLoopRef.current()
+  }
+
+  const submitText = async(event: React.FormEvent) => {
+    event.preventDefault()
+    const value = textInput.trim()
+    if (!value || !activeRef.current)
+      return
+    setTextInput('')
+    await transcriptHandlerRef.current(value)
   }
 
   const stop = () => {
     activeRef.current = false
     stepRef.current = 'idle'
+    setTextMode(false)
     channelRef.current?.stop()
     setActive(false)
     setMessage(VOICE_COPY[languageKey(languageIso)].cancelled)
@@ -416,6 +463,26 @@ export const PassengerVoiceAssistant: React.FC<IProps> = ({
         {<VoiceIcon muted={active} />}
         <span>{active ? copy.stop : copy.start}</span>
       </button>
+      {active && (
+        <div className="passenger-voice__mode">
+          {textMode ? (
+            <button type="button" onClick={switchToVoice}>{copy.switchToVoice}</button>
+          ) : (
+            <button type="button" onClick={switchToText}>{copy.switchToText}</button>
+          )}
+        </div>
+      )}
+      {active && textMode && (
+        <form className="passenger-voice__text-form" onSubmit={submitText}>
+          <input
+            aria-label={copy.switchToText}
+            value={textInput}
+            onChange={event => setTextInput(event.target.value)}
+            autoComplete="off"
+          />
+          <button type="submit" disabled={!textInput.trim()}>{copy.send}</button>
+        </form>
+      )}
       {(active || transcript || message !== copy.ready) && (
         <div className="passenger-voice__panel" role="status" aria-live="polite">
           <p className="passenger-voice__message">{message}</p>
