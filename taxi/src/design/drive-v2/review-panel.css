@@ -76,7 +76,12 @@
 #root .passenger .rs-preferences-heading .ride-service-help-button{width:44px;height:44px;min-height:44px}
 #root .passenger .passenger-voting-form[data-options-view=true] .rs-booking-preferences{gap:8px}
 #root .passenger .passenger-voting-form[data-options-view=true] .rs-booking-preferences .car-class-slider{margin:0}
-#root .passenger .passenger-voting-form[data-options-view=true] .car-class-slider__slide{height:72px!important;min-height:72px!important}
+/* Two explicit tracks avoid the artwork sharing the price row on tall screens. */
+#root .passenger .passenger-voting-form[data-options-view=true] .car-class-slider__slide{display:grid;grid-template-columns:minmax(0,.85fr) minmax(0,1.15fr);grid-template-rows:18px 18px;column-gap:8px;row-gap:0;align-content:center;align-items:center;height:72px!important;min-height:72px!important}
+#root .passenger .passenger-voting-form[data-options-view=true] .car-class-slider__icon{display:flex;grid-column:1;grid-row:1/3;align-self:center;width:100%;max-width:88px;height:40px!important}
+#root .passenger .passenger-voting-form[data-options-view=true] .car-class-slider__title{grid-column:2;grid-row:1;min-width:0;line-height:18px}
+#root .passenger .passenger-voting-form[data-options-view=true] .car-class-slider__value{grid-column:2;grid-row:2;min-width:0;line-height:18px;white-space:nowrap}
+@media(max-width:359px){#root .passenger .passenger-voting-form[data-options-view=true] .car-class-slider__value{font-size:10px}}
 #root .passenger .passenger-voting-form[data-options-view=true] .rs-options-back{background:var(--drive-wine-raised);color:var(--drive-on-wine);border:1px solid var(--drive-wine-line);font-size:12px}
 #root .passenger .passenger-voting-form[data-options-view=true] .rs-ride-footer{flex:none;padding-top:12px!important}
 #root .passenger .passenger-voting-form[data-options-view=true] .passenger-voting-form__comments-btn img{background:transparent}

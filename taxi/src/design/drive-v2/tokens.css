@@ -1,11 +1,11 @@
-/* Scarlet Porcelain: red actions, wine surfaces, porcelain controls. Vehicle livery is independent. */
+/* Moroccan Red: carmine surfaces, porcelain controls, a restrained zellige corner. Vehicle livery is independent. */
 :root {
- --drive-red:#b51218; --drive-soft:#fcecea; --drive-orange:#e87516; --drive-black:#101010; --drive-white:#fffcfa;
- --drive-muted:#656565; --drive-line:#e8dedc; --drive-canvas:#faf7f5;
- --drive-wine:#48070f; --drive-wine-deep:#300b12; --drive-wine-raised:#68242d;
- --drive-wine-hover:#78303b; --drive-wine-line:#94545c; --drive-on-wine:#fff8f5;
- --drive-on-wine-muted:#e6cbd0; --drive-disabled:#57252d; --drive-disabled-text:#ddbdc3;
- --drive-dark-surface:linear-gradient(135deg,#580811 0%,#300b12 100%);
+ --drive-red:#b51218; --drive-soft:#fff0eb; --drive-orange:#e87516; --drive-black:#101010; --drive-white:#fffaf7;
+ --drive-muted:#656565; --drive-line:#ecdcd7; --drive-canvas:#fcf5f1;
+ --drive-wine:#8d1c22; --drive-wine-deep:#681218; --drive-wine-raised:#76181e;
+ --drive-wine-hover:#951f26; --drive-wine-line:#bc6b6f; --drive-on-wine:#fff8f5;
+ --drive-on-wine-muted:#ffe1dc; --drive-disabled:#76292f; --drive-disabled-text:#e9c5c7;
+ --drive-dark-surface:url('/design-v2/ornaments/zellige-corner-v1.png') right top / 190px 190px no-repeat,linear-gradient(135deg,#97252a 0%,#8c171e 55%,#77161c 100%);
  --drive-space:4px; --drive-control:52px; --drive-radius:18px; --drive-sheet-radius:28px;
  --rs-primary:var(--drive-red); --rs-primary-hover:color-mix(in srgb,var(--drive-red),black 20%); --rs-selected:var(--drive-soft); --rs-orange:var(--drive-orange);
  --rs-ink:var(--drive-black); --rs-muted:var(--drive-muted); --rs-line:var(--drive-line); --rs-canvas:var(--drive-canvas);

@@ -1,5 +1,8 @@
 import {useTaxiColor} from '../useTaxiColor'
 import {taxiPicture} from '../taxiPalette'
+import {useSelector} from 'react-redux'
+import {clientOrderSelectors} from '../../../state/clientOrder'
+import {getKindFromClassId} from '../../../components/CarClassBadge'
 import React, { useEffect, useRef, useState } from 'react'
 import L from 'leaflet'
 import { Marker, Polyline, Tooltip, useMap } from 'react-leaflet'
@@ -24,7 +27,9 @@ export function routePosition(progress:number):[number,number] {
 /** Isolated marker preview on the real map; never writes order, route or emulator state. */
 export default function OnMapPreview({onCameraChange}:{onCameraChange?:()=>void}){
   const map=useMap()
-  const vehicleColor=useTaxiColor(route[0])
+  const selectedClass=useSelector(clientOrderSelectors.carClass)
+  const vehicleKind=getKindFromClassId(selectedClass)||'petit'
+  const vehicleColor=useTaxiColor(route[0],vehicleKind)
   const controls=useRef<HTMLDivElement>(null)
   const [active,setActive]=useState(false),[playing,setPlaying]=useState(false),[progress,setProgress]=useState(0)
   const [seekVersion,setSeekVersion]=useState(0)
@@ -66,7 +71,7 @@ export default function OnMapPreview({onCameraChange}:{onCameraChange?:()=>void}
     {active && <>
       <Polyline positions={route} pathOptions={{color:'#b51218',weight:5,opacity:.8}}/>
       <Marker position={route[route.length-1]} icon={passenger} alt="Пассажир · демо"><Tooltip direction="top" offset={[0,-40]}>Пассажир · демо</Tooltip></Marker>
-      <SmoothRotatingMarker key={seekVersion} position={routePosition(progress)} iconUrl={taxiPicture(vehicleColor)} className="smooth-rotating-marker rs-taxi-marker rs-demo-taxi" path={route} speedKmh={80} zIndexOffset={2000}><Tooltip direction="top" offset={[0,-26]}>Такси · демо</Tooltip></SmoothRotatingMarker>
+      <SmoothRotatingMarker key={seekVersion} position={routePosition(progress)} iconUrl={taxiPicture(vehicleColor,'top',vehicleKind)} className="smooth-rotating-marker rs-taxi-marker rs-demo-taxi" path={route} speedKmh={80} zIndexOffset={2000}><Tooltip direction="top" offset={[0,-26]}>Такси · демо</Tooltip></SmoothRotatingMarker>
     </>}
   </>
 }

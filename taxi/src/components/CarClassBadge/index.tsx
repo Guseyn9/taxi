@@ -31,7 +31,7 @@ function getClassNameFromId(classId?: unknown) {
   ].filter(Boolean).join(' '))
 }
 
-function getKindFromClassId(classId?: unknown): CarClassBadgeKind | null {
+export function getKindFromClassId(classId?: unknown): CarClassBadgeKind | null {
   const text = getClassNameFromId(classId)
   if (!text)
     return null
