@@ -1489,7 +1489,10 @@ function DriverOrderMapModeContent({
 
   const rawTripStops = useMemo(
     () => buildDriverTripPlan({
-      activeOrders,
+      // Используем тот же нормализованный список, который формирует ключ плана.
+      // Иначе отменённые заказы, отфильтрованные из driverActiveOrders,
+      // повторно попадали в маршрут через исходный activeOrders.
+      activeOrders: driverActiveOrders.map(({ order }) => order),
       userId: user?.u_id,
       position: currentPositionRef.current,
       boardedOrderIds,
