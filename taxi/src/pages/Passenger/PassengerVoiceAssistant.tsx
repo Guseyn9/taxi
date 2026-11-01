@@ -359,7 +359,7 @@ export const PassengerVoiceAssistant: React.FC<IProps> = ({
       } catch (error) {
         if (!activeRef.current || textModeRef.current || (error instanceof Error && error.message === 'VOICE_STOPPED'))
           break
-        if (error instanceof Error && error.message === 'NO_SPEECH_RESULT') {
+        if (error instanceof Error && ['NO_SPEECH_RESULT', 'no-speech'].includes(error.message)) {
           // Silence is not a dialogue timeout. Keep the current step and listen again.
           await new Promise(resolve => window.setTimeout(resolve, 500))
           continue
