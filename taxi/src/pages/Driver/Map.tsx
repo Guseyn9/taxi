@@ -1246,7 +1246,7 @@ function DriverOrderMapModeContent({
       // Отмена пассажиром терминальна для заказа, даже если backend
       // сохраняет c_state водителя (Performer/Started) для истории.
       // Не включаем такую поездку в навигационные действия карты.
-      if (item.b_state === EBookingStates.Canceled)
+      if (Number(item.b_state) === EBookingStates.Canceled)
         return list
 
       const driver = item.drivers?.find(driver => driver.u_id === user?.u_id)
