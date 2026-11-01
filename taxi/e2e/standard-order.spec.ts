@@ -50,6 +50,8 @@ import {
   openOrderCard,
   switchToDriverMap,
   takeOrderButton,
+  watchOrderActions,
+  IOrderActionWatch,
 } from './fixtures/driverUi'
 import {
   PASSENGER_STORAGE,
@@ -72,6 +74,7 @@ let driverContext: BrowserContext
 let passengerPage: Page
 let driverPage: Page
 const createdOrders: string[] = []
+let takeOrderActions: IOrderActionWatch | undefined
 
 const reason = (error: unknown) => (error as Error)?.message ?? String(error)
 
@@ -142,14 +145,19 @@ test.afterEach(async({}, testInfo) => {
       // списке активных, который опрашивает приложение.
       const order = await readOrder(passenger, orderId).catch(() => undefined)
       const active = await isOrderActiveFor(passenger, orderId).catch(() => undefined)
+      const actionDiagnostics = takeOrderActions?.describe(orderId) ?? 'наблюдатель команд не запускался'
       const diagnostics = `orderId=${orderId} driverId=${driver?.userId} ` +
         `carId=${car?.c_id} c_state=${state ?? 'unknown'} ` +
         `b_state=${order?.b_state ?? 'unknown'} b_confirm_state=${order?.b_confirm_state ?? 'unknown'} ` +
-        `в списке активных пассажира: ${active ?? 'unknown'}`
+        `в списке активных пассажира: ${active ?? 'unknown'} ` +
+        `actions: ${actionDiagnostics}`
       console.error(`E2E FAILURE DIAGNOSTICS: ${diagnostics}`)
       testInfo.annotations.push({ type: 'backend', description: diagnostics })
     }
   }
+
+  takeOrderActions?.dispose()
+  takeOrderActions = undefined
 
   // Каждый прогон убирает за собой, аккаунты не зависают. Если отменить не
   // вышло — заказ остаётся живым на бэкенде, поэтому его номер обязан попасть в
@@ -263,7 +271,37 @@ test('А.1.1 — стандартный вызов: от создания зак
   const take = takeOrderButton(driverPage)
   await expect(take, 'в карточке заказа есть кнопка принятия').toBeVisible({ timeout: 60_000 })
   await expect(take).toBeEnabled({ timeout: 60_000 })
+  // Наблюдатель подключается ДО клика: он фиксирует реальный запрос интерфейса
+  // и бизнес-ответ backend, не подменяя запрос и не вызывая API из теста.
+  takeOrderActions = watchOrderActions(driverPage)
   await take.click()
+
+  // Не ждём 90 секунд перехода FSM вслепую. Сначала ждём ответ именно команды,
+  // которую отправил UI. Если запрос не ушёл или backend его отклонил, тест
+  // завершается с причиной, а не продолжает бесполезно опрашивать состояние.
+  await expect.poll(
+    () => takeOrderActions!.records.some(record =>
+      record.orderId === orderId && record.httpStatus !== undefined),
+    {
+      message: `backend ответил на команду принятия заказа ${orderId}`,
+      timeout: 20_000,
+      intervals: [100, 250, 500],
+    },
+  ).toBe(true)
+
+  const takeAction = takeOrderActions.records.find(record => record.orderId === orderId)!
+  expect(
+    takeAction.httpStatus,
+    `HTTP-ответ команды принятия: ${takeOrderActions.describe(orderId)}`,
+  ).toBeGreaterThanOrEqual(200)
+  expect(
+    takeAction.httpStatus,
+    `HTTP-ответ команды принятия: ${takeOrderActions.describe(orderId)}`,
+  ).toBeLessThan(300)
+  expect(
+    takeAction.status,
+    `backend отклонил принятие заказа: ${takeOrderActions.describe(orderId)}`,
+  ).not.toBe('error')
 
   // ПРОВЕРКА 2 (вторая опора) — после «Взять заказ» водитель становится
   // ИСПОЛНИТЕЛЕМ, и никто его не выбирал. У голосования и предложения он остался
