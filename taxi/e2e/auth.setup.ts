@@ -49,34 +49,23 @@ async function signIn(
   await page.locator('header .burger-button').click()
   await page.locator('header .menu__account').click()
 
-  const loginType = page.locator(`input[name="type"][value="${account.type}"]`)
-  await expect(loginType).toBeVisible()
-  await loginType.check()
-
   const login = page.locator('input[name="login"]')
-  await expect(login).toBeVisible()
   const password = page.locator('input[name="password"]')
-  const signInButton = page.getByRole('button', { name: /^sign in$/i })
+  // Вход E2E-учёток выполняется по e-mail; форма уже открывается
+  // с выбранным email-каналом. Не переключаем radio: это перемонтирует
+  // login input (key={type}) и не нужно для обычного входа.
+  const signInButton = page.locator('button.login-modal_login-btn')
 
-  // Кнопка включается только при чистой валидации формы
-  // (`disabled={!!Object.values(errors).length}` в LoginModal/Login.tsx), а поле
-  // логина перемонтируется, когда форма определяется с типом входа (`key={type}`
-  // там же): введённый текст пропадает вместе со старым элементом. На медленной
-  // машине ввод успевает раньше этого, поэтому повторяем его, пока форма не
-  // признает данные валидными.
-  try {
-    await expect(async() => {
-      await login.fill(account.login)
-      await password.fill(account.password)
-      await expect(signInButton).toBeEnabled({ timeout: 2_000 })
-    }).toPass({ timeout: 60_000, intervals: [500, 1_000, 2_000] })
-  } catch {
-    // Иначе падение выглядит как глухой таймаут клика по disabled-кнопке и не
-    // говорит, что именно форму не устроило.
-    throw new Error(
-      'E2E: форма входа не приняла учётные данные, кнопка «Sign in» осталась ' +
-      `заблокированной. ${await describeLoginState(page)}`)
-  }
+  await expect(login).toBeVisible()
+  await expect(password).toBeVisible()
+  await login.fill(account.login)
+  await password.fill(account.password)
+
+  // Проверяем, что React Hook Form получил оба значения и валидация
+  // сняла disabled. Не нажимаем кнопку, пока форма сама её не разрешит.
+  await expect(login).toHaveValue(account.login)
+  await expect(password).toHaveValue(account.password)
+  await expect(signInButton).toBeEnabled({ timeout: 10_000 })
 
   await signInButton.click()
 
