@@ -88,13 +88,13 @@ import {
   PICKUP,
   STATE_NAMES,
   confirmActionResult,
+  driverMapAction,
   isOfferFormVisible,
   offerPriceInput,
   offerSendButton,
   openOfferForm,
   openOrderCard,
   orderCard,
-  uiDriverState,
 } from './fixtures/driverUi'
 import {
   PASSENGER_PAGE,
@@ -397,12 +397,10 @@ test('А.1.5 — отмена заказа пассажиром: заказ не
   // предлагает НИКАКОГО действия по этому заказу — приложение не приводит
   // водителя в состояние, продолжающее отменённую поездку.
   await driver.page.getByTestId('driver-tab-map').click()
-  await expect
-    .poll(() => uiDriverState(driver.page), {
-      message: 'у водителя нет основного действия по отменённому заказу',
-      timeout: 90_000,
-    })
-    .toBeUndefined()
+  await expect(
+    driverMapAction(driver.page, orderId),
+    'по отменённому заказу нет основного действия карты',
+  ).toHaveCount(0, { timeout: 90_000 })
 
   // ШАГ 12-13 (AC-08) — persistence: reload пассажира, состояние соответствует
   // backend, а не восстановленному локальному состоянию. Замеренный контракт —
