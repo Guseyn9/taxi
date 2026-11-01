@@ -133,7 +133,7 @@ function speechLanguage(languageIso?: string): string {
 }
 
 function includesAny(value: string, phrases: string[]): boolean {
-  const normalized = ` ${value.replace(/[.,!?;:]/g, ' ').replace(/\\s+/g, ' ').trim()} `
+  const normalized = ` ${value.replace(/[.,!?;:]/g, ' ').replace(/\s+/g, ' ').trim()} `
   return phrases.some(phrase => normalized.includes(` ${phrase} `))
 }
 
@@ -182,7 +182,7 @@ const normalizePoint = async (
 
   return {
     address: displayName,
-    shortAddress: String(address?.shortAddress || displayName),
+    shortAddress: displayName,
     latitude,
     longitude,
   }
@@ -260,7 +260,7 @@ export const PassengerVoiceAssistant: React.FC<IProps> = ({
         activeRef.current = false
         stepRef.current = 'idle'
         setActive(false)
-            await speak(currentCopy.success)
+        await speak(currentCopy.success)
       } else {
         stepRef.current = 'confirmation'
         await speak(currentCopy.validation)
