@@ -7,6 +7,7 @@ import {
 } from 'react-leaflet'
 import {
   EBookingDriverState,
+  EBookingStates,
   EOrderProfitRank,
   IAddressPoint,
   IDriver,
@@ -1242,6 +1243,12 @@ function DriverOrderMapModeContent({
     ]
 
     return (activeOrders ?? []).reduce<Array<{ order: IOrder; driver: IDriver }>>((list, item) => {
+      // Отмена пассажиром терминальна для заказа, даже если backend
+      // сохраняет c_state водителя (Performer/Started) для истории.
+      // Не включаем такую поездку в навигационные действия карты.
+      if (item.b_state === EBookingStates.Canceled)
+        return list
+
       const driver = item.drivers?.find(driver => driver.u_id === user?.u_id)
       if (driver && navigationStates.includes(driver.c_state))
         list.push({ order: item, driver })
