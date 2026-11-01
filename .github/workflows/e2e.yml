@@ -7,17 +7,25 @@ on:
     branches:
       - main
 
+# Keep at most one running and one pending E2E run per PR.
+# A newer commit replaces an older pending run for the same PR, but never
+# interrupts a run that is already using the shared backend.
+concurrency:
+  group: e2e-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: false
+
 permissions:
   actions: read
   contents: read
+  pull-requests: read
 
 jobs:
   e2e:
     name: Playwright E2E
     runs-on: ubuntu-latest
-    # The live backend uses a shared test driver and vehicle. GitHub concurrency
-    # groups retain only one pending run and replace older pending runs, so they
-    # cannot provide a lossless queue. Each run instead waits for its turn below.
+    # The live backend uses shared test accounts, so all PRs still take turns
+    # through the global queue below. Per-PR concurrency prevents queue buildup
+    # from every intermediate commit.
     timeout-minutes: 60
     defaults:
       run:
@@ -30,24 +38,49 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           REPOSITORY: ${{ github.repository }}
           CURRENT_RUN_ID: ${{ github.run_id }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          CURRENT_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         shell: bash
         run: |
           set -euo pipefail
           api="repos/${REPOSITORY}/actions/workflows/e2e.yml/runs?per_page=100"
-          echo "Waiting for earlier E2E runs to finish; shared test accounts must not be used concurrently."
+          echo "Waiting for an exclusive turn against the shared E2E backend."
+
           while true; do
-            runs="$(gh api "$api")"
-            earliest="$(jq -r '[.workflow_runs[] | select(.status != "completed") | .run_number] | min // empty' <<< "$runs")"
-            current_number="$(jq -r --arg id "$CURRENT_RUN_ID" '.workflow_runs[] | select((.id | tostring) == $id) | .run_number' <<< "$runs")"
-            if [[ -z "$current_number" ]]; then
+            # Do not spend a queue slot testing a commit superseded by a newer
+            # commit in the same PR.
+            if [[ -n "${PR_NUMBER}" ]]; then
+              latest_sha="$(gh api "repos/${REPOSITORY}/pulls/${PR_NUMBER}" --jq '.head.sha')"
+              if [[ "${latest_sha}" != "${CURRENT_HEAD_SHA}" ]]; then
+                echo "Skipping stale E2E run: ${CURRENT_HEAD_SHA}; current PR head is ${latest_sha}."
+                exit 0
+              fi
+            fi
+
+            runs="$(gh api "${api}")"
+            earliest="$(jq -r '[.workflow_runs[] | select(.status != "completed") | .run_number] | min // empty' <<< "${runs}")"
+            current_number="$(jq -r --arg id "${CURRENT_RUN_ID}" '.workflow_runs[] | select((.id | tostring) == $id) | .run_number' <<< "${runs}")"
+
+            if [[ -z "${current_number}" ]]; then
               echo "Could not find current workflow run in GitHub API response." >&2
               exit 1
             fi
-            if [[ "$current_number" == "$earliest" ]]; then
-              echo "Acquired E2E turn for run $CURRENT_RUN_ID (run number $current_number)."
+
+            if [[ "${current_number}" == "${earliest}" ]]; then
+              # Close the small race between acquiring the turn and starting
+              # the test when a newer PR commit was pushed.
+              if [[ -n "${PR_NUMBER}" ]]; then
+                latest_sha="$(gh api "repos/${REPOSITORY}/pulls/${PR_NUMBER}" --jq '.head.sha')"
+                if [[ "${latest_sha}" != "${CURRENT_HEAD_SHA}" ]]; then
+                  echo "Skipping stale E2E run after queue acquisition."
+                  exit 0
+                fi
+              fi
+              echo "Acquired E2E turn for run ${CURRENT_RUN_ID} (run number ${current_number})."
               break
             fi
-            echo "Run $current_number is waiting; earliest unfinished run is $earliest. Checking again in 15 seconds."
+
+            echo "Run ${current_number} is waiting; earliest unfinished run is ${earliest}. Checking again in 15 seconds."
             sleep 15
           done
 
