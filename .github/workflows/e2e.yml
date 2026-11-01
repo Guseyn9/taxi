@@ -3,9 +3,13 @@ name: E2E
 # The same Playwright tests used locally, run automatically against the live backend.
 on:
   pull_request:
+    paths-ignore:
+      - ".github/workflows/**"
   push:
     branches:
       - main
+    paths-ignore:
+      - ".github/workflows/**"
 
 # Keep at most one running and one pending E2E run per PR.
 # A newer commit replaces an older pending run for the same PR, but never
@@ -47,8 +51,7 @@ jobs:
           echo "Waiting for an exclusive turn against the shared E2E backend."
 
           while true; do
-            # Do not spend a queue slot testing a commit superseded by a newer
-            # commit in the same PR.
+            # Skip commits superseded by a newer commit in the same PR.
             if [[ -n "${PR_NUMBER}" ]]; then
               latest_sha="$(gh api "repos/${REPOSITORY}/pulls/${PR_NUMBER}" --jq '.head.sha')"
               if [[ "${latest_sha}" != "${CURRENT_HEAD_SHA}" ]]; then
@@ -67,8 +70,7 @@ jobs:
             fi
 
             if [[ "${current_number}" == "${earliest}" ]]; then
-              # Close the small race between acquiring the turn and starting
-              # the test when a newer PR commit was pushed.
+              # Recheck after acquiring the turn to close the commit-update race.
               if [[ -n "${PR_NUMBER}" ]]; then
                 latest_sha="$(gh api "repos/${REPOSITORY}/pulls/${PR_NUMBER}" --jq '.head.sha')"
                 if [[ "${latest_sha}" != "${CURRENT_HEAD_SHA}" ]]; then
