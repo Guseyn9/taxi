@@ -96,6 +96,7 @@ interface IProps extends PassengerVotingFormStoreProps {
   minimizedPartRef: React.Ref<HTMLElement>
   noSwipeElementsRef: React.Ref<HTMLElement[]>
   uiConfig?: PassengerUiConfig
+  onVoiceSubmitReady?: (submit: (() => Promise<boolean>) | null) => void
 }
 
 const VotingForm = function VotingForm({
@@ -137,6 +138,7 @@ const VotingForm = function VotingForm({
   minimizedPartRef,
   noSwipeElementsRef,
   uiConfig,
+  onVoiceSubmitReady,
 }: IProps) {
 
   const languageIso = language?.iso
@@ -253,9 +255,9 @@ const VotingForm = function VotingForm({
     }
   }
 
-  const submit = useCallback(async(mode: TClientOrderMode = 'order') => {
+  const submit = useCallback(async(mode: TClientOrderMode = 'order'): Promise<boolean> => {
     if (locked)
-      return
+      return false
 
     setSubmitError(null)
 
@@ -302,11 +304,11 @@ const VotingForm = function VotingForm({
       error = true
     }
     if (error)
-      return
+      return false
 
     if (!user) {
       setLoginModal(true)
-      return
+      return false
     }
 
     const commentObj: any = {}
@@ -390,17 +392,25 @@ const VotingForm = function VotingForm({
       if (!isVoting && !isOffer)
         resetClientOrder()
       onSubmit(data, draft)
+      return true
     } catch (error) {
       setSubmitError(getSafeSubmitErrorMessage(error))
       console.error(error)
+      return false
+    } finally {
+      setSubmitting(false)
     }
-    setSubmitting(false)
   }, [
     locked,
     from, to, comments, time, phone, user,
     locationClass, algorithmLocationClass, readSubmissionState, setLoginModal, createOrder,
     setIsExpanded, onSubmit, resetClientOrder,
   ])
+
+  useEffect(() => {
+    onVoiceSubmitReady?.(() => submit('order'))
+    return () => onVoiceSubmitReady?.(null)
+  }, [onVoiceSubmitReady, submit])
 
   const [submitting, setSubmitting] = useState(false)
   const [canceling, setCanceling] = useState(false)
