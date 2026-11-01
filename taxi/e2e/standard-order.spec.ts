@@ -282,31 +282,21 @@ test('А.1.1 — стандартный вызов: от создания зак
   takeOrderActions = watchOrderActions(driverPage)
   await take.click()
 
-  // Не ждём 90 секунд перехода FSM вслепую. Сначала ждём ответ именно команды,
-  // которую отправил UI. Если запрос не ушёл или backend его отклонил, тест
-  // завершается с причиной, а не продолжает бесполезно опрашивать состояние.
+  // Приложение может отправить несколько set_performer: первый запрос с
+  // b_driver_code на gruzvill получает бизнес-ошибку, затем приложение повторяет
+  // запрос без этого поля. Поэтому проверяем всю последовательность, а не первый
+  // ответ. Это тот же контракт, который уже проверен в passenger-driver-flow.
   await expect.poll(
-    () => takeOrderActions!.of(orderId, 'set_performer').some(record => record.httpStatus !== undefined),
+    () => {
+      const attempts = takeOrderActions!.of(orderId, 'set_performer')
+      return attempts.length > 0 && attempts.every(record => record.httpStatus !== undefined)
+    },
     {
-      message: `backend ответил на команду принятия заказа ${orderId}`,
-      timeout: 20_000,
+      message: `все ответы set_performer получены: ${takeOrderActions.describe(orderId)}`,
+      timeout: 15_000,
       intervals: [100, 250, 500],
     },
   ).toBe(true)
-
-  const takeAction = takeOrderActions.of(orderId, 'set_performer')[0]
-  expect(
-    takeAction.httpStatus,
-    `HTTP-ответ команды принятия: ${takeOrderActions.describe(orderId)}`,
-  ).toBeGreaterThanOrEqual(200)
-  expect(
-    takeAction.httpStatus,
-    `HTTP-ответ команды принятия: ${takeOrderActions.describe(orderId)}`,
-  ).toBeLessThan(300)
-  expect(
-    takeAction.status,
-    `backend отклонил принятие заказа: ${takeOrderActions.describe(orderId)}`,
-  ).not.toBe('error')
 
   // ПРОВЕРКА 2 (вторая опора) — после «Взять заказ» водитель становится
   // ИСПОЛНИТЕЛЕМ, и никто его не выбирал. У голосования и предложения он остался
@@ -315,6 +305,22 @@ test('А.1.1 — стандартный вызов: от создания зак
   await expectBackendState(
     orderId, DRIVER_STATE.Performer,
     'стандартный вызов делает водителя исполнителем сам, без выбора пассажиром')
+
+  const takeAttempts = takeOrderActions.of(orderId, 'set_performer')
+  const takeSequence = takeOrderActions.describe(orderId)
+  test.info().annotations.push({
+    type: 'set_performer',
+    description: `${takeAttempts.length}: ${takeSequence}`,
+  })
+  console.log(`E2E set_performer orderId=${orderId} запросов=${takeAttempts.length}: ${takeSequence}`)
+  expect(
+    takeAttempts.filter(item => item.status === 'success').length,
+    `назначение принято backend ровно один раз: ${takeSequence}`,
+  ).toBe(1)
+  expect(
+    takeAttempts[takeAttempts.length - 1].status,
+    `после успешного назначения новых запросов принятия нет: ${takeSequence}`,
+  ).toBe('success')
 
   // ПРОВЕРКА 5 — исполнитель у заказа ровно один, и это наш водитель.
   //
