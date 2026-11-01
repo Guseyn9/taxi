@@ -159,7 +159,7 @@ function normalizeText(value: string): string {
   return value.toLocaleLowerCase().trim().replace(/[.!?؟،,;:]+$/gu, '').replace(/\\s+/g, ' ')
 }
 
-function isCurrentLocationPhrase(value: string): boolean {
+function isCurrentLocationPhrase(value: string, language: PassengerVoicePlatformOptions['language']): boolean {
   const text = normalizeText(value)
   const phrases: Record<PassengerVoicePlatformOptions['language'], string[]> = {
     ru: ['отсюда', 'здесь', 'тут', 'с текущего местоположения'],
@@ -168,9 +168,7 @@ function isCurrentLocationPhrase(value: string): boolean {
     en: ['here', 'from here', 'my current location'],
     es: ['aquí', 'desde aquí', 'mi ubicación actual'],
   }
-  return phrases[Object.keys(phrases).find(key => key === key) as PassengerVoicePlatformOptions['language']].some(
-    phrase => text === normalizeText(phrase),
-  )
+  return phrases[language].some(phrase => text === normalizeText(phrase))
 }
 
 function stripAddressPrefix(value: string, language: PassengerVoicePlatformOptions['language']): string {
@@ -518,6 +516,7 @@ export class PassengerVoicePlatform {
     this.options.interaction.publish({
       type: 'voice.response',
       payload: { text },
+      metadata: { source: 'voice', timestamp: new Date().toISOString() },
     })
   }
 
@@ -565,7 +564,7 @@ export class PassengerVoicePlatform {
   }
 
   private async resolvePoint(raw: string): Promise<IAddressPoint> {
-    if (isCurrentLocationPhrase(raw)) {
+    if (isCurrentLocationPhrase(raw, this.options.language)) {
       return getCurrentLocationPoint()
     }
     const query = stripAddressPrefix(raw, this.options.language)
