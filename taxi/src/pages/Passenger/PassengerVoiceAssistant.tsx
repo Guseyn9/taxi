@@ -275,6 +275,8 @@ export const PassengerVoiceAssistant: React.FC<IProps> = ({
   const channelRef = useRef<BrowserVoiceChannel | null>(null)
   const activeRef = useRef(false)
   const stepRef = useRef<VoiceStep>('idle')
+  const dialogueVersionRef = useRef(0)
+  const [submitting, setSubmitting] = useState(false)
   const propsRef = useRef({ languageIso, getMapSearchCenter, setFrom, setTo, onSubmitOrder })
   propsRef.current = { languageIso, getMapSearchCenter, setFrom, setTo, onSubmitOrder }
   const transcriptHandlerRef = useRef<(text: string) => Promise<void>>(async() => undefined)
@@ -292,6 +294,7 @@ export const PassengerVoiceAssistant: React.FC<IProps> = ({
 
     setTranscript(text)
     const currentStep = stepRef.current
+    const dialogueVersion = dialogueVersionRef.current
     const currentCopy = VOICE_COPY[languageKey(propsRef.current.languageIso)]
 
     if (currentStep === 'pickup' || currentStep === 'destination') {
@@ -300,6 +303,8 @@ export const PassengerVoiceAssistant: React.FC<IProps> = ({
         const point = isCurrentLocation ?
           await getCurrentLocationPoint() :
           await normalizePoint(text, propsRef.current.getMapSearchCenter())
+        if (!activeRef.current || dialogueVersion !== dialogueVersionRef.current)
+          return
         if (currentStep === 'pickup')
           propsRef.current.setFrom(point)
         else
@@ -309,6 +314,8 @@ export const PassengerVoiceAssistant: React.FC<IProps> = ({
         stepRef.current = nextStep
         await speak(nextStep === 'destination' ? currentCopy.destination : currentCopy.confirmation)
       } catch (error) {
+        if (!activeRef.current || dialogueVersion !== dialogueVersionRef.current)
+          return
         const currentCopy = VOICE_COPY[languageKey(propsRef.current.languageIso)]
         await speak(
           isCurrentLocationPhrase(text) ?
@@ -334,16 +341,25 @@ export const PassengerVoiceAssistant: React.FC<IProps> = ({
       }
 
       stepRef.current = 'submitting'
-      await speak(currentCopy.submitting)
-      const submitted = await propsRef.current.onSubmitOrder()
-      if (submitted) {
-        activeRef.current = false
-        stepRef.current = 'idle'
-        setActive(false)
-        await speak(currentCopy.success)
-      } else {
-        stepRef.current = 'confirmation'
-        await speak(currentCopy.validation)
+      setSubmitting(true)
+      try {
+        await speak(currentCopy.submitting)
+        if (!activeRef.current || dialogueVersion !== dialogueVersionRef.current)
+          return
+        const submitted = await propsRef.current.onSubmitOrder()
+        if (!activeRef.current || dialogueVersion !== dialogueVersionRef.current)
+          return
+        if (submitted) {
+          activeRef.current = false
+          stepRef.current = 'idle'
+          setActive(false)
+          await speak(currentCopy.success)
+        } else {
+          stepRef.current = 'confirmation'
+          await speak(currentCopy.validation)
+        }
+      } finally {
+        setSubmitting(false)
       }
     }
   }
@@ -388,6 +404,7 @@ export const PassengerVoiceAssistant: React.FC<IProps> = ({
 
     return () => {
       activeRef.current = false
+      dialogueVersionRef.current += 1
       unregister()
       channel.stop()
       channelRef.current = null
@@ -403,7 +420,10 @@ export const PassengerVoiceAssistant: React.FC<IProps> = ({
     }
 
     const isNewDialogue = stepRef.current === 'idle'
+    if (isNewDialogue)
+      dialogueVersionRef.current += 1
     activeRef.current = true
+    setSubmitting(false)
     textModeRef.current = false
     setTextMode(false)
     setActive(true)
@@ -447,6 +467,9 @@ export const PassengerVoiceAssistant: React.FC<IProps> = ({
   }
 
   const stop = () => {
+    if (submitting)
+      return
+    dialogueVersionRef.current += 1
     activeRef.current = false
     stepRef.current = 'idle'
     textModeRef.current = false
@@ -462,13 +485,14 @@ export const PassengerVoiceAssistant: React.FC<IProps> = ({
         type="button"
         className="passenger-voice__toggle"
         onClick={active ? stop : start}
+        disabled={submitting}
         aria-pressed={active}
-        aria-label={active ? copy.stop : copy.start}
+        aria-label={submitting ? copy.submitting : active ? copy.stop : copy.start}
       >
         {<VoiceIcon muted={active} />}
-        <span>{active ? copy.stop : copy.start}</span>
+        <span>{submitting ? copy.submitting : active ? copy.stop : copy.start}</span>
       </button>
-      {active && (
+      {active && !submitting && (
         <div className="passenger-voice__mode">
           {textMode ? (
             <button type="button" onClick={switchToVoice}>{copy.switchToVoice}</button>
@@ -477,7 +501,7 @@ export const PassengerVoiceAssistant: React.FC<IProps> = ({
           )}
         </div>
       )}
-      {active && textMode && (
+      {active && textMode && !submitting && (
         <form className="passenger-voice__text-form" onSubmit={submitText}>
           <input
             aria-label={copy.switchToText}
