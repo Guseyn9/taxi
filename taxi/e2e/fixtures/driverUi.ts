@@ -128,17 +128,15 @@ async function dismissSuccessMessageModal(page: Page): Promise<boolean> {
   return true
 }
 
-export async function openOrderCard(page: Page, orderId: string): Promise<void> {
-  await expectOrderInDriverList(page, orderId)
+export async function clickOrderCard(page: Page, orderId: string): Promise<void> {
+  // Сценарий может уже находиться на списке — проверка видимости не вызывает
+  // навигацию и не сбрасывает состояние страницы.
+  await expect(orderCard(page, orderId), `карточка заказа ${orderId} видна перед открытием`)
+    .toBeVisible({ timeout: 120_000 })
 
-  // В некоторых сценариях backend/UI успевает показать успешное сообщение
-  // после загрузки списка. Оно остаётся поверх страницы и блокирует карточку.
   await dismissSuccessMessageModal(page)
-
   const card = orderCard(page, orderId)
   try {
-    // Короткий первый интервал позволяет перехватить гонку, когда MessageModal
-    // появляется сразу после проверки выше, не ожидая стандартные 30 секунд.
     await card.click({ timeout: 1_500 })
   } catch (error) {
     const dismissed = await dismissSuccessMessageModal(page)
@@ -146,6 +144,11 @@ export async function openOrderCard(page: Page, orderId: string): Promise<void> 
       throw error
     await card.click()
   }
+}
+
+export async function openOrderCard(page: Page, orderId: string): Promise<void> {
+  await expectOrderInDriverList(page, orderId)
+  await clickOrderCard(page, orderId)
 }
 
 /** Кнопка «Взять заказ» в карточке заказа. У голосового заказа — «Готов поехать». */
