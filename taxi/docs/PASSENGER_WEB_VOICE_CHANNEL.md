@@ -23,12 +23,14 @@ The current Voice Assistant repository keeps its scenario/dialogue runtime insid
 - No order is submitted before an explicit voice confirmation.
 - A failed validation or backend submission leaves the dialogue at the confirmation step; the passenger can correct the form on screen and retry.
 - Voice and manual input share the same Redux-backed pickup and destination values.
-- Stopping voice does not cancel or mutate an existing order.
+- Switching from voice to text preserves the current dialogue step and already resolved points; switching back resumes voice at that step.
+- Silence does not expire the dialogue. A no-speech recognition result restarts listening while the session remains active.
+- Stopping the dialogue explicitly does not cancel or mutate an existing order.
 - Unsupported speech recognition leaves the regular web booking flow unaffected.
 
 ## Initial language support
 
-The browser recognition locale follows the passenger UI language: Russian, French, Moroccan Arabic, English, and Spanish. Browser support depends on the device and browser implementation of the Web Speech API. The map and form remain the fallback interaction.
+The browser recognition locale follows the passenger UI language: Russian, French, Moroccan Arabic, English, and Spanish. Browser support depends on the device and browser implementation of the Web Speech API. The map and form remain the fallback interaction. Text entry is available during every active dialogue step.
 
 ## Out of scope for this first integration
 
@@ -37,3 +39,7 @@ The browser recognition locale follows the passenger UI language: Russian, Frenc
 - Voice-only booking without the web screen.
 - Replacing the Voice Assistant scenario engine or changing Taxi backend/FSM logic.
 - Automatic tariff selection or price negotiation by voice.
+
+## Deterministic voice-flow test data
+
+`taxi/docs/qa/voice-ordering/agadir-test-points.json` contains two fixed Agadir coordinates. Acceptance tests must treat them as already correctly resolved pickup and destination points; they are not production defaults and do not test geocoding.
