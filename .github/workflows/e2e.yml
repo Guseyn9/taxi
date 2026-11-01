@@ -25,9 +25,7 @@ jobs:
     if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
     name: Playwright E2E
     runs-on: ubuntu-latest
-    # The live backend uses a shared test driver and vehicle. GitHub concurrency
-    # groups retain only one pending run and replace older pending runs, so they
-    # cannot provide a lossless queue. Each run instead waits for its turn below.
+    # GitHub concurrency above serializes access to the shared live backend.
     timeout-minutes: 60
     defaults:
       run:
