@@ -2354,7 +2354,7 @@ function MapContent({
           aria-label={t(TRANSLATION.SHOW_MY_LOCATION)}
           title={t(TRANSLATION.SHOW_MY_LOCATION)}
         >
-          {!isModal&&containerClassName?.includes('passenger__form-map-container')?<><Navigation2 size={18} aria-hidden="true"/><span className="header-location-label">GPS</span></>:<img src={images.mapLocationButton} alt="" />}
+          {!isModal&&containerClassName?.includes('passenger__form-map-container')?<><Navigation2 size={18} aria-hidden="true"/><span className="header-location-label">Location</span></>:<img src={images.mapLocationButton} alt="" />}
         </button></MapLocationAction>
       }
       {

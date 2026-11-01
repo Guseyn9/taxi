@@ -1,0 +1,6 @@
+# Узор панели
+
+Генерация: встроенный ImageGen. Файл: public/design-v2/ornaments/zellige-corner-v1.png. Веб-ассет оптимизирован до 384×384 PNG без метаданных; исходная генерация сохранена отдельно. Изображение с прозрачностью; CSS смешивает его с красной поверхностью только в верхнем правом углу. Ливреи и логотипы не перегенерировались.
+
+Промпт:
+Use case: logo-brand. Asset type: subtle decorative corner texture for a Moroccan taxi application. Create a sparse, precise Moroccan zellige geometric star lattice made of very thin pale blush rose lines only, on an actually transparent background. Flat 2D line ornament, consistent fine line weight, no 3D, no shadow, no paper or solid background, no text, no logo. Composition: ornament occupies the upper-right corner of a square canvas, covers only the top-right 55 percent; pattern smoothly fades to complete transparency towards the left and bottom. The drawing will appear at 190px wide in the top-right corner of a deep red booking panel, at low opacity, behind empty decorative space. Geometric interlaced eight-point star outlines and connecting polygon outlines, like Moroccan architectural tilework. Elegant restrained pattern, not dense or high contrast. Export actual alpha transparency; do not draw a checkerboard.

@@ -1,5 +1,5 @@
 /* Booking sheet inversion: dark shell, light controls. Geometry is unchanged. */
-#root .passenger__draggable:has(.passenger-voting-form[data-locked=false]) {background:var(--drive-dark-surface)!important;border-color:var(--drive-wine)!important}
+#root .passenger__draggable:has(.passenger-voting-form[data-locked=false]) {background:var(--drive-dark-surface)!important;border-color:var(--drive-wine)!important;background-blend-mode:soft-light,normal}
 #root .passenger-voting-form[data-locked=false] {color:#fff}
 #root .passenger-voting-form[data-locked=false] :is(.rs-ride-heading>div,.passenger-voting-form__car-class-title,.rs-options-toggle,.ride-service-help-button) {color:#fff!important}
 #root .passenger-voting-form[data-locked=false] :is(.short-info,.short-info__item,.rs-trip-options-row) {color:var(--drive-on-wine-muted)}

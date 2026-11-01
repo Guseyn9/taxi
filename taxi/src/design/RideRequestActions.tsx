@@ -24,7 +24,7 @@ export function RideRequestActions({mode,onChange,onSubmit,disabled,submitDisabl
  }
  return <div className="rs-booking-actions">
   <div className="rs-booking-actions__list" aria-label={copy.mode}>
-   {choices.map(({mode:choice,Icon})=><div key={choice} className={`rs-booking-action${mode===choice?' rs-booking-action--preferred':''}`} data-disabled={Boolean(disabled||pending||submitDisabled)}>
+   {choices.map(({mode:choice,Icon})=><div key={choice} className={`rs-booking-action${mode===choice?' rs-booking-action--preferred':''}`} data-mode={choice} data-disabled={Boolean(disabled||pending||submitDisabled)}>
     <Button type="button" data-testid={`passenger-order-mode-${choice}`} className="rs-booking-action__submit"
      aria-label={copy[choice]} aria-describedby={`${hintId}-${choice}`} aria-busy={Boolean(pending&&mode===choice)}
      disabled={disabled||pending||submitDisabled} onClick={()=>{
