@@ -270,6 +270,7 @@ export const PassengerVoiceAssistant: React.FC<IProps> = ({
   const [message, setMessage] = useState(copy.ready)
   const [transcript, setTranscript] = useState('')
   const [textMode, setTextMode] = useState(false)
+  const textModeRef = useRef(false)
   const [textInput, setTextInput] = useState('')
   const channelRef = useRef<BrowserVoiceChannel | null>(null)
   const activeRef = useRef(false)
@@ -352,11 +353,11 @@ export const PassengerVoiceAssistant: React.FC<IProps> = ({
     if (!channel)
       return
 
-    while (activeRef.current && !textMode) {
+    while (activeRef.current && !textModeRef.current) {
       try {
         await channel.listenOnce(speechLanguage(propsRef.current.languageIso))
       } catch (error) {
-        if (!activeRef.current || textMode)
+        if (!activeRef.current || textModeRef.current || (error instanceof Error && error.message === 'VOICE_STOPPED'))
           break
         if (error instanceof Error && error.message === 'NO_SPEECH_RESULT') {
           // Silence is not a dialogue timeout. Keep the current step and listen again.
@@ -403,6 +404,7 @@ export const PassengerVoiceAssistant: React.FC<IProps> = ({
 
     const isNewDialogue = stepRef.current === 'idle'
     activeRef.current = true
+    textModeRef.current = false
     setTextMode(false)
     setActive(true)
     if (isNewDialogue) {
@@ -415,6 +417,7 @@ export const PassengerVoiceAssistant: React.FC<IProps> = ({
   }
 
   const switchToText = () => {
+    textModeRef.current = true
     setTextMode(true)
     channelRef.current?.stopRecognition()
     setMessage(VOICE_COPY[languageKey(languageIso)][stepRef.current === 'pickup' ? 'pickup' : stepRef.current === 'destination' ? 'destination' : 'confirmation'])
@@ -426,6 +429,7 @@ export const PassengerVoiceAssistant: React.FC<IProps> = ({
       setMessage(VOICE_COPY[languageKey(languageIso)].unsupported)
       return
     }
+    textModeRef.current = false
     setTextMode(false)
     if (!activeRef.current)
       activeRef.current = true
@@ -445,6 +449,7 @@ export const PassengerVoiceAssistant: React.FC<IProps> = ({
   const stop = () => {
     activeRef.current = false
     stepRef.current = 'idle'
+    textModeRef.current = false
     setTextMode(false)
     channelRef.current?.stop()
     setActive(false)
