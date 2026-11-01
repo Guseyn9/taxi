@@ -1,33 +1,41 @@
-/* Direct commands with separate help targets; never a duplicate submit row. */
+/* Large direct commands; one separate full-width explanation target. */
 #root .rs-booking-actions{display:flex;flex-direction:column;gap:8px;min-width:0}
 #root .rs-booking-actions__list{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
 #root .rs-booking-actions__list:has(>.rs-booking-action:nth-child(2):last-child){grid-template-columns:repeat(2,minmax(0,1fr))}
 #root .rs-booking-action{position:relative;display:flex;align-items:stretch;min-width:0;background:#fff;border:1px solid #dedede;border-radius:16px;overflow:hidden;color:#111}
-#root .rs-booking-action__submit{display:flex;flex-direction:column;align-items:center;justify-content:center;flex:1;width:100%;min-width:0;height:88px;min-height:88px;gap:3px;border:0;border-radius:0;background:transparent;color:inherit;padding:8px 6px;font-size:12px;white-space:normal;line-height:16px}
-#root .rs-booking-action__submit svg{display:block;flex:none;width:20px;height:20px;margin:0;color:var(--drive-red)}
-#root .rs-booking-action__submit span{display:block;flex:none;width:100%;min-width:0;white-space:normal;overflow-wrap:normal;text-align:center;font:700 12px/16px Manrope,sans-serif}
-#root .rs-booking-action__detail{display:flex;flex:none;align-items:center;justify-content:center;width:100%;min-height:28px;max-width:100%;color:#666;font:500 10px/12px Manrope,sans-serif;white-space:normal;text-align:center}
+#root .rs-booking-action__submit{display:flex;flex-direction:column;align-items:center;justify-content:center;flex:1;width:100%;min-width:0;height:96px;min-height:96px;gap:4px;border:0;border-radius:0;background:transparent;color:inherit;padding:8px 6px;font-size:13px;white-space:normal;line-height:18px}
+#root .rs-booking-action__submit svg{display:block;flex:none;width:24px;height:24px;margin:0;color:var(--drive-red)}
+#root .rs-booking-action__submit span{display:block;flex:none;width:100%;min-width:0;white-space:normal;overflow-wrap:normal;text-align:center;font:800 13px/18px Manrope,sans-serif}
+#root .rs-booking-action__detail{display:flex;flex:none;align-items:center;justify-content:center;width:100%;min-height:28px;max-width:100%;color:#666;font:600 11px/14px Manrope,sans-serif;white-space:normal;text-align:center}
 #root .rs-booking-action--preferred{background:var(--drive-red);border-color:var(--drive-red);color:white}
 #root .rs-booking-action--preferred .rs-booking-action__submit svg{color:inherit}
 #root .rs-booking-action--preferred .rs-booking-action__detail{color:#fff}
-#root .rs-booking-action__help{position:absolute;inset:0 0 auto auto;width:44px;height:44px;padding:0;display:grid;place-items:center;border:0;background:transparent;color:inherit;cursor:pointer}
+#root .rs-booking-actions__help{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;min-height:44px;padding:10px 12px;border:1px solid #e3aeac;border-radius:12px;background:transparent;color:#fffaf7;font:700 13px/18px Manrope,sans-serif;cursor:pointer}
+#root .rs-booking-actions__help:hover{background:var(--drive-wine-deep)}
+#root .rs-booking-actions__help:focus-visible{outline:2px solid white;outline-offset:3px}
+#root .rs-booking-actions__help svg{flex:none}
 #root .rs-booking-action button:focus-visible{outline:2px solid currentColor;outline-offset:-4px}
 /* Commands retain separate identities even before route validation completes. */
-#root .rs-booking-action[data-mode=order]{background:var(--drive-red);border-color:var(--drive-red);color:white}
+#root .rs-booking-action[data-mode=order]{background:#cf111b;border:2px solid #fff3ed;color:white}
 #root .rs-booking-action[data-mode=vote]{background:var(--drive-white);border-color:var(--drive-white);color:var(--drive-black)}
-#root .rs-booking-action[data-mode=offer]{background:var(--drive-wine-deep);border-color:var(--drive-wine-line);color:var(--drive-on-wine)}
+#root .rs-booking-action[data-mode=offer]{background:#171717;border:2px solid #e9d5cf;color:#fffaf7}
 #root .rs-booking-action[data-mode] :is(.rs-booking-action__detail,.rs-booking-action__submit svg){color:inherit}
 #root .rs-booking-action[data-mode=vote] .rs-booking-action__submit svg{color:var(--drive-red)}
 #root .rs-booking-action[data-mode]:not([data-disabled=true]):hover{filter:brightness(1.06)}
-#root .rs-booking-action[data-disabled=true][data-mode=order]{background:#99444b;border-color:#b86d73;color:#fff0ef}
-#root .rs-booking-action[data-disabled=true][data-mode=vote]{background:#eee2de;border-color:#d6bdb8;color:#705556}
-#root .rs-booking-action[data-disabled=true][data-mode=offer]{background:#61252b;border-color:#a25b62;color:#edcdd0}
+#root .rs-booking-action[data-disabled=true][data-mode=order]{background:#f7cdd0;border:2px solid #fff3ed;color:#68131b}
+#root .rs-booking-action[data-disabled=true][data-mode=vote]{background:#fffaf7;border:2px solid #d9bcb6;color:#292323}
+#root .rs-booking-action[data-disabled=true][data-mode=offer]{background:#242121;border:2px solid #e4babb;color:#fff2ee}
 #root .rs-booking-action[data-disabled=true] .rs-booking-action__submit svg{color:inherit}
 #root .rs-booking-action__submit:disabled{opacity:1;cursor:not-allowed}
 #root .rs-booking-action__submit[aria-busy=true] svg{animation:booking-action-spin 1s linear infinite}
 @keyframes booking-action-spin{to{transform:rotate(360deg)}}
 @media(prefers-reduced-motion:reduce){#root .rs-booking-action__submit[aria-busy=true] svg{animation:none}}
 .rs-booking-help{width:min(440px,calc(100vw - 24px));padding:24px;display:flex;flex-direction:column;gap:16px;background:white;color:#111}
+.rs-booking-help__methods{display:grid;gap:16px}
+.rs-booking-help__methods>section{display:grid;grid-template-columns:24px minmax(0,1fr);gap:12px;align-items:start;padding-block:4px}
+.rs-booking-help__methods svg{color:var(--drive-red);margin-top:2px}
+.rs-booking-help__methods h3{margin:0 0 4px;font:800 16px/22px Manrope,sans-serif}
+.rs-booking-help__methods p{font-size:14px;line-height:21px;color:#454040}
 .rs-booking-help h2{font-size:22px;line-height:1.3;margin:0}
 .rs-booking-help p{font-size:15px;line-height:1.5;margin:0}
 .rs-booking-help>.rs-request-price{min-width:0}

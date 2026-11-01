@@ -1,0 +1,27 @@
+{
+  "order_disabled": [
+    "#f7cdd0",
+    "#68131b",
+    8.6
+  ],
+  "vote_disabled": [
+    "#fffaf7",
+    "#292323",
+    14.92
+  ],
+  "offer_disabled": [
+    "#242121",
+    "#fff2ee",
+    14.6
+  ],
+  "order_enabled": [
+    "#cf111b",
+    "#ffffff",
+    5.6
+  ],
+  "offer_enabled": [
+    "#171717",
+    "#fffaf7",
+    17.3
+  ]
+}

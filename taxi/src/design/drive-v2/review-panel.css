@@ -93,3 +93,9 @@
 #root .passenger-voting-form__candidate-profile>img{display:block;width:42px;height:42px;min-width:42px;border-radius:50%;object-fit:cover}
 #root .passenger-voting-form__candidate-profile:focus-visible{outline:2px solid #b51218;outline-offset:2px;border-radius:8px}
 @media(max-width:599px) and (max-height:650px){#root .passenger__form-container .passenger__draggable:has(.passenger-voting-form[data-locked=false][data-options-view=false]){padding-bottom:max(8px,env(safe-area-inset-bottom))!important}}
+
+/* On short phones the class remains in the trip summary and preferences;
+   removing the duplicate cards keeps the entire address/options row visible. */
+@media(max-width:599px) and (max-height:650px) and (orientation:portrait){
+ #root .passenger-voting-form[data-locked=false][data-options-view=false] .passenger-voting-form__car-class{display:none!important}
+}
