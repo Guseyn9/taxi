@@ -60,6 +60,7 @@ interface IVoiceCopy {
   validation: string
   cancelled: string
   addressNotFound: string
+  currentLocationUnavailable: string
   unsupported: string
   noSpeech: string
   failed: string
@@ -78,6 +79,7 @@ const VOICE_COPY: Record<string, IVoiceCopy> = {
     validation: 'Заказ пока не отправлен. Проверьте обязательные поля и доступность зоны на экране, затем скажите «подтверждаю».',
     cancelled: 'Голосовое оформление остановлено. Заказ не создан.',
     addressNotFound: 'Не удалось найти этот адрес. Повторите адрес или выберите точку на карте.',
+    currentLocationUnavailable: 'Не удалось определить ваше местоположение. Разрешите доступ к геолокации или назовите адрес.',
     unsupported: 'В этом браузере голосовой ввод не поддерживается. Используйте поля заказа на экране.',
     noSpeech: 'Не удалось распознать речь. Нажмите кнопку и повторите.',
     failed: 'Ошибка голосового ввода. Попробуйте ещё раз или используйте экран.',
@@ -94,6 +96,7 @@ const VOICE_COPY: Record<string, IVoiceCopy> = {
     validation: 'La commande n’a pas été envoyée. Vérifiez les champs obligatoires et la zone sur l’écran, puis dites « confirmer ».',
     cancelled: 'La commande vocale est arrêtée. Aucune course n’a été créée.',
     addressNotFound: 'Adresse introuvable. Répétez l’adresse ou choisissez le point sur la carte.',
+    currentLocationUnavailable: 'Impossible de déterminer votre position. Autorisez la géolocalisation ou indiquez une adresse.',
     unsupported: 'La saisie vocale n’est pas prise en charge par ce navigateur. Utilisez le formulaire à l’écran.',
     noSpeech: 'Aucune parole reconnue. Appuyez sur le bouton et réessayez.',
     failed: 'Erreur de saisie vocale. Réessayez ou utilisez le formulaire.',
@@ -110,6 +113,7 @@ const VOICE_COPY: Record<string, IVoiceCopy> = {
     validation: 'لم يتم إرسال الطلب. تحقق من الحقول المطلوبة والمنطقة على الشاشة، ثم قل «أؤكد».',
     cancelled: 'تم إيقاف الطلب الصوتي. لم يتم إنشاء أي طلب.',
     addressNotFound: 'لم يتم العثور على العنوان. أعد ذكره أو اختر النقطة على الخريطة.',
+    currentLocationUnavailable: 'تعذر تحديد موقعك. اسمح بالوصول إلى الموقع أو اذكر العنوان.',
     unsupported: 'الإدخال الصوتي غير مدعوم في هذا المتصفح. استخدم نموذج الطلب على الشاشة.',
     noSpeech: 'لم يتم التعرف على الكلام. اضغط الزر وحاول مرة أخرى.',
     failed: 'حدث خطأ في الإدخال الصوتي. حاول مرة أخرى أو استخدم الشاشة.',
@@ -126,6 +130,7 @@ const VOICE_COPY: Record<string, IVoiceCopy> = {
     validation: 'The order was not submitted. Check required fields and service coverage on screen, then say “confirm”.',
     cancelled: 'Voice ordering stopped. No order was created.',
     addressNotFound: 'Address not found. Repeat it or select a point on the map.',
+    currentLocationUnavailable: 'Could not determine your location. Allow location access or say an address.',
     unsupported: 'Voice input is not supported in this browser. Use the on-screen order form.',
     noSpeech: 'No speech was recognized. Press the button and try again.',
     failed: 'Voice input failed. Try again or use the screen.',
@@ -142,6 +147,7 @@ const VOICE_COPY: Record<string, IVoiceCopy> = {
     validation: 'No se ha enviado el pedido. Comprueba los campos obligatorios y la zona en la pantalla y vuelve a confirmar.',
     cancelled: 'Se ha detenido el pedido por voz. No se ha creado ningún pedido.',
     addressNotFound: 'No se encontró la dirección. Repítela o selecciona el punto en el mapa.',
+    currentLocationUnavailable: 'No se pudo determinar tu ubicación. Permite el acceso a la ubicación o di una dirección.',
     unsupported: 'Este navegador no admite entrada de voz. Utiliza el formulario en pantalla.',
     noSpeech: 'No se reconoció la voz. Pulsa el botón e inténtalo de nuevo.',
     failed: 'Error de entrada de voz. Inténtalo de nuevo o utiliza la pantalla.',
@@ -197,6 +203,30 @@ function isRejection(text: string): boolean {
     'لا', 'إلغاء',
   ])
 }
+
+const getCurrentLocationPoint = (): Promise<IAddressPoint> => new Promise((resolve, reject) => {
+  if (typeof navigator === 'undefined' || !navigator.geolocation) {
+    reject(new Error('GEOLOCATION_UNSUPPORTED'))
+    return
+  }
+
+  navigator.geolocation.getCurrentPosition(
+    ({ coords }) => {
+      const latitude = Number(coords.latitude)
+      const longitude = Number(coords.longitude)
+      if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+        reject(new Error('GEOLOCATION_INVALID_POSITION'))
+        return
+      }
+
+      // Coordinates are supplied before the dialogue proceeds. The existing
+      // client-order saga will reverse-geocode this point for the form.
+      resolve({ latitude, longitude })
+    },
+    error => reject(error),
+    { enableHighAccuracy: true, timeout: 10000, maximumAge: 30000 },
+  )
+})
 
 const normalizePoint = async (
   query: string,
@@ -254,8 +284,9 @@ export const PassengerVoiceAssistant: React.FC<IProps> = ({
 
     if (currentStep === 'pickup' || currentStep === 'destination') {
       try {
-        const point: IAddressPoint = isCurrentLocationPhrase(text) ?
-          { isCurrent: true } :
+        const isCurrentLocation = isCurrentLocationPhrase(text)
+        const point = isCurrentLocation ?
+          await getCurrentLocationPoint() :
           await normalizePoint(text, propsRef.current.getMapSearchCenter())
         if (currentStep === 'pickup')
           propsRef.current.setFrom(point)
@@ -265,8 +296,13 @@ export const PassengerVoiceAssistant: React.FC<IProps> = ({
         const nextStep: VoiceStep = currentStep === 'pickup' ? 'destination' : 'confirmation'
         stepRef.current = nextStep
         await speak(nextStep === 'destination' ? currentCopy.destination : currentCopy.confirmation)
-      } catch {
-        await speak(currentCopy.addressNotFound)
+      } catch (error) {
+        const currentCopy = VOICE_COPY[languageKey(propsRef.current.languageIso)]
+        await speak(
+          isCurrentLocationPhrase(text) ?
+            currentCopy.currentLocationUnavailable :
+            currentCopy.addressNotFound,
+        )
       }
       return
     }
