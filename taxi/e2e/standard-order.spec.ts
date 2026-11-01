@@ -50,6 +50,8 @@ import {
   openOrderCard,
   switchToDriverMap,
   takeOrderButton,
+  watchOrderActions,
+  IOrderActionWatch,
 } from './fixtures/driverUi'
 import {
   PASSENGER_STORAGE,
@@ -72,6 +74,7 @@ let driverContext: BrowserContext
 let passengerPage: Page
 let driverPage: Page
 const createdOrders: string[] = []
+let takeOrderActions: IOrderActionWatch | undefined
 
 const reason = (error: unknown) => (error as Error)?.message ?? String(error)
 
@@ -142,14 +145,19 @@ test.afterEach(async({}, testInfo) => {
       // списке активных, который опрашивает приложение.
       const order = await readOrder(passenger, orderId).catch(() => undefined)
       const active = await isOrderActiveFor(passenger, orderId).catch(() => undefined)
+      const actionDiagnostics = takeOrderActions?.describe(orderId) ?? 'наблюдатель команд не запускался'
       const diagnostics = `orderId=${orderId} driverId=${driver?.userId} ` +
         `carId=${car?.c_id} c_state=${state ?? 'unknown'} ` +
         `b_state=${order?.b_state ?? 'unknown'} b_confirm_state=${order?.b_confirm_state ?? 'unknown'} ` +
-        `в списке активных пассажира: ${active ?? 'unknown'}`
+        `в списке активных пассажира: ${active ?? 'unknown'} ` +
+        `actions: ${actionDiagnostics}`
       console.error(`E2E FAILURE DIAGNOSTICS: ${diagnostics}`)
       testInfo.annotations.push({ type: 'backend', description: diagnostics })
     }
   }
+
+  takeOrderActions?.dispose()
+  takeOrderActions = undefined
 
   // Каждый прогон убирает за собой, аккаунты не зависают. Если отменить не
   // вышло — заказ остаётся живым на бэкенде, поэтому его номер обязан попасть в
@@ -184,12 +192,22 @@ test.afterAll(async() => {
 
 /** Состояние нашего водителя в заказе на бэкенде — независимая от UI проверка. */
 async function backendState(orderId: string): Promise<number | undefined> {
-  const order = await readOrder(driver, orderId)
+  // Состояние участников читаем пассажирской сессией: именно этот ответ
+  // содержит полный список drivers. Ответ водителя на этом backend может
+  // вернуть карточку заказа без собственной записи участия, что давало
+  // c_state=unknown при реально назначенном исполнителе и вызывало таймаут.
+  const order = await readOrder(passenger, orderId)
   return driverStateOf(order, driver.userId)
 }
 
 async function expectBackendState(orderId: string, state: number, message: string): Promise<void> {
-  await expect.poll(() => backendState(orderId), { message, timeout: 90_000 }).toBe(state)
+  // Команды должны завершаться быстро. Длинное ожидание здесь маскирует отказ
+  // backend и превращает один шаг в двухминутный тест с retry.
+  await expect.poll(() => backendState(orderId), {
+    message,
+    timeout: 20_000,
+    intervals: [250, 500, 1_000, 2_000],
+  }).toBe(state)
 }
 
 /**
@@ -263,7 +281,26 @@ test('А.1.1 — стандартный вызов: от создания зак
   const take = takeOrderButton(driverPage)
   await expect(take, 'в карточке заказа есть кнопка принятия').toBeVisible({ timeout: 60_000 })
   await expect(take).toBeEnabled({ timeout: 60_000 })
+  // Наблюдатель подключается ДО клика: он фиксирует реальный запрос интерфейса
+  // и бизнес-ответ backend, не подменяя запрос и не вызывая API из теста.
+  takeOrderActions = watchOrderActions(driverPage)
   await take.click()
+
+  // Приложение может отправить несколько set_performer: первый запрос с
+  // b_driver_code на gruzvill получает бизнес-ошибку, затем приложение повторяет
+  // запрос без этого поля. Поэтому проверяем всю последовательность, а не первый
+  // ответ. Это тот же контракт, который уже проверен в passenger-driver-flow.
+  await expect.poll(
+    () => {
+      const attempts = takeOrderActions!.of(orderId, 'set_performer')
+      return attempts.length > 0 && attempts.every(record => record.httpStatus !== undefined)
+    },
+    {
+      message: `все ответы set_performer получены: ${takeOrderActions.describe(orderId)}`,
+      timeout: 15_000,
+      intervals: [100, 250, 500],
+    },
+  ).toBe(true)
 
   // ПРОВЕРКА 2 (вторая опора) — после «Взять заказ» водитель становится
   // ИСПОЛНИТЕЛЕМ, и никто его не выбирал. У голосования и предложения он остался
@@ -273,6 +310,22 @@ test('А.1.1 — стандартный вызов: от создания зак
     orderId, DRIVER_STATE.Performer,
     'стандартный вызов делает водителя исполнителем сам, без выбора пассажиром')
 
+  const takeAttempts = takeOrderActions.of(orderId, 'set_performer')
+  const takeSequence = takeOrderActions.describe(orderId)
+  test.info().annotations.push({
+    type: 'set_performer',
+    description: `${takeAttempts.length}: ${takeSequence}`,
+  })
+  console.log(`E2E set_performer orderId=${orderId} запросов=${takeAttempts.length}: ${takeSequence}`)
+  expect(
+    takeAttempts.filter(item => item.status === 'success').length,
+    `назначение принято backend ровно один раз: ${takeSequence}`,
+  ).toBe(1)
+  expect(
+    takeAttempts[takeAttempts.length - 1].status,
+    `после успешного назначения новых запросов принятия нет: ${takeSequence}`,
+  ).toBe('success')
+
   // ПРОВЕРКА 5 — исполнитель у заказа ровно один, и это наш водитель.
   //
   // `drivers` — это список записей участия, а не список исполнителей: у записи
@@ -281,7 +334,7 @@ test('А.1.1 — стандартный вызов: от создания зак
   // пустота списка (это была бы проверка внутреннего устройства бэкенда), а сам
   // бизнес-инвариант: единственный исполнитель — наш, и рядом нет другого
   // водителя, который всё ещё в игре.
-  const assigned = await readOrder(driver, orderId)
+  const assigned = await readOrder(passenger, orderId)
   const performers = (assigned.drivers ?? [])
     .filter(item => Number(item.c_state) === DRIVER_STATE.Performer)
     .map(item => String(item.u_id))
