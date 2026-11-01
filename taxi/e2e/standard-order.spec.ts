@@ -197,7 +197,13 @@ async function backendState(orderId: string): Promise<number | undefined> {
 }
 
 async function expectBackendState(orderId: string, state: number, message: string): Promise<void> {
-  await expect.poll(() => backendState(orderId), { message, timeout: 90_000 }).toBe(state)
+  // Команды должны завершаться быстро. Длинное ожидание здесь маскирует отказ
+  // backend и превращает один шаг в двухминутный тест с retry.
+  await expect.poll(() => backendState(orderId), {
+    message,
+    timeout: 20_000,
+    intervals: [250, 500, 1_000, 2_000],
+  }).toBe(state)
 }
 
 /**
@@ -279,9 +285,9 @@ test('А.1.1 — стандартный вызов: от создания зак
   // Не ждём 90 секунд перехода FSM вслепую. Сначала ждём ответ именно команды,
   // которую отправил UI. Если запрос не ушёл или backend его отклонил, тест
   // завершается с причиной, а не продолжает бесполезно опрашивать состояние.
+  const takeActionRecords = takeOrderActions.of(orderId, 'set_performer')
   await expect.poll(
-    () => takeOrderActions!.records.some(record =>
-      record.orderId === orderId && record.httpStatus !== undefined),
+    () => takeActionRecords.some(record => record.httpStatus !== undefined),
     {
       message: `backend ответил на команду принятия заказа ${orderId}`,
       timeout: 20_000,
@@ -289,7 +295,7 @@ test('А.1.1 — стандартный вызов: от создания зак
     },
   ).toBe(true)
 
-  const takeAction = takeOrderActions.records.find(record => record.orderId === orderId)!
+  const takeAction = takeActionRecords[0]
   expect(
     takeAction.httpStatus,
     `HTTP-ответ команды принятия: ${takeOrderActions.describe(orderId)}`,
