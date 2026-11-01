@@ -42,6 +42,7 @@ import {
   IOrderActionWatch,
   PICKUP,
   DESTINATION,
+  clickOrderCard,
   driverMapAction,
   expectDriverMapState,
   expectOrderInDriverList,
