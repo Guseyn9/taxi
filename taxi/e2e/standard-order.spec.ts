@@ -285,9 +285,8 @@ test('А.1.1 — стандартный вызов: от создания зак
   // Не ждём 90 секунд перехода FSM вслепую. Сначала ждём ответ именно команды,
   // которую отправил UI. Если запрос не ушёл или backend его отклонил, тест
   // завершается с причиной, а не продолжает бесполезно опрашивать состояние.
-  const takeActionRecords = takeOrderActions.of(orderId, 'set_performer')
   await expect.poll(
-    () => takeActionRecords.some(record => record.httpStatus !== undefined),
+    () => takeOrderActions!.of(orderId, 'set_performer').some(record => record.httpStatus !== undefined),
     {
       message: `backend ответил на команду принятия заказа ${orderId}`,
       timeout: 20_000,
@@ -295,7 +294,7 @@ test('А.1.1 — стандартный вызов: от создания зак
     },
   ).toBe(true)
 
-  const takeAction = takeActionRecords[0]
+  const takeAction = takeOrderActions.of(orderId, 'set_performer')[0]
   expect(
     takeAction.httpStatus,
     `HTTP-ответ команды принятия: ${takeOrderActions.describe(orderId)}`,
