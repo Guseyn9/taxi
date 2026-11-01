@@ -456,7 +456,7 @@ test('TEST-E2E-009 — Standard: форма пассажира → карточ�
   await expect(orderCard(driverPage, orderId), 'карточка водителя относится к созданному заказу').toBeVisible()
 
   enterStage('5. принятие заказа водителем')
-  await orderCard(driverPage, orderId).click()
+  await clickOrderCard(driverPage, orderId)
   const take = takeOrderButton(driverPage)
   await expect(take, 'в карточке заказа есть кнопка принятия').toBeVisible({ timeout: 60_000 })
   await expect(take).toBeEnabled({ timeout: 60_000 })
