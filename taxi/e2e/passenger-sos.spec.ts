@@ -58,6 +58,7 @@ import {
   STATE_NAMES,
   clickPrimaryAction,
   confirmActionResult,
+  driverMapAction,
   expectUiDriverState,
   openBoardingForm,
   openDriverMap,
@@ -65,7 +66,6 @@ import {
   orderCard,
   submitBoardingCode,
   takeOrderButton,
-  uiDriverState,
 } from './fixtures/driverUi'
 import {
   ICancelRequest,
@@ -474,12 +474,10 @@ test('А.1.6 — Passenger SOS после Started: причина, подтве�
     // Started(5), как Performer в A.1.5) — признак «поездка не продолжается» это
     // b_state=3 + active=false и то, что UI не даёт водителю действий.
     await driver.page.getByTestId('driver-tab-map').click()
-    await expect
-      .poll(() => uiDriverState(driver.page), {
-        message: 'у водителя нет основного действия (Finish/Interrupt) по отменённому заказу',
-        timeout: 90_000,
-      })
-      .toBeUndefined()
+    await expect(
+    driverMapAction(driver.page, orderId),
+    'по отменённому заказу нет основного действия карты',
+  ).toHaveCount(0, { timeout: 90_000 })
 
     await driver.page.goto(DRIVER_LIST_PAGE)
     await expectAppBooted(driver.page)
@@ -489,12 +487,10 @@ test('А.1.6 — Passenger SOS после Started: причина, подтве�
     ).toHaveCount(0, { timeout: 30_000 })
 
     await openDriverMap(driver.page)
-    await expect
-      .poll(() => uiDriverState(driver.page), {
-        message: 'после reload у водителя по-прежнему нет действий по отменённой поездке',
-        timeout: 60_000,
-      })
-      .toBeUndefined()
+    await expect(
+      driverMapAction(driver.page, orderId),
+      'после reload по отменённому заказу нет действия карты',
+    ).toHaveCount(0, { timeout: 60_000 })
   })
 })
 

@@ -29,7 +29,7 @@
  *      make the order flip mid-drive and re-trigger route building each time.
  */
 
-import { EBookingDriverState, IOrder, IUser } from '../types/types'
+import { EBookingDriverState, EBookingStates, IOrder, IUser } from '../types/types'
 import { haversineMeters } from './driverRouteEmulator'
 
 /** Distances here are only ever compared with each other, so metres are fine. */
@@ -201,7 +201,7 @@ export function buildDriverTripPlan(input: ITripPlanInput): ITripStop[] {
   const planned = new Set<string>()
 
   ;(input.activeOrders ?? []).forEach(order => {
-    if (!order?.b_id)
+    if (!order?.b_id || Number(order.b_state) === EBookingStates.Canceled)
       return
 
     const state = getMyDriverState(order, userId)

@@ -1,4 +1,4 @@
-import { EBookingDriverState, IOrder } from '../types/types'
+import { EBookingDriverState, EBookingStates, IOrder } from '../types/types'
 import {
   ETripStopKind,
   buildDriverTripPlan,
@@ -233,6 +233,22 @@ describe('buildDriverTripPlan — отбор заказов', () => {
     ])
 
     expect(stops).toEqual([])
+  })
+
+  it('не строит маршрут по заказу, отменённому пассажиром, даже если c_state водителя остался Started', () => {
+    const canceled = {
+      ...order('CANCELED', { state: EBookingDriverState.Started, pickup: 0.01, dropoff: 0.02 }),
+      b_state: EBookingStates.Canceled,
+    } as IOrder
+
+    expect(plan([canceled])).toEqual([])
+
+    // API payloads may expose numeric enums as strings; cancellation stays terminal.
+    const canceledString = {
+      ...canceled,
+      b_state: String(EBookingStates.Canceled),
+    } as unknown as IOrder
+    expect(plan([canceledString])).toEqual([])
   })
 
   it('пропускает точки без координат', () => {
