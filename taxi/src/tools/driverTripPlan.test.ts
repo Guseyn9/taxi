@@ -242,6 +242,13 @@ describe('buildDriverTripPlan — отбор заказов', () => {
     } as IOrder
 
     expect(plan([canceled])).toEqual([])
+
+    // API payloads may expose numeric enums as strings; cancellation stays terminal.
+    const canceledString = {
+      ...canceled,
+      b_state: String(EBookingStates.Canceled),
+    } as unknown as IOrder
+    expect(plan([canceledString])).toEqual([])
   })
 
   it('пропускает точки без координат', () => {
