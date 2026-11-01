@@ -192,7 +192,11 @@ test.afterAll(async() => {
 
 /** Состояние нашего водителя в заказе на бэкенде — независимая от UI проверка. */
 async function backendState(orderId: string): Promise<number | undefined> {
-  const order = await readOrder(driver, orderId)
+  // Состояние участников читаем пассажирской сессией: именно этот ответ
+  // содержит полный список drivers. Ответ водителя на этом backend может
+  // вернуть карточку заказа без собственной записи участия, что давало
+  // c_state=unknown при реально назначенном исполнителе и вызывало таймаут.
+  const order = await readOrder(passenger, orderId)
   return driverStateOf(order, driver.userId)
 }
 
@@ -330,7 +334,7 @@ test('А.1.1 — стандартный вызов: от создания зак
   // пустота списка (это была бы проверка внутреннего устройства бэкенда), а сам
   // бизнес-инвариант: единственный исполнитель — наш, и рядом нет другого
   // водителя, который всё ещё в игре.
-  const assigned = await readOrder(driver, orderId)
+  const assigned = await readOrder(passenger, orderId)
   const performers = (assigned.drivers ?? [])
     .filter(item => Number(item.c_state) === DRIVER_STATE.Performer)
     .map(item => String(item.u_id))
