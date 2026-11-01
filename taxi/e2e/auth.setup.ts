@@ -49,6 +49,10 @@ async function signIn(
   await page.locator('header .burger-button').click()
   await page.locator('header .menu__account').click()
 
+  const loginType = page.locator(`input[name="type"][value="${account.type}"]`)
+  await expect(loginType).toBeVisible()
+  await loginType.check()
+
   const login = page.locator('input[name="login"]')
   await expect(login).toBeVisible()
   const password = page.locator('input[name="password"]')
