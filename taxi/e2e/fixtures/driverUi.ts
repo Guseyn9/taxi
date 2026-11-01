@@ -107,9 +107,48 @@ export async function expectOrderInDriverList(page: Page, orderId: string): Prom
  * Клик по карточке открывает модальную карточку заказа
  * (components/Card/OrderCard.tsx → setOrderCardModal), а не отдельную страницу.
  */
+async function dismissSuccessMessageModal(page: Page): Promise<boolean> {
+  const modal = page.locator('[data-testid="message-modal"]').filter({ visible: true }).first()
+  if (await modal.count() === 0)
+    return false
+
+  const status = await modal.getAttribute('data-message-status')
+  if (status !== 'success') {
+    throw new Error(
+      `Нельзя открыть карточку заказа: поверх списка показано MessageModal со статусом "${status ?? 'unknown'}". ` +
+      'Предупреждения и ошибки должны обрабатываться самим сценарием, а не скрываться fixture.',
+    )
+  }
+
+  // Успешное уведомление — штатный модальный результат действия. Закрываем
+  // его настоящим пользовательским кликом, иначе Overlay перехватывает клик
+  // по карточке заказа. Warning/fail намеренно не закрываем автоматически.
+  await modal.getByTestId('message-modal-close').click()
+  await expect(modal, 'успешное уведомление закрыто перед кликом по заказу').toBeHidden()
+  return true
+}
+
+export async function clickOrderCard(page: Page, orderId: string): Promise<void> {
+  // Сценарий может уже находиться на списке — проверка видимости не вызывает
+  // навигацию и не сбрасывает состояние страницы.
+  await expect(orderCard(page, orderId), `карточка заказа ${orderId} видна перед открытием`)
+    .toBeVisible({ timeout: 120_000 })
+
+  await dismissSuccessMessageModal(page)
+  const card = orderCard(page, orderId)
+  try {
+    await card.click({ timeout: 1_500 })
+  } catch (error) {
+    const dismissed = await dismissSuccessMessageModal(page)
+    if (!dismissed)
+      throw error
+    await card.click()
+  }
+}
+
 export async function openOrderCard(page: Page, orderId: string): Promise<void> {
   await expectOrderInDriverList(page, orderId)
-  await orderCard(page, orderId).click()
+  await clickOrderCard(page, orderId)
 }
 
 /** Кнопка «Взять заказ» в карточке заказа. У голосового заказа — «Готов поехать». */
