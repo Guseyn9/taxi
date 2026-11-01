@@ -1,5 +1,4 @@
 import React, { useEffect, useRef, useState } from 'react'
-import { Mic, MicOff } from 'lucide-react'
 import type { IAddressPoint } from '../../types/types'
 import { passengerGateway } from '../../platform/adapters/LegacyPassengerGateway'
 import { platformInterface } from '../../platform/platform-interface'
@@ -7,6 +6,39 @@ import { BrowserVoiceChannel, VOICE_TRANSCRIPT_RECEIVED } from '../../platform/v
 import './passenger-voice.scss'
 
 type VoiceStep = 'idle' | 'pickup' | 'destination' | 'confirmation' | 'submitting'
+
+const VoiceIcon: React.FC<{ muted?: boolean }> = ({ muted = false }) => (
+  <svg
+    width="18"
+    height="18"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    aria-hidden="true"
+  >
+    {muted ? (
+      <>
+        <path d="M9 9v3a3 3 0 0 0 5.12 2.12" />
+        <path d="M15 9.34V5a3 3 0 0 0-5.83-.9" />
+        <path d="M19 12a7 7 0 0 1-.5 2.6" />
+        <path d="M5 12a7 7 0 0 0 11.95 4.95" />
+        <path d="M12 19v3" />
+        <path d="M8 22h8" />
+        <path d="m2 2 20 20" />
+      </>
+    ) : (
+      <>
+        <rect x="9" y="2" width="6" height="12" rx="3" />
+        <path d="M5 10v2a7 7 0 0 0 14 0v-2" />
+        <path d="M12 19v3" />
+        <path d="M8 22h8" />
+      </>
+    )}
+  </svg>
+)
 
 interface IProps {
   languageIso?: string
@@ -345,7 +377,7 @@ export const PassengerVoiceAssistant: React.FC<IProps> = ({
         aria-pressed={active}
         aria-label={active ? copy.stop : copy.start}
       >
-        {active ? <MicOff size={18} aria-hidden="true" /> : <Mic size={18} aria-hidden="true" />}
+        {<VoiceIcon muted={active} />}
         <span>{active ? copy.stop : copy.start}</span>
       </button>
       {(active || transcript || message !== copy.ready) && (
