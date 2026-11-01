@@ -1,15 +1,9 @@
 name: TEST-E2E-010/011 isolated stability
 
+# These scenarios are already part of the full E2E workflow.
+# Keep the repeated stability run manual: an automatic PR run would race the
+# full E2E workflow against the same live test accounts/backend.
 on:
-  pull_request:
-    branches:
-      - main
-    paths:
-      - 'taxi/e2e/trip-finish.spec.ts'
-      - 'taxi/e2e/trip-interruption.spec.ts'
-      - 'taxi/playwright.config.ts'
-      - 'taxi/e2e/fixtures/**'
-      - '.github/workflows/trip-finish-isolated.yml'
   workflow_dispatch:
 
 # Shares the same live test accounts/backend as the full E2E workflow.
