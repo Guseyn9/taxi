@@ -22,6 +22,7 @@ import { getOrderIdText } from '../../tools/orderId'
 import { writeFlowEvent } from '../../tools/flowLog'
 import { isPassengerUiFsmEnabled } from './fsmFeature'
 import { usePassengerSurface } from '../../platform/platform-interface'
+import PassengerVoiceAssistant from './PassengerVoiceAssistant'
 
 function getReverseGeocodeText(response: any) {
   const address = String(response?.display_name || '').trim()
@@ -71,6 +72,14 @@ function Passenger({
   const draggableRef = useRef<HTMLDivElement>(null)
   const minimizedPartRef = useRef<HTMLElement>(null)
   const formSlidersRef = useRef<HTMLElement[]>([])
+  const voiceSubmitRef = useRef<(() => Promise<boolean>) | null>(null)
+  const registerVoiceSubmit = useCallback((submit: (() => Promise<boolean>) | null) => {
+    voiceSubmitRef.current = submit
+  }, [])
+  const handleVoiceSubmit = useCallback(() => (
+    voiceSubmitRef.current ? voiceSubmitRef.current() : Promise.resolve(false)
+  ), [])
+  const getMapSearchCenter = useCallback(() => mapCenter.current, [])
   const { isExpanded, setIsExpanded } = useSwipe(
     formContainerRef, draggableRef,
     minimizedPartRef, formSlidersRef,
@@ -811,6 +820,7 @@ function Passenger({
       minimizedPartRef={minimizedPartRef}
       noSwipeElementsRef={formSlidersRef}
       uiConfig={effectivePassengerUiConfig}
+      onVoiceSubmitReady={registerVoiceSubmit}
     />
   , [
     languageIso,
@@ -818,7 +828,7 @@ function Passenger({
     setFromAsMapCenter, setToAsMapCenter,
     onSubmit,
     shouldKeepRequestForm, selectedOrder, waitingForSubmittedOrder, submittedOrderDraft,
-    submittedOrderId, handleLockedCancel, handleNewOrderClick, effectivePassengerUiConfig,
+    submittedOrderId, handleLockedCancel, handleNewOrderClick, effectivePassengerUiConfig, registerVoiceSubmit,
   ])
 
   const miniOrdersContent = useMemo(() =>
@@ -837,6 +847,16 @@ function Passenger({
       <PageSection className="passenger" scrollable={false}>
 
         {miniOrdersContent}
+
+        {!selectedOrder && !waitingForSubmittedOrder && (
+          <PassengerVoiceAssistant
+            languageIso={languageIso}
+            getMapSearchCenter={getMapSearchCenter}
+            setFrom={setFrom}
+            setTo={setTo}
+            onSubmitOrder={handleVoiceSubmit}
+          />
+        )}
 
         {useMemo(() =>
           <Map

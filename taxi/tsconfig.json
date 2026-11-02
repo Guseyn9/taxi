@@ -14,7 +14,7 @@
     "forceConsistentCasingInFileNames": false,
     "noFallthroughCasesInSwitch": true,
     "module": "esnext",
-    "moduleResolution": "node",
+    "moduleResolution": "bundler",
     "resolveJsonModule": true,
     "isolatedModules": true,
     "noEmit": true,
@@ -22,9 +22,24 @@
     "downlevelIteration": true,
     "strictPropertyInitialization": false,
     "paths": {
-      "react": ["./node_modules/@types/react"],
-      "@mona-health/react-input-mask": ["./node_modules/@types/react-input-mask"]
-    },
+      "react": [
+        "./node_modules/@types/react"
+      ],
+      "@mona-health/react-input-mask": [
+        "./node_modules/@types/react-input-mask"
+      ],
+      "voice-assistant/platform-runtime": [
+        "./node_modules/voice-assistant/packages/platform-runtime/dist/packages/platform-runtime/index.d.ts"
+      ],
+      "voice-assistant/voice/browser": [
+        "./node_modules/voice-assistant/packages/voice/dist/browser/index.d.ts"
+      ],
+      "voice-assistant/voice/channel": [
+        "./node_modules/voice-assistant/packages/voice/dist/channel/index.d.ts"
+      ]
+    }
   },
-  "include": ["src"]
+  "include": [
+    "src"
+  ]
 }
