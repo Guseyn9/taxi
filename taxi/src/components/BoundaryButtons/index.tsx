@@ -108,15 +108,11 @@ function BoundaryButtons({
           algorithmLocationClass !== undefined ?
           String(id) === String(algorithmLocationClass) :
           String(id) === String(locationClass)
-        const translatedLabel = {
+        const label = {
           [EBookingLocationKinds.City]: t(TRANSLATION.CLIENT_CITY_ORDER_MODE),
           [EBookingLocationKinds.Intercity]: offerSupport ? t(TRANSLATION.CLIENT_INTERCITY_ORDER_MODE) : t(TRANSLATION.BOOKING_LOCATION_CLASSES[id]),
           [EBookingLocationKinds.Location]: t(TRANSLATION.BOOKING_LOCATION_CLASSES[id]),
         }[kind]
-        const names:Record<string,string[]>={ar:['رحلة داخل المدينة','بين المدن','رحلة إقليمية'],fr:['En ville','Entre villes','Trajet régional']}
-        const label=names[language?.iso?.split('-')[0]]?.[kind] || translatedLabel
-        const shortNames:Record<string,string[]>={ru:['Город','Межгород','Область'],en:['City','Intercity','Regional'],fr:['En ville','Interville','Région'],ar:['المدينة','بين المدن','إقليمي']}
-        const shortLabel=shortNames[language?.iso?.split('-')[0]]?.[kind] || label
         const image={ [EBookingLocationKinds.City]:'city',[EBookingLocationKinds.Intercity]:'intercity',[EBookingLocationKinds.Location]:'regional' }[kind]
         return (
           <button
@@ -139,7 +135,7 @@ function BoundaryButtons({
               <img src={`/design-v2/categories/${image}-warm-v2.png`} alt="" width={40} height={40} decoding="async"/>
             </div>
             <BoundaryStatusIcon status={getStatus(id, selected)} />
-            <span className="boundary-buttons__text">{shortLabel}
+            <span className="boundary-buttons__text">{label}
             </span>
           </button>
         )

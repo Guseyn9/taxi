@@ -1,3 +1,5 @@
+import {setLocalizationLanguageReader} from '../localization/runtime'
+import {configSelectors} from './config'
 import {readHealthMiddleware} from '../design/reliability/readHealth'
 import { createStore, applyMiddleware } from 'redux'
 import thunk, { ThunkDispatch } from 'redux-thunk'
@@ -25,6 +27,7 @@ const configureStore = () => {
 }
 
 const store = configureStore()
+setLocalizationLanguageReader(()=>configSelectors.language(store.getState()))
 
 export default store
 

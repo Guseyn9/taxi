@@ -1,9 +1,10 @@
-import store from '../state'
 import CATEGORIES from './categories'
 import TRANSLATION from './translation'
-import { configSelectors } from '../state/config'
+import {localizationLanguage} from './runtime'
 
 interface IOptions {
+  /** Used only when the service does not supply this key. */
+  fallback?: string,
   /** Does result.toLowerCase() */
   toLower?: boolean,
   /** Does result.toUpperCase() */
@@ -2119,7 +2120,7 @@ const FALLBACK_TRANSLATIONS: Record<string, Record<string, string>> = {
 
 function getLanguageInfo() {
   try {
-    return configSelectors.language(store.getState())
+    return localizationLanguage()
   } catch (error) {
     return undefined
   }
@@ -2136,28 +2137,6 @@ function getFallbackText(key: string, language?: { iso?: string, id?: string | n
     .replace(/_p$/, '')
     .replace(/_/g, ' ')
     .replace(/^./, char => char.toUpperCase())
-}
-
-function normalizeProjectText(key: string, result: string, language?: { iso?: string } | null) {
-  const iso = language?.iso?.toLowerCase().split('-')[0] || 'ru'
-  const isRussian = iso === 'ru'
-  const localDictionary = FALLBACK_TRANSLATIONS[key]
-
-  // Bundled translations are the safe fallback source for project UI.
-  // Backend/window.data can be stale or have mismatched keys, so when a key
-  // exists in the bundled dictionary we always prefer it and use window.data
-  // only for keys that are not bundled here.
-  if (localDictionary)
-    return localDictionary[iso] || localDictionary.en || localDictionary.ru || result
-
-  const intercityButtonKeys = new Set([
-    'client_intercity_order_mode',
-  ])
-
-  if (isRussian && intercityButtonKeys.has(key) && result.trim().toLowerCase() === 'предложение')
-    return 'Межгородская поездка'
-
-  return result
 }
 
 function applyOptions(result: string, options: IOptions) {
@@ -2197,16 +2176,18 @@ function t(id: string, options: IOptions = {}) {
     const _data = (window as any).data
 
     if (!_data)
-      return applyOptions(normalizeProjectText(key, getFallbackText(key, language), language), options)
+      return applyOptions(options.fallback ?? getFallbackText(key, language), options)
 
     const possibleCategories: string[] = Object.values(CATEGORIES)
     const languageId = language?.id
     const languageIso = language?.iso
+    const languageBase = languageIso?.toLowerCase().split('-')[0]
 
     if (category === CATEGORIES.LANG_VLS) {
       const values = _data?.[category]?.[key]
       result = values?.[languageId as any] ||
         values?.[languageIso as any] ||
+        values?.[languageBase as any] ||
         values?.en ||
         values?.ru ||
         ''
@@ -2215,6 +2196,7 @@ function t(id: string, options: IOptions = {}) {
       const values = _data?.lang_vls?.search
       result = values?.[languageId as any] ||
         values?.[languageIso as any] ||
+        values?.[languageBase as any] ||
         values?.en ||
         values?.ru ||
         ''
@@ -2222,6 +2204,7 @@ function t(id: string, options: IOptions = {}) {
     else if (possibleCategories.includes(category)) {
       const values = _data?.[category]?.[key]
       result = values?.[languageIso as any] ||
+        values?.[languageBase as any] ||
         values?.[languageId as any] ||
         values?.en ||
         values?.ru ||
@@ -2232,9 +2215,9 @@ function t(id: string, options: IOptions = {}) {
     }
 
     if (!result)
-      result = getFallbackText(key, language)
+      result = options.fallback ?? getFallbackText(key, language)
 
-    return applyOptions(normalizeProjectText(key, result, language), options)
+    return applyOptions(result, options)
   } catch (error) {
     if (!errorsShown.has(id)) {
       console.warn(
@@ -2245,7 +2228,7 @@ function t(id: string, options: IOptions = {}) {
     }
 
     const key = id.split('.').pop() || id
-    return applyOptions(normalizeProjectText(key, getFallbackText(key, language), language), options)
+    return applyOptions(options.fallback ?? getFallbackText(key, language), options)
   }
 }
 
