@@ -51,6 +51,7 @@ File counts are inventory metrics, not quality or test-coverage metrics. Presenc
 | 10. QA registry reconciliation | All 68 registry entries cross-referenced; QA closure claims separated from main evidence; local QA patch unavailable | [10-qa-registry-reconciliation.md](./10-qa-registry-reconciliation.md) |
 | 11. API reachability and FSM branching | Voting/boarding stub reachability traced; notifyPosition call site not found; trip method reachability clarified | [11-api-reachability-and-fsm-branching.md](./11-api-reachability-and-fsm-branching.md) |
 | 12. Passenger Action Contract and call paths | Seven legacy passenger mutations traced; five declared actions lack handlers in LegacyPassengerGateway; rating bypasses Passenger Action path | [12-passenger-action-contract-and-callpaths.md](./12-passenger-action-contract-and-callpaths.md) |
+| 13. Passenger Surface and feature flags | Clarified actions are UI metadata, not proof of dispatch; Passenger UI FSM flag changes presentation, not command transport; snapshot source and command path are separate | [13-passenger-surface-actions-and-feature-flags.md](./13-passenger-surface-actions-and-feature-flags.md) |
 
 ## Change log
 
@@ -69,3 +70,5 @@ File counts are inventory metrics, not quality or test-coverage metrics. Presenc
 - Continued source audit on the pinned main: traced voting/boarding stubs through legacy and FSM branches; downgraded the plain-HTTP notifyPosition issue from confirmed runtime exposure to unproven reachability.
 
 - Traced Passenger Gateway UI call sites and compared the 12 declared Passenger Action types with the seven actions handled by the legacy adapter; documented the conditional missing-terminal-event risk and the direct rating path. Corrected the audit's treatment of DriverTripCancelModal: selected main already routes cancellation through DriverMapGateway.
+
+- Traced PassengerSurface and runtime composition. Refined stage 12: five action types without LegacyPassengerGateway handlers are not shown to be dispatched by the current Passenger UI; availableActions are used as visibility metadata. Confirmed Passenger UI FSM feature flag changes presentation only, while seven mutations still use the legacy Gateway. Snapshot provider selection is independent of mutation transport.
