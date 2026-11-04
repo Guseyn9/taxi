@@ -77,3 +77,5 @@ File counts are inventory metrics, not quality or test-coverage metrics. Presenc
 - Traced Passenger chat click-to-WebSocket, SOS modal-to-cancel API, and Rating modal-to-rating API. Confirmed that SOS is cancellation-with-reason rather than a separate incident service, and rating fields tips/comment are not sent while the modal closes before API completion. Identified multiple rating-open triggers for follow-up idempotency tests.
 
 - Stage 15: assessed real test coverage for passenger Chat, SOS and Rating. SOS has the strongest UI-to-live-backend E2E/readback coverage; no comparable Chat WebSocket or Rating payload/retry E2E was found. Historical CI run is distinguished from a new run on the pinned baseline.
+
+- Stage 16: traced passenger full cancellation, candidate selection/release, waiting-time extension and customer-price update from UI through LegacyPassengerGateway to API. Identified local-choice fallback consistency risk, release-after-Performer backend limitation, missing waiting/price/release E2E coverage, and the setWaitingTime HTTP-200 business-error handling gap.
