@@ -142,3 +142,14 @@ npm run build:nix
 ```
 
 Record the exact `git rev-parse HEAD`, Node/npm versions, command exit codes, test totals, and build output. Do not update application code merely to make the audit commands pass; any resulting defect should be documented separately and handled through the agreed development workflow.
+
+## 8. Inspection of the successful E2E run artifact
+
+Downloaded and inspected the artifact for run #175 (`playwright-e2e-41347130101-1.zip`, artifact ID `13099604349`):
+
+- Archive contains only `playwright-report/index.html` and `e2e-results/results.json`.
+- No trace ZIP, screenshot, video, or page-snapshot attachment was present in this artifact.
+- The JSON report contains no Playwright attachments.
+- A basic scan of the report files found no Bearer-token pattern, authorization/cookie fields, access/refresh-token fields, or `.auth/` storage-state path. The word "password" appears in the minified HTML bundle/runtime, not as a detected credential value.
+
+This supports a narrow conclusion about **this successful run's uploaded artifact only**. It does not establish that failure artifacts from other projects/runs are safe, nor does it inspect GitHub runner temporary files before cleanup. The broader trace/artifact confidentiality gate remains open until a deliberately failed, non-credential-bearing test run is reviewed for every project's attachment policy and report output.
