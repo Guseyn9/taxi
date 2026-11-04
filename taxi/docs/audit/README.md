@@ -1,3 +1,4 @@
+- Stage 23: traced Passenger and Driver collection polling, per-order detail subscriptions, separate full/partial Redux order projections, mutation completion and Driver Map reconciliation. Identified the emulator-dependent driver watcher gate, possible stale detail precedence, a detail watcher that can stall after a skipped read plus failed mutation, and missing two-context cross-role E2E proof. No application source changed.
 # Frontend audit
 
 ## Scope and working rules
@@ -61,6 +62,7 @@ File counts are inventory metrics, not quality or test-coverage metrics. Presenc
 | 20. Passenger history and rating submission | Archive API/Redux exists but UI consumer is driver-only; passenger history surface not found; rating sends stars only, closes before response and lacks durable submission/readback tests | [20-passenger-history-and-rating-submission.md](./20-passenger-history-and-rating-submission.md) |
 | 21. Passenger reload, auth and account isolation | Traced bootstrap cleanup, auth hydration, persisted form fields, logout/login and selected-order/rating recovery; found cross-account phone persistence and conditional Redux cleanup on logout | [21-passenger-reload-auth-and-account-isolation.md](./21-passenger-reload-auth-and-account-isolation.md) |
 | 22. Driver reload, auth and map recovery | Traced driver watchers, volatile Redux order cache, map module cache, GPS watch/send and emulator boot behavior; found map continuity is remount-only and account cleanup remains conditional | [22-driver-reload-auth-and-map-recovery.md](./22-driver-reload-auth-and-map-recovery.md) |
+| 23. Cross-role order-state synchronization | Traced passenger/driver collection polling, per-order detail watchers, split full/partial Redux projections, map reconciliation and mutation failure paths; identified conditional driver watcher gate, stale detail precedence and a detail-watcher stall case | [23-cross-role-order-state-synchronization.md](./23-cross-role-order-state-synchronization.md) |
 
 ## Change log
 
