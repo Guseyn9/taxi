@@ -40,7 +40,8 @@ File counts are inventory metrics, not quality or test-coverage metrics. Presenc
 | 2. API register and request-path audit | Source pass complete; test/caller mapping continues | [02-api-register.md](./02-api-register.md) |
 | 3. Forms and validation | Source pass complete; driver-side forms remain | [03-forms-and-validation.md](./03-forms-and-validation.md) |
 | 4. Driver forms and actions | Source pass complete; backend/config verification remains | [04-driver-forms-and-actions.md](./04-driver-forms-and-actions.md) |
-| 5–8 | Not started | To be added |
+| 5. Page-level flows and action gates | Source pass complete; runtime/test verification remains | [05-page-flows-and-action-gates.md](./05-page-flows-and-action-gates.md) |
+| 6–8 | Not started | To be added |
 
 ## Change log
 
@@ -49,3 +50,4 @@ File counts are inventory metrics, not quality or test-coverage metrics. Presenc
 - Deepened route/geocoding review: confirmed browser-visible ORS key, mock-backed area graph dependency, zero-coordinate checks and duplicate route fallback implementations.
 - Added passenger form/input validation review, confirmed JSONForm validation inconsistencies, coordinate checks and phone persistence.
 - Added driver registration/profile/document-upload and order-action review; flagged offer payload fallback, local-only decline state and partial profile-save risks.
+- Added page-level driver/passenger flow review; flagged swallowed map-finish failures, rating submission/feedback gaps and non-global mutation locks.
