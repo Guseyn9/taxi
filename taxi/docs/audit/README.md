@@ -44,3 +44,4 @@ File counts are inventory metrics, not quality or test-coverage metrics. Presenc
 
 - Initial audit documentation created on branch `audit/frontend-inventory`, based on the pinned `main` commit above.
 - Added API register, endpoint map and confirmed source-level risks in `02-api-register.md`.
+- Deepened route/geocoding review: confirmed browser-visible ORS key, mock-backed area graph dependency, zero-coordinate checks and duplicate route fallback implementations.
