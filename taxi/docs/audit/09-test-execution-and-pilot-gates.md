@@ -121,3 +121,24 @@ The Playwright configuration disables trace/video/screenshot for the `setup` pro
 3. Confirm the intended backend behavior for boarding-code verification and implement/verify server-side enforcement if the code is an identity gate.
 4. Resolve the Offer classification contract with backend owners and add a regression test against the real tenant.
 5. Perform a controlled acceptance run on the intended pilot tenant and devices; record backend version/configuration and the exact tested commit.
+
+## 7. Verification limitations and rerun status
+
+A fresh local Jest/TypeScript run against the pinned baseline was attempted as the next audit action, but the execution environment could not resolve `github.com` while cloning the repository (DNS/network failure). The repository connector can inspect source and CI metadata but does not execute the project's npm scripts. Therefore:
+
+- Current-main Jest: **not rerun** in this audit session.
+- Current-main TypeScript: **not rerun** in this audit session.
+- No pass/fail claim is made for either command on commit `8cd07c9`.
+- The only confirmed current-baseline browser execution remains E2E run #175 on the PR head whose merged tree is the selected main baseline.
+
+To close this evidence gap, run from a checkout of the pinned commit with the project's lockfile and Node version:
+
+```bash
+cd taxi
+npm ci
+npm run test:nix
+npx tsc --noEmit
+npm run build:nix
+```
+
+Record the exact `git rev-parse HEAD`, Node/npm versions, command exit codes, test totals, and build output. Do not update application code merely to make the audit commands pass; any resulting defect should be documented separately and handled through the agreed development workflow.
