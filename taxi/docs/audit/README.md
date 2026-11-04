@@ -38,10 +38,12 @@ File counts are inventory metrics, not quality or test-coverage metrics. Presenc
 |---|---|---|
 | 1. Structure inventory | Initial pass complete; detailed tracing pending | [01-frontend-inventory.md](./01-frontend-inventory.md) |
 | 2. API register and request-path audit | Source pass complete; test/caller mapping continues | [02-api-register.md](./02-api-register.md) |
-| 3–8 | Not started | To be added |
+| 3. Forms and validation | Source pass complete; driver-side forms remain | [03-forms-and-validation.md](./03-forms-and-validation.md) |
+| 4–8 | Not started | To be added |
 
 ## Change log
 
 - Initial audit documentation created on branch `audit/frontend-inventory`, based on the pinned `main` commit above.
 - Added API register, endpoint map and confirmed source-level risks in `02-api-register.md`.
 - Deepened route/geocoding review: confirmed browser-visible ORS key, mock-backed area graph dependency, zero-coordinate checks and duplicate route fallback implementations.
+- Added passenger form/input validation review, confirmed JSONForm validation inconsistencies, coordinate checks and phone persistence.
