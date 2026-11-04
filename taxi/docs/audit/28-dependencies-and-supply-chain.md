@@ -19,7 +19,7 @@ The lockfile is present and pins exact package versions, but the baseline contai
 - `minimatch@3.0.4`, affected by published ReDoS advisories.
 - `loader-utils@1.2.3` in the local `react-dev-utils` dependency tree, within the affected range for a critical prototype-pollution advisory.
 - `cross-spawn@7.0.1` in the local `react-dev-utils` dependency tree, within the affected range for a high-severity ReDoS advisory.
-- `axios@0.21.4`, within the affected range for CVE-2023-45857. The advisory's concrete impact depends on browser cookie/XSRF behavior and request context; no explicit `withCredentials` or custom XSRF configuration was found in the searched application code.
+- `axios@0.21.4`, within affected ranges for CVE-2023-45857 and CVE-2025-27152. The concrete impact depends on browser cookie/XSRF behavior and whether untrusted absolute URLs reach calls carrying credentials; no explicit `withCredentials` or custom XSRF configuration was found in the searched application code.
 
 These are version/advisory matches, not proof that every vulnerable code path is reachable from untrusted input. Several packages are build/development tooling, so the main exposure is developer/CI/build environment rather than the deployed browser bundle. Reachability and exploitability must be established before assigning an incident severity.
 
@@ -51,7 +51,7 @@ These are version/advisory matches, not proof that every vulnerable code path is
 
 <badge>High for exposed development environments</badge>
 
-**Observed:** lockfile pins `webpack-dev-server@5.2.0`; root manifest declares it in `devDependencies`. The project starts it in `scripts/start.js`. `scripts/start.js` defaults `HOST` to `0.0.0.0`; `config/webpackDevServer.config.js` also defaults to `0.0.0.0` and sets `allowedHosts: 'all'`.
+**Observed:** lockfile pins `webpack-dev-server@5.2.0`; root manifest declares it in `dependencies`. The project starts it in `scripts/start.js`. `scripts/start.js` defaults `HOST` to `0.0.0.0`; `config/webpackDevServer.config.js` also defaults to `0.0.0.0` and sets `allowedHosts: 'all'`.
 
 **Advisory matches:**
 - GHSA-9jgg-88mc-972h / CVE-2025-30360: affected through 5.2.0; fixed in 5.2.1.
@@ -131,17 +131,32 @@ These are version/advisory matches, not proof that every vulnerable code path is
 
 **Recommendation:** update the local `react-dev-utils` dependency to use cross-spawn 7.0.5 or later, or use a compatibility-tested override. Confirm nested dependency resolution after remediation.
 
-### SUPPLY-28-07 — Axios 0.21.4 is within the CVE-2023-45857 affected range
+### SUPPLY-28-07 — Axios 0.21.4 is within two published advisory ranges
 
 **Severity: Medium; configuration-dependent**
 
 **Observed:** lockfile pins `axios@0.21.4`; root manifest range is `^0.21.1`. The package is used throughout browser API calls.
 
-**Advisory match:** GHSA-wf5p-g6vw-rhxx / CVE-2023-45857 affects Axios >=0.8.1 and <0.28.0 (and 1.x before 1.6.0). The advisory describes leakage of XSRF cookie data through the `X-XSRF-TOKEN` header on requests to other hosts.
+**Advisory matches:**
+- [GHSA-wf5p-g6vw-rhxx / CVE-2023-45857](https://github.com/advisories/GHSA-wf5p-g6vw-rhxx) affects Axios >=0.8.1 and <0.28.0 (and 1.x before 1.6.0). It describes leakage of XSRF cookie data through the `X-XSRF-TOKEN` header on requests to other hosts.
+- [GHSA-jr5f-v2jv-69x6 / CVE-2025-27152](https://github.com/advisories/GHSA-jr5f-v2jv-69x6) affects all versions before 0.30.0 in the 0.x line. An absolute URL can bypass an Axios instance's configured `baseURL`; if a caller passes attacker-controlled absolute URLs, configured credentials/headers may be sent to an unintended host. The advisory explicitly includes browser and server use.
 
 **Impact:** the concrete risk depends on browser adapter behavior, XSRF cookie presence, cross-origin destinations and credentials/request configuration. A repository search did not find explicit `withCredentials`, `xsrfCookieName` or `X-XSRF-TOKEN` configuration. This does not prove the default behavior is safe in all deployed contexts.
 
-**Recommendation:** upgrade to a currently supported patched Axios release after reviewing breaking changes and API compatibility. Explicitly set trusted API origins, review cookie/XSRF behavior and avoid sending credentials to arbitrary URLs. Add regression tests for cross-origin requests with an XSRF cookie present.
+**Recommendation:** upgrade to a currently supported patched Axios release after reviewing breaking changes and API compatibility. Explicitly set trusted API origins, review cookie/XSRF behavior and avoid sending credentials to arbitrary URLs. Add regression tests for cross-origin requests with an XSRF cookie present and for rejection of untrusted absolute URLs.
+
+
+### SUPPLY-28-12 — micromatch 3.1.10 is in the affected ReDoS range
+
+**Severity: Medium; reachability depends on attacker control of glob patterns.**
+
+**Observed:** the lockfile contains a top-level `node_modules/micromatch@3.1.10`. Other nested copies resolve to 4.0.8, but the 3.x copy remains in the graph.
+
+**Advisory match:** [GHSA-952p-6rrq-rcjv / CVE-2024-4067](https://github.com/advisories/GHSA-952p-6rrq-rcjv) affects micromatch versions before `4.0.8`, including `3.1.10`. Crafted patterns can cause excessive regular-expression backtracking.
+
+**Impact:** this is currently a dependency-graph finding. The relevant call sites and whether an attacker can control patterns were not traced in this stage.
+
+**Recommendation:** update the owning dependency chain so all micromatch resolutions are patched, then run the build/lint/test suite and verify with `npm ls micromatch --all`.
 
 ## 3. Other supply-chain observations
 
@@ -201,7 +216,7 @@ These are version/advisory matches, not proof that every vulnerable code path is
 | minimatch | 3.0.4 | Glob matching in tooling dependency graph | ReDoS affected range |
 | loader-utils | 1.2.3 | Loader/build tooling | Critical prototype-pollution affected range |
 | cross-spawn | 7.0.1 | Local build utility dependency | ReDoS affected range |
-| follow-redirects | 1.15.9 | Axios transitive dependency | No finding asserted in this report |
+| micromatch | 3.1.10 | Glob matching in tooling dependency graph | ReDoS affected range |\n| follow-redirects | 1.15.9 | Axios transitive dependency | No finding asserted in this report |
 | jsoneditor | 9.7.4 | Sandbox/editor UI | Old version; no specific advisory confirmed here |
 | react-html-parser | 2.0.2 | HTML parsing dependency | Old package; no direct advisory confirmed here; separately review HTML trust/sanitization |
 | jest | 24.9.0 | Test runner | Old generation; support/maintenance concern, not a specific vulnerability claim |
