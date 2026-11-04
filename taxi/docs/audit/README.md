@@ -19,8 +19,9 @@
 4. Page-level flows, lifecycle gates and modal behavior.
 5. Redux, Saga, Thunk and state ownership.
 6. Platform Interface, FSM transports and legacy adapters.
-7. Runtime configuration, build and external integrations.
-8. Test execution/coverage reconciliation and pilot-readiness conclusions.
+7. Platform Interface, FSM transports and legacy adapters.
+8. Runtime configuration, build and external integrations.
+9. Test execution/coverage reconciliation and pilot-readiness conclusions, after the pilot branch/commit is confirmed.
 
 ## Evidence rules
 
