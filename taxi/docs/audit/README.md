@@ -56,6 +56,7 @@ File counts are inventory metrics, not quality or test-coverage metrics. Presenc
 | 15. Passenger Chat, SOS and Rating test coverage | SOS has meaningful UI/backend E2E; Chat WebSocket and Rating payload/error paths lack comparable E2E coverage | [15-passenger-chat-sos-rating-test-coverage.md](./15-passenger-chat-sos-rating-test-coverage.md) |
 | 16. Passenger mutations and test coverage | Full cancellation and candidate happy paths traced; local-choice fallback, release state contract, waiting/price test gaps documented | [16-passenger-mutations-and-test-coverage.md](./16-passenger-mutations-and-test-coverage.md) |
 | 17. Passenger candidate fallback consistency | Local fallback can mark Considering candidate selected; VotingForm and PassengerLiveOrder resolve selected driver differently; localStorage lifecycle and test gaps reviewed | [17-passenger-choice-fallback-consistency.md](./17-passenger-choice-fallback-consistency.md) |
+| 18. Passenger order local state lifecycle | Rejected IDs and ETA lack per-order cleanup; MiniOrders trusts local choice; waiting wrapper may accept HTTP-200 business errors; price override is transient UI state | [18-passenger-order-local-state-lifecycle.md](./18-passenger-order-local-state-lifecycle.md) |
 
 ## Change log
 
@@ -84,3 +85,5 @@ File counts are inventory metrics, not quality or test-coverage metrics. Presenc
 - Stage 16: traced passenger full cancellation, candidate selection/release, waiting-time extension and customer-price update from UI through LegacyPassengerGateway to API. Identified local-choice fallback consistency risk, release-after-Performer backend limitation, missing waiting/price/release E2E coverage, and the setWaitingTime HTTP-200 business-error handling gap.
 
 - Stage 17: inspected both passenger candidate-selection handlers, the local confirmed/rejected-choice storage helpers, selected-driver resolution and startup cleanup. Confirmed that fallback can promote a merely Considering candidate into a selected-driver panel in VotingForm, while PassengerLiveOrder requires Performer or later. Documented localStorage scope/lifecycle and missing fallback-state consistency tests.
+
+- Stage 18: reviewed rejected-choice history, pickup ETA cache, waiting-extension state, customer-price optimistic override, MiniOrders selected-driver resolver and startup cleanup. Confirmed missing per-order cleanup for rejected/ETA maps, a second local-choice resolver in MiniOrders, unused waiting-extension storage helpers, and the HTTP-200 business-error handling gap in setWaitingTime. No application source changed.
