@@ -6,6 +6,7 @@
 - Baseline branch: `main`
 - Baseline commit: `8cd07c90cc8c9015b8ee230c3b6821aaf2e4cddf`
 - Audit working branch: `audit/frontend-inventory`
+- The local QA version described in the 2026-11-03 QA report is treated as unavailable/nonexistent for source comparison; no QA commit or patch was supplied.
 - Experimental branch `review/10-qa-review` is excluded from the evidence base.
 - No application source files are changed by this audit branch.
 - Intermediate findings are committed here as documentation only.
@@ -22,6 +23,7 @@
 7. Runtime configuration, build and external integrations.
 8. Test execution, coverage reconciliation and pilot-readiness gates.
 9. QA defect registry reconciliation (68 findings).
+10. API call-site reachability and lifecycle transport branching.
 
 ## Evidence rules
 
@@ -46,7 +48,8 @@ File counts are inventory metrics, not quality or test-coverage metrics. Presenc
 | 7. Platform Interface, FSM and legacy adapters | Source pass complete; deployment/configuration verification remains | [07-platform-interface-fsm-legacy.md](./07-platform-interface-fsm-legacy.md) |
 | 8. Runtime configuration, build and external integrations | Source pass complete; Vercel settings, live credentials and deployed bundle remain unverified | [08-runtime-build-integrations.md](./08-runtime-build-integrations.md) |
 | 9. Test execution, coverage and pilot gates | E2E CI 21/21 verified; artifact inspected; Jest/TypeScript rerun blocked by network; operational gates remain | [09-test-execution-and-pilot-gates.md](./09-test-execution-and-pilot-gates.md) |
-| 10. QA registry reconciliation | All 68 registry entries cross-referenced; QA closure claims separated from main evidence; pilot gates remain | [10-qa-registry-reconciliation.md](./10-qa-registry-reconciliation.md) |
+| 10. QA registry reconciliation | All 68 registry entries cross-referenced; QA closure claims separated from main evidence; local QA patch unavailable | [10-qa-registry-reconciliation.md](./10-qa-registry-reconciliation.md) |
+| 11. API reachability and FSM branching | Voting/boarding stub reachability traced; notifyPosition call site not found; trip method reachability clarified | [11-api-reachability-and-fsm-branching.md](./11-api-reachability-and-fsm-branching.md) |
 
 ## Change log
 
@@ -60,4 +63,6 @@ File counts are inventory metrics, not quality or test-coverage metrics. Presenc
 - Added Platform Interface/FSM review; confirmed passenger mutations remain legacy-backed, single-order provider selection risk, empty-action fallback semantics, independently configured command/completion modes, remaining legacy driver actions and optimistic UI-state concerns.
 - Added runtime/build/integration review; flagged browser exposure of REACT_APP_* credentials, a hard-coded ORS token, executable remote tenant configuration, disabled production minification, static-site CORS configuration and public geocoding/routing dependencies.
 - Added test execution and pilot-gate review: verified full E2E CI run #175 (21 passed), separated historical Jest/TypeScript results from current-main evidence, inspected the uploaded report artifact, and recorded backend boarding-code and Offer-classification contract gates.
-- Reconciled all 68 findings in the 2026-11-03 QA registry against the pinned main audit. QA-local results, selected-main source/CI evidence and production acceptance remain distinct.
+- Reconciled all 68 findings in the 2026-11-03 QA registry. QA-local results, selected-main source/CI evidence and production acceptance remain distinct.
+- Treated the local QA worktree as unavailable: no QA SHA/patch exists in the supplied evidence, so no commit-to-commit QA diff is claimed.
+- Continued source audit on the pinned main: traced voting/boarding stubs through legacy and FSM branches; downgraded the plain-HTTP notifyPosition issue from confirmed runtime exposure to unproven reachability.
