@@ -50,6 +50,7 @@ File counts are inventory metrics, not quality or test-coverage metrics. Presenc
 | 9. Test execution, coverage and pilot gates | E2E CI 21/21 verified; artifact inspected; Jest/TypeScript rerun blocked by network; operational gates remain | [09-test-execution-and-pilot-gates.md](./09-test-execution-and-pilot-gates.md) |
 | 10. QA registry reconciliation | All 68 registry entries cross-referenced; QA closure claims separated from main evidence; local QA patch unavailable | [10-qa-registry-reconciliation.md](./10-qa-registry-reconciliation.md) |
 | 11. API reachability and FSM branching | Voting/boarding stub reachability traced; notifyPosition call site not found; trip method reachability clarified | [11-api-reachability-and-fsm-branching.md](./11-api-reachability-and-fsm-branching.md) |
+| 12. Passenger Action Contract and call paths | Seven legacy passenger mutations traced; five declared actions lack handlers in LegacyPassengerGateway; rating bypasses Passenger Action path | [12-passenger-action-contract-and-callpaths.md](./12-passenger-action-contract-and-callpaths.md) |
 
 ## Change log
 
@@ -66,3 +67,5 @@ File counts are inventory metrics, not quality or test-coverage metrics. Presenc
 - Reconciled all 68 findings in the 2026-11-03 QA registry. QA-local results, selected-main source/CI evidence and production acceptance remain distinct.
 - Treated the local QA worktree as unavailable: no QA SHA/patch exists in the supplied evidence, so no commit-to-commit QA diff is claimed.
 - Continued source audit on the pinned main: traced voting/boarding stubs through legacy and FSM branches; downgraded the plain-HTTP notifyPosition issue from confirmed runtime exposure to unproven reachability.
+
+- Traced Passenger Gateway UI call sites and compared the 12 declared Passenger Action types with the seven actions handled by the legacy adapter; documented the conditional missing-terminal-event risk and the direct rating path. Corrected the audit's treatment of DriverTripCancelModal: selected main already routes cancellation through DriverMapGateway.
