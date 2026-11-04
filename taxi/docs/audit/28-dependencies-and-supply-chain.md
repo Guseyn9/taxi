@@ -200,7 +200,7 @@ These are version/advisory matches, not proof that every vulnerable code path is
 
 **Severity: Low / compliance review**
 
-**Observed:** 905 of 2,124 lockfile package entries do not carry a `license` field in the lock metadata. This includes packages where npm metadata may be absent or declared through a LICENSE file rather than the lockfile field.
+**Observed:** 907 of 2,124 lockfile package entries do not carry a `license` field in the lock metadata. This includes packages where npm metadata may be absent or declared through a LICENSE file rather than the lockfile field.
 
 **Impact:** automated license reporting based only on lockfile metadata may classify packages as unknown. This is not evidence that 905 packages are unlicensed or non-compliant.
 
