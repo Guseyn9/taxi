@@ -153,3 +153,36 @@ Downloaded and inspected the artifact for run #175 (`playwright-e2e-41347130101-
 - A basic scan of the report files found no Bearer-token pattern, authorization/cookie fields, access/refresh-token fields, or `.auth/` storage-state path. The word "password" appears in the minified HTML bundle/runtime, not as a detected credential value.
 
 This supports a narrow conclusion about **this successful run's uploaded artifact only**. It does not establish that failure artifacts from other projects/runs are safe, nor does it inspect GitHub runner temporary files before cleanup. The broader trace/artifact confidentiality gate remains open until a deliberately failed, non-credential-bearing test run is reviewed for every project's attachment policy and report output.
+
+## 9. Reconciliation with the QA defect registry dated 2026-11-03
+
+The separate QA registry reports 68 items:
+
+| QA registry category | Count | Meaning in that document |
+|---|---:|---|
+| Closed on frontend | 29 | Local frontend changes/tests reported complete |
+| Frontend partially fixed | 17 | Frontend work done, joint/backend/publication acceptance remains |
+| Backend/API contract required | 10 | Not a frontend-only closure |
+| Publication/acceptance required | 8 | CI/deployment/operational verification remains |
+| Technical debt | 4 | Explicitly not closed |
+
+The QA document reports 900/900 unit/regression checks, 21/21 browser scenarios, TypeScript and production build on a local frontend QA setup; it also explicitly says that three order types were completed on an isolated PHP stand with local contract adjustments, and that this was not production backend, real FSM, physical-device or business-pilot acceptance.
+
+This evidence is **not equivalent** to the selected-main evidence in this audit:
+
+- The QA registry itself says several findings originate from the earlier `8cd07c9` baseline and that later changes require target-commit verification.
+- The local 900-test and build results do not identify a reproducible CI run tied to the selected main commit in the evidence reviewed here.
+- The 21/21 QA browser scenarios were run on an isolated PHP stand with local contract changes. The separate CI run #175 was 21/21 against the documented live `gruzvill` backend. These are two distinct test environments and must not be conflated.
+- The QA registry lists CI-01/02/03 as outstanding (unit tests, TypeScript and production build not enforced in CI), consistent with the absence of those jobs from the inspected `.github/workflows/e2e.yml`.
+- The registry lists SEC-07 and CI-07 as awaiting artifact review. Inspection of the successful run #175 artifact narrows the risk for that artifact only; it does not close the historical-artifact/failure-trace review.
+
+### Cross-audit issues that remain explicit pilot gates
+
+1. **Credentials and FSM authorization:** SEC-01/02, PLAT-01/03, and audit finding BUILD-01 must be reconciled against the exact shipped commit and deployed bundle. The selected-main source review observed browser exposure of `REACT_APP_*` FSM token configuration; a local QA status label cannot override that source evidence.
+2. **Boarding PIN:** CMD-08/09 and the live backend observation in this audit point to server-side PIN validation as a hard gate. Frontend shape validation is not server identity verification.
+3. **FSM/Legacy contract:** INT-01/02 and ARCH-03 align with the source review: passenger mutations and several driver operations still use legacy paths. The pilot must explicitly accept a bounded legacy scope or require the relevant FSM migration.
+4. **Morocco configuration:** INT-05/06 remain product/backend configuration gates: MAD, tariff rounding, PETIT/GRAND licensing, zones and city-specific rules must be accepted on the actual pilot tenant.
+5. **Deployment compatibility:** INT-07 requires coordinated frontend/backend/dictionary versions and rollback. A green Vercel check or frontend-only QA cannot establish this compatibility.
+6. **Pricing and Offer semantics:** PAY-02/06/07 and INT-03/04 require an agreed canonical payload, monetary units/currency, price/ETA authority, and server-side validation. The `gruzvill` observation about `b_cars_count` reinforces that frontend classification cannot rely on an unverified field contract.
+
+No QA registry status was automatically copied into this audit as a verified closure. Each item requires confirmation against the selected commit and the target pilot tenant before it can be closed here.
