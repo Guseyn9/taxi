@@ -53,6 +53,9 @@ File counts are inventory metrics, not quality or test-coverage metrics. Presenc
 | 12. Passenger Action Contract and call paths | Seven legacy passenger mutations traced; five declared actions lack handlers in LegacyPassengerGateway; rating bypasses Passenger Action path | [12-passenger-action-contract-and-callpaths.md](./12-passenger-action-contract-and-callpaths.md) |
 | 13. Passenger Surface and feature flags | Clarified actions are UI metadata, not proof of dispatch; Passenger UI FSM flag changes presentation, not command transport; snapshot source and command path are separate | [13-passenger-surface-actions-and-feature-flags.md](./13-passenger-surface-actions-and-feature-flags.md) |
 | 14. Passenger Chat, SOS and Rating | Chat uses separate WebSocket; SOS maps to cancel-with-reason, not incident dispatch; rating drops tips/comment and closes before API result | [14-passenger-chat-sos-rating.md](./14-passenger-chat-sos-rating.md) |
+| 15. Passenger Chat, SOS and Rating test coverage | SOS has meaningful UI/backend E2E; Chat WebSocket and Rating payload/error paths lack comparable E2E coverage | [15-passenger-chat-sos-rating-test-coverage.md](./15-passenger-chat-sos-rating-test-coverage.md) |
+| 16. Passenger mutations and test coverage | Full cancellation and candidate happy paths traced; local-choice fallback, release state contract, waiting/price test gaps documented | [16-passenger-mutations-and-test-coverage.md](./16-passenger-mutations-and-test-coverage.md) |
+| 17. Passenger candidate fallback consistency | Local fallback can mark Considering candidate selected; VotingForm and PassengerLiveOrder resolve selected driver differently; localStorage lifecycle and test gaps reviewed | [17-passenger-choice-fallback-consistency.md](./17-passenger-choice-fallback-consistency.md) |
 
 ## Change log
 
@@ -79,3 +82,5 @@ File counts are inventory metrics, not quality or test-coverage metrics. Presenc
 - Stage 15: assessed real test coverage for passenger Chat, SOS and Rating. SOS has the strongest UI-to-live-backend E2E/readback coverage; no comparable Chat WebSocket or Rating payload/retry E2E was found. Historical CI run is distinguished from a new run on the pinned baseline.
 
 - Stage 16: traced passenger full cancellation, candidate selection/release, waiting-time extension and customer-price update from UI through LegacyPassengerGateway to API. Identified local-choice fallback consistency risk, release-after-Performer backend limitation, missing waiting/price/release E2E coverage, and the setWaitingTime HTTP-200 business-error handling gap.
+
+- Stage 17: inspected both passenger candidate-selection handlers, the local confirmed/rejected-choice storage helpers, selected-driver resolution and startup cleanup. Confirmed that fallback can promote a merely Considering candidate into a selected-driver panel in VotingForm, while PassengerLiveOrder requires Performer or later. Documented localStorage scope/lifecycle and missing fallback-state consistency tests.
