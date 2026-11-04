@@ -13,6 +13,10 @@
 - Intermediate findings are committed here as documentation only.
 - No pull request is created until the audit package is complete and explicitly approved.
 
+## Continuation after stage 30
+
+The recovered closure plan is maintained in [CONTINUATION-PLAN.md](./CONTINUATION-PLAN.md). It sequences remaining test evidence, backend/API contracts, security and artifact review, deployment/Morocco configuration, and final pilot acceptance. Stage 30 is not an overall pilot approval.
+
 ## Audit sequence
 
 1. Frontend inventory and coverage map.
