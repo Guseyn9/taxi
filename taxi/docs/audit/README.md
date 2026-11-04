@@ -75,3 +75,5 @@ File counts are inventory metrics, not quality or test-coverage metrics. Presenc
 - Traced PassengerSurface and runtime composition. Refined stage 12: five action types without LegacyPassengerGateway handlers are not shown to be dispatched by the current Passenger UI; availableActions are used as visibility metadata. Confirmed Passenger UI FSM feature flag changes presentation only, while seven mutations still use the legacy Gateway. Snapshot provider selection is independent of mutation transport.
 
 - Traced Passenger chat click-to-WebSocket, SOS modal-to-cancel API, and Rating modal-to-rating API. Confirmed that SOS is cancellation-with-reason rather than a separate incident service, and rating fields tips/comment are not sent while the modal closes before API completion. Identified multiple rating-open triggers for follow-up idempotency tests.
+
+- Stage 15: assessed real test coverage for passenger Chat, SOS and Rating. SOS has the strongest UI-to-live-backend E2E/readback coverage; no comparable Chat WebSocket or Rating payload/retry E2E was found. Historical CI run is distinguished from a new run on the pinned baseline.
