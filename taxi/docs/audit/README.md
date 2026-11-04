@@ -15,12 +15,12 @@
 
 1. Frontend inventory and coverage map.
 2. API method and endpoint inventory; trace callers, payloads, responses, failures and tests.
-3. Forms and user-input validation.
-4. Components and page-level user flows.
+3. Passenger and driver forms, validation and order actions.
+4. Page-level flows, lifecycle gates and modal behavior.
 5. Redux, Saga, Thunk and state ownership.
 6. Platform Interface, FSM transports and legacy adapters.
 7. Runtime configuration, build and external integrations.
-8. Test coverage, gaps and pilot-readiness conclusions.
+8. Test execution/coverage reconciliation and pilot-readiness conclusions.
 
 ## Evidence rules
 
@@ -43,7 +43,7 @@ File counts are inventory metrics, not quality or test-coverage metrics. Presenc
 | 5. Page-level flows and action gates | Source pass complete; runtime/test verification remains | [05-page-flows-and-action-gates.md](./05-page-flows-and-action-gates.md) |
 | 6. Redux, Saga and state ownership | Source pass complete; regression tests/runtime verification remain | [06-redux-saga-state-ownership.md](./06-redux-saga-state-ownership.md) |
 | 7. Platform Interface, FSM and legacy adapters | Source pass complete; deployment/configuration verification remains | [07-platform-interface-fsm-legacy.md](./07-platform-interface-fsm-legacy.md) |
-| 8. Runtime configuration, build and external integrations | Not started | To be added |
+| 8. Runtime configuration, build and external integrations | Source pass complete; Vercel settings, live credentials and deployed bundle remain unverified | [08-runtime-build-integrations.md](./08-runtime-build-integrations.md) |
 
 ## Change log
 
@@ -55,3 +55,4 @@ File counts are inventory metrics, not quality or test-coverage metrics. Presenc
 - Added page-level driver/passenger flow review; flagged swallowed map-finish failures, rating submission/feedback gaps and non-global mutation locks.
 - Added Redux/Saga state ownership review; flagged full-vs-partial order precedence, duplicate detail/collection stores, persisted draft reset policy, a dormant setStatus action-creator defect and zero-coordinate truthiness.
 - Added Platform Interface/FSM review; confirmed passenger mutations remain legacy-backed, single-order provider selection risk, empty-action fallback semantics, independently configured command/completion modes, remaining legacy driver actions and optimistic UI-state concerns.
+- Added runtime/build/integration review; flagged browser exposure of REACT_APP_* credentials, a hard-coded ORS token, executable remote tenant configuration, disabled production minification, static-site CORS configuration and public geocoding/routing dependencies.
