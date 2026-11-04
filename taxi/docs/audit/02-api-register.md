@@ -200,3 +200,72 @@ A dedicated API contract test matrix is required before pilot approval.
 2. Inspect route calculation implementation in `makeRoutePoints` and `LegacyRouteProvider`, including ORS → local graph → OSRM fallback and configuration/key handling.
 3. Map API methods to unit/E2E tests and identify missing payload/error assertions.
 4. Inspect forms and validators for zero/false/empty values that interact with API-01.
+
+
+## 8. Route calculation and geocoding — deeper inspection
+
+### Route provider chain
+
+Two parallel implementations were found:
+
+- `src/platform/adapters/LegacyRouteProvider.ts`
+- `src/tools/route.ts` (`makeRoutePointsSafe` and helpers)
+
+Both implement the same broad sequence:
+1. Call `API.makeRoutePoints` (OpenRouteService).
+2. Try a local road graph if a `wayGraph` is injected.
+3. Try public OSRM at `https://router.project-osrm.org/route/v1/driving/`.
+4. Throw `Route by roads is not available` if no usable polyline is produced.
+
+The duplicated implementations create a maintenance risk: bug fixes, coordinate validation and fallback behavior can diverge. The call-site inventory must determine which implementation is used by the production driver map and which is used by emulator/test code.
+
+### API-07 — OpenRouteService key is hard-coded in browser source
+
+**Confirmed:** `src/API/index.ts` contains a literal `orsToken` constant and sends it as the Authorization header in a browser-side request to OpenRouteService.
+
+This key is therefore exposed to every user who can inspect the downloaded JavaScript/network request. Treat it as a public client key, not a secret. Before pilot:
+- rotate/restrict the key if it is a real credential;
+- move provider access behind a controlled proxy if the provider terms or quota model require secrecy;
+- otherwise restrict allowed origins, services and quota at the provider;
+- verify the key is not shared with server-side/private integrations.
+
+### API-08 — Route fallback can silently depend on mock area graph
+
+The local route fallback accepts a `wayGraph`, but the area API feeding the graph currently returns constant area id `0` and static Agadir data (API-02). Therefore local graph fallback is not a reliable general-Morocco fallback in this baseline. It may only work for the bundled Agadir dataset.
+
+### API-09 — Coordinate zero is rejected by fallback implementations
+
+Both OSRM and local graph helpers guard coordinates using truthiness checks such as `!from.latitude` and `!from.longitude`. Latitude or longitude equal to numeric zero is a valid geographic coordinate but is treated as missing. This is a correctness defect for points on the equator/prime meridian and should be fixed using finite-number checks. It is separate from API-01's FormData omission.
+
+### API-10 — OSRM public demo endpoint has no explicit timeout or provider policy control
+
+The browser calls the public OSRM demo endpoint directly using `fetch`, with no explicit AbortSignal timeout, retry policy, attribution/usage guard or configurable provider URL. This can fail under provider throttling/outage and may not be suitable for production-scale traffic. Confirm the pilot traffic and service terms; provide a configurable production routing provider or controlled proxy.
+
+### API-11 — Geocoding providers have asymmetric resilience
+
+- `geocode` calls Nominatim directly and requests only one result. It has no local catch/fallback in this function; the Saga caller catches failures and logs a warning.
+- `reverseGeocode` tries HERE first, then Nominatim, caches in-flight/result promises and rate-limits Nominatim requests.
+- Address suggestions use personal/local hints, HERE autosuggest, and Nominatim fallback, with client-side request queues/caches.
+- HERE key is embedded in browser requests and can be disabled after a 401 response.
+
+The fallback behavior is not uniform across address search, forward geocoding and reverse geocoding. Test separately with HERE key absent/invalid, Nominatim unavailable, TLS/network errors and no geolocation permission.
+
+### API-12 — Legacy route provider and shared route helper duplicate logic
+
+The two files duplicate OSRM URL construction, response parsing, local shortest-path calculation and route validity checks. Consolidate after mapping all consumers, or add parity tests to prevent drift.
+
+## 9. Revised risk priority
+
+| ID | Priority | Finding | Pilot disposition |
+|---|---|---|---|
+| API-02 | Critical if area/graph features are in pilot scope | Area selection and area loading are mock implementations | Must replace or explicitly disable dependent feature |
+| API-03 | Critical if voting actions are live | Voting arrival/code confirmation are synthetic success | Must connect real backend or hide/disable flow |
+| API-04 | High if called with real driver locations | Plain HTTP location notification | Remove/secure before real driver use |
+| API-07 | High | Hard-coded ORS key in client bundle | Rotate/restrict and document key policy |
+| API-01 | High potential | Falsy values skipped by shared FormData helper | Audit call payloads and add regression tests |
+| API-08 | High if local graph fallback is expected | Graph fallback fed by mock area data | Validate geographic coverage |
+| API-09 | Medium | Valid zero coordinates rejected by route helpers | Fix and add tests |
+| API-10 | Medium | Public OSRM direct call lacks timeout/configuration | Define production routing policy |
+| API-11 | Medium | Different geocoding fallback/error paths | Add provider failure tests |
+| API-12 | Medium | Duplicate route helper implementations | Consolidate or parity-test |
+
