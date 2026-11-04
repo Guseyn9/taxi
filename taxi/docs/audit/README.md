@@ -19,9 +19,8 @@
 4. Page-level flows, lifecycle gates and modal behavior.
 5. Redux, Saga, Thunk and state ownership.
 6. Platform Interface, FSM transports and legacy adapters.
-7. Platform Interface, FSM transports and legacy adapters.
-8. Runtime configuration, build and external integrations.
-9. Test execution/coverage reconciliation and pilot-readiness conclusions, after the pilot branch/commit is confirmed.
+7. Runtime configuration, build and external integrations.
+8. Test execution, coverage reconciliation and pilot-readiness gates.
 
 ## Evidence rules
 
@@ -45,6 +44,7 @@ File counts are inventory metrics, not quality or test-coverage metrics. Presenc
 | 6. Redux, Saga and state ownership | Source pass complete; regression tests/runtime verification remain | [06-redux-saga-state-ownership.md](./06-redux-saga-state-ownership.md) |
 | 7. Platform Interface, FSM and legacy adapters | Source pass complete; deployment/configuration verification remains | [07-platform-interface-fsm-legacy.md](./07-platform-interface-fsm-legacy.md) |
 | 8. Runtime configuration, build and external integrations | Source pass complete; Vercel settings, live credentials and deployed bundle remain unverified | [08-runtime-build-integrations.md](./08-runtime-build-integrations.md) |
+| 9. Test execution, coverage and pilot gates | E2E CI evidence verified; Jest/TypeScript current-main rerun and operational gates remain | [09-test-execution-and-pilot-gates.md](./09-test-execution-and-pilot-gates.md) |
 
 ## Change log
 
@@ -57,3 +57,4 @@ File counts are inventory metrics, not quality or test-coverage metrics. Presenc
 - Added Redux/Saga state ownership review; flagged full-vs-partial order precedence, duplicate detail/collection stores, persisted draft reset policy, a dormant setStatus action-creator defect and zero-coordinate truthiness.
 - Added Platform Interface/FSM review; confirmed passenger mutations remain legacy-backed, single-order provider selection risk, empty-action fallback semantics, independently configured command/completion modes, remaining legacy driver actions and optimistic UI-state concerns.
 - Added runtime/build/integration review; flagged browser exposure of REACT_APP_* credentials, a hard-coded ORS token, executable remote tenant configuration, disabled production minification, static-site CORS configuration and public geocoding/routing dependencies.
+- Added test execution and pilot-gate review: verified full E2E CI run #175 (21 passed), separated historical Jest/TypeScript results from current-main evidence, and recorded backend boarding-code and Offer-classification contract gates.
