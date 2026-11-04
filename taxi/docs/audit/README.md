@@ -37,8 +37,10 @@ File counts are inventory metrics, not quality or test-coverage metrics. Presenc
 | Stage | Status | Artifact |
 |---|---|---|
 | 1. Structure inventory | Initial pass complete; detailed tracing pending | [01-frontend-inventory.md](./01-frontend-inventory.md) |
-| 2–8 | Not started | To be added |
+| 2. API register and request-path audit | Source pass complete; test/caller mapping continues | [02-api-register.md](./02-api-register.md) |
+| 3–8 | Not started | To be added |
 
 ## Change log
 
 - Initial audit documentation created on branch `audit/frontend-inventory`, based on the pinned `main` commit above.
+- Added API register, endpoint map and confirmed source-level risks in `02-api-register.md`.
