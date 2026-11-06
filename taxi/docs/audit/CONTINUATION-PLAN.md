@@ -122,3 +122,8 @@ Audit the backend repository separately, using its own pinned branch/SHA and its
 Compare the two independently produced contracts and run end-to-end validation across the exact frontend/backend versions and selected tenant. This is where location persistence/expiry, dispatch, boarding authority, fare semantics, lifecycle transitions, error envelopes, idempotency and cross-role synchronization are verified together.
 
 **Closure rule:** a frontend finding may be marked closed only on frontend evidence; a backend finding only on backend evidence; an integration claim only on cross-layer execution/readback evidence. No overall pilot go/no-go is implied by closing either independent audit alone.
+
+
+### Frontend security review — new P1 gate from stage 44
+
+Stage 44 found that `b_options.pricingModel.formula` is taken from backend order data and evaluated by browser `eval()`. This is an observed code-execution sink; whether an ordinary passenger can influence the formula is not established. The frontend closure checklist must include removal of `eval`, a restricted arithmetic parser, hostile-input regression tests and verification that all order consumers use the safe parser. Do not mark the frontend security track closed while this finding remains open. Backend formula-authoring permissions are audited separately in Track 2; integration verifies the final contract in Track 3.
