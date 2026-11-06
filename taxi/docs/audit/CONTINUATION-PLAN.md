@@ -2,6 +2,8 @@
 
 ## Purpose
 
+The consolidated frontend closure matrix is maintained in [FRONTEND-CLOSURE-MATRIX.md](./FRONTEND-CLOSURE-MATRIX.md). Use it as the single status register; this plan records the evidence/actions needed to close each track.
+
 This document reconstructs the continuation plan after audit stages 1–30. It is based on the saved inventory, stage reports 01–30, the QA registry reconciliation, and the explicit next actions and pilot gates in stage 09. It is a plan for completing evidence and acceptance work, not a claim that the application is ready for pilot.
 
 ## Audit baseline and rules
