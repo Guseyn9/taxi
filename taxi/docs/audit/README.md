@@ -17,6 +17,8 @@
 
 The recovered closure plan is maintained in [CONTINUATION-PLAN.md](./CONTINUATION-PLAN.md). It sequences remaining test evidence, backend/API contracts, security and artifact review, deployment/Morocco configuration, and final pilot acceptance. Stage 30 is not an overall pilot approval.
 
+The consolidated closure status for all documented frontend stages is maintained in [FRONTEND-CLOSURE-MATRIX.md](./FRONTEND-CLOSURE-MATRIX.md). It distinguishes open frontend remediation, missing execution evidence and backend/deployment dependencies.
+
 ## Audit sequence
 
 1. Frontend inventory and coverage map.
