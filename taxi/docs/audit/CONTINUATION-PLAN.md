@@ -194,3 +194,16 @@ Required closure:
 5. Verify referral prefill safely ignores malformed values without uncaught component-effect errors.
 
 Treat URL-47-01 as P1 until the root-saga regression is executed successfully. Source inspection alone is not closure evidence.
+
+
+### Frontend diagnostic privacy review — URL query values in exported logs (stage 49)
+
+Stage 49 found that diagnostic environment snapshots serialize the complete `window.location.href` and `window.location.search`. The sanitizer redacts sensitive object keys but treats strings as opaque. The Google callback's `auth_hash` is read from the query and exchanged at `/token`, while the inspected callback handler does not remove it from browser history. If a diagnostic export is created while the parameter remains present and the file is shared, the exchange credential may be disclosed.
+
+Add to Work package C and the frontend closure matrix:
+1. Remove raw query strings from diagnostics or redact credential/personal-data parameters before serialization.
+2. Remove the callback credential from browser history after capturing it for exchange.
+3. Add sentinel-secret tests for interface, flow and all-log exports, including encoded values.
+4. Confirm `auth_hash` expiry and replay semantics during the independent backend/integration audit.
+
+The finding is conditional on the credential being present at export time and the exported file being shared. No automatic upload or actual exposure was observed. Keep URL-49-01 open until export-redaction tests pass.
