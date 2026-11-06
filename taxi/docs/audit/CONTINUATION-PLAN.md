@@ -155,19 +155,6 @@ Add these checks to Work package C:
 Do not mark this finding closed based only on frontend source changes; verify the configured tenant value and browser behavior in the deployment/integration track.
 
 
-### Frontend availability/security review — URL query decoding and Saga startup (stage 47)
-
-Stage 47 found redundant decoding of values returned by `URLSearchParams`. In particular, `handleRedirectSaga` decodes `auth_hash` again without a catch and is invoked as a child of attached `all([...])` effects in both user and root Saga trees. A malformed query value such as `auth_hash=%25` can therefore throw during startup and propagate cancellation to sibling domain sagas. Referral-prefill `u_email`/`u_name` paths repeat the same decoding pattern.
-
-Add to Work package C and the frontend closure matrix:
-1. Remove redundant decoding and validate query values without throwing.
-2. Isolate startup redirect parsing so invalid URL data cannot cancel root/domain watchers.
-3. Add malformed-query and root-Saga resilience tests, including a test that unrelated domain watchers remain active.
-4. Record the finding as open until a runtime regression test proves the startup path survives malformed values.
-
-This is a frontend source finding; it does not depend on backend correctness. Runtime cancellation behavior and backend auth-hash constraints remain to be verified.
-
-
 ### Frontend test-mode isolation — Driver emulator URL override (stage 48)
 
 Stage 48 traced `?driverEmulator=1` / `?extEmulator=1` into persistent localStorage and the strict Driver order gate. The flag disables forced-empty active/ready/history lists and allows backend polling in the real Driver UI. The source comment identifies the intended headless emulator test workflow; production exposure and backend authorization remain unverified.
