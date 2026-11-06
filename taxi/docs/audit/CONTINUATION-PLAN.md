@@ -96,3 +96,29 @@ Start with Work package A, item 1: resolve the exact current `main` SHA and comp
 ## Explicit limitations
 
 This plan does not claim access to the production deployment, private backend implementation, tenant configuration, physical devices or all retained CI artifact contents. Those require explicit evidence and access. No overall pilot approval is implied by completion of source stages 01–30.
+
+
+## Revised sequencing decision — independent frontend and backend audits
+
+The audit is now explicitly split into three sequential tracks, following the decision to assess each codebase independently before evaluating their boundary.
+
+### Track 1 — Finish the frontend audit (current)
+
+Continue only with evidence that can be established from the frontend repository:
+
+1. Reconcile prior findings and test-coverage claims against the pinned frontend SHA; correct documentation inaccuracies.
+2. Complete source-level frontend security, public-surface, browser-delivery and configuration review.
+3. Establish reproducible frontend-only Jest, TypeScript and production-build evidence against an exact SHA when a suitable runner is available. E2E that depends on a live backend is recorded separately and is not used to imply backend correctness.
+4. Produce a frontend closure matrix: confirmed fixed, open frontend defect, test gap, and external dependency deferred to integration.
+
+Do not make backend implementation or tenant behavior a prerequisite for closing the independent static frontend review. Mark those questions as deferred cross-boundary evidence.
+
+### Track 2 — Independent backend audit (after Track 1 closes)
+
+Audit the backend repository separately, using its own pinned branch/SHA and its own inventory, database, API, authorization, FSM, transaction/concurrency, security and test evidence. Do not infer backend correctness from frontend adapters, API mocks, documentation or historical test results.
+
+### Track 3 — Integration audit (after Tracks 1 and 2 close)
+
+Compare the two independently produced contracts and run end-to-end validation across the exact frontend/backend versions and selected tenant. This is where location persistence/expiry, dispatch, boarding authority, fare semantics, lifecycle transitions, error envelopes, idempotency and cross-role synchronization are verified together.
+
+**Closure rule:** a frontend finding may be marked closed only on frontend evidence; a backend finding only on backend evidence; an integration claim only on cross-layer execution/readback evidence. No overall pilot go/no-go is implied by closing either independent audit alone.
