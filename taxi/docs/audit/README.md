@@ -86,6 +86,8 @@ File counts are inventory metrics, not quality or test-coverage metrics. Presenc
 
 | 38. Order polling, stale data and recovery | Found watcher can stall when GET is skipped during mutation; failed mutations do not trigger reconciliation; list refresh may not supersede stale detail value | [38-order-polling-stale-data-and-recovery.md](./38-order-polling-stale-data-and-recovery.md) |
 
+| 39. Session restoration and account isolation | Token restoration exists, but login/logout do not guarantee domain-state teardown; reload workflow and same-context isolation lack executable evidence | [39-session-restoration-and-account-isolation.md](./39-session-restoration-and-account-isolation.md) |
+
 ## Change log
 
 - Stage 31: reconfirmed that main still equals the pinned baseline; inspected raw run #178 logs and confirmed 19 passed with two flaky retries, including a trip-finish cleanup state conflict. Verified that the current workflow runs only Playwright E2E and does not run Jest, TypeScript or production build. Identified exact commands and the pre-build side effect. A clean checkout could not be obtained because the execution container could not resolve github.com; no Jest/TypeScript/build result is claimed.
