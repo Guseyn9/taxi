@@ -140,3 +140,16 @@ Add these frontend closure checks to Work package C:
 4. Keep stage 44's restricted pricing parser and hostile-input tests as a separate mandatory gate.
 
 The stage 45 findings are frontend-source findings. Tenant publishing permissions, live config contents, CDN path handling and deployed exploitability remain unverified and must not be marked closed without the relevant evidence.
+
+
+### Frontend security review — tenant-configured support navigation (stage 46)
+
+Stage 46 found that `MessageModal` reads support destinations from tenant `window.data` and passes the selected string to `window.open(..., '_blank')` after only an email-address heuristic. No scheme allowlist or explicit opener isolation is present. The risk depends on who can publish tenant support values; no live value or browser exploit was verified.
+
+Add these checks to Work package C:
+1. Replace the string heuristic with typed support URL/email configuration and allow only approved schemes (`https:` and `mailto:` where needed); use an origin allowlist if the support website is fixed.
+2. Open external destinations with explicit `noopener,noreferrer` and test that the opened context cannot navigate the originating app.
+3. Add hostile-scheme, malformed URL, protocol-relative and email/URL ambiguity tests.
+4. Verify tenant configuration publishing permissions and the effective production support destination.
+
+Do not mark this finding closed based only on frontend source changes; verify the configured tenant value and browser behavior in the deployment/integration track.
