@@ -4,7 +4,7 @@
 
 The consolidated frontend closure matrix is maintained in [FRONTEND-CLOSURE-MATRIX.md](./FRONTEND-CLOSURE-MATRIX.md). Use it as the single status register; this plan records the evidence/actions needed to close each track.
 
-This document reconstructs the continuation plan after audit stages 1–30. It is based on the saved inventory, stage reports 01–30, the QA registry reconciliation, and the explicit next actions and pilot gates in stage 09. It is a plan for completing evidence and acceptance work, not a claim that the application is ready for pilot.
+This document originated as the continuation plan after audit stages 1–30 and was extended as stages 31–50 were completed. It is based on the saved inventory, numbered stage reports 01–50, the QA registry reconciliation and the explicit next actions and pilot gates in stage 09. It is a plan for completing evidence and acceptance work, not a claim that the application is ready for pilot.
 
 ## Audit baseline and rules
 
@@ -97,7 +97,7 @@ Start with Work package A, item 1: resolve the exact current `main` SHA and comp
 
 ## Explicit limitations
 
-This plan does not claim access to the production deployment, private backend implementation, tenant configuration, physical devices or all retained CI artifact contents. Those require explicit evidence and access. No overall pilot approval is implied by completion of source stages 01–30.
+This plan does not claim access to the production deployment, private backend implementation, tenant configuration, physical devices or all retained CI artifact contents. Those require explicit evidence and access. No overall pilot approval is implied by completion of source/documentation stages 01–50.
 
 
 ## Revised sequencing decision — independent frontend and backend audits
@@ -196,3 +196,17 @@ Add to Work package C and the frontend closure matrix:
 4. Confirm `auth_hash` expiry and replay semantics during the independent backend/integration audit.
 
 The finding is conditional on the credential being present at export time and the exported file being shared. No automatic upload or actual exposure was observed. Keep URL-49-01 open until export-redaction tests pass.
+
+
+### Frontend documentation reconciliation — completeness stage 50
+
+Stage 50 checked the audit folder tree and README references. All 49 numbered reports from 01 through 49 exist, with no missing or duplicate numbered report files. The README progress table had all 49 stages but was out of order at stages 30 and 42 and contained a stray duplicate Stage 23 bullet before the title. The closure matrix also lacked explicit coverage rows for foundational stages 01–10 and baseline-revalidation stage 31. These documentation defects were corrected; the canonical Stage 47 report was retained and its duplicate removed.
+
+This stage closes documentation consistency only. It does not close the frontend audit, execute tests, validate production configuration or approve pilot readiness.
+
+Remaining Track 1 exit evidence:
+1. Re-run Jest, TypeScript and production build against the pinned frontend SHA in a clean checkout; preserve logs, environment versions and exit codes.
+2. Execute the stage-specific regression tests for stages 44–49, including the root-Saga malformed-query test and diagnostic export redaction tests.
+3. Verify production bundle/test-mode exclusion and effective browser security headers.
+4. Close or explicitly risk-accept all open frontend findings in `FRONTEND-CLOSURE-MATRIX.md`; move backend/deployment dependencies to their own evidence owners rather than marking them closed.
+5. Once these frontend-only conditions are satisfied, begin the independent backend audit. Do not start integration closure until both independent audits have their own evidence.
