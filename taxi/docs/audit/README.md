@@ -87,6 +87,7 @@ File counts are inventory metrics, not quality or test-coverage metrics. Presenc
 | 38. Order polling, stale data and recovery | Found watcher can stall when GET is skipped during mutation; failed mutations do not trigger reconciliation; list refresh may not supersede stale detail value | [38-order-polling-stale-data-and-recovery.md](./38-order-polling-stale-data-and-recovery.md) |
 
 | 39. Session restoration and account isolation | Token restoration exists, but login/logout do not guarantee domain-state teardown; reload workflow and same-context isolation lack executable evidence | [39-session-restoration-and-account-isolation.md](./39-session-restoration-and-account-isolation.md) |
+| 40. Driver cars and capacity consistency | Primary vs driven car inconsistency, same-user car cache reload suppression, capacity fallback and asynchronous profile reconciliation gaps | [40-driver-cars-and-capacity-consistency.md](./40-driver-cars-and-capacity-consistency.md) |
 
 ## Change log
 
