@@ -33,7 +33,7 @@
 |---|---|---|---|
 | 11–20 | Passenger action/Legacy contract gaps; separate Chat WebSocket; SOS semantics; rating payload/error/readback gaps; candidate fallback and order-history/recovery inconsistencies. | Versioned action contract; positive/negative/retry tests for every mutation; rating persistence/readback; candidate and reload recovery tests. | DOCUMENTED; OPEN test/contract gates |
 | 21–23, 39 | Session teardown and persisted personal state; stale order projections; incomplete cross-role and same-browser account-isolation proof. | Two-account same-browser tests; logout/login teardown; reload/reconnect and two-context Passenger↔Driver synchronization tests. | OPEN P1 |
-| 24–25, 35–38 | Terminal action inconsistency, suppressed/unhandled errors, business-error envelope mismatch, polling stalls and ambiguous timeout/retry behavior. | Idempotent command contract; stable command IDs; bounded requests; error/readback/reconciliation; concurrent terminal-command tests. | OPEN P1; backend contract deferred |
+| 24–25, 35, 38 | Terminal action inconsistency, suppressed/unhandled errors, business-error envelope mismatch, polling stalls and ambiguous timeout/retry behavior. | Idempotent command contract; stable command IDs; bounded requests; error/readback/reconciliation; concurrent terminal-command tests. | OPEN P1; backend contract deferred |
 | 32 | Boarding PIN frontend shape checks do not prove identity; prior live evidence reports incorrect PIN acceptance; Offer classification inconsistent. | Backend negative/replay/cross-order PIN tests; canonical Offer field and tenant-backed regression. | DEFERRED backend/integration; P0 pilot blocker |
 | 33 | Currency defaults and fare fallback/flag issues; settlement/quote authority unknown. | Correct frontend calculations; MAD units/rounding contract; tenant values and server quote/settlement verification. | OPEN frontend + DEFERRED backend; P0 pilot gate |
 | 34, 36 | Standard/Voting/Offer transport ownership differs; direct API mutation paths bypass gateway. | Per-operation Legacy/FSM matrix; supported pilot scope; mutation and transition contract tests. | DOCUMENTED; integration deferred |
@@ -57,7 +57,7 @@
 
 | Stage | Result | Limitation |
 |---|---|---|
-| 50 | All 49 prior numbered report files (01–49) and their README references were verified in the audit folder; README ordering and closure-matrix coverage gaps were reconciled. | This verifies documentation integrity only. It is not a fresh source audit, test run, security validation or deployment check. |
+| 50 | All 49 prior numbered report files (01–49) and their README references were verified in the audit folder; README ordering and closure-matrix coverage gaps were reconciled. | This verifies documentation integrity only. It is not a fresh source audit, test run, security validation or deployment check. | DOCUMENTATION CHECK COMPLETE ONLY |
 
 ## D. Closure decision
 
