@@ -127,3 +127,16 @@ Compare the two independently produced contracts and run end-to-end validation a
 ### Frontend security review — new P1 gate from stage 44
 
 Stage 44 found that `b_options.pricingModel.formula` is taken from backend order data and evaluated by browser `eval()`. This is an observed code-execution sink; whether an ordinary passenger can influence the formula is not established. The frontend closure checklist must include removal of `eval`, a restricted arithmetic parser, hostile-input regression tests and verification that all order consumers use the safe parser. Do not mark the frontend security track closed while this finding remains open. Backend formula-authoring permissions are audited separately in Track 2; integration verifies the final contract in Track 3.
+
+
+### Frontend security review — runtime configuration and HTML trust boundaries (stage 45)
+
+Stage 45 traced the startup `?config=` parameter into a remote executable tenant script. The value is trimmed/defaulted but not allowlisted, and the initial query path does not pass through the separate `API.checkConfig` flow. The script populates `window.data`; registration/profile form schemas and translations from that object reach the checkbox `dangerouslySetInnerHTML` sink. The public `/sandbox` route also renders locally imported/localStorage JSON through `react-html-parser` without a visible sanitizer. No arbitrary-origin script injection, remote Sandbox propagation or production exploit was established.
+
+Add these frontend closure checks to Work package C:
+1. Replace executable tenant JavaScript with schema-validated JSON, or enforce a strict tenant identifier allowlist and validation before any script load. Test query-parameter and persisted-config inputs, including traversal-like and encoded separators.
+2. Make checkbox labels text-only or sanitize a narrowly defined markup allowlist; test hostile schema labels and translation values.
+3. Remove Sandbox from production or protect it explicitly; sanitize/remove its HTML block and test imported hostile JSON.
+4. Keep stage 44's restricted pricing parser and hostile-input tests as a separate mandatory gate.
+
+The stage 45 findings are frontend-source findings. Tenant publishing permissions, live config contents, CDN path handling and deployed exploitability remain unverified and must not be marked closed without the relevant evidence.
