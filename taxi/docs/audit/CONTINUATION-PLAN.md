@@ -180,3 +180,17 @@ Add to Work package C and pilot deployment checks:
 5. Confirm the production bundle and actual tenant cannot accidentally enable the test-only mode.
 
 Treat this as a frontend test-isolation finding and a deployment gate, not as proof of a backend authorization bypass.
+
+
+### Frontend reliability/security review — URL query double-decoding (stage 47)
+
+Stage 47 found redundant `decodeURIComponent` calls after `URLSearchParams.get()` in the Google `auth_hash` startup redirect and referral prefill paths. A query such as `?auth_hash=%25` leaves a bare percent after URLSearchParams decoding; the second decode throws. In the nested user/root Redux-Saga `all` tree, an uncaught startup generator error can cancel sibling saga workflows. This is source-derived and has not yet been reproduced against the installed Redux-Saga runtime.
+
+Required closure:
+1. Remove second decoding from all three query-parameter paths.
+2. Isolate malformed redirect parsing so it cannot terminate root/domain watchers.
+3. Add unit tests for residual percent, malformed escapes, UTF-8, Unicode, plus signs and valid encoded values.
+4. Add a root-saga regression test proving malformed `auth_hash` cannot cancel unrelated watchers.
+5. Verify referral prefill safely ignores malformed values without uncaught component-effect errors.
+
+Treat URL-47-01 as P1 until the root-saga regression is executed successfully. Source inspection alone is not closure evidence.
