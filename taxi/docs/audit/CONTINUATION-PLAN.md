@@ -166,3 +166,17 @@ Add to Work package C and the frontend closure matrix:
 4. Record the finding as open until a runtime regression test proves the startup path survives malformed values.
 
 This is a frontend source finding; it does not depend on backend correctness. Runtime cancellation behavior and backend auth-hash constraints remain to be verified.
+
+
+### Frontend test-mode isolation — Driver emulator URL override (stage 48)
+
+Stage 48 traced `?driverEmulator=1` / `?extEmulator=1` into persistent localStorage and the strict Driver order gate. The flag disables forced-empty active/ready/history lists and allows backend polling in the real Driver UI. The source comment identifies the intended headless emulator test workflow; production exposure and backend authorization remain unverified.
+
+Add to Work package C and pilot deployment checks:
+1. Prove the external-emulator query flag and its code path are absent or disabled in production builds, unless an explicit test capability is required.
+2. If retained, require a server-issued short-lived capability scoped to test tenant/account; never trust URL/localStorage as authorization.
+3. Clear the flag on logout, account switch and tenant/environment change.
+4. Verify with backend negative tests that enabling the frontend flag cannot read or mutate another driver's orders.
+5. Confirm the production bundle and actual tenant cannot accidentally enable the test-only mode.
+
+Treat this as a frontend test-isolation finding and a deployment gate, not as proof of a backend authorization bypass.
