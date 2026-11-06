@@ -4,13 +4,16 @@
 
 - Application source baseline: `main@8cd07c90cc8c9015b8ee230c3b6821aaf2e4cddf`.
 - Audit documentation branch: `audit/frontend-inventory`.
-- Scope: frontend only. Backend authorization, tenant write permissions, deployed configuration and cross-layer behavior remain separate evidence tracks.
+- Scope: frontend only; documentation stages 01–50. Backend authorization, tenant write permissions, deployed configuration and cross-layer behavior remain separate evidence tracks.
 - No application source has been changed by the audit branch. Documentation of a finding is not remediation.
 
 **Status:** OPEN — P1 = pilot-critical; OPEN — P2 = hardening; EVIDENCE GAP = required execution/production proof missing; DEFERRED = backend/integration track; DOCUMENTED = source trace recorded, not fixed.
 
 ## A. Security and browser trust boundaries
 
+| Stage | Finding | Required closure evidence | Status |
+|---|---|---|---|
+| 01–10 | Foundational inventory, API register, Passenger/Driver forms and flows, Redux/Saga ownership, Platform Interface/FSM adapters, runtime/build integrations, test/pilot gates and 68-entry QA registry reconciliation. These are baseline mapping stages, not individual defect-free certifications. | Reconcile each inventory claim against the pinned source baseline; complete the pending driver-form, runtime, test and QA evidence listed in the stage reports. | DOCUMENTED; residual evidence gaps remain |
 | Stage | Finding | Required closure evidence | Status |
 |---|---|---|---|
 | 26 | Token persistence, public build variables, auth logging, WebSocket token transport and route guards reviewed. | Remove/redact credential logs; inspect emitted bundle and actual WebSocket requests; prove server authorization and route guards. | OPEN P1/P2; backend/deployment evidence deferred |
@@ -43,15 +46,22 @@
 
 | Gate | Current evidence | Closure requirement | Status |
 |---|---|---|---|
+| 31 | Revalidated pinned source baseline and inspected historical Playwright run #178 (19 passed, two flaky retries); current Jest, TypeScript and build were not executed because a clean checkout was unavailable. | Obtain a clean checkout and run all three against one exact SHA; retain raw logs, versions and exit codes. | EVIDENCE GAP |
 | Jest/unit | Historical results exist; current baseline rerun was blocked by checkout/network. | Fresh run tied to exact SHA, environment versions, raw logs and exit code. | EVIDENCE GAP |
 | TypeScript/build | Current baseline rerun not executed. | Fresh typecheck and production build; inspect emitted bundle and public assets. | EVIDENCE GAP |
 | Playwright | Historical run #175: 21 passed; run #178: 19 passed with two flaky retries. | No-retry stability run, full artifact/trace review and explicit frontend/backend/tenant versions. | EVIDENCE GAP; flaky cases open |
-| Stages 44–49 tests | No tests executed during these source-review stages. | Hostile formula/config/HTML/support URL/query/Saga/emulator/export-redaction tests. | OPEN |
+| Stages 44–50 tests | No tests executed during these source-review stages. | Hostile formula/config/HTML/support URL/query/Saga/emulator/export-redaction tests. | OPEN |
 | Morocco pilot acceptance | No production tenant, physical-device or effective-header verification in this track. | Deployment manifest; MAD tariff and PETIT/GRAND rules; device/network/GPS checks; rollback proof. | DEFERRED deployment/integration |
+
+## D. Documentation completeness
+
+| Stage | Result | Limitation |
+|---|---|---|
+| 50 | All 49 prior numbered report files (01–49) and their README references were verified in the audit folder; README ordering and closure-matrix coverage gaps were reconciled. | This verifies documentation integrity only. It is not a fresh source audit, test run, security validation or deployment check. |
 
 ## D. Closure decision
 
-The frontend audit is **not closed**. Stages 1–49 are documented source-review stages, not 49 successful test stages.
+The frontend audit is **not closed**. Stages 1–50 are documentation/source-review stages, not 50 successful test stages.
 
 1. **P0 pilot blockers:** stage 32 boarding-code authority and Offer classification; stage 33 canonical pricing/currency; production credential/test-control gating from stages 26/30/48; real tenant and device acceptance.
 2. **P1 frontend gates:** stage 44 `eval`; stage 45 executable tenant config/HTML sinks; stage 47 startup Saga cancellation; relevant upload/public-surface findings; account isolation and terminal lifecycle/error recovery.
@@ -59,4 +69,4 @@ The frontend audit is **not closed**. Stages 1–49 are documented source-review
 4. **Evidence gates:** fresh Jest, TypeScript, build and stable Playwright; regression tests for stages 44–49; production header/bundle and physical-device checks.
 5. **Deferred tracks:** backend authorization, auth-hash expiry/replay, tenant publishing permissions, location persistence/expiry, fare settlement, lifecycle idempotency and cross-role integration are not closed by frontend source review.
 
-**Closure rule:** close a frontend finding only when a named code commit contains the remediation and the required regression test passes. Track backend and integration dependencies separately. Frontend UI behavior is not proof of server authorization or state correctness. This matrix is not a pilot go/no-go approval.
+**Closure rule:** close a frontend finding only when a named code commit contains the remediation and the required regression test passes. Track backend and integration dependencies separately. Frontend UI behavior is not proof of server authorization or state correctness. Stage 50 closes only documentation consistency. This matrix is not a pilot go/no-go approval.
