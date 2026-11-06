@@ -89,6 +89,7 @@ File counts are inventory metrics, not quality or test-coverage metrics. Presenc
 | 39. Session restoration and account isolation | Token restoration exists, but login/logout do not guarantee domain-state teardown; reload workflow and same-context isolation lack executable evidence | [39-session-restoration-and-account-isolation.md](./39-session-restoration-and-account-isolation.md) |
 | 40. Driver cars and capacity consistency | Primary vs driven car inconsistency, same-user car cache reload suppression, capacity fallback and asynchronous profile reconciliation gaps | [40-driver-cars-and-capacity-consistency.md](./40-driver-cars-and-capacity-consistency.md) |
 | 41. Driver GPS acquisition, transmission and stale-position recovery | Found no source-visible ordinary non-emulator Driver publisher; GPS acquisition failure preserves and can retransmit stale Redux fix; persisted map coordinates ignore age; location payload omits timestamp/accuracy | [41-driver-gps-acquisition-transmission-and-stale-position-recovery.md](./41-driver-gps-acquisition-transmission-and-stale-position-recovery.md) |
+| 42. Backend location contract and dispatch dependency | `/location` feeds a server-side `/drive/now` query; driver snapshots carry `l_datetime`, but frontend consumers ignore its age; backend persistence, expiry and dispatch rules are unavailable in this repository | [42-backend-location-contract-and-dispatch-dependency.md](./42-backend-location-contract-and-dispatch-dependency.md) |
 
 ## Change log
 
@@ -144,3 +145,6 @@ File counts are inventory metrics, not quality or test-coverage metrics. Presenc
 
 
 - Stage 41: traced the browser geolocation wrapper, Redux acquisition/sending saga, Driver page activation gates, Voting-only activation paths, Driver Map GPS/emulator/backend source selection, persisted coordinate readers and diagnostic tests. Found no source-visible ordinary non-emulator Driver location publisher; a failed GPS acquisition leaves the previous Redux fix available for retransmission; persisted coordinates ignore age; and the `/location` payload omits timestamp/accuracy. Backend freshness/dispatch behavior and physical-device recovery remain unverified. No application source changed and no tests were executed.
+
+
+- Stage 42: traced the frontend `/location` request, separate car/driver activation, `/drive/now` and `/drive` calls, driver snapshot fields (`c_latitude`, `c_longitude`, `l_datetime`), coordinate consumers and emulator/E2E evidence. Confirmed that ready-order discovery is performed without coordinates in the request and repository documentation says backend order availability can depend on the previously registered driver location. The timestamp is parsed but not used for frontend freshness checks. PHP/backend implementation, persistence, identity binding, freshness/expiry and dispatch SQL are absent from this repository and remain unverified. No application source changed and no tests/API calls were executed.
