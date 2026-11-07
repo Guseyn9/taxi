@@ -1,5 +1,5 @@
 import { evaluateArithmetic, displayArithmetic, priceNumber } from './arithmetic'
-import { calculateFinalPrice, calculateFinalPriceFormula } from '../tools/order'
+import { calculateFinalPrice, calculateFinalPriceFormula, calculateRawFinalPriceValue } from '../tools/order'
 
 const order=(formula, options={},submitPrice)=>({b_options:{pricingModel:{formula,options},submitPrice}})
 test('preserves arithmetic precedence, fractions, numeric strings, Math functions and legacy whole-price result',()=>{
@@ -33,4 +33,27 @@ test('preserves price sentinel and numeric option submit_price when no top-level
  expect(calculateFinalPrice(order('submit_price + distance',{submit_price:10,distance:2}))).toBe('12')
  expect(calculateFinalPriceFormula(order('submit_price + distance',{submit_price:10,distance:2}))).toBe('10 + 2')
  expect(calculateFinalPrice(order('submit_price',{submit_price:10},0))).toBe('0')
+})
+
+test.each([
+ ['distance * rate',{distance:2.9,rate:2.5}],
+ ['rate ** 2',{rate:-2.5}],
+ ['base - discount',{base:10,discount:-1.25}],
+ ['2*(distance + rate)*1',{distance:2.9,rate:2.5}],
+ ['Math.max(0, amount) + 1e-3',{amount:'2.75'}],
+ ['submit_price + distance',{distance:0.25},0],
+ ['submit_rice + distance',{distance:0.25},2.5],
+ ['zero + optional',{zero:0,optional:null}],
+])('display and numeric evaluation preserve the same operands/grouping: %s',(formula,options,submitPrice=undefined)=>{
+ const sample=order(formula,options,submitPrice),shown=calculateFinalPriceFormula(sample)
+ const raw=calculateRawFinalPriceValue(sample)
+ expect(evaluateArithmetic(shown)).toBe(raw)
+ expect(Number(calculateFinalPrice(sample))).toBe(Math.trunc(raw))
+})
+test('does not invent zero for missing operands and keeps incomplete placeholders',()=>{
+ expect(calculateFinalPriceFormula(order('distance * rate',{rate:2.5}))).toBe('err')
+ expect(calculateRawFinalPriceValue(order('distance * rate',{rate:2.5}))).toBeNull()
+ const sample=order('distance + duration',{distance:2.9,duration:0});sample.b_options.pricingModel.calculationType='incomplete'
+ expect(calculateFinalPriceFormula(sample)).toBe('? + ?')
+ expect(calculateFinalPrice(sample)).toBe('2')
 })

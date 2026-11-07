@@ -1,5 +1,7 @@
 import {useDriverDepartures,driverJourneyCopy} from '../../tools/driverPickupJourney'
 import {claimDriverOfferNotification} from '../../tools/driverOfferNotifications'
+import {confirmOfferDecline} from '../../tools/confirmedOfferDecline'
+import {getApiErrorMessage} from '../../tools/apiMessages'
 import type { IOrder } from '../../types/types'
 import { MapPin, Plus, Minus } from 'lucide-react'
 import { formatPhoneNumber } from '../../tools/phoneUtils'
@@ -507,6 +509,7 @@ const Order: React.FC<IProps> = ({
   const { requestBoarding, boardingDialog } = useBoardingGate()
   const confirmBoardingCommand = (orderId: IOrder['b_id'], code: string, updateState = true) => driverMapGateway.confirmBoarding(orderId, code, updateState)
   const boardingPendingRef = useRef(false)
+  const offerDeclinePending = useRef(false)
   const now = useReliableNow(Boolean(order), 1000)
   const [votingCloseHandled, setVotingCloseHandled] = useState(false)
   const [offerFormOpen, setOfferFormOpen] = useState(false)
@@ -1143,16 +1146,26 @@ const Order: React.FC<IProps> = ({
       })
   }
 
-  const declineClientSelectedOffer = () => {
-    const nextResponse = updateDriverOfferClientResponseStatus(id, user?.u_id, 'driver_declined')
-    setLocalOfferClientResponse(nextResponse)
-    removeStoredDriverOffer(id, user?.u_id)
-    setLocalDriverOffer(null)
-    addHiddenOrder(id, user?.u_id)
-    navigate(PLATFORM_ROUTES.DriverOrders)
-    window.requestAnimationFrame(() => {
-      window.scrollTo({ top: 0, behavior: 'smooth' })
-    })
+  const declineClientSelectedOffer = async() => {
+    if (offerDeclinePending.current) return
+    offerDeclinePending.current = true
+    try {
+      await confirmOfferDecline(
+        () => backendGateway.cancelVotingParticipation(id),
+        () => {
+          const nextResponse = updateDriverOfferClientResponseStatus(id, user?.u_id, 'driver_declined')
+          setLocalOfferClientResponse(nextResponse)
+          removeStoredDriverOffer(id, user?.u_id)
+          setLocalDriverOffer(null)
+          addHiddenOrder(id, user?.u_id)
+          navigate(PLATFORM_ROUTES.DriverOrders)
+          window.requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: 'smooth' }))
+        },
+        () => getOrder(id),
+      )
+    } catch (error) {
+      setMessageModal({ isOpen: true, status: EStatuses.Fail, message: getApiErrorMessage(error) })
+    } finally { offerDeclinePending.current = false }
   }
 
   const hideOtherClientSelectedOffer = () => {

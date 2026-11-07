@@ -1,10 +1,10 @@
 {
-  "release": "taxi-morocco-20261107-r15",
+  "release": "taxi-morocco-20261107-r16",
   "preparedAt": "2026-11-07",
   "sourceBaseCommit": "580a3bd8ddc5bd8b527b86ee63388a4c913917f5",
   "sourceIncludesLocalChanges": false,
-  "tests": 1202,
-  "suites": 220,
+  "tests": 1265,
+  "suites": 223,
   "browserEvidence": "Current guest UI and isolated network-disabled remediation fixture; authenticated rides and physical devices remain unaccepted",
   "backendTarget": "https://ibronevik.itest24.com/taxi_dev2/c/gruzvill/api/v1",
   "dictionaryTarget": "https://ibronevik.itest24.com/taxi_dev2/c/gruzvill/api/v1/data",
@@ -93,7 +93,7 @@
     "productionServiceAccepted": false
   },
   "sourceCommit": null,
-  "sourceParentCommit": "c4879a1661d0ed6c470e2b2bba675cd063638077",
+  "sourceParentCommit": "c5917e49bb543ed852d6531ad1b8bb784c682001",
   "frontendCompletion": {
     "scope": "frontend defects F01-F08 from current CTO/QA report",
     "roadGraphCorrection": "Actual adapters already limit closest-node search to 1km; the earlier remote-node mock was not a real-adapter production reproduction. Shared route-consumer guards strengthen this boundary.",
@@ -102,5 +102,21 @@
     "physicalDeviceAcceptance": false,
     "nativeLanguageReview": false,
     "sourceCommitResolution": "Deployment manifest supplies the exact commit after source is committed."
+  },
+  "frontendAuditClosure": {
+    "scope": "Actionable frontend findings in Valentin stages 01-50; inventory stages are documentation, not tests",
+    "status": "frontend-code-and-local-regressions-closed",
+    "report": "docs/FRONTEND_AUDIT_CLOSURE_20261107.md",
+    "backendIntegrationAccepted": false,
+    "newRegressions": [
+      "exact fractional fare and order currency",
+      "partial form config and checkbox/file validation",
+      "empty class availability",
+      "offer/waiting validation and business-error envelopes",
+      "polling resumes after success/failure and exposes stale read health",
+      "nine locale precedence and script direction",
+      "confirmed driver offer decline before navigation",
+      "partial profile save readback and duplicate retry block"
+    ]
   }
 }

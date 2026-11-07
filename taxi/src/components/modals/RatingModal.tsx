@@ -6,11 +6,13 @@ import { isRideRtl } from '../../design/copy'
 import moment from 'moment'
 import {
   calculateFinalPrice,
+  calculateRawFinalPriceValue,
   calculateFinalPriceFormula,
   getOrderDriveStartedAt,
 } from '../../tools/order'
 import { useSimpleSelector } from '../../tools/hooks'
 import { CURRENCY } from '../../siteConstants'
+import { displayFare, orderCurrency } from '../../design/reliability/rideData'
 import { backendGateway } from '../../platform/adapters/LegacyBackendGateway'
 import { IRootState } from '../../state'
 import { modalsActionCreators, modalsSelectors } from '../../state/modals'
@@ -162,7 +164,7 @@ export function RatingModal({
     }
   }
 
-  const [finalPriceFormula, finalPrice] = useMemo(() => {
+  const [finalPriceFormula, finalPrice, fractionDiscarded] = useMemo<[string, string, boolean]>(() => {
     const driveStartedAt = getOrderDriveStartedAt(order)
     if (order?.b_options?.pricingModel && driveStartedAt && order.b_completed) {
       const start_moment = moment(driveStartedAt)
@@ -187,9 +189,10 @@ export function RatingModal({
       return [
         calculateFinalPriceFormula(orderWithUpdatedOptions),
         calculateFinalPrice(orderWithUpdatedOptions),
+        (() => { const raw = calculateRawFinalPriceValue(orderWithUpdatedOptions); return raw !== null && raw !== Math.trunc(raw) })(),
       ]
     }
-    return ['err', 0]
+    return ['err', '0', false]
   }, [order])
 
   return (
@@ -207,11 +210,12 @@ export function RatingModal({
             {finalPriceFormula !== 'err' && (
               <div>
                 <div className="final-price">
-                  {t(TRANSLATION.FINAL_PRICE)}: {finalPrice!=='-'? CURRENCY.SIGN : ''} {finalPrice + (order?.b_options?.pricingModel?.calculationType === 'incomplete' ? '+?' : '')}
+                  {t(TRANSLATION.FINAL_PRICE)}: {finalPrice === '-' ? '-' : displayFare(finalPrice, orderCurrency(order, CURRENCY.NAME), language?.iso)}{order?.b_options?.pricingModel?.calculationType === 'incomplete' ? '+?' : ''}
                 </div>
                 <div className="final-price">
                   {t(TRANSLATION.CALCULATION)}: {finalPriceFormula}
                 </div>
+                {fractionDiscarded && <p className="fare-rounding-note">{t('fare_whole_amount_note')}</p>}
               </div>
             )}
             {!!_orderID && (

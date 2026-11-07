@@ -106,9 +106,8 @@ function JSONFormElement({
       validate(getValue(event))
     },
   }
-  const getValue = (event: React.ChangeEvent<TElement>) => type === 'select' ?
-    event.target.value || null :
-    event.target.value
+  const getValue = (event: React.ChangeEvent<TElement>) => type === 'checkbox' ?
+    (event.target as HTMLInputElement).checked : type === 'select' ? event.target.value || null : event.target.value
 
   let hintElement: any = !hint ?
     null :
@@ -205,7 +204,6 @@ function JSONFormElement({
           type='checkbox'
           className='element__checkbox_input'
           checked={value}
-          onChange={e => onChange(e, e.target.name, e.target.checked)}
         />
         <span>
           <HTML inline html={getTranslation(getCalculation(formElement.label, values, variables))}/>
@@ -235,7 +233,9 @@ function JSONFormElement({
             onClick={e => {
               const newFiles = files.filter((file, index: number) => index !== key)
               setFiles(newFiles)
-              onChange(e, name, newFiles.length ? newFiles : null)
+              const next = newFiles.length ? newFiles : null
+              validate(next)
+              onChange(e, name, next)
             }}
           >
             <FilePreview file={file[1]}/>
@@ -251,6 +251,7 @@ function JSONFormElement({
             type='file'
             multiple={multiple}
             accept={accept}
+            onBlur={() => { touched.current = true; validate(currentValue.current) }}
             onChange={e => {
               if (!e.target.files) return
               const inputFiles: [any, File][] = Array.from(e.target.files)
@@ -260,6 +261,7 @@ function JSONFormElement({
               catch (error) { setErrorMessage((error as Error).message); e.target.value = ''; return }
               setErrorMessage('')
               setFiles(newFiles)
+              validate(newFiles)
               onChange(e, name, newFiles)
               e.target.value = ''
             }}

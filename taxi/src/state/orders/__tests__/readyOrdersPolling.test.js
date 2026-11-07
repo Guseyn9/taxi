@@ -17,6 +17,7 @@ jest.mock('../../../API', () => ({
   getOrders: jest.fn(),
   driveCar: jest.fn(),
   getOrder: jest.fn(),
+  cancelDrive: jest.fn(),
 }))
 jest.mock('../../../localization', () => ({
   t: key => key,
@@ -83,7 +84,7 @@ function mockApi() {
  * Запустить настоящие саги заказов на минимальном store и включить опрос так
  * же, как это делает страница водителя.
  */
-function startPolling({ primaryCar }) {
+function startPolling({ primaryCar, watchReady = true }) {
   const { runSaga, stdChannel } = require('redux-saga')
   const { EUserRoles } = require('../../../types/types')
   const { ActionTypes } = require('../constants')
@@ -111,11 +112,12 @@ function startPolling({ primaryCar }) {
   }
 
   tasks.push(runSaga({ channel, dispatch, getState: () => state }, saga))
-  dispatch({ type: ActionTypes.WATCH_READY_ORDERS })
+  if (watchReady) dispatch({ type: ActionTypes.WATCH_READY_ORDERS })
 
   const count = type => actions.filter(action => action.type === type).length
 
   return {
+    dispatch,
     T: ActionTypes,
     getState: () => state,
     setPrimaryCar: car => { state = { ...state, primaryCar: car } },
@@ -285,4 +287,20 @@ describe('ready polling never activates a vehicle implicitly', () => {
     expect(polling.fails()).toBe(2)
     expect(API.driveCar).not.toHaveBeenCalled()
   })
+})
+
+describe('single-order watcher across a mutation',()=>{
+ it.each(['success','failure'])('resumes after a skipped GET and mutation %s',async outcome=>{
+  const API=mockApi();let settleMutation
+  API.cancelDrive.mockImplementation(()=>new Promise(resolve=>{settleMutation=resolve}))
+  API.getOrders.mockResolvedValue(ok([]));API.getOrder.mockResolvedValue({...ORDER,b_state:1})
+  const polling=startPolling({primaryCar:CAR,watchReady:false})
+  const {cancel}=require('../actionCreators')
+  const mutation=polling.dispatch(cancel(ORDER.b_id));const acknowledged=outcome==='failure'?expect(mutation).rejects.toMatchObject({code:'BACKEND_RESPONSE_ERROR'}):expect(mutation).resolves.toMatchObject({code:'200'})
+  polling.dispatch({type:polling.T.WATCH_ORDER,payload:ORDER.b_id});await settle()
+  expect(API.getOrder).not.toHaveBeenCalled()
+  settleMutation({code:'200',status:outcome==='failure'?'error':'success'});await acknowledged;await settle()
+  expect(API.getOrder).toHaveBeenCalledTimes(1)
+  jest.advanceTimersByTime(5000);await settle();expect(API.getOrder).toHaveBeenCalledTimes(2)
+ })
 })

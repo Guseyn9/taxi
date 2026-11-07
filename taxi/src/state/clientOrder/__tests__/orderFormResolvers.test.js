@@ -1,4 +1,4 @@
-import { resolveButtonLayout, resolveOrderModes, resolveTripType } from '../orderFormResolvers'
+import { resolveButtonLayout, resolveOrderModes, resolveTripType, resolveAvailableClasses, resolveSubmitValidation } from '../orderFormResolvers'
 
 jest.mock('../../../siteConstants', () => ({
   __esModule: true,
@@ -19,7 +19,7 @@ jest.mock('../../../tools/utils', () => ({
 }))
 
 jest.mock('../util', () => ({
-  availableCarClasses: () => [{ id: 'petit', max_seats: 4, booking_location_classes: ['city', 'intercity'] }],
+  availableCarClasses: jest.fn(() => [{ id: 'petit', max_seats: 4, booking_location_classes: ['city', 'intercity'] }]),
   carClassAllowedForRoute: () => true,
   carClassSupportsLocationClass: () => true,
   maxAvailableSeats: () => 4,
@@ -57,4 +57,13 @@ it('filters prohibited modes out of every button layout',()=>{
 it('delayed pickup cannot silently turn into immediate Voting',()=>{
  const modes=resolveOrderModes({time:Date.now()+3600000},{tripType:'CITY'},{validatedSelectedClassId:'x'})
  expect(modes.allowedModes).not.toContain('vote')
+})
+
+it('does not mask empty availability with a default or stale selected class',()=>{
+ const util=require('../util');util.availableCarClasses.mockReturnValueOnce([])
+ const facts={carClass:'petit',from:{latitude:30,longitude:-9},to:{latitude:31,longitude:-8},phone:'+212600000001'}
+ const route={isLoading:false,effectiveLocationClass:'city',hasFrom:true,hasTo:true}
+ const classes=resolveAvailableClasses(facts,route)
+ expect(classes.fallbackClassId).toBeNull();expect(classes.validatedSelectedClassId).toBeNull()
+ expect(resolveSubmitValidation(facts,route,classes).missing).toContain('carClass')
 })

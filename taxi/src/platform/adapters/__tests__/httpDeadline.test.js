@@ -1,6 +1,8 @@
 import { withHttpDeadline } from '../httpDeadline'
 import { FsmTaxiCommandTransport } from '../FsmTaxiCommandTransport'
 import { subscribeRecoveryPolling } from '../recoveryPolling'
+import { readChannels } from '../../../diagnostics/readChannels'
+import { readHealth } from '../../../design/reliability/readHealth'
 import { FsmOrderSnapshotTransport } from '../FsmOrderSnapshotTransport'
 
 const flush = async() => { for (let i=0;i<12;i++) await Promise.resolve() }
@@ -48,4 +50,16 @@ describe('finite HTTP deadlines and recovery',()=>{
   expect(listener).toHaveBeenCalledTimes(1)
   stop();expect(socket.close).toHaveBeenCalledTimes(1)
  })
+})
+
+it('surfaces recovery failures as stale health, keeps the last success time, and clears the channel on unsubscribe',async()=>{
+ jest.useFakeTimers();jest.setSystemTime(10000)
+ const load=jest.fn().mockResolvedValueOnce({revision:1}).mockRejectedValueOnce(new Error('offline')).mockResolvedValueOnce({revision:2})
+ const listener=jest.fn(),stop=subscribeRecoveryPolling(load,listener,100)
+ try {
+  await jest.advanceTimersByTimeAsync(100);const successful=readChannels()[0].updatedAt
+  await jest.advanceTimersByTimeAsync(100);expect(readChannels()[0]).toMatchObject({failed:true,failures:1,updatedAt:successful})
+  expect(readHealth().failed).toBe(true);expect(listener).toHaveBeenCalledTimes(1)
+  await jest.advanceTimersByTimeAsync(100);expect(readChannels()[0]).toMatchObject({failed:false,failures:0});expect(listener).toHaveBeenCalledTimes(2)
+ } finally {stop();expect(readChannels()).toEqual([]);jest.useRealTimers()}
 })

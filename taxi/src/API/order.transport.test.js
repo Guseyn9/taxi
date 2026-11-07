@@ -1,5 +1,5 @@
 import axios from 'axios'
-import {postDrive,confirmDrive,getOrders,updateOrderCustomerPrice,takeOrder,sendOrderOffer,participateVotingOrder,cancelDrive} from './order'
+import {postDrive,confirmDrive,getOrders,updateOrderCustomerPrice,takeOrder,sendOrderOffer,participateVotingOrder,cancelDrive,setWaitingTime,chooseCandidate,releaseCandidateChoice,confirmVotingCode,cancelVotingParticipation,setOrderRating} from './order'
 import {getUserCar} from './car'
 import {EOrderTypes} from '../types/types'
 let mockUser={u_id:'client-1',u_role:1}
@@ -103,4 +103,36 @@ test.each([null,{}, {status:'success'}, {code:'200',status:'failed'}])('cancella
  axios.post.mockResolvedValueOnce({data:response})
  await expect(cancelDrive('42')).rejects.toMatchObject({code:'BACKEND_RESPONSE_ERROR'})
  expect(axios.post).toHaveBeenCalledTimes(1)
+})
+
+test.each([0,-1,NaN,Infinity,'',Number.MAX_SAFE_INTEGER])('driver offers reject invalid prices before a car read or mutation: %s',async price=>{
+ await expect(sendOrderOffer('42',{price,eta:'5 minutes'})).rejects.toThrow('positive finite price')
+ expect(getUserCar).not.toHaveBeenCalled();expect(axios.post).not.toHaveBeenCalled()
+})
+test('driver offers require pickup time at the API boundary',async()=>{
+ await expect(sendOrderOffer('42',{price:25,eta:'   '})).rejects.toThrow('pickup time')
+ expect(axios.post).not.toHaveBeenCalled()
+})
+test.each([[-1,180],[0,-1],[0,0],[NaN,180],[0,Infinity],[0,1.5],[Number.MAX_SAFE_INTEGER,1]])('waiting rejects invalid elapsed/additional seconds before mutation: %j/%j',async(previous,additional)=>{
+ await expect(setWaitingTime('42',previous,additional)).rejects.toThrow('Waiting time')
+ expect(axios.post).not.toHaveBeenCalled()
+})
+test('waiting preserves valid seconds and rejects a business error without retry',async()=>{
+ axios.post.mockResolvedValueOnce({data:{code:'200',status:'error'}})
+ await expect(setWaitingTime('42',60,180)).rejects.toMatchObject({code:'BACKEND_RESPONSE_ERROR'})
+ expect(axios.post).toHaveBeenCalledTimes(1);expect(formAt(0).get('previous')).toBe('60');expect(formAt(0).get('additional')).toBe('180')
+})
+
+test.each([
+ ['choose',()=>chooseCandidate('42','driver-2')],
+ ['release',()=>releaseCandidateChoice('42','driver-2')],
+ ['PIN',()=>confirmVotingCode('42','123')],
+ ['participation cancel',()=>cancelVotingParticipation('42')],
+ ['rating',()=>setOrderRating('42',4)],
+ ['driver offer',()=>sendOrderOffer('42',{price:25.5,eta:'5 minutes'})],
+ ['take',()=>takeOrder('42',{performers_price:25.5},false)],
+])('rejects a non-200 mutation envelope even without status:error: %s',async(name,run)=>{
+ axios.post.mockResolvedValue({data:{code:'404',message:'refused'}})
+ await expect(run()).rejects.toMatchObject({code:'BACKEND_RESPONSE_ERROR'})
+ if(name==='choose')expect(require('../tools/driverOffer').setPassengerConfirmedChoice).not.toHaveBeenCalled()
 })

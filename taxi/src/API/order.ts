@@ -367,7 +367,7 @@ const _updateOrderCustomerPrice = (
 
   return axios.post(`${Config.API_URL}/drive/get/${order.b_id}`, formData)
     .then(res => res.data)
-    .then(res => res.status === 'error' ? Promise.reject(res) : res)
+    .then(assertSuccessfulMutationResponse)
 }
 export const updateOrderCustomerPrice = apiMethod<typeof _updateOrderCustomerPrice>(_updateOrderCustomerPrice)
 
@@ -465,7 +465,7 @@ const takeOrderRequest = (
 
         return axios.post(`${Config.API_URL}/drive/get/${id}`, requestFormData)
           .then(res => res.data)
-          .then(res => res.status === 'error' ? Promise.reject(res) : res)
+          .then(assertSuccessfulMutationResponse)
       }
 
       return postTake()
@@ -542,6 +542,10 @@ const _sendOrderOffer = (
   id: IOrder['b_id'],
   offer: TDriverOfferPayload,
 ) => {
+  const price = normalizeMoney(offer?.price)
+  if (price === null || price <= 0 || typeof offer?.eta !== 'string' || !offer.eta.trim())
+    return Promise.reject(new Error('Offer requires a positive finite price and pickup time'))
+  offer = { ...offer, price, eta: offer.eta.trim() }
   const userID = userSelectors.user(store.getState())?.u_id
   if (!userID)
     return Promise.reject({ message: t(TRANSLATION.WRONG_USER_ROLE) })
@@ -563,7 +567,7 @@ const _sendOrderOffer = (
 
         return axios.post(`${Config.API_URL}/drive/get/${id}`, requestFormData)
           .then(res => res.data)
-          .then(res => res.status === 'error' ? Promise.reject(res) : res)
+          .then(assertSuccessfulMutationResponse)
       }
 
       return postOffer()
@@ -597,7 +601,7 @@ const _participateVotingOrder = (
 
         return axios.post(`${Config.API_URL}/drive/get/${id}`, requestFormData)
           .then(res => res.data)
-          .then(res => res.status === 'error' ? Promise.reject(res) : res)
+          .then(assertSuccessfulMutationResponse)
       }
 
       return postVoting()
@@ -615,7 +619,7 @@ const _cancelVotingParticipation = (
 
   return axios.post(`${Config.API_URL}/drive/get/${id}`, formData)
     .then(res => res.data)
-    .then(res => res.status === 'error' ? Promise.reject(res) : res)
+    .then(assertSuccessfulMutationResponse)
 }
 export const cancelVotingParticipation = apiMethod<typeof _cancelVotingParticipation>(_cancelVotingParticipation)
 
@@ -636,7 +640,7 @@ const _confirmVotingCode = (
   addToFormData(formData, { action: 'check_driver_code', b_driver_code: code })
   return axios.post(`${Config.API_URL}/drive/get/${id}`, formData)
     .then(res => res.data)
-    .then(res => res.status === 'error' ? Promise.reject(res) : res)
+    .then(assertSuccessfulMutationResponse)
 }
 export const confirmVotingCode = apiMethod<typeof _confirmVotingCode>(_confirmVotingCode)
 
@@ -667,7 +671,7 @@ const _chooseCandidate = (
 
   return axios.post(`${Config.API_URL}/drive/get/${id}`, formData)
     .then(res => res.data)
-    .then(res => res.status === 'error' ? Promise.reject(res) : res)
+    .then(assertSuccessfulMutationResponse)
     .then(res => {
       setPassengerConfirmedChoice(id, user)
       notifyLocalDriverEmulatorChoice(id, user)
@@ -692,7 +696,7 @@ const _releaseCandidateChoice = (
 
   return axios.post(`${Config.API_URL}/drive/get/${id}`, formData)
     .then(res => res.data)
-    .then(res => res.status === 'error' ? Promise.reject(res) : res)
+    .then(assertSuccessfulMutationResponse)
 }
 export const releaseCandidateChoice = apiMethod<typeof _releaseCandidateChoice>(_releaseCandidateChoice)
 
@@ -734,7 +738,7 @@ const _setOrderState = (
   return driverMutationGuard.run(`${Config.API_URL}:${driverId}:${id}`, state,
     () => axios.post(`${Config.API_URL}/drive/get/${id}`, formData)
       .then(res => res.data)
-      .then(res => res.status === 'error' ? Promise.reject(res) : res),
+      .then(assertSuccessfulMutationResponse),
     async() => {
       // Read with auth fields only. Reusing the action form would resend the write.
       const order = await _getOrder({formData:readForm} as IApiMethodArguments, id)
@@ -759,7 +763,7 @@ const _setOrderRating = (
   })
 
   return axios.post(`${Config.API_URL}/drive/get/${id}`, formData)
-    .then(res => res.data)
+    .then(res => assertSuccessfulMutationResponse(res.data))
 }
 /**
  * @param value rating from 1 till 5
@@ -772,6 +776,8 @@ const _setWaitingTime = (
   previous: number,
   additional: number = 180,
 ) => {
+  if (!Number.isSafeInteger(previous) || previous < 0 || !Number.isSafeInteger(additional) || additional <= 0 || !Number.isSafeInteger(previous + additional))
+    return Promise.reject(new Error('Waiting time must use non-negative elapsed seconds and a positive whole-second extension'))
   addToFormData(formData, {
     action: EBookingActions.SetWaitingTime,
     previous,
@@ -779,7 +785,7 @@ const _setWaitingTime = (
   })
 
   return axios.post(`${Config.API_URL}/drive/get/${id}`, formData)
-    .then(res => res.data)
+    .then(res => assertSuccessfulMutationResponse(res.data))
 }
 /**
  * Adds time to wait

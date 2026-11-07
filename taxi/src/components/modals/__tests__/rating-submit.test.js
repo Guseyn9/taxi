@@ -3,12 +3,12 @@ import { createRoot } from 'react-dom/client'
 import { RatingModal } from '../RatingModal'
 import { backendGateway } from '../../../platform/adapters/LegacyBackendGateway'
 import { ordersSelectors } from '../../../state/orders'
-import { calculateFinalPrice, getOrderDriveStartedAt } from '../../../tools/order'
+import { calculateFinalPrice, calculateRawFinalPriceValue, calculateFinalPriceFormula, getOrderDriveStartedAt } from '../../../tools/order'
 
 jest.mock('react-redux', () => ({ connect: () => Component => Component }))
-jest.mock('../../../tools/order', () => ({ calculateFinalPrice: jest.fn(() => 25), calculateFinalPriceFormula: jest.fn(() => '25'), getOrderDriveStartedAt: jest.fn(() => '2026-11-04T10:00:00Z') }))
+jest.mock('../../../tools/order', () => ({ calculateFinalPrice: jest.fn(() => '25'), calculateRawFinalPriceValue: jest.fn(() => 25), calculateFinalPriceFormula: jest.fn(() => '25'), getOrderDriveStartedAt: jest.fn(() => '2026-11-04T10:00:00Z') }))
 jest.mock('../../../tools/hooks', () => ({ useSimpleSelector: selector => selector({}) }))
-jest.mock('../../../siteConstants', () => ({ CURRENCY: { SIGN: 'GHS' } }))
+jest.mock('../../../siteConstants', () => ({ CURRENCY: { NAME: 'GHS', SIGN: 'GHS' } }))
 jest.mock('../../../platform/adapters/LegacyBackendGateway', () => ({ backendGateway: { setOrderRating: jest.fn() } }))
 jest.mock('../../../state/modals', () => ({ modalsActionCreators: { setRatingModal: jest.fn() }, modalsSelectors: {} }))
 jest.mock('../../../state/clientOrder', () => ({ clientOrderSelectors: {} }))
@@ -124,3 +124,18 @@ it('keeps a rejected review open, preserves its rating, and sends a retried subm
     delete global.IS_REACT_ACT_ENVIRONMENT
   }
 })
+
+it.each(['MAD','USD'])('uses the review order currency %s even when the tenant is GHS',async currency=>withModal(async({host,render})=>{
+ ordersSelectors.order.mockReturnValue({...completed('B'),b_currency:currency})
+ await render({orderID:'B'})
+ const price=host.querySelector('.final-price').textContent
+ expect(price).toContain(currency);expect(price).not.toContain('GHS')
+}))
+it('explains final truncation while retaining fractional calculation parameters',async()=>withModal(async({host,render})=>{
+ calculateFinalPrice.mockReturnValue('7');calculateRawFinalPriceValue.mockReturnValue(7.25);calculateFinalPriceFormula.mockReturnValue('2.9 * 2.5')
+ ordersSelectors.order.mockReturnValue({...completed('B'),b_currency:'MAD'})
+ await render({orderID:'B'})
+ expect(host.querySelector('.final-price').textContent).toContain('MAD')
+ expect(host.querySelectorAll('.final-price')[1].textContent).toContain('2.9 * 2.5')
+ expect(host.querySelector('.fare-rounding-note')).not.toBeNull()
+}))

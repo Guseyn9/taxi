@@ -163,6 +163,8 @@ export function displayArithmetic(source: string, options: Readonly<Record<strin
             return name;
         if (own(options, name) && options[name] === '?')
             return '?';
-        return String(Math.trunc(variable(name, options)));
+        const value = variable(name, options);
+        // Exact operands; parentheses preserve a substituted negative's precedence.
+        return value < 0 ? `(${value})` : String(value);
     });
 }

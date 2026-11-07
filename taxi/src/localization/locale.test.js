@@ -59,3 +59,11 @@ it('map controls use bundled Russian and Arabic labels when service translations
  configSelectors.language.mockReturnValue({id:9,iso:'ar-Arab'});expect(t('location_action')).toBe('الموقع');expect(t('map_expand')).toBe('توسيع الخريطة')
  configSelectors.language.mockReturnValue({id:6,iso:'ary-Latn'});expect(t('map_expand')).toBe('Kebber lkharita')
 })
+
+it.each(['ru','en','es','fr','ary-Arab','ary-Latn','zgh-Tfng','zgh-Latn','ar-Arab'])('keeps tenant text precedence and script direction for %s',iso=>{
+ const {isRideRtl}=require('../design/copy')
+ configSelectors.language.mockReturnValue({id:42,iso})
+ window.data={lang_vls:{location_action:{42:'tenant-'+iso}}}
+ expect(t('location_action')).toBe('tenant-'+iso)
+ expect(isRideRtl(iso)).toBe(['ary-Arab','ar-Arab'].includes(iso))
+})

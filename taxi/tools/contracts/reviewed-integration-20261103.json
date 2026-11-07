@@ -6,8 +6,8 @@
   "paths": {
     "src/API/order.ts": {
       "baselineSha256": "144d2b4cb314db4b469f26ef09023b36bd07f2e64cd63e068b4c30670a2f716b",
-      "currentSha256": "53a4e993dc41e6d67f8b9047a6dd1205252a687f1817f42bc7e32a2a49af75d4",
-      "reason": "Single creation, cents-preserving edits, persisted ETA, server PIN, lifecycle readback and confirmation recovery by existing ID. New option/PIN contract requires backend rollout. R14: Reject unconfirmed/error cancellation envelopes at the existing API boundary; no endpoint or payload changes.",
+      "currentSha256": "7f79bc379427d7112cc4994e7fc890017c63530361c01c58ec470e34eb057981",
+      "reason": "Single creation, cents-preserving edits, persisted ETA, server PIN, lifecycle readback and confirmation recovery by existing ID. New option/PIN contract requires backend rollout. R14: Reject unconfirmed/error cancellation envelopes at the existing API boundary; no endpoint or payload changes. R16: Validate successful mutation envelopes for candidate, offer, waiting, rating and lifecycle paths; validate finite positive offer price and whole waiting seconds before requests. Same endpoints and payload fields; no automatic mutation replay.",
       "evidence": [
         "src/API/legacyContract.test.js",
         "src/API/order.transport.test.js",
@@ -204,10 +204,11 @@
     },
     "src/platform/adapters/recoveryPolling.ts": {
       "baselineSha256": null,
-      "currentSha256": "b3b7ba8b85ff8cd039bc9ff6e07faaf6ce81d9e2ed4b309ec5912b81c1659ee3",
-      "reason": "Read again only after prior settlement; ignore delivery after stop.",
+      "currentSha256": "c48521b377cca117e5eba0c5b11673a9d60364f6e270a5bdf676243840d0ab37",
+      "reason": "Read again only after prior settlement; ignore delivery after stop. R16: Publish read-only pending/failure/recovery health to existing connection UI; dispose with subscription, no command changes or retries.",
       "evidence": [
-        "src/platform/adapters/__tests__/FsmOrderSnapshotTransport.test.js"
+        "src/platform/adapters/__tests__/FsmOrderSnapshotTransport.test.js",
+        "src/platform/adapters/__tests__/httpDeadline.test.js"
       ]
     },
     "src/serviceEndpoints.ts": {
@@ -406,11 +407,12 @@
     },
     "src/tools/order.ts": {
       "baselineSha256": "5095946bca6dfce435a5f10cc091ecf1e92fc35e54c8468dd5f99ebeceff44ed",
-      "currentSha256": "ed375afe9dc33b58409dab56dbd983c687b43d5b933393928807a8e40507370d",
-      "reason": "Expose numeric-or-null fare result for duration refresh while preserving the legacy string formatting API and rounding. Server remains billing authority.",
+      "currentSha256": "0ca0a750361016b27a37644eea7575ed78662567d5a796a63ac8875c1c979ed6",
+      "reason": "Expose numeric-or-null fare result for duration refresh while preserving the legacy string formatting API and rounding. Server remains billing authority. R16: Use identical exact operands for display and numeric pricing; preserve expression grouping, zero overrides, legacy alias and final truncation policy.",
       "evidence": [
         "src/tools/wireValues.test.ts",
-        "src/tools/money.test.ts"
+        "src/tools/money.test.ts",
+        "src/security/arithmetic.test.js"
       ]
     },
     "src/tools/convert.ts": {
@@ -513,11 +515,12 @@
     },
     "src/localization/index.ts": {
       "baselineSha256": "7c149da56433970b312de35c89f2c23593889b1cc8478f3b3bbba229571bc032",
-      "currentSha256": "e730e9ce851775d19488b84f62dd5975c1afbee41fb74de530c32f32e5fcd90f",
-      "reason": "Service DB translations still take precedence; add offline fallback copy for pending commands and account changes. R14: Localize audited map controls, preserve script-specific fallbacks and keep service text precedence.",
+      "currentSha256": "815a4f3d46cba775c1cb63a6b616f0d344cc254254e12761ff17c6e1d17de5fb",
+      "reason": "Service DB translations still take precedence; add offline fallback copy for pending commands and account changes. R14: Localize audited map controls, preserve script-specific fallbacks and keep service text precedence. R16: Add localized disclosure of existing final whole-amount policy; service text still has precedence. R16: Localized actionable partial-save and unconfirmed-car messages.",
       "evidence": [
         "src/localization/locale.test.js",
-        "src/tools/apiMessages.test.js"
+        "src/tools/apiMessages.test.js",
+        "src/components/modals/__tests__/profile-save.test.jsx"
       ]
     },
     "src/components/DriverCommandRecoveryNotice/index.tsx": {
@@ -558,11 +561,13 @@
     },
     "src/pages/Order/index.tsx": {
       "baselineSha256": "966575e0df96d960727a065c1d5006ae9586e3f4b3f9b39aaa225f8f3bc2b84a",
-      "currentSha256": "31ee07f90458c809d1008925ddb96346b88f45e00b4b11f0bce869e5cac45177",
-      "reason": "Keep prior reviewed detail behavior; do not open a second acceptance modal after the same offer event has been displayed.",
+      "currentSha256": "cbbda0f5fbff0c7f47a65557a8db0ffbb04b0beedb7e720760dc445893b5c0d5",
+      "reason": "Keep prior reviewed detail behavior; do not open a second acceptance modal after the same offer event has been displayed. R16: Client-selected Offer decline awaits the existing cancelVotingParticipation acknowledgement before local hide/navigation; failure retains offer and reads back. Synchronous duplicate-click guard.",
       "evidence": [
         "src/tools/driverOfferNotifications.test.ts",
-        "e2e/offer-order.spec.ts"
+        "e2e/offer-order.spec.ts",
+        "src/tools/confirmedOfferDecline.test.ts",
+        "src/API/order.transport.test.js"
       ]
     },
     "src/state/orders/__tests__/refreshOrder.test.js": {
@@ -866,6 +871,62 @@
       "evidence": [
         "src/state/config/language.test.js"
       ]
+    },
+    "src/state/clientOrder/orderFormResolvers.ts": {
+      "baselineSha256": "3d8c2e4459e7f2448b399136d6200e02fa4047a1f8e6c552d7cda716eda1e821",
+      "reason": " R16: Refuse a stale selected class when it is not available; an empty availability list must not invent a default class.",
+      "evidence": [
+        "src/state/clientOrder/__tests__/orderFormResolvers.test.js"
+      ],
+      "currentSha256": "7ff4682aa249c0733823b7c53f1ab20136df6a0721b68b891259bded2d5627aa"
+    },
+    "src/tools/siteConstants/formConfig.ts": {
+      "baselineSha256": "206fe7c39e51f9fd3a65360e619ac64850b55130bc1d5e30208dc49fabc69ebb",
+      "reason": " R16: Merge partial tenant form JSON over defaults; reject malformed fields, keep explicit false and preserve independent sections.",
+      "evidence": [
+        "src/tools/siteConstants/formConfig.test.ts"
+      ],
+      "currentSha256": "907ab999031be3e394b9afbdd856c991bfc8e4f8a556b0431ba1102fea55bf2a"
+    },
+    "src/security/arithmetic.ts": {
+      "baselineSha256": null,
+      "reason": " R16: Preserve exact fractional operands and bracket negative substitutions in bounded expression display.",
+      "evidence": [
+        "src/security/arithmetic.test.js"
+      ],
+      "currentSha256": "55381b283f6e72fc2340ce4f75a883d172e6fb694dd7f475def7bf951b1ec26b"
+    },
+    "src/diagnostics/readChannels.ts": {
+      "baselineSha256": null,
+      "reason": " R16: Payload-free per-subscription read health with cleanup and isolated listeners.",
+      "evidence": [
+        "src/platform/adapters/__tests__/httpDeadline.test.js"
+      ],
+      "currentSha256": "142e556733e0e00dd32b00b4b4eae2b536093db827612429ff44abc37c7ef143"
+    },
+    "src/design/reliability/readHealth.ts": {
+      "baselineSha256": null,
+      "reason": " R16: Merge recovery-channel failures with Redux read health for existing stale-data banner.",
+      "evidence": [
+        "src/platform/adapters/__tests__/httpDeadline.test.js"
+      ],
+      "currentSha256": "94ca419bc0971e32613e89bc27a23386929cc480877115ad9fb8e1781d98ef72"
+    },
+    "src/tools/confirmedOfferDecline.ts": {
+      "baselineSha256": null,
+      "reason": " R16: Confirm cancellation before projection, request readback on both outcomes; no endpoint addition or replay.",
+      "evidence": [
+        "src/tools/confirmedOfferDecline.test.ts"
+      ],
+      "currentSha256": "e9a7ac404a30fc0c3e6a7549b9c3208edc3e9dc3d5201f00f304a29166c07b39"
+    },
+    "src/components/modals/ProfileModal.tsx": {
+      "baselineSha256": "017a126141d775877931478f15bdf597fe0392a5c48073f4d8a69389ab41caa0",
+      "reason": " R16: Explicit partial/unconfirmed vehicle-save error with readback and blocked retry; reject missing upload IDs and unconfirmed profile response. Client validation precedes car write. Backend atomicity remains external.",
+      "evidence": [
+        "src/components/modals/__tests__/profile-save.test.jsx"
+      ],
+      "currentSha256": "34f3d74d56daef530a11bef59d30187cf7a8548ab353069090478c10afdd5964"
     }
   },
   "exceptions": {
@@ -961,11 +1022,23 @@
     "src/siteConstants.ts :: unexpected class-default change": "src/siteConstants.ts",
     "src/API/way.ts :: getAreasIdsBetweenPoints": "src/API/way.ts",
     "src/API/order.ts :: _cancelDrive": "src/API/order.ts",
-    "src/state/config/sagas.ts": "src/state/config/sagas.ts"
+    "src/state/config/sagas.ts": "src/state/config/sagas.ts",
+    "src/tools/order.ts": "src/tools/order.ts",
+    "src/state/clientOrder/orderFormResolvers.ts": "src/state/clientOrder/orderFormResolvers.ts",
+    "src/tools/siteConstants/formConfig.ts": "src/tools/siteConstants/formConfig.ts",
+    "src/platform/adapters/recoveryPolling.ts": "src/platform/adapters/recoveryPolling.ts",
+    "src/security/arithmetic.ts": "src/security/arithmetic.ts",
+    "src/diagnostics/readChannels.ts": "src/diagnostics/readChannels.ts",
+    "src/design/reliability/readHealth.ts": "src/design/reliability/readHealth.ts",
+    "src/API/order.ts :: _cancelVotingParticipation": "src/API/order.ts",
+    "src/API/order.ts :: _chooseCandidate": "src/API/order.ts",
+    "src/API/order.ts :: _releaseCandidateChoice": "src/API/order.ts",
+    "src/API/order.ts :: _setOrderRating": "src/API/order.ts",
+    "src/API/order.ts :: _setWaitingTime": "src/API/order.ts"
   },
   "lastReviewedRoadCache": "2026-11-04",
   "lastFrontendRemediation": {
     "scope": "frontend-only; existing API endpoints and user session; no backend writes or deployment acceptance",
-    "sourceBaseline": "existing local corrections plus November 7 frontend remediation"
+    "sourceBaseline": "r15 c5917e49bb543ed852d6531ad1b8bb784c682001 plus reviewed r16 frontend closure"
   }
 }

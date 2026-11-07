@@ -42,7 +42,12 @@ export class PassengerOrderConfig {
       return
     }
 
-    this.visibility = { ..._config.visibility }
-    this.values = { ..._config.values }
+    if (!_config || typeof _config !== 'object' || Array.isArray(_config)) return
+    for (const key of Object.keys(this.visibility) as (keyof PassengerOrderConfig['visibility'])[]) {
+      if (typeof _config.visibility?.[key] === 'boolean') this.visibility[key] = _config.visibility[key]
+    }
+    const weight = _config.values?.weight
+    if (Array.isArray(weight) && weight.every(item => item && typeof item.id === 'string'))
+      this.values.weight = weight.map(item => ({ id: item.id }))
   }
 }
