@@ -1,11 +1,16 @@
 /* One useful compact sheet, one preferences view. The map owns the remaining area. */
-#root .rs-trip-scope{margin:0 0 10px}
-#root .rs-trip-scope .boundary-buttons{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;width:100%;height:36px;padding:0;margin:0;overflow:visible}
-#root .rs-trip-scope .boundary-buttons__item{display:flex;align-items:center;justify-content:center;flex-direction:row!important;width:100%;min-width:0;max-width:none!important;height:36px!important;min-height:36px;padding:4px 6px!important;border:1px solid var(--drive-line);border-radius:10px;background:var(--drive-cream,#fff8f3);color:var(--drive-black)}
-#root .rs-trip-scope .boundary-buttons__item--active{border-color:var(--drive-red);background:var(--drive-soft);color:var(--drive-red)}
-#root .rs-trip-scope .boundary-buttons__icon{display:none}
-#root .rs-trip-scope .boundary-buttons__text{display:block!important;margin:0;overflow:hidden;text-overflow:ellipsis;font-size:12px;line-height:18px;font-weight:650}
-#root .rs-trip-scope .boundary-buttons__status{top:-5px;right:1px}
+/* Restore the original compact selector above the sheet: only the active label expands. */
+#root .passenger__form-container>.boundary-buttons--compact{display:flex;align-items:center;align-self:flex-start;flex:none;gap:6px;width:max-content;max-width:calc(100% - 32px);height:44px;margin:0 16px;padding:0;overflow:visible;pointer-events:auto}
+#root .passenger__form-container:has(>.boundary-buttons--compact)>.passenger__draggable{flex:1 1 auto!important;min-height:0}
+#root .passenger__form-container>.boundary-buttons--compact .boundary-buttons__item{display:flex;flex:0 0 44px;align-items:center;justify-content:flex-start;flex-direction:row!important;gap:0;width:44px;min-width:44px;max-width:44px!important;height:44px!important;min-height:44px;padding:0!important;border:1px solid var(--drive-line);border-radius:14px;background:var(--drive-cream,#fff8f3);color:var(--drive-wine);overflow:visible}
+#root .passenger__form-container>.boundary-buttons--compact .boundary-buttons__item--active{flex:0 1 auto;width:auto;max-width:calc(100% - 100px)!important;border-color:var(--drive-red);background:var(--drive-red);color:#fff}
+#root .passenger__form-container>.boundary-buttons--compact .boundary-buttons__icon{display:grid;place-items:center;flex:0 0 24px;width:24px;min-width:24px;height:24px;margin:0 9px}
+#root .passenger__form-container>.boundary-buttons--compact .boundary-buttons__icon svg{display:block;width:22px;height:22px}
+#root .passenger__form-container>.boundary-buttons--compact .boundary-buttons__text{display:none!important;min-width:0;margin:0 10px 0 0;color:inherit;font-size:12px;line-height:18px;font-weight:650;overflow:hidden;text-overflow:ellipsis}
+#root .passenger__form-container>.boundary-buttons--compact .boundary-buttons__item--active .boundary-buttons__text{display:block!important}
+#root .passenger__form-container>.boundary-buttons--compact .boundary-buttons__status{top:-5px;right:auto;inset-inline-end:0}
+#root .passenger__form-container>.boundary-buttons--compact .boundary-buttons__item:focus-visible{outline:2px solid var(--drive-red);outline-offset:3px}
+[dir=rtl] #root .passenger__form-container>.boundary-buttons--compact .boundary-buttons__text{margin:0 0 0 10px}
 #root .passenger-voting-form .rs-booking-preferences{display:grid;gap:12px;margin:0 0 12px}
 #root .rs-booking-preferences .boundary-buttons{display:flex!important;position:static;width:100%;height:auto;gap:6px;margin:0;padding:0;background:none}
 #root .rs-booking-preferences .boundary-buttons__item{flex:1;min-width:0;min-height:48px;height:auto!important;padding:8px!important;flex-direction:row!important;gap:6px}

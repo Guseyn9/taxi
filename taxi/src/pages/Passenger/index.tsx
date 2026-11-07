@@ -5,6 +5,7 @@ import { EBookingDriverState, EStatuses, IOrder } from '../../types/types'
 import { getPassengerConfirmedChoice, isChoiceOrder, isStoredSimpleOrderMode } from '../../tools/driverOffer'
 import { candidateMode } from '../../tools/order'
 import SheetHandle from '../../design/SheetHandle'
+import BoundaryButtons from '../../components/BoundaryButtons'
 import { passengerGateway } from '../../platform/adapters/LegacyPassengerGateway'
 import {
   passengerScreenConnector,
@@ -902,6 +903,7 @@ function Passenger({
             'passenger__form-container--pinned': shouldPinPassengerPanel,
           })}
         >
+          {!selectedOrder && !waitingForSubmittedOrder && !submittedOrderId && <BoundaryButtons />}
           <Card
             className={cn('passenger__draggable', {
               'passenger__draggable--live-order': showLiveOrderPanel,

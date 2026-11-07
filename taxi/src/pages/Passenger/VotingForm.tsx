@@ -1,7 +1,6 @@
 import PendingVotingConfirmation from '../../pilot/PendingVotingConfirmation'
 import PassengerBoardingCode from '../../pilot/PassengerBoardingCode'
 import { normalizeMoney } from '../../tools/money'
-import BoundaryButtons from '../../components/BoundaryButtons'
 import { offerBookingOptions } from '../../API/legacyContract'
 import LockedRouteSummary from '../../design/LockedRouteSummary'
 import {markPendingOffer} from '../../pilot/pendingOffer'
@@ -1575,7 +1574,6 @@ const VotingForm = function VotingForm({
             }}>{uiCopy.done}</UiButton>}
         </CardHeader>}
       <div className="rs-ride-body" ref={rideBodyRef}>
-      {!locked && <div className="rs-trip-scope"><BoundaryButtons /></div>}
       {locked && lockedOrder && <PendingVotingConfirmation key={lockedOrder.b_id} order={lockedOrder} onUpdated={refreshActiveOrders}/>}
       <div
         ref={minimizedPartRef as React.Ref<HTMLDivElement>}

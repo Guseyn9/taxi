@@ -1,5 +1,5 @@
 {
-  "release": "taxi-morocco-20261107-r16",
+  "release": "taxi-morocco-20261107-r17",
   "preparedAt": "2026-11-07",
   "sourceBaseCommit": "580a3bd8ddc5bd8b527b86ee63388a4c913917f5",
   "sourceIncludesLocalChanges": false,
@@ -22,7 +22,8 @@
     "previousNineLanguagesRestored": true,
     "carClassArtworkConsistent": true,
     "carArtworkRegression": "Business/Бизнес/Comfort and Grand use the same artwork rule in the selector and map demo; switching preserves route progress",
-    "languageDirection": "Script-aware Arabic/Darija RTL; Spanish, Latin Darija and Tamazight LTR"
+    "languageDirection": "Script-aware Arabic/Darija RTL; Spanish, Latin Darija and Tamazight LTR",
+    "tripScopePresentation": "Original compact SVG selector above the sheet; inactive icons, active label; existing auto/manual selection and status indicators"
   },
   "correctionsReport": "/review/corrections-20261104.html",
   "zoneEditor": {
@@ -93,7 +94,7 @@
     "productionServiceAccepted": false
   },
   "sourceCommit": null,
-  "sourceParentCommit": "c5917e49bb543ed852d6531ad1b8bb784c682001",
+  "sourceParentCommit": "e6149dc993c3e186da3b3824478eff2d4d8f4159",
   "frontendCompletion": {
     "scope": "frontend defects F01-F08 from current CTO/QA report",
     "roadGraphCorrection": "Actual adapters already limit closest-node search to 1km; the earlier remote-node mock was not a real-adapter production reproduction. Shared route-consumer guards strengthen this boundary.",

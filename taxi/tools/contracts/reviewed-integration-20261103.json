@@ -151,8 +151,8 @@
     },
     "src/pages/Passenger/VotingForm.tsx": {
       "baselineSha256": "5c1d5f7e314bc4fbfbb994751026eb0dd9eb76ec9af20f24f9bcac648a4a48bd",
-      "currentSha256": "ae35082abc92d20d664fb293162a4e8bcc98e28eab3d80c4628a26ccc4dfddee",
-      "reason": "One explicit selection; no implicit releases, retries or fake local success. Readback releases a canceled choice; pending confirmation has its own recovery. 2026-11-04: remove the voice submission registration and show the existing boundary selector before route entry; submit and order handlers unchanged from r6.",
+      "currentSha256": "190fc57fae343d9e731e66fcae924fce9b4c8245810f6d82b7061821b0a1d4d6",
+      "reason": "One explicit selection; no implicit releases, retries or fake local success. Readback releases a canceled choice; pending confirmation has its own recovery. 2026-11-04: remove the voice submission registration and show the existing boundary selector before route entry; submit and order handlers unchanged from r6. R17: Move the unchanged selector out of the address body to its original position above the sheet, restoring compact SVG icons and active-label expansion. Submission and selection handlers unchanged.",
       "evidence": [
         "src/tools/useReleaseCanceledPassengerChoice.test.jsx",
         "src/API/order.transport.test.js",
