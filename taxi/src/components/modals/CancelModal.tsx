@@ -11,6 +11,7 @@ import { ordersActionCreators } from '../../state/orders'
 import Button from '../Button'
 import OrderId from '../OrderId'
 import Overlay from './Overlay'
+import { sessionGeneration } from '../../security/sessionLifecycle'
 import './styles.scss'
 
 
@@ -69,6 +70,13 @@ export const CancelOrderModal: React.FC<IProps> = ({
   const [reason, setReason] = useState(REASONS[0]?.id ?? '0')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const pending = useRef(false)
+  const operationRef = useRef(0)
+
+  useEffect(() => {
+    operationRef.current += 1
+    pending.current = false
+    setIsSubmitting(false)
+  }, [isOpen, selectedOrder])
 
   useEffect(() => {
     if (isOpen && !selectedOrder) setCancelModal(false)
@@ -94,17 +102,22 @@ export const CancelOrderModal: React.FC<IProps> = ({
     }
 
     pending.current = true
+    const operation = ++operationRef.current
+    const generation = sessionGeneration()
+    const current = () => operation === operationRef.current && generation === sessionGeneration()
     setIsSubmitting(true)
     cancelOrder(
       selectedOrder,
       REASONS.find(item => item.id === reason)?.label,
     )
       .then(() => {
+        if (!current()) return
         refreshActiveOrders()
         setSelectedOrder(null)
         closeModal()
       })
       .catch(error => {
+        if (!current()) return
         console.error(error)
         setMessageModal({
           isOpen: true,
@@ -112,7 +125,7 @@ export const CancelOrderModal: React.FC<IProps> = ({
           message: t(TRANSLATION.ERROR),
         })
       })
-      .finally(() => { pending.current = false; setIsSubmitting(false) })
+      .finally(() => { if (operation === operationRef.current) { pending.current = false; setIsSubmitting(false) } })
   }
 
   return (

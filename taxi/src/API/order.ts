@@ -1,4 +1,5 @@
 import { MutationReadbackGuard } from '../tools/mutationReadback'
+import { assertSuccessfulMutationResponse } from '../platform/adapters/backendError'
 import axios from 'axios'
 import { bookingOptionAssignment, performerOptions } from './legacyContract'
 import { normalizeMoney } from '../tools/money'
@@ -221,7 +222,7 @@ const _cancelDrive = (
   })
 
   return axios.post(`${Config.API_URL}/drive/get/${id}`, formData)
-    .then(res => res.data)
+    .then(res => assertSuccessfulMutationResponse(res.data))
 }
 export const cancelDrive = apiMethod<typeof _cancelDrive>(_cancelDrive)
 

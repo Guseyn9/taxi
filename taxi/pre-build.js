@@ -15,9 +15,12 @@ try {
   console.warn('Cannot read src/version.json, creating a new version object');
 }
 
-// Auto-update only build date/time on every rebuild/start.
-// Do not overwrite public app name/version from src/version.json.
-versionInfo.buildTimestamp = new Date().toString();
-
-fs.writeFileSync(versionPath, `${JSON.stringify(versionInfo, null, 2)}
-`);
+// Release metadata is stable across builds. Operators may explicitly supply a
+// reproducible epoch; ordinary build/start hooks must not dirty the source tree.
+if (process.env.SOURCE_DATE_EPOCH !== undefined) {
+  const seconds = Number(process.env.SOURCE_DATE_EPOCH);
+  if (!Number.isSafeInteger(seconds) || seconds < 0) throw new Error('Invalid SOURCE_DATE_EPOCH');
+  versionInfo.buildTimestamp = new Date(seconds * 1000).toISOString();
+  const content = `${JSON.stringify(versionInfo, null, 2)}\n`;
+  if (fs.readFileSync(versionPath, 'utf8') !== content) fs.writeFileSync(versionPath, content);
+}

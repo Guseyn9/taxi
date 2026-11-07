@@ -49,7 +49,7 @@ const rootReducer = (state: ReturnType<typeof combinedReducer> | undefined, acti
       user:clean.user.set('tab',state.user.tab).set('tokens',action.payload?.preserveCurrentTokens ? state.user.tokens : null),
       config:state.config, areas:state.areas,
       clientOrder:action.payload?.preserveGuestDraft ? state.clientOrder.set('fromLoading',false).set('toLoading',false) : emptyClientOrderState(),
-      modals:clean.modals.set('isLoginModalOpen',state.modals.isLoginModalOpen),
+      modals:clean.modals.set('isLoginModalOpen',state.modals.isLoginModalOpen).set('messageSequence',state.modals.messageSequence),
     }
   }
   return combinedReducer(state, action)

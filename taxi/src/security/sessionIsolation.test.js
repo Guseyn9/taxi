@@ -86,3 +86,14 @@ it('late login completion after logout never saves credentials or navigates',asy
   expect(loadSessionTokens()).toBeNull();expect(navigate).not.toHaveBeenCalled()
   expect(actions.some(a=>a.type===U.LOGIN_SUCCESS)).toBe(false)
 })
+
+it('session reset clears queued messages but cannot reuse an old dialog acknowledgement id',()=>{
+ const {ActionTypes:M}=require('../state/modals/constants')
+ const store=createStore(rootReducer)
+ const show=message=>({type:M.SET_MESSAGE_MODAL,payload:{isOpen:true,message}})
+ store.dispatch(show('old'));const id=store.getState().modals.messageModal.id
+ store.dispatch(show('old queued'));store.dispatch({type:SESSION_DOMAIN_RESET})
+ expect(store.getState().modals.messageQueue).toHaveLength(0)
+ store.dispatch(show('new'));store.dispatch({type:M.SET_MESSAGE_MODAL,payload:{isOpen:false,id}})
+ expect(store.getState().modals.messageModal.message).toBe('new')
+})

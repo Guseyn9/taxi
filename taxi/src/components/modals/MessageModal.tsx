@@ -14,6 +14,7 @@ type TVariant = 'fail' | 'success' | 'warning'
 
 const mapStateToProps = (state: IRootState) => ({
   isOpen: modalsSelectors.isMessageModalOpen(state),
+  messageId: modalsSelectors.messageModalID(state),
   message: modalsSelectors.messageModalMessage(state),
   status: modalsSelectors.messageModalStatus(state),
 })
@@ -83,11 +84,12 @@ function SupportIcon() {
 
 const MessageModal: React.FC<IProps> = ({
   isOpen,
+  messageId,
   message,
   status,
   setMessageModal,
 }) => {
-  const closeModal = () => setMessageModal({ ...defaultMessageModal })
+  const closeModal = () => setMessageModal({ ...defaultMessageModal, id: messageId })
   const variant: TVariant = status === EStatuses.Success ?
     'success' :
     status === EStatuses.Warning ? 'warning' : 'fail'

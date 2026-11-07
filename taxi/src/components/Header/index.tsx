@@ -1,4 +1,5 @@
 import TestMapArea from '../../design/maps/TestMapArea'
+import { developmentToolsEnabled } from '../../security/developmentTools'
 import LanguagePicker from './LanguagePicker'
 import PassengerHistory, { passengerHistoryCopy } from '../PassengerHistory'
 import {zoneCopy} from '../../admin/zones/copy'
@@ -234,10 +235,6 @@ function Header({
     if(!clientOrder)menuItems.push({label:({ru:'Тест анимации · без заказа',fr:'Test animation · sans commande',ar:'اختبار الحركة · بدون طلب'} as Record<string,string>)[language.iso.split('-')[0]]||'Animation test · no order',action:()=>{setMenuOpened(false);window.dispatchEvent(new Event('taxi.ui.map-demo'))}})
   }
 
-  if (user?.u_role === EUserRoles.Administrator) menuItems.push({
-    label: zoneCopy(language?.iso).title,
-    action: () => { setMenuOpened(false); navigation.navigatePath('/admin/zones') },
-  })
 
   if (isDriverArea) {
     menuItems.push({
@@ -502,7 +499,7 @@ function Header({
     setLanguage(lang)
   }
 
-  const isEmulationModeVisible = emulatorPanelOpened || Boolean(emulatorStatus?.running)
+  const isEmulationModeVisible = developmentToolsEnabled() && (emulatorPanelOpened || Boolean(emulatorStatus?.running))
   const emulationModeTitle = emulatorStatus?.mode === 'clients' ? t('emulator_clients_mode') : t('emulator_drivers_mode')
   const buildDate = React.useMemo(() => {
     const value = new Date((versionInfo as any).buildTimestamp)
@@ -579,14 +576,15 @@ function Header({
                       </li>
                     ))}
                     {user && [EUserRoles.Client, EUserRoles.Agent].includes(user.u_role) && <li className="menu__item"><button type="button" className="menu__button" onClick={() => { setMenuOpened(false); setHistoryOpened(true) }}>{passengerHistoryCopy(language?.iso).title}</button></li>}
-                    <li><details className="menu__tools"><summary>{toolsLabel}</summary>{menuItems.slice(1).map((item,index)=><button key={index} type="button" className="menu__button" onClick={()=>item.href?navigation.navigatePath(item.href):item.action?.(index+1)}>{item.label}</button>)}<GraphDiagnostics iso={language?.iso}/><TestMapArea iso={language?.iso}/>
+                    {user?.u_role === EUserRoles.Administrator && <li className="menu__item"><button type="button" className="menu__button" onClick={() => { setMenuOpened(false); navigation.navigatePath('/admin/zones') }}>{zoneCopy(language?.iso).title}</button></li>}
+                    {developmentToolsEnabled() && <li><details className="menu__tools"><summary>{toolsLabel}</summary>{menuItems.slice(1).map((item,index)=><button key={index} type="button" className="menu__button" onClick={()=>item.href?navigation.navigatePath(item.href):item.action?.(index+1)}>{item.label}</button>)}<GraphDiagnostics iso={language?.iso}/><TestMapArea iso={language?.iso}/>
                       {moroccoConfigMismatch(CURRENCY.NAME, SITE_CONSTANTS.DEFAULT_PHONE_MASK) &&
                         <details className="service-config-diagnostics">
                           <summary>{t('service_configuration')}</summary>
                           <p>{pilotCopy(language?.iso).config}</p>
                           <code dir="ltr">{CURRENCY.NAME} · {SITE_CONSTANTS.DEFAULT_PHONE_MASK}</code>
                         </details>}
-                    </details></li>
+                    </details></li>}
                   </ul>
                 </div>
               )
@@ -720,12 +718,12 @@ function Header({
         </div>}
 
       </div>
-      <DriverEmulatorPanel
+      {developmentToolsEnabled() && <DriverEmulatorPanel
         isOpen={emulatorPanelOpened}
         mode={emulatorPanelMode}
         onStatusChange={(snapshot) => setEmulatorStatus({ mode: emulatorPanelMode, running: Boolean(snapshot.running) })}
         onClose={() => setEmulatorPanelOpened(false)}
-      />
+      />}
       {emulatorInfoOpened && (
         <div className="emulation-info" role="dialog" aria-modal="true">
           <div className="emulation-info__backdrop" onClick={() => setEmulatorInfoOpened(false)} />

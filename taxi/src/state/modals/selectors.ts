@@ -28,6 +28,7 @@ export const mapModalTo = createSelector(moduleSelector, state => state.mapModal
 export const mapModalHighlight = createSelector(moduleSelector, state => state.mapModal.highlight)
 export const isMessageModalOpen = createSelector(moduleSelector, state => state.messageModal.isOpen)
 export const messageModalMessage = createSelector(moduleSelector, state => state.messageModal.message)
+export const messageModalID = createSelector(moduleSelector, state => state.messageModal.id)
 export const messageModalStatus = createSelector(moduleSelector, state => state.messageModal.status)
 export const isTakePassengerModalOpen = createSelector(moduleSelector, state => state.takePassengerModal.isOpen)
 export const takePassengerModalFrom = createSelector(moduleSelector, state => state.takePassengerModal.from)

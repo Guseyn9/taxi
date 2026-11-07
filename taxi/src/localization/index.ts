@@ -26,7 +26,10 @@ const FALLBACK_TRANSLATIONS: Record<string, Record<string, string>> = {
   email_error:{en:'Enter a valid email address.',ru:'Укажите корректный email.',fr:'Saisissez une adresse e-mail valide.',ar:'أدخل بريداً إلكترونياً صالحاً.'},
   phone_pattern_error:{en:'Check the country code and phone number.',ru:'Проверьте код страны и номер телефона.',fr:'Vérifiez le code pays et le numéro.',ar:'تحقق من رمز البلد ورقم الهاتف.'},
   required_field:{en:'Complete this field.',ru:'Заполните это поле.',fr:'Remplissez ce champ.',ar:'أكمل هذا الحقل.'},
-  location_action:{en:'Location',ru:'Локация',fr:'Position',ar:'الموقع'},
+  location_action:{en:'Location',ru:'Локация',es:'Ubicación',fr:'Position',ar:'الموقع',ary:'الموقع','ary-Latn':'Lmawqiɛ',zgh:'ⴰⴷⵖⴰⵔ','zgh-Latn':'Adɣar'},
+  map_expand:{en:'Expand map',ru:'Развернуть карту',es:'Ampliar mapa',fr:'Agrandir la carte',ar:'توسيع الخريطة',ary:'كبّر الخريطة','ary-Latn':'Kebber lkharita',zgh:'ⵙⵎⵖⵔ ⵜⴰⴽⴰⵕⴹⴰ','zgh-Latn':'Ssemɣer takarḍa'},
+  map_return_to_booking:{en:'Return to booking',ru:'Вернуться к форме',es:'Volver a la reserva',fr:'Retour à la réservation',ar:'العودة إلى الحجز',ary:'رجع للحجز','ary-Latn':'Rjeɛ lḥejz',zgh:'ⵓⵖⴰⵍ ⵖⵔ ⵓⵙⵖⵍ','zgh-Latn':'Uɣal ɣer usɣel'},
+  route_unavailable:{en:'Road route is unavailable. Please try again.',ru:'Не удалось построить дорожный маршрут. Повторите попытку.',es:'No se pudo calcular la ruta. Inténtalo de nuevo.',fr:'Impossible de calculer l’itinéraire. Réessayez.',ar:'تعذّر حساب مسار الطريق. حاول مجدداً.'},
   from:{ru:'Откуда',en:'From',fr:'Départ',ar:'من'},
   to:{ru:'Куда',en:'To',fr:'Destination',ar:'إلى'},
   cost:{ru:'Стоимость',en:'Cost',fr:'Prix',ar:'السعر'},
@@ -2146,7 +2149,7 @@ function getFallbackText(key: string, language?: { iso?: string, id?: string | n
   const dictionary = FALLBACK_TRANSLATIONS[key]
 
   if (dictionary)
-    return dictionary[iso] || dictionary.en || dictionary.ru
+    return dictionary[language?.iso || iso] || dictionary[iso] || dictionary.en || dictionary.ru
 
   return key
     .replace(/_p$/, '')

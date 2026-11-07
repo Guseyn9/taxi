@@ -2,14 +2,16 @@ import axios from 'axios'
 import { loadRoadArea } from '../graph/client'
 import { IArea, IWay, IWaySegment, IWayNode } from '../types/types'
 import { calculateDistance } from '../tools/maps'
+import { isWithinLocalGraph } from '../graph/coverage'
 
 export async function getAreasIdsBetweenPoints(
   points: [lat: number, lng: number][],
 ): Promise<IArea['id'][]> {
-  return [0]
+  return points.length > 0 && points.every(isWithinLocalGraph) ? [0] : []
 }
 
 export async function getArea(id: IArea['id']): Promise<IArea> {
+  if (id !== 0) throw new Error('LOCAL_ROAD_AREA_NOT_SUPPORTED')
   return loadRoadArea()
 }
 

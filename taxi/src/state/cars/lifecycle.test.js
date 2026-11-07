@@ -54,3 +54,11 @@ it('vehicle edits reconcile both car and current user before reporting completio
   await edit('2',{})(a=>actions.push(a))
   expect(actions.map(a=>a.type)).toEqual([ActionTypes.START_MUTATION,ActionTypes.GET_USER_CARS_SUCCESS,'SET_USER',ActionTypes.END_MUTATION])
 })
+
+it.each(['activate','create','edit'])('vehicle %s rejects HTTP-200 business errors before any success projection',async operation=>{
+ const error={code:'200',status:'error',message:'rejected'}, actions=[]
+ API.driveCar.mockResolvedValue(error);API.createUserCar.mockResolvedValue(error);API.editCar.mockResolvedValue(error)
+ const run=operation==='activate'?activateVehicle({c_id:'2'}):operation==='create'?createUserCar({}):edit('2',{})
+ await expect(run(a=>actions.push(a))).rejects.toThrow('rejected')
+ expect(API.getUserCars).not.toHaveBeenCalled();expect(actions.some(a=>a.type===ActionTypes.GET_USER_CARS_SUCCESS)).toBe(false)
+})

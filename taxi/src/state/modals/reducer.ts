@@ -78,6 +78,8 @@ export const record = Record<IModalsState>({
   profileModal: { ...defaultProfileModal },
   alarmModal: { ...defaultAlarmModal },
   messageModal: { ...defaultMessageModal },
+  messageQueue: [],
+  messageSequence: 0,
   mapModal: { ...defaultMapModal },
   takePassengerModal: { ...defaultTakePassengerModal },
   ratingModal: { ...defaultRatingModal },
@@ -155,9 +157,21 @@ export default function reducer(state = new record(), action: TAction) {
     case ActionTypes.SET_MAP_MODAL:
       return state
         .set('mapModal', payload)
-    case ActionTypes.SET_MESSAGE_MODAL:
-      return state
-        .set('messageModal', payload)
+    case ActionTypes.SET_MESSAGE_MODAL: {
+      if (payload.isOpen) {
+        const sequence = state.messageSequence + 1
+        const message = { ...payload, id: `message-${sequence}` }
+        const updated = state.set('messageSequence', sequence)
+        return state.messageModal.isOpen ?
+          updated.set('messageQueue', [...state.messageQueue, message]) :
+          updated.set('messageModal', message)
+      }
+      // A second click from the previous dialog must not dismiss the next error.
+      if (payload.id && payload.id !== state.messageModal.id) return state
+      const [next, ...remaining] = state.messageQueue
+      return state.set('messageModal', next || { ...defaultMessageModal })
+        .set('messageQueue', remaining)
+    }
     case ActionTypes.SET_ACTIVE_CHAT:
       return state
         .set('activeChat', payload)
@@ -194,6 +208,7 @@ export default function reducer(state = new record(), action: TAction) {
         .set('alarmModal', { ...defaultAlarmModal })
         .set('mapModal', { ...defaultMapModal })
         .set('messageModal', { ...defaultMessageModal })
+        .set('messageQueue', [])
         .set('ratingModal', { ...defaultRatingModal })
         .set('profileModal', { ...defaultProfileModal })
         .set('deleteFilesModal', { ...defaultDeleteFilesModal })

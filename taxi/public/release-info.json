@@ -1,14 +1,13 @@
 {
-  "release": "taxi-morocco-20261107-r13",
+  "release": "taxi-morocco-20261107-r14",
   "preparedAt": "2026-11-07",
   "sourceBaseCommit": "580a3bd8ddc5bd8b527b86ee63388a4c913917f5",
-  "sourceIncludesLocalChanges": true,
-  "tests": 1170,
-  "suites": 212,
-  "browserScenarios": 21,
-  "browserEvidence": "Guest gruzvill UI and isolated browser fixtures; authenticated live rides not accepted",
+  "sourceIncludesLocalChanges": false,
+  "tests": 1199,
+  "suites": 219,
+  "browserEvidence": "Current guest UI and isolated network-disabled remediation fixture; authenticated rides and physical devices remain unaccepted",
   "backendTarget": "https://ibronevik.itest24.com/taxi_dev2/c/gruzvill/api/v1",
-  "dictionaryTarget": "https://ibronevik.itest24.com/taxi_dev2/cache/data_gruzvill.js",
+  "dictionaryTarget": "https://ibronevik.itest24.com/taxi_dev2/c/gruzvill/api/v1/data",
   "backendPatchesDeployedToSharedDev": false,
   "backendCandidate": "r5",
   "fsmEnabled": false,
@@ -80,9 +79,27 @@
       "finite external routing deadline and no built-in provider credential",
       "optional map read failure recovery",
       "dependency updates and local deepmerge fix",
-      "reproducible gruzvill build"
+      "reproducible gruzvill build",
+      "strict cancellation and car-mutation success validation",
+      "shared bounded routing with local coverage and snap validation",
+      "correct per-km default and zero coordinates",
+      "take/arrive/PIN acknowledgement before along-the-way boarding",
+      "queued operation errors with acknowledgement IDs",
+      "public test menu removed and audited map labels localized",
+      "stable build metadata across repeated builds"
     ],
     "dependencyAudit": "0 known vulnerabilities at preparation; see validation report",
     "productionServiceAccepted": false
+  },
+  "sourceCommit": null,
+  "sourceParentCommit": "e46648f6c8bc0e6825b10204d45ad69cef767246",
+  "frontendCompletion": {
+    "scope": "frontend defects F01-F08 from current CTO/QA report",
+    "roadGraphCorrection": "Actual adapters already limit closest-node search to 1km; the earlier remote-node mock was not a real-adapter production reproduction. Shared route-consumer guards strengthen this boundary.",
+    "backendWritesPerformed": false,
+    "liveAuthenticatedAcceptance": false,
+    "physicalDeviceAcceptance": false,
+    "nativeLanguageReview": false,
+    "sourceCommitResolution": "Deployment manifest supplies the exact commit after source is committed."
   }
 }

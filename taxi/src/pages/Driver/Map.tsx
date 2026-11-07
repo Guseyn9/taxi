@@ -1,3 +1,4 @@
+import { prepareAlongTheWayPickup } from '../../tools/alongTheWayPickup'
 import { createMapHint, readMapHint } from '../../tools/persistedMapHint'
 import {getCandidateCarClassKind} from '../../components/CarClassBadge'
 import { subscribeSessionBoundary } from '../../security/sessionLifecycle'
@@ -2190,7 +2191,7 @@ function DriverOrderMapModeContent({
   // на секунду останется без ближайшей точки и уедет мимо попутчика.
   const takeAlongTheWayOrder = (order: IOrder) => {
     const orderId = String(order.b_id)
-    if (takingAlongTheWayRef.current[orderId] || mapActionPending)
+    if (takingAlongTheWayRef.current[orderId] || mapActionInFlight.current || mapActionPending)
       return
 
     // Пока ехали, состав активных заказов мог измениться — мест может уже не быть.
@@ -2200,24 +2201,21 @@ function DriverOrderMapModeContent({
       return
     }
 
+    mapActionInFlight.current = true
     takingAlongTheWayRef.current[orderId] = true
     setMapActionPending(true)
-    backendGateway.takeOrder(order.b_id, { performers_price: 0 }, false)
-      .then(async() => {
-        // Водитель уже стоит у попутчика: «Поехал» ему ехать некуда, а «Приехал»
-        // подтверждать нечего — он приехал ещё до того, как взял заказ. Сажаем
-        // пассажира сразу, чтобы в плане у заказа осталась только высадка и
-        // движение продолжилось без двух бессмысленных нажатий.
-        setBoardedAlongTheWayIds(prev => (prev.includes(orderId) ? prev : [...prev, orderId]))
-        // Бэкенд ведёт заказ по шагам, перепрыгнуть через Arrived нельзя.
-        // Ошибки не блокируют поездку — демо-бэкенд отвечает шумом и на успешный
-        // переход (тот же приём, что в runMapOrderTransition).
-        await driverMapGateway.arrive(order.b_id).catch(error => console.error(error))
-        requestBoarding(order, async code => {
-          await confirmBoardingCommand(order.b_id, code)
-          refreshMapOrderState(order.b_id)
-        }, async () => getDriverDoorNumber(order.drivers?.find(driver => String(driver.u_id) === String(user?.u_id)), await backendGateway.getUserCar(user!.u_id)))
+    setMapActionError(false)
+    prepareAlongTheWayPickup({
+      take: () => backendGateway.takeOrder(order.b_id, { performers_price: 0 }, false),
+      arrive: () => driverMapGateway.arrive(order.b_id),
+      requestBoarding: confirm => requestBoarding(order, confirm, async () => getDriverDoorNumber(order.drivers?.find(driver => String(driver.u_id) === String(user?.u_id)), await backendGateway.getUserCar(user!.u_id))),
+      confirm: code => confirmBoardingCommand(order.b_id, code),
+      boarded: () => {
+        setBoardedAlongTheWayIds(prev => prev.includes(orderId) ? prev : [...prev, orderId])
         refreshMapOrderState(order.b_id)
+      },
+    })
+      .then(() => {
         // Страховка: если заказ так и не появился в активных, точка «на пробу»
         // осталась бы в плане навсегда, а маркер — стоять на ней без вопроса.
         const timer = setTimeout(() => {
@@ -2230,9 +2228,10 @@ function DriverOrderMapModeContent({
         // Не удалось (обычно заказ уже разобрали) — это тот же отказ, иначе
         // маркер остался бы стоять на точке, которую некому подтвердить.
         console.error(error)
+        setMapActionError(true)
         declineAlongTheWayOrder(order)
       })
-      .finally(() => setMapActionPending(false))
+      .finally(() => { refreshMapOrderState(order.b_id); mapActionInFlight.current = false; setMapActionPending(false) })
   }
 
   // Отложенные вызовы (таймер Строгого, окно Реалистичного) должны звать свежие

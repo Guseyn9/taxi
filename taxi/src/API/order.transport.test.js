@@ -1,5 +1,5 @@
 import axios from 'axios'
-import {postDrive,confirmDrive,getOrders,updateOrderCustomerPrice,takeOrder,sendOrderOffer,participateVotingOrder} from './order'
+import {postDrive,confirmDrive,getOrders,updateOrderCustomerPrice,takeOrder,sendOrderOffer,participateVotingOrder,cancelDrive} from './order'
 import {getUserCar} from './car'
 import {EOrderTypes} from '../types/types'
 let mockUser={u_id:'client-1',u_role:1}
@@ -91,4 +91,16 @@ test('an empty confirmation acknowledgement is not mistaken for success',async()
  axios.post.mockResolvedValueOnce(read(false)).mockResolvedValueOnce({data:{}}).mockResolvedValueOnce(read(false))
  await expect(confirmDrive('42')).rejects.toEqual({})
  expect(actions()).toEqual([null,'set_confirm_state',null])
+})
+
+test.each(['200','404'])('cancellation rejects a resolved business error code=%s without retry',async code=>{
+ axios.post.mockResolvedValueOnce({data:{code,status:'error',message:'wrong booking state'}})
+ await expect(cancelDrive('42','waited too long')).rejects.toMatchObject({code:'BACKEND_RESPONSE_ERROR'})
+ expect(axios.post).toHaveBeenCalledTimes(1);expect(actions()).toEqual(['set_cancel_state'])
+})
+
+test.each([null,{}, {status:'success'}, {code:'200',status:'failed'}])('cancellation never treats an unacknowledged mutation response as success: %j',async response=>{
+ axios.post.mockResolvedValueOnce({data:response})
+ await expect(cancelDrive('42')).rejects.toMatchObject({code:'BACKEND_RESPONSE_ERROR'})
+ expect(axios.post).toHaveBeenCalledTimes(1)
 })

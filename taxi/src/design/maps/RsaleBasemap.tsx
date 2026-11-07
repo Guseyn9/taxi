@@ -1,4 +1,5 @@
 import {serviceText} from '../serviceText'
+import { t } from '../../localization'
 import React, { useEffect, useRef, useState } from 'react'
 import L from 'leaflet'
 import { useMap } from 'react-leaflet'
@@ -189,7 +190,7 @@ export default function RsaleBasemap({ initialOverview = false, showRegionContro
     {showRegionControls && <OnMapPreview onCameraChange={()=>{cameraChanged.current=true}}/>}
     {showRegionControls && <div className="rs-map-controls" ref={controls}>
       <Button type="button" variant="outline" size="icon" className="rs-map-fullscreen" aria-pressed={fullMap}
-        aria-label={locale==='ru'?(fullMap?'Вернуться к форме':'Развернуть карту'):(fullMap?'Return to booking':'Expand map')}
+        aria-label={t(fullMap ? 'map_return_to_booking' : 'map_expand')}
         onClick={()=>setFullMap(value=>!value)}>{fullMap?<Minimize2 aria-hidden="true"/>:<Maximize2 aria-hidden="true"/>}</Button>
       <div className="rs-map-zoom">
         <Button type="button" variant="outline" size="icon" aria-label={copy.zoomIn} disabled={zoomLimits.atMax} onClick={() => { cameraChanged.current = true; map.zoomIn() }}><Plus aria-hidden="true" /></Button>

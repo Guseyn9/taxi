@@ -52,3 +52,10 @@ it('new controls and errors use database text without a rebuild, including the o
  expect(zoneCheckCopy('ru').error).toBe('DB zone error')
  expect(journeyCopy('ru').vote).toBe('DB vote')
 })
+
+it('map controls use bundled Russian and Arabic labels when service translations are absent',()=>{
+ window.data={lang_vls:{}}
+ configSelectors.language.mockReturnValue({id:1,iso:'ru'});expect(t('location_action')).toBe('Локация');expect(t('map_expand')).toBe('Развернуть карту')
+ configSelectors.language.mockReturnValue({id:9,iso:'ar-Arab'});expect(t('location_action')).toBe('الموقع');expect(t('map_expand')).toBe('توسيع الخريطة')
+ configSelectors.language.mockReturnValue({id:6,iso:'ary-Latn'});expect(t('map_expand')).toBe('Kebber lkharita')
+})

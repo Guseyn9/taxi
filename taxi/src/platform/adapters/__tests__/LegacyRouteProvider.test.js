@@ -30,18 +30,18 @@ describe('LegacyRouteProvider', () => {
 
   it('uses the local road graph before the OSRM fallback', async() => {
     backendGateway.makeRoutePoints.mockRejectedValueOnce(new Error('offline'))
-    const startNode = { id: 1, latitude: 55.71, longitude: 37.51 }
-    const endNode = { id: 2, latitude: 55.79, longitude: 37.59 }
+    const startNode = { id: 1, latitude: 55.7, longitude: 37.5 }
+    const endNode = { id: 2, latitude: 55.8, longitude: 37.6 }
     const wayGraph = {
       findClosestNode: jest.fn()
         .mockReturnValueOnce([startNode, 10])
         .mockReturnValueOnce([endNode, 10]),
-      findShortestPath: jest.fn().mockReturnValue([[startNode, endNode], 5000]),
+      findShortestPath: jest.fn().mockReturnValue([[startNode, endNode], 15000]),
     }
 
     const route = await new LegacyRouteProvider().makeRoutePoints(FROM, TO, wayGraph)
 
-    expect(route.distance).toBe(5)
+    expect(route.distance).toBe(15)
     expect(route.points).toHaveLength(4)
     expect(global.fetch).not.toHaveBeenCalled()
   })

@@ -5,12 +5,14 @@ import { IDispatch } from '..'
 import { ActionTypes } from './constants'
 import { getSessionRecoveryId } from '../../security/sessionTokens'
 import { setUser } from '../user/actionCreators'
+import { assertSuccessfulMutationResponse } from '../../platform/adapters/backendError'
 
 /** Activation is explicit and completes only after both car and user readback. */
 export const activateVehicle = (car: ICar) => async (dispatch: IDispatch) => {
   const session = getSessionRecoveryId()
   const response = await API.driveCar(car)
-  if (String(response.code) !== '200' && (response.data as any)?.detail !== 'not_modified') throw new Error('Vehicle activation was not confirmed')
+  // An explicit no-op still needs authoritative readback before being accepted.
+  if ((response.data as any)?.detail !== 'not_modified') assertSuccessfulMutationResponse(response)
   const [cars, user] = await Promise.all([API.getUserCars(), API.getAuthorizedUser()])
   if (getSessionRecoveryId() !== session) throw new Error('Session changed')
   const active = cars.find((item: ICar) => String(item.c_id) === String(car.c_id) && String(item.u_d_id) === String(user?.u_id))
@@ -27,9 +29,9 @@ export const createUserCar = (
   ...params: Parameters<typeof API.createUserCar>
 ) => async(dispatch: IDispatch) => {
   const session = getSessionRecoveryId()
-  const response = await API.createUserCar(...params)
+  const response = assertSuccessfulMutationResponse(await API.createUserCar(...params))
   const createdCarId = (response.data as any)?.created_car?.c_id
-  if (String(response.code) !== '200' || !createdCarId) return response
+  if (!createdCarId) throw new Error('Vehicle creation was not confirmed; refresh before retrying')
   let cars: ICar[]
   try { cars = await API.getUserCars() } catch {
     throw new Error('Vehicle creation needs reconciliation; refresh the vehicle list before retrying')
@@ -46,8 +48,7 @@ export const edit = (
   ...params: ParametersExceptFirst<typeof API.editCar>
 ) => mutationThunk(async () => {
   const session = getSessionRecoveryId()
-  const response = await API.editCar(id, ...params)
-  if (String(response.code) !== '200') return response
+  const response = assertSuccessfulMutationResponse(await API.editCar(id, ...params))
   const [cars, user] = await Promise.all([API.getUserCars(), API.getAuthorizedUser()])
   if (getSessionRecoveryId() !== session) throw new Error('Session changed')
   if (!user || !cars.some((item: ICar) => String(item.c_id) === String(id)))

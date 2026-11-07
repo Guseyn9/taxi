@@ -6,11 +6,12 @@
   "paths": {
     "src/API/order.ts": {
       "baselineSha256": "144d2b4cb314db4b469f26ef09023b36bd07f2e64cd63e068b4c30670a2f716b",
-      "currentSha256": "b314a8e582ee0438b9d5245bfbcd0f721263616b60a9324c8840e24373a6ae55",
-      "reason": "Single creation, cents-preserving edits, persisted ETA, server PIN, lifecycle readback and confirmation recovery by existing ID. New option/PIN contract requires backend rollout.",
+      "currentSha256": "53a4e993dc41e6d67f8b9047a6dd1205252a687f1817f42bc7e32a2a49af75d4",
+      "reason": "Single creation, cents-preserving edits, persisted ETA, server PIN, lifecycle readback and confirmation recovery by existing ID. New option/PIN contract requires backend rollout. R14: Reject unconfirmed/error cancellation envelopes at the existing API boundary; no endpoint or payload changes.",
       "evidence": [
-        "src/API/order.transport.test.js",
         "src/API/legacyContract.test.js",
+        "src/API/order.transport.test.js",
+        "src/components/modals/__tests__/cancel-business-errors.test.jsx",
         "src/tools/mutationReadback.test.ts"
       ]
     },
@@ -53,9 +54,10 @@
     },
     "src/state/orders/actionCreators.ts": {
       "baselineSha256": "ba16b3bd48216edcc1b8ef023c4424af68f9b9822210a77948ce7e6bd4c2cffe",
-      "currentSha256": "59e4f71f473f066c78151cb70cd57ef0dd0cbd3187e679e9b1aacd08b964aeef",
-      "reason": "Add read-only ready-order refresh; retain mutation delegation.",
+      "currentSha256": "f98da0ff0f3a9ca6a7bbe60ff95a7f5c4c7d514598873777f7c487aec1cb2f0b",
+      "reason": "Add read-only ready-order refresh; retain mutation delegation. R14: Share strict mutation-envelope validation and refresh detail/active list after failure, without success projection.",
       "evidence": [
+        "src/components/modals/__tests__/cancel-business-errors.test.jsx",
         "src/state/orders/__tests__/refreshOrder.test.js",
         "src/tools/orderWake.test.js"
       ]
@@ -511,8 +513,8 @@
     },
     "src/localization/index.ts": {
       "baselineSha256": "7c149da56433970b312de35c89f2c23593889b1cc8478f3b3bbba229571bc032",
-      "currentSha256": "1953d5a6541671d5a662a40d51d44ce1ce05c2f81e2efd14fca970a61d76bff2",
-      "reason": "Service DB translations still take precedence; add offline fallback copy for pending commands and account changes.",
+      "currentSha256": "e730e9ce851775d19488b84f62dd5975c1afbee41fb74de530c32f32e5fcd90f",
+      "reason": "Service DB translations still take precedence; add offline fallback copy for pending commands and account changes. R14: Localize audited map controls, preserve script-specific fallbacks and keep service text precedence.",
       "evidence": [
         "src/localization/locale.test.js",
         "src/tools/apiMessages.test.js"
@@ -592,8 +594,8 @@
     },
     "src/state/cars/actionCreators.ts": {
       "baselineSha256": "b6d224853f7b779184f1b52b7fb1e8d24e86d9d3c00c46a8af85f076f1dc9a5c",
-      "currentSha256": "fcd0aaeaa032543ebdd2b3bbd41806084f7ef86c008b10ad3c529df1b6e37dc7",
-      "reason": "Reconcile vehicle membership and active-car selection with canonical reads; discard prior-session completions.",
+      "currentSha256": "a8be0394f4df3d815ed5b925f16065ad8b8b680e359e123ada9ce8a795697b2e",
+      "reason": "Reconcile vehicle membership and active-car selection with canonical reads; discard prior-session completions. R14: Reject HTTP-200 business errors before creation/edit/activation success; preserve explicit no-op readback.",
       "evidence": [
         "src/state/cars/lifecycle.test.js"
       ]
@@ -651,11 +653,12 @@
     },
     "src/state/rootReducer.ts": {
       "baselineSha256": "edac5d9837a5487daa2d923af171011a6d8b3cb31f634f58ed72e16c670fae31",
-      "currentSha256": "756d84f54f1b0856354fbb7a861adbe6eaa6e04562ffcb61c6a467dd85c6bc76",
-      "reason": "Reset private Redux domains and restart their saga tasks at identity changes.",
+      "currentSha256": "16bbf388947578722b01341d2c58b7dabd30afa9809bfc5f1eec73143b832338",
+      "reason": "Reset private Redux domains and restart their saga tasks at identity changes. R14: Keep only the nonprivate message sequence across domain reset; messages/queue are cleared.",
       "evidence": [
-        "src/state/sessionSupervisor.test.js",
-        "src/security/sessionIsolation.test.js"
+        "src/security/sessionIsolation.test.js",
+        "src/state/modals/messageQueue.test.ts",
+        "src/state/sessionSupervisor.test.js"
       ]
     },
     "src/state/rootSaga.ts": {
@@ -758,18 +761,102 @@
     },
     "src/platform/adapters/LegacyRouteProvider.ts": {
       "baselineSha256": "ba91acbc7ebb18e7cd47ae671fe2b33acdc12c4e06deeeb83ca2a2914803d125",
-      "currentSha256": "df99b3bfc8f7dcbb7157af02fcf572d07a95a15ac444fabdd50f51a04dd70694",
-      "reason": "Apply one finite deadline to the existing OSRM read including its JSON body; preserve provider fallback order.",
+      "currentSha256": "3207fdc49d23f3421dfcdb577fe7965972fc7fff190a35ef66bf1f6ba1d4ea5e",
+      "reason": "Apply one finite deadline to the existing OSRM read including its JSON body; preserve provider fallback order. R14: Use shared deadline, coordinate validation and local snap/coverage guards for both roles.",
       "evidence": [
-        "src/platform/adapters/__tests__/LegacyRouteProvider.test.js"
+        "src/platform/adapters/__tests__/LegacyRouteProvider.test.js",
+        "src/tools/roadRoute.test.ts"
       ]
     },
     "src/platform/adapters/__tests__/LegacyRouteProvider.test.js": {
       "baselineSha256": "438005c1e0131d2dd46fd6d9e6dc5b884644cf9b45e44cf776ac8035eb91f5ee",
-      "currentSha256": "feb0a8043ade999a88185fbcee1b1d0216ca804b06d6b09d1b1684906c35ed50",
-      "reason": "Preserve prior provider controls and add regressions for stalled connection/body deadlines.",
+      "currentSha256": "79f02d46d75a98379b2e7ace81ac661ce29a25947c9f7f00c3ede268ccd939c2",
+      "reason": "Preserve prior provider controls and add regressions for stalled connection/body deadlines. R14: Use physically consistent graph fixture geometry; retain provider precedence and timeout regressions.",
       "evidence": [
-        "src/platform/adapters/__tests__/LegacyRouteProvider.test.js"
+        "src/platform/adapters/__tests__/LegacyRouteProvider.test.js",
+        "src/tools/roadRoute.test.ts"
+      ]
+    },
+    "src/API/way.ts": {
+      "baselineSha256": "cdd73c391be4227defa7177102e15e5f0ba605ac53aaa80b8d51fbc6381b7821",
+      "currentSha256": "1fbada22896291185de34bb6173f4d9c21bb95b4a11aa91f764bae9c6ce240ce",
+      "reason": " R14: Advertise only the actual Agadir extent and reject unrelated local area IDs; other regions use existing route providers.",
+      "evidence": [
+        "src/API/way.coverage.test.js",
+        "src/tools/roadRoute.test.ts"
+      ]
+    },
+    "src/state/modals/constants.ts": {
+      "baselineSha256": "50dd17bfec57a5b20e7b40c22299eb111bc6ee73c3b99c1e719167b4c687d738",
+      "currentSha256": "8dd98991b32a5ea05d00622e5c4f58ab6cd1abe012e7dd7a3a0c167c1b4ffe22",
+      "reason": " R14: Typed message queue and monotonically increasing acknowledgement IDs.",
+      "evidence": [
+        "src/state/modals/messageQueue.test.ts"
+      ]
+    },
+    "src/state/modals/reducer.ts": {
+      "baselineSha256": "f05e98d5373152cdce4e129be094641c09a7b286583a7925117c254064d94971",
+      "currentSha256": "4cdffeffca404a49d4ca9c40c45ee4f12566ebf18e1881376c8940bf2531ee15",
+      "reason": " R14: Queue concurrent notices and prevent stale acknowledgement from closing the next notice; clear on teardown.",
+      "evidence": [
+        "src/state/modals/messageQueue.test.ts"
+      ]
+    },
+    "src/state/modals/selectors.ts": {
+      "baselineSha256": "727176adab867ba264b856d3f43904157353ab634420c6b4ee2156a9bd4f7cdf",
+      "currentSha256": "a118a179943f318185f7af1398132baa367fc9d949abb53a43428ef369d46451",
+      "reason": " R14: Expose acknowledgement ID for the current message dialog.",
+      "evidence": [
+        "src/state/modals/messageQueue.test.ts"
+      ]
+    },
+    "src/platform/adapters/backendError.ts": {
+      "baselineSha256": "e4c6f7c55c8c871efe2349398055f6a623b2997a46213ed7b148785b315d0738",
+      "currentSha256": "32b836b632e7db7b9ace79aac00565e8785187426f9b118903aad343e79d9bb1",
+      "reason": " R14: Add a strict success contract for envelope-returning mutations while preserving read/void gateway semantics.",
+      "evidence": [
+        "src/API/order.transport.test.js",
+        "src/state/cars/lifecycle.test.js"
+      ]
+    },
+    "src/tools/route.ts": {
+      "baselineSha256": "ef1572b167bbbd5f1675b7de25756897171f455565e790415a2ad836e20535e6",
+      "currentSha256": "7badab8448fc2d2008f852268cc2dd926c7ea687bc591c4d343df3b40eacba82",
+      "reason": " R14: Replace duplicate implementation with the same shared road helpers and observed backend adapter.",
+      "evidence": [
+        "src/tools/roadRoute.test.ts"
+      ]
+    },
+    "src/siteConstants.ts": {
+      "baselineSha256": "0261ae90d15859c5815b48eb57a8869c991555d4185356f0221926116b52712e",
+      "currentSha256": "2dfeea35bce1b70ea54a9c2f87cd8114282a02c96239fffc03547de64be647a0",
+      "reason": " R14: Correct per-km fallback to its own declared 2.5 default; preserve tenant overrides and other constants.",
+      "evidence": [
+        "src/siteConstants.pricing.test.ts"
+      ]
+    },
+    "src/tools/roadRoute.ts": {
+      "baselineSha256": null,
+      "currentSha256": "1e40885ca3853187eb964d8ea4ed4f726aaea2087168eb4d8c19529364b9e875",
+      "reason": " R14: One bounded routing implementation with numeric zero support, endpoint snap validation and malformed-route rejection.",
+      "evidence": [
+        "src/tools/roadRoute.test.ts"
+      ]
+    },
+    "src/graph/coverage.ts": {
+      "baselineSha256": null,
+      "currentSha256": "417f2659085cdb82280735620025f5ae7e1e20a20e06c3f4bc6a3b0495d670a4",
+      "reason": " R14: Explicit extent of the bundled local dataset, verified against actual nodes.",
+      "evidence": [
+        "src/API/way.coverage.test.js"
+      ]
+    },
+    "src/tools/alongTheWayPickup.ts": {
+      "baselineSha256": null,
+      "currentSha256": "0ddec570e3fe1294e478b96b1976445aa46e8b323086a9ba69cf2afa07c1d023",
+      "reason": " R14: Require take/arrive success before PIN prompt and confirmed PIN before boarded projection.",
+      "evidence": [
+        "src/tools/alongTheWayPickup.test.ts"
       ]
     }
   },
@@ -850,7 +937,22 @@
     "src/pages/Driver/index.tsx :: reviewed implementation changed": "src/pages/Driver/index.tsx",
     "src/platform/adapters/LegacyRouteProvider.ts": "src/platform/adapters/LegacyRouteProvider.ts",
     "src/API/index.ts :: makeRoutePoints": "src/API/index.ts",
-    "src/platform/adapters/__tests__/LegacyRouteProvider.test.js": "src/platform/adapters/__tests__/LegacyRouteProvider.test.js"
+    "src/platform/adapters/__tests__/LegacyRouteProvider.test.js": "src/platform/adapters/__tests__/LegacyRouteProvider.test.js",
+    "src/API/order.ts": "src/API/order.ts",
+    "src/API/way.ts": "src/API/way.ts",
+    "src/state/modals/constants.ts": "src/state/modals/constants.ts",
+    "src/state/modals/reducer.ts": "src/state/modals/reducer.ts",
+    "src/state/modals/selectors.ts": "src/state/modals/selectors.ts",
+    "src/platform/adapters/backendError.ts": "src/platform/adapters/backendError.ts",
+    "src/tools/route.ts": "src/tools/route.ts",
+    "src/siteConstants.ts": "src/siteConstants.ts",
+    "src/localization/index.ts": "src/localization/index.ts",
+    "src/tools/roadRoute.ts": "src/tools/roadRoute.ts",
+    "src/graph/coverage.ts": "src/graph/coverage.ts",
+    "src/tools/alongTheWayPickup.ts": "src/tools/alongTheWayPickup.ts",
+    "src/siteConstants.ts :: unexpected class-default change": "src/siteConstants.ts",
+    "src/API/way.ts :: getAreasIdsBetweenPoints": "src/API/way.ts",
+    "src/API/order.ts :: _cancelDrive": "src/API/order.ts"
   },
   "lastReviewedRoadCache": "2026-11-04",
   "lastFrontendRemediation": {
