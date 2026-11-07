@@ -858,6 +858,14 @@
       "evidence": [
         "src/tools/alongTheWayPickup.test.ts"
       ]
+    },
+    "src/state/config/sagas.ts": {
+      "baselineSha256": "f57aacffc7c1b62b9e5456c784dc91e4fdc8d2c0b6d26eeb88561155d2591927",
+      "currentSha256": "341373d255d9dd39e952a889984b75956306bbe893a9e928095ac6a15195ac9e",
+      "reason": "Guest language is local only; authenticated language keeps the original editUser endpoint and u_lang payload.",
+      "evidence": [
+        "src/state/config/language.test.js"
+      ]
     }
   },
   "exceptions": {
@@ -952,7 +960,8 @@
     "src/tools/alongTheWayPickup.ts": "src/tools/alongTheWayPickup.ts",
     "src/siteConstants.ts :: unexpected class-default change": "src/siteConstants.ts",
     "src/API/way.ts :: getAreasIdsBetweenPoints": "src/API/way.ts",
-    "src/API/order.ts :: _cancelDrive": "src/API/order.ts"
+    "src/API/order.ts :: _cancelDrive": "src/API/order.ts",
+    "src/state/config/sagas.ts": "src/state/config/sagas.ts"
   },
   "lastReviewedRoadCache": "2026-11-04",
   "lastFrontendRemediation": {

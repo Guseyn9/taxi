@@ -1,4 +1,4 @@
-# Frontend r14: закрытие замечаний CTO/QA
+# Frontend r15: закрытие замечаний CTO/QA
 
 Дата: 7 ноября 2026. Ветка: `fix/frontend-20261107`. Предыдущий frontend: `e46648f` / r13. Отчёт CTO/QA относился к состоянию до этих исправлений. PHP, БД и общий сервер не менялись.
 
@@ -21,7 +21,8 @@
 
 ## Сборка и проверяемость
 
-- Штатные Jest: 1199 tests, 219 suites; TypeScript, lint, canonical entrypoints и production gruzvill build.
+- При публичной проверке r14 обнаружен лишний профильный запрос при смене языка гостем. В r15 гость сохраняет язык только локально; авторизованному пользователю профильная настройка сохраняется как прежде. Три regression в `src/state/config/language.test.js`.
+- Штатные Jest: 1202 tests, 220 suites; TypeScript, lint, canonical entrypoints и production gruzvill build.
 - Новый fixture `src/qa/remediation-entry.tsx` собирается отдельно с CSP `connect-src 'none'`. Его ответы API заданы локально; он не входит в публичный release build и не создаёт заказов.
 - `pre-build.js` больше не подменяет время каждым запуском. Дата меняется только при явно заданном `SOURCE_DATE_EPOCH`; повторная сборка одного исходника сохраняет JS-хэши.
 - Точная проверка frontend boundary использует manifest с именованными исходниками, hash и regression evidence. Это локальный review разрешённых изменений, не доказательство серверной корректности.
