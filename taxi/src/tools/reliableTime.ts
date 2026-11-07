@@ -1,6 +1,7 @@
 import moment from 'moment'
 
-const remainingLifetimeTargetByOrder = new Map<string, number>()
+interface RemainingTarget { target: number, raw: number, waiting: unknown }
+const remainingLifetimeTargetByOrder = new Map<string, RemainingTarget>()
 const REMAINING_TARGET_MAX_ITEMS = 200
 const DATE_FORMATS = [
   moment.ISO_8601,
@@ -15,7 +16,7 @@ function cleanupRemainingLifetimeTargets(now: number) {
   if (remainingLifetimeTargetByOrder.size <= REMAINING_TARGET_MAX_ITEMS)
     return
 
-  remainingLifetimeTargetByOrder.forEach((target, key) => {
+  remainingLifetimeTargetByOrder.forEach(({ target }, key) => {
     if (target < now - 60000)
       remainingLifetimeTargetByOrder.delete(key)
   })
@@ -83,7 +84,8 @@ export function getStableRemainingLifetimeSeconds(order: any, now: number = Date
   if (!order || typeof order.remaining_lifetime_seconds !== 'number')
     return null
 
-  const rawRemaining = Math.max(0, Number(order.remaining_lifetime_seconds || 0))
+  if (!Number.isFinite(order.remaining_lifetime_seconds)) return null
+  const rawRemaining = Math.max(0, order.remaining_lifetime_seconds)
   const key = String(order.b_id || order.id || `${order.b_created || ''}_${order.b_start_datetime || ''}`)
 
   if (!key)
@@ -92,21 +94,10 @@ export function getStableRemainingLifetimeSeconds(order: any, now: number = Date
   const receivedTarget = now + rawRemaining * 1000
   const cachedTarget = remainingLifetimeTargetByOrder.get(key)
 
-  if (!cachedTarget || rawRemaining <= 0) {
-    remainingLifetimeTargetByOrder.set(key, receivedTarget)
-    return rawRemaining
-  }
-
-  // Если сервер прислал меньшее оставшееся время, подтягиваемся к серверу.
-  // Если сервер/эмулятор повторяет одно и то же значение при polling, не
-  // сбрасываем цель, иначе Android Chrome визуально «замораживает» таймер.
-  if (receivedTarget < cachedTarget - 5000)
-    remainingLifetimeTargetByOrder.set(key, receivedTarget)
-
-  // Если время явно продлили или это новый цикл жизни заказа, принимаем новое.
-  if (receivedTarget > cachedTarget + 60000)
-    remainingLifetimeTargetByOrder.set(key, receivedTarget)
-
-  const target = remainingLifetimeTargetByOrder.get(key) || receivedTarget
+  // Repeated renders/static polling must not restart the countdown. Every changed
+  // server value or waiting interval is accepted, including small extensions after zero.
+  if (!cachedTarget || cachedTarget.raw !== rawRemaining || cachedTarget.waiting !== order.b_max_waiting)
+    remainingLifetimeTargetByOrder.set(key, { target: receivedTarget, raw: rawRemaining, waiting: order.b_max_waiting })
+  const target = remainingLifetimeTargetByOrder.get(key)!.target
   return Math.max(0, (target - now) / 1000)
 }

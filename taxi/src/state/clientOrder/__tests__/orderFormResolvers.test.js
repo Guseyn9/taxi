@@ -1,3 +1,5 @@
+import { resolveButtonLayout, resolveOrderModes, resolveTripType } from '../orderFormResolvers'
+
 jest.mock('../../../siteConstants', () => ({
   __esModule: true,
   default: {
@@ -23,8 +25,6 @@ jest.mock('../util', () => ({
   maxAvailableSeats: () => 4,
   polygonsLocationClasses: () => [{ id: 'city', kind: 0 }],
 }))
-
-import { resolveButtonLayout, resolveOrderModes, resolveTripType } from '../orderFormResolvers'
 
 describe('Order form resolver chain', () => {
   it('resolves trip type from location class kind', () => {

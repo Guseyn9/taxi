@@ -1,0 +1,250 @@
+{
+  "release": "taxi-morocco-20261106-r12",
+  "preparedAt": "2026-11-06T21:05:28.133004+00:00",
+  "auditCommit": "00f2192b65be5482e457f09fa5d5c64447666feb",
+  "auditSourceBaseline": "8cd07c90cc8c9015b8ee230c3b6821aaf2e4cddf",
+  "localBaseCommit": "580a3bd8ddc5bd8b527b86ee63388a4c913917f5",
+  "localChanges": true,
+  "productionServiceAccepted": false,
+  "backendWritesPerformed": false,
+  "unit": {
+    "passed": 1066,
+    "suites": 192
+  },
+  "typecheckExitCode": 0,
+  "tenant": {
+    "checkedAt": "2026-11-06T21:01:07.509748+00:00",
+    "version": "1793963011.472787_49829e739bcba3565abcb01856369899_a200c71e_1719851",
+    "apiCode": "200",
+    "corsAllowOrigin": "*",
+    "defaultCountry": "ma",
+    "defaultCurrency": "GHS",
+    "languages": [
+      {
+        "id": "1",
+        "iso": "ru",
+        "native": "Русский",
+        "tr_code": "ru"
+      },
+      {
+        "id": "2",
+        "iso": "en",
+        "native": "English",
+        "tr_code": "en"
+      },
+      {
+        "id": "3",
+        "iso": "es",
+        "native": "Español",
+        "tr_code": "ar"
+      },
+      {
+        "id": "4",
+        "iso": "fr",
+        "native": "Français",
+        "tr_code": "fr"
+      },
+      {
+        "id": "24",
+        "iso": "ary-Arab",
+        "native": "الدارجة المغربية",
+        "tr_code": ""
+      },
+      {
+        "id": "25",
+        "iso": "ary-Latn",
+        "native": "Darija Maġribiya",
+        "tr_code": ""
+      },
+      {
+        "id": "26",
+        "iso": "zgh-Tfng",
+        "native": "ⵜⴰⵎⴰⵣⵉⵖⵜ",
+        "tr_code": ""
+      },
+      {
+        "id": "27",
+        "iso": "zgh-Latn",
+        "native": "Tamazight",
+        "tr_code": ""
+      },
+      {
+        "id": "28",
+        "iso": "ar-Arab",
+        "native": "العربية",
+        "tr_code": ""
+      }
+    ],
+    "translationRows": 680,
+    "translatedRowsByLanguage": {
+      "ru": 677,
+      "en": 646,
+      "es": 634,
+      "fr": 633,
+      "ary-Arab": 632,
+      "ary-Latn": 632,
+      "zgh-Tfng": 632,
+      "zgh-Latn": 632,
+      "ar-Arab": 632
+    },
+    "carClasses": [
+      {
+        "id": "50",
+        "en": "PETTI",
+        "seats": "3",
+        "bookingLocationClasses": [
+          "1"
+        ]
+      },
+      {
+        "id": "51",
+        "en": "GRAND",
+        "seats": "6",
+        "bookingLocationClasses": [
+          "1",
+          "2",
+          "3"
+        ]
+      }
+    ],
+    "polygonCount": 15,
+    "tariffCurrencies": [
+      "USD"
+    ],
+    "backendWritesPerformed": false
+  },
+  "reconciliation": [
+    {
+      "stages": "01–10",
+      "topic": "Инвентаризация приложения и 68 пунктов QA",
+      "currentEvidence": "Карта исходной ветки; текущие локальные исправления в аудит не входили.",
+      "remaining": "Сверка по артефакту r12; это не 50 успешных тестов."
+    },
+    {
+      "stages": "11–20",
+      "topic": "Passenger, кандидаты, история, рейтинг, Chat/SOS",
+      "currentEvidence": "Есть локальные исправления контрактов, рейтинга и recovery. История пассажира и доставка сообщений здесь заново не приняты.",
+      "remaining": "Реальный цикл Passenger↔Driver, отмены, рейтинг с чтением результата; отдельно Chat и назначение SOS."
+    },
+    {
+      "stages": "21–23, 39",
+      "topic": "Сессии и изоляция аккаунтов",
+      "currentEvidence": "Токены в sessionStorage, revocation между вкладками, защита от завершения старого logout после нового login; есть regression-тесты. Полная изоляция доменных данных не доказана.",
+      "remaining": "Два аккаунта в одном браузере, вкладки, смена tenant, reload/reconnect; отсутствие чужих заказов/телефонов."
+    },
+    {
+      "stages": "24–25, 34–38",
+      "topic": "Команды, таймауты, ошибки, polling",
+      "currentEvidence": "Локально есть bounded HTTP/FSM, readback и recovery. FSM выключен; принятие команды не считается её завершением.",
+      "remaining": "Оба варианта Legacy/FSM на выбранном backend; идемпотентность, одновременная отмена/завершение, отрицательные ответы."
+    },
+    {
+      "stages": "26, 29–30",
+      "topic": "Секреты, окружение, публикация",
+      "currentEvidence": "Общий FSM-токен запрещён сборкой; OAuth выключен до поддержки state. Публикуется только собранная статика. Ротация ранее раскрытых данных остаётся задачей владельца.",
+      "remaining": "Инвентаризация и ротация старых секретов, проверка действующих прав и артефактов CI; безопасный заголовок не доказывает права backend."
+    },
+    {
+      "stages": "27",
+      "topic": "Загрузка файлов и ACL",
+      "currentEvidence": "Этот tenant-switch не изменяет uploads. Полнота ограничений и приватность файлов не приняты.",
+      "remaining": "Лимит размера/типа, неподходящие MIME, чужое чтение и удаление файла; серверная проверка содержимого."
+    },
+    {
+      "stages": "28",
+      "topic": "Зависимости",
+      "currentEvidence": "В локальной версии уже менялись lockfile и toolchain; старый список advisory нельзя автоматически переносить или считать закрытым.",
+      "remaining": "Свежий dependency audit с анализом достижимости и привязкой к точному lockfile."
+    },
+    {
+      "stages": "31, 43",
+      "topic": "Доказательства тестирования",
+      "currentEvidence": "Новый полный Jest: 1066/1066, 192 suite; TypeScript: exit 0. Браузерная проверка этого переключения ограничена гостевым интерфейсом.",
+      "remaining": "Стабильные совместные сценарии без retry на текущем backend; физические телефоны."
+    },
+    {
+      "stages": "32",
+      "topic": "Посадочный PIN и Offer",
+      "currentEvidence": "Фронт не подменяет серверный PIN номером машины. Неправильный/повторный/чужой PIN на общем gruzvill здесь не проверен.",
+      "remaining": "P0: backend отвергает неправильный, повторный и чужой PIN; Offer имеет единый признак. До этого пилот не принят."
+    },
+    {
+      "stages": "33",
+      "topic": "Цена и валюта",
+      "currentEvidence": "Парсер сохраняет копейки; локальные тесты расчёта есть. Реальный gruzvill сейчас default_currency=GHS, currency_of_the_service=GHS, service_currency_sign=$; список account_currency_list=RUB.",
+      "remaining": "P0: согласовать MAD, единицы и округление, утверждённые тарифы PETIT/GRAND, серверный quote и финальный расчёт. Не подменять GHS на MAD только в UI."
+    },
+    {
+      "stages": "40",
+      "topic": "Автомобиль и вместимость",
+      "currentEvidence": "Справочник gruzvill: PETIT id=50, 3 места; GRAND id=51, 6 мест. Рисунок карты и карточки используют общий выбор класса.",
+      "remaining": "Несколько автомобилей у водителя, primary/driven, фактические места и недопуск неподходящего класса на backend."
+    },
+    {
+      "stages": "41–42",
+      "topic": "GPS и dispatch",
+      "currentEvidence": "Есть слияние более свежих координат по l_datetime. Это не доказывает полноценную публикацию GPS обычным водителем и истечение устаревших координат.",
+      "remaining": "P0 для пилота: реальный телефон, отказ/возврат геолокации, фон/сеть, timestamp/accuracy, TTL и доступ к местоположению."
+    },
+    {
+      "stages": "44",
+      "topic": "eval в тарифной формуле",
+      "currentEvidence": "В текущем src/tools/order.ts используется evaluateArithmetic/displayArithmetic; eval отсутствует. src/security/arithmetic.test.js проверяет вредоносные выражения и пределы.",
+      "remaining": "Локальная регрессия пройдена; для формального закрытия аудита передать конкретный patch/commit и повторить проверку."
+    },
+    {
+      "stages": "45",
+      "topic": "JS-конфиг, HTML, Sandbox",
+      "currentEvidence": "Фиксированный gruzvill и allowlist; query не может выбрать чужой tenant. HTML проходит DOMPurify. Конфиг всё ещё исполняемый доверенный JS — риск полностью не закрыт.",
+      "remaining": "Права публикации словаря на сервере; отдельный совместимый переход к JSON; повторная проверка Sandbox и HTML-путей."
+    },
+    {
+      "stages": "46",
+      "topic": "Ссылка поддержки",
+      "currentEvidence": "Уже есть allowlist схем и noopener,noreferrer в MessageModal. Это частичное исправление относительно аудируемой ветки.",
+      "remaining": "Типизированный URL/email и тесты невалидных/нежелательных адресов. Не считать закрытым по наличию regexp."
+    },
+    {
+      "stages": "47",
+      "topic": "Повторное декодирование URL",
+      "currentEvidence": "URLSearchParams декодирует один раз; callback очищается до bootstrap; consumeOAuthHash защищён try/catch. authCallback.test.ts проверяет %, %25 и другие случаи.",
+      "remaining": "Локальные тесты прошли. Включение OAuth требует отдельно принятого backend state, expiry и replay-контракта."
+    },
+    {
+      "stages": "48",
+      "topic": "URL-флаг внешнего эмулятора",
+      "currentEvidence": "Подтверждено: isExternalEmulatorEnabled читает driverEmulator/extEmulator и localStorage. Это UI-gate, не серверное разрешение. Встроенные серверные аккаунты требуют loopback stand.",
+      "remaining": "Открыто: исключить production override либо связать с проверенным серверным capability; отрицательные проверки backend обязательны."
+    },
+    {
+      "stages": "49",
+      "topic": "Секреты внутри строк журналов",
+      "currentEvidence": "Подтверждено: frontendLog сохраняет raw href/search; санитайзер скрывает ключи token/password, но не все секреты внутри строк. OAuth callback заранее очищается, однако этого недостаточно для всех URL.",
+      "remaining": "Открыто: общий редактор URL/строк, sentinel-тесты всех экспортов, очистка старых журналов по согласованной политике."
+    },
+    {
+      "stages": "50",
+      "topic": "Полнота документации",
+      "currentEvidence": "50 документов и матрица подготовлены автором аудита; приложение в audit-ветке не исправлялось.",
+      "remaining": "Это завершение документационной сверки, а не допуск в прод."
+    }
+  ],
+  "buildExitCode": 0,
+  "boundaryPassed": true,
+  "browser": {
+    "dictionary": "data_gruzvill.js",
+    "queryChildrenCannotOverrideFixedTenant": true,
+    "languagesVisible": 9,
+    "checkedLocaleDirection": {
+      "ary-Arab": "rtl",
+      "ary-Latn": "ltr",
+      "es": "ltr"
+    },
+    "carClassesVisible": [
+      "PETIT",
+      "GRAND"
+    ],
+    "mixedLanguageFallbackObserved": true,
+    "backendWritesPerformed": false
+  }
+}

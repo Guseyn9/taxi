@@ -1,0 +1,88 @@
+{
+  "release": "taxi-morocco-20261107-r13",
+  "preparedAt": "2026-11-07",
+  "sourceBaseCommit": "580a3bd8ddc5bd8b527b86ee63388a4c913917f5",
+  "sourceIncludesLocalChanges": true,
+  "tests": 1170,
+  "suites": 212,
+  "browserScenarios": 21,
+  "browserEvidence": "Guest gruzvill UI and isolated browser fixtures; authenticated live rides not accepted",
+  "backendTarget": "https://ibronevik.itest24.com/taxi_dev2/c/gruzvill/api/v1",
+  "dictionaryTarget": "https://ibronevik.itest24.com/taxi_dev2/cache/data_gruzvill.js",
+  "backendPatchesDeployedToSharedDev": false,
+  "backendCandidate": "r5",
+  "fsmEnabled": false,
+  "oauthEnabled": false,
+  "report": "/review/release-20261104/index.html",
+  "productionServiceAccepted": false,
+  "uiCorrections": {
+    "voiceRemoved": true,
+    "tripScopeVisible": true,
+    "transparentCrosshair": true,
+    "russianFilterRemoved": true,
+    "previousNineLanguagesRestored": true,
+    "carClassArtworkConsistent": true,
+    "carArtworkRegression": "Business/Бизнес/Comfort and Grand use the same artwork rule in the selector and map demo; switching preserves route progress",
+    "languageDirection": "Script-aware Arabic/Darija RTL; Spanish, Latin Darija and Tamazight LTR"
+  },
+  "correctionsReport": "/review/corrections-20261104.html",
+  "zoneEditor": {
+    "draggableVertices": true,
+    "insertDeleteVertices": true,
+    "draggableCircleCenter": true,
+    "radiusSlider": true,
+    "browserFixture": "/qa/zones/",
+    "sharedBackendAcceptance": false,
+    "report": "/review/zones-20261105.html",
+    "fullscreen": true,
+    "basemap": "Shared Drive Morocco MapLibre style",
+    "qaAudit": "/review/zones-cto-qa-20261105/index.html",
+    "qaFixes": [
+      "deployment map-source policy",
+      "preserve malformed coordinate text",
+      "reject whitespace circle coordinates",
+      "source-error fallback and retry"
+    ]
+  },
+  "tenantMigration": {
+    "from": "children",
+    "to": "gruzvill",
+    "dictionaryVersion": "1793963011.472787_49829e739bcba3565abcb01856369899_a200c71e_1719851",
+    "report": "/review/gruzvill-20261106/",
+    "backendWritesPerformed": false,
+    "productionBlockers": [
+      "Tenant default currency GHS; Morocco MAD quote and settlement unaccepted",
+      "Backend patch deployment and boarding-code authority unaccepted",
+      "Physical device and cross-role integration acceptance outstanding"
+    ]
+  },
+  "valentinAudit": {
+    "commit": "00f2192b65be5482e457f09fa5d5c64447666feb",
+    "sourceBaseline": "8cd07c90cc8c9015b8ee230c3b6821aaf2e4cddf",
+    "reviewedStages": 50,
+    "documentationCompleteOnly": true,
+    "currentLocalRemediationReconciled": true
+  },
+  "frontendRemediation": {
+    "date": "2026-11-07",
+    "scope": "frontend only",
+    "sourceBranch": "fix/frontend-20261107",
+    "backendAccess": false,
+    "sharedBackendWritesPerformed": false,
+    "changes": [
+      "validated JSON tenant bootstrap",
+      "bounded image uploads and import/HTML boundaries",
+      "isolated emulator capability",
+      "session/account isolation",
+      "credential redaction at every encoding layer",
+      "shared fresh GPS map position",
+      "passenger archive read surface",
+      "finite external routing deadline and no built-in provider credential",
+      "optional map read failure recovery",
+      "dependency updates and local deepmerge fix",
+      "reproducible gruzvill build"
+    ],
+    "dependencyAudit": "0 known vulnerabilities at preparation; see validation report",
+    "productionServiceAccepted": false
+  }
+}

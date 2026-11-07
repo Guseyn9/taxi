@@ -1,8 +1,10 @@
 import type { ITokens } from '../types/types';
 const KEY = 'state.user.tokens';
 const EPOCH = 'taxi.auth.revocation', SESSION_EPOCH = 'taxi.auth.session-epoch';
+const RECOVERY_SESSION = 'taxi.auth.recovery-session';
 let memoryEpoch = '0';
 let memory: ITokens | null = null;
+let recoverySession: string | null = null;
 function storage(kind: 'localStorage' | 'sessionStorage'): Storage | null {
     try {
         return window[kind];
@@ -32,8 +34,9 @@ function currentEpoch() { try {
 catch {
     return '0';
 } }
-function forget() { memory = null; remove(storage('sessionStorage')); remove(storage('localStorage')); try {
+function forget() { memory = null; recoverySession = null; remove(storage('sessionStorage')); remove(storage('localStorage')); try {
     storage('sessionStorage')?.removeItem(SESSION_EPOCH);
+    storage('sessionStorage')?.removeItem(RECOVERY_SESSION);
 }
 catch { /* Unavailable storage. */ } }
 export function subscribeSessionRevocation(listener: () => void): () => void {
@@ -46,15 +49,37 @@ export function saveSessionTokens(tokens: ITokens): void {
     const safe = decode(JSON.stringify(tokens));
     if (!safe)
         throw new Error('Invalid session credentials');
+    let previous = memory;
+    try { previous = previous || decode(storage('sessionStorage')?.getItem(KEY) || null); } catch { /* Memory-only session. */ }
+    const changed = previous?.token !== safe.token || previous?.u_hash !== safe.u_hash;
+    if (changed) recoverySession = null;
+    try {
+        if (!changed) recoverySession = recoverySession || storage('sessionStorage')?.getItem(RECOVERY_SESSION) || null;
+    } catch { /* Memory-only session. */ }
+    // Non-secret session generation, never a credential or an authorization check.
+    if (!recoverySession) recoverySession = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}-${Math.random().toString(36).slice(2)}`;
     memory = safe;
     memoryEpoch = currentEpoch();
     try {
         const session = storage('sessionStorage');
         session?.setItem(KEY, JSON.stringify(safe));
         session?.setItem(SESSION_EPOCH, memoryEpoch);
+        session?.setItem(RECOVERY_SESSION, recoverySession);
     }
-    catch { /* Keep the current page signed in. */ }
+    catch {
+        // A partial write must not restore the previous account on the next read.
+        remove(storage('sessionStorage'));
+        try { storage('sessionStorage')?.removeItem(RECOVERY_SESSION); } catch { /* Memory-only session. */ }
+    }
     remove(storage('localStorage'));
+}
+/** Bind pending UI work to this exact login without persisting a token with it. */
+export function getSessionRecoveryId(): string | null {
+    if (memory) {
+        if (memoryEpoch !== currentEpoch()) { forget(); return null; }
+        return recoverySession;
+    }
+    return loadSessionTokens() ? recoverySession : null;
 }
 export function loadSessionTokens(): ITokens | null {
     const session = storage('sessionStorage'), legacy = storage('localStorage');
@@ -69,11 +94,11 @@ export function loadSessionTokens(): ITokens | null {
         savedEpoch = session?.getItem(SESSION_EPOCH) || '0';
     }
     catch { /* Fall back to in-memory epoch. */ }
-    if ((raw && savedEpoch !== currentEpoch()) || (memory && memoryEpoch !== currentEpoch())) {
+    if ((memory && memoryEpoch !== currentEpoch()) || (!memory && raw && savedEpoch !== currentEpoch())) {
         forget();
         return null;
     }
-    const tokens = decode(raw) || memory || decode(old);
+    const tokens = memory || decode(raw) || decode(old);
     if (tokens)
         saveSessionTokens(tokens);
     else {
@@ -82,8 +107,9 @@ export function loadSessionTokens(): ITokens | null {
     }
     return tokens;
 }
-export function clearSessionTokens(): void {
+export function clearSessionTokens(broadcast = true): void {
     forget();
+    if (!broadcast) return;
     // Non-secret generation invalidates opener/duplicated tabs, including after reload.
     try {
         storage('localStorage')?.setItem(EPOCH, `${Date.now()}-${Math.random()}`);

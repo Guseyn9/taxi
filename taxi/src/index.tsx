@@ -1,4 +1,5 @@
 import './preBootstrap'
+import { startRuntimeHealth } from './diagnostics/runtimeHealth'
 import React from 'react'
 import { createRoot } from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
@@ -38,6 +39,9 @@ import './design/drive-v2/palette-finish.css'
 import './design/drive-v2/review-actions.css'
 import './design/drive-v2/review-panel.css'
 
+import './design/trip3d/trip3d.css'
+
+startRuntimeHealth()
 createRoot(document.getElementById('root') as HTMLElement).render(
   <React.StrictMode>
     <BrowserRouter>
@@ -53,5 +57,3 @@ createRoot(document.getElementById('root') as HTMLElement).render(
 )
 
 serviceWorker.unregister()
-
-import './design/trip3d/trip3d.css'

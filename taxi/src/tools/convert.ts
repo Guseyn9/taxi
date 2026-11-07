@@ -3,6 +3,7 @@ import {
   IOrder, IDriver, ICar, IUser, ITrip,
 } from '../types/types'
 import { parseMomentDate } from './reliableTime'
+import { parseApiBoolean } from './boolean'
 
 const dateFormat = 'YYYY-MM-DD HH:mm:ssZ'
 
@@ -280,7 +281,7 @@ const convertTypes = <T extends object, R>(
     }
     else if (toDateKeys.includes(key)) convertedObject[key] = parseMomentDate(value)
     else if (toStringDateKeys.includes(key)) convertedObject[key] = value.format(dateFormat)
-    else if (toBooleanKeys.includes(key)) convertedObject[key] = Boolean(parseInt(value))
+    else if (toBooleanKeys.includes(key)) convertedObject[key] = parseApiBoolean(value)
     else if (toIntBooleanKeys.includes(key)) convertedObject[key] = Number(value)
     else if (toJSONKeys.includes(key)) {
       if (typeof value !== 'string') {

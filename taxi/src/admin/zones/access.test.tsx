@@ -1,5 +1,7 @@
 import React,{act} from 'react'
 import {createRoot,Root} from 'react-dom/client'
+import {ZoneAdminScreen} from './index'
+import {readZoneCatalog,saveZone} from './gateway'
 jest.mock('react-redux',()=>({connect:()=> (Component:any)=>Component}))
 jest.mock('../../state/user',()=>({userSelectors:{user:()=>null}}))
 jest.mock('../../state/config',()=>({configSelectors:{language:()=>({iso:'ru'})}}))
@@ -7,8 +9,6 @@ jest.mock('../../state/modals',()=>({modalsActionCreators:{setLoginModal:()=>{}}
 jest.mock('../../components/Layout',()=>({__esModule:true,default:({children}:any)=><div>{children}</div>}))
 jest.mock('./gateway',()=>({readZoneCatalog:jest.fn(),saveZone:jest.fn()}))
 jest.mock('./ZoneEditor',()=>({__esModule:true,default:({onSave,blocked,busy}:any)=><button type="button" disabled={blocked||busy} onClick={()=>onSave({id:'79',var:'agadir',json:{lat:30,lng:-9,radius:200}},'circle')}>test save</button>}))
-import {ZoneAdminScreen} from './index'
-import {readZoneCatalog,saveZone} from './gateway'
 let host:HTMLDivElement,root:Root
 const admin={u_id:'admin-test',u_role:3} as any
 const read=readZoneCatalog as any,save=saveZone as any

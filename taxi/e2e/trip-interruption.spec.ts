@@ -1,3 +1,4 @@
+import { newAuthenticatedContext } from './fixtures/tabSession'
 /**
  * TEST-E2E-011 — водитель прерывает поездку до точки назначения.
  *
@@ -25,6 +26,7 @@ import {
   DRIVER_STORAGE,
   PICKUP,
   clickPrimaryAction,
+  departAndArrive,
   driverMapAction,
   expectDriverMapState,
   openOrderCard,
@@ -60,7 +62,7 @@ async function expectBackendState(orderId: string, state: number, message: strin
 }
 
 async function openSession(browser: import('@playwright/test').Browser, storageState: string) {
-  const context = await browser.newContext({
+  const context = await newAuthenticatedContext(browser, {
     ...devices['Desktop Chrome'],
     storageState,
     baseURL: appUrl(),
@@ -141,10 +143,10 @@ test('прерывание до точки назначения: Started → Can
   await take.click()
   await expectBackendState(orderId, DRIVER_STATE.Performer, 'водитель назначен исполнителем')
 
-  await driverPage.goto('/driver-order?tab=map&driverEmulator=1')
+  await driverPage.goto('/driver-order?tab=map')
   await expectAppBooted(driverPage)
   await expectDriverMapState(driverPage, orderId, DRIVER_STATE.Performer, 'карта показывает назначенный заказ')
-  await clickPrimaryAction(driverPage)
+  await departAndArrive(driverPage)
   await expectBackendState(orderId, DRIVER_STATE.Arrived, 'водитель выехал')
   await expectDriverMapState(driverPage, orderId, DRIVER_STATE.Arrived, 'карта показывает Arrived')
   await clickPrimaryAction(driverPage)

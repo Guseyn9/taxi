@@ -1,3 +1,4 @@
+import { validateUploadBatch } from '../../security/fileUpload'
 import React, { useCallback, useState, useEffect, useMemo } from 'react'
 import { connect, ConnectedProps } from 'react-redux'
 import { objectFromEntries } from '../../tools/compat'
@@ -295,6 +296,17 @@ function ProfileModalContent({
   }, [errors])
 
   async function handleSubmitForm(formValues: TFormValues) {
+    setIsSubmittingForm(true)
+    try {
+      await submitProfile(formValues)
+    } catch (error: any) {
+      setMessageModal({ isOpen: true, status: EStatuses.Fail,
+        message: getApiErrorMessage({ message: error?.message || 'Profile save was not confirmed; refresh before retrying' }),
+      })
+    } finally { setIsSubmittingForm(false) }
+  }
+
+  async function submitProfile(formValues: TFormValues) {
     if (isDeepEqual(formValues, defaultValues)) return
 
     const {
@@ -415,7 +427,6 @@ function ProfileModalContent({
         setIsSubmittingForm(false)
         return
       }
-      getUserCars()
     }
 
     const imagesKeys = ['passport_photo', 'driver_license_photo']
@@ -423,6 +434,7 @@ function ProfileModalContent({
     const imagesMap: Record<string, any> = {}
 
     try {
+      validateUploadBatch(images.flatMap((list: [any, File][]) => list.filter(item => !item[0]).map(item => item[1])))
       await Promise.all(images.map((imageList: [any, File][], i) => {
         const key: string = imagesKeys[i]
         if (!imagesMap[key]) imagesMap[key] = []
@@ -552,6 +564,7 @@ function ProfileModalContent({
       >
         <fieldset>
           <legend>{t(TRANSLATION.PROFILE)}</legend>
+          {car && <p className="profile-modal__car-target">{t('Editing vehicle')}: {car.registration_plate || car.c_id}. {t('Select the active vehicle on the driver screen')}.</p>}
           <div className="avatar">
             {isValuesLoaded ?
               (
@@ -578,7 +591,7 @@ function ProfileModalContent({
                   <input
                     onChange={onChangeAvatar}
                     type="file"
-                    accept="image/*"
+                    accept="image/png,image/jpeg"
                     aria-label={photoLabel}
                     className="avatar_input"
                   />

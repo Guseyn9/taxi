@@ -1,6 +1,8 @@
+import '../API/httpPolicy'
 import { userSelectors } from '../state/user'
 import { ParametersExceptFirst } from '../types'
 import state from '../state'
+import { assertSessionGeneration, sessionGeneration } from '../security/sessionLifecycle'
 
 export interface IApiMethodArguments {
   token: string,
@@ -19,6 +21,7 @@ export const apiMethod = <T extends (...args: any[]) => any>(
   }: apiMethodOptions = {},
 ) => {
   return (...args: ParametersExceptFirst<T>): ReturnType<T> => {
+    const generation = sessionGeneration()
     if (typeof navigator !== 'undefined' && navigator.onLine === false) return Promise.reject(new Error('Network unavailable. Reconnect and check the current order before trying again.')) as ReturnType<T>
     const formData = new FormData()
     let tokens
@@ -41,7 +44,10 @@ export const apiMethod = <T extends (...args: any[]) => any>(
         formData,
       }, ...args,
     ] as Parameters<T>
-    return method(...parameters)
+    return Promise.resolve(method(...parameters)).then(result => {
+      assertSessionGeneration(generation)
+      return result
+    }) as ReturnType<T>
   }
 }
 

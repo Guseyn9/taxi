@@ -9,6 +9,8 @@ import { select, call, whileWatching } from '../../tools/sagaUtils'
 import { sendPosition } from '../../API/location'
 import { ActionTypes } from './constants'
 import { geoposition as geopositionSelector } from './selectors'
+import { isFreshDevicePosition } from '../../tools/locationFreshness'
+let acquisitionGeneration = 0
 
 export function* saga() {
   yield all([
@@ -81,22 +83,26 @@ function* geolocationSaga() {
   ])
 }
 
-function* getGeopositionSaga() {
+export function* getGeopositionSaga() {
+  const generation = ++acquisitionGeneration
   try {
     const geoposition = yield* call(
       getCurrentPosition,
       HIGH_ACCURACY_GEOLOCATION_OPTIONS,
     )
+    if (generation !== acquisitionGeneration) return
+    if (!isFreshDevicePosition(geoposition)) throw new Error('Location fix is stale or inaccurate')
     yield put({ type: ActionTypes.GET_SUCCESS, payload: geoposition })
   } catch (error) {
+    if (generation !== acquisitionGeneration) return
     yield put({ type: ActionTypes.GET_FAIL, payload: error })
   }
 }
 
-function* sendPositionSaga(latestSent?: GeolocationPosition) {
+export function* sendPositionSaga(latestSent?: GeolocationPosition) {
   const geoposition = yield* select(geopositionSelector)
-  if (!geoposition)
-    return latestSent
+  if (!isFreshDevicePosition(geoposition))
+    return undefined
   try {
     const response = yield* call(sendPosition, geoposition.coords)
     if (response.code !== '200')

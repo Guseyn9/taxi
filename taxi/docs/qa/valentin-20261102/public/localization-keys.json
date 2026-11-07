@@ -1,0 +1,326 @@
+{
+  "auth_ui_country": {
+    "en": "Phone country",
+    "ru": "Страна телефона",
+    "fr": "Pays du téléphone",
+    "ar": "بلد الهاتف"
+  },
+  "auth_ui_unavailable": {
+    "en": "Unavailable",
+    "ru": "Пока недоступно",
+    "fr": "Indisponible",
+    "ar": "غير متاح"
+  },
+  "dialog_ui_showPassword": {
+    "en": "Show password",
+    "ru": "Показать пароль",
+    "fr": "Afficher le mot de passe",
+    "ar": "إظهار كلمة المرور"
+  },
+  "dialog_ui_hidePassword": {
+    "en": "Hide password",
+    "ru": "Скрыть пароль",
+    "fr": "Masquer le mot de passe",
+    "ar": "إخفاء كلمة المرور"
+  },
+  "dialog_ui_send": {
+    "en": "Send message",
+    "ru": "Отправить сообщение",
+    "fr": "Envoyer le message",
+    "ar": "إرسال الرسالة"
+  },
+  "dialog_ui_message": {
+    "en": "Write a message",
+    "ru": "Напишите сообщение",
+    "fr": "Écrivez un message",
+    "ar": "اكتب رسالة"
+  },
+  "dialog_ui_you": {
+    "en": "You",
+    "ru": "Вы",
+    "fr": "Vous",
+    "ar": "أنت"
+  },
+  "dialog_ui_chat": {
+    "en": "Ride chat",
+    "ru": "Чат по поездке",
+    "fr": "Discussion du trajet",
+    "ar": "محادثة الرحلة"
+  },
+  "booking_readiness_pickup": {
+    "en": "Confirm the pickup from suggestions or on the map.",
+    "ru": "Подтвердите место посадки из подсказок или на карте.",
+    "fr": "Confirmez le départ dans les résultats ou sur la carte.",
+    "ar": "أكد نقطة الانطلاق من النتائج أو على الخريطة."
+  },
+  "booking_readiness_destination": {
+    "en": "Confirm the destination from suggestions or on the map.",
+    "ru": "Подтвердите назначение из подсказок или на карте.",
+    "fr": "Confirmez la destination dans les résultats ou sur la carte.",
+    "ar": "أكد الوجهة من النتائج أو على الخريطة."
+  },
+  "booking_readiness_addressLoading": {
+    "en": "Resolving the selected address…",
+    "ru": "Уточняем выбранный адрес…",
+    "fr": "Recherche de l’adresse sélectionnée…",
+    "ar": "جارٍ تحديد العنوان…"
+  },
+  "booking_readiness_zoneError": {
+    "en": "Zone check failed. Retry the address check above.",
+    "ru": "Не удалось проверить зону. Повторите проверку адреса выше.",
+    "fr": "Échec du contrôle de zone. Réessayez ci-dessus.",
+    "ar": "فشل التحقق من المنطقة. أعد المحاولة أعلاه."
+  },
+  "booking_readiness_zonesLoading": {
+    "en": "Checking the route zones…",
+    "ru": "Проверяем зоны маршрута…",
+    "fr": "Vérification des zones du trajet…",
+    "ar": "جارٍ التحقق من مناطق المسار…"
+  },
+  "booking_readiness_noClass": {
+    "en": "No available vehicle class for this route.",
+    "ru": "Для маршрута нет доступного класса машины.",
+    "fr": "Aucune catégorie disponible pour ce trajet.",
+    "ar": "لا توجد فئة متاحة لهذا المسار."
+  },
+  "booking_readiness_phone": {
+    "en": "Add a valid phone number in trip options.",
+    "ru": "Укажите корректный телефон в параметрах поездки.",
+    "fr": "Ajoutez un numéro valide dans les options.",
+    "ar": "أدخل رقم هاتف صالحاً في خيارات الرحلة."
+  },
+  "booking_readiness_pending": {
+    "en": "Sending your request…",
+    "ru": "Отправляем заказ…",
+    "fr": "Envoi de la demande…",
+    "ar": "جارٍ إرسال الطلب…"
+  },
+  "booking_readiness_editPhone": {
+    "en": "Add phone",
+    "ru": "Указать телефон",
+    "fr": "Ajouter le téléphone",
+    "ar": "إضافة هاتف"
+  },
+  "booking_readiness_supply": {
+    "en": "Nearby taxis and pickup estimate: unavailable",
+    "ru": "Машины рядом и время подачи: данных пока нет",
+    "fr": "Taxis à proximité et délai : données indisponibles",
+    "ar": "سيارات قريبة ووقت الوصول: لا تتوفر بيانات"
+  },
+  "zone_check_from": {
+    "en": "Pickup zone",
+    "ru": "Зона подачи",
+    "fr": "Zone de départ",
+    "ar": "منطقة الانطلاق"
+  },
+  "zone_check_to": {
+    "en": "Destination zone",
+    "ru": "Зона назначения",
+    "fr": "Zone de destination",
+    "ar": "منطقة الوصول"
+  },
+  "zone_check_checking": {
+    "en": "Checking the zone…",
+    "ru": "Проверяем зону…",
+    "fr": "Vérification de la zone…",
+    "ar": "جارٍ التحقق من المنطقة…"
+  },
+  "zone_check_error": {
+    "en": "Could not check the zone. Check your connection and try again.",
+    "ru": "Не удалось проверить зону. Проверьте связь и повторите.",
+    "fr": "Impossible de vérifier la zone. Vérifiez la connexion et réessayez.",
+    "ar": "تعذر التحقق من المنطقة. تحقق من الاتصال وحاول مجدداً."
+  },
+  "zone_check_retry": {
+    "en": "Retry",
+    "ru": "Повторить",
+    "fr": "Réessayer",
+    "ar": "إعادة المحاولة"
+  },
+  "zone_check_blocked": {
+    "en": "Wait for both address zones to be checked. If a check fails, retry it.",
+    "ru": "Дождитесь проверки зон обоих адресов. Если проверка не удалась, повторите её.",
+    "fr": "Attendez la vérification des deux zones. En cas d’échec, réessayez.",
+    "ar": "انتظر التحقق من منطقتي العنوانين. أعد المحاولة إذا فشل التحقق."
+  },
+  "booking_ui_unavailable": {
+    "en": "This booking method is unavailable for this route or pickup time.",
+    "ru": "Этот способ недоступен для маршрута или времени подачи.",
+    "fr": "Ce mode est indisponible pour ce trajet ou cet horaire.",
+    "ar": "هذا الوضع غير متاح لهذا المسار أو الموعد."
+  },
+  "booking_ui_help": {
+    "en": "About this booking method",
+    "ru": "О способе заказа",
+    "fr": "À propos de ce mode",
+    "ar": "حول طريقة الحجز"
+  },
+  "booking_ui_close": {
+    "en": "Close",
+    "ru": "Закрыть",
+    "fr": "Fermer",
+    "ar": "إغلاق"
+  },
+  "booking_ui_newOrder": {
+    "en": "New ride",
+    "ru": "Новый заказ",
+    "fr": "Nouveau trajet",
+    "ar": "رحلة جديدة"
+  },
+  "booking_ui_mode": {
+    "en": "How would you like to book?",
+    "ru": "Как заказать?",
+    "fr": "Comment réserver ?",
+    "ar": "كيف تريد الحجز؟"
+  },
+  "to_order": {
+    "en": "Find a taxi",
+    "ru": "Найти такси",
+    "fr": "Trouver un taxi",
+    "ar": "ابحث عن تاكسي"
+  },
+  "vote": {
+    "en": "Find drivers",
+    "ru": "Голосовать",
+    "fr": "Trouver des chauffeurs",
+    "ar": "ابحث عن سائقين"
+  },
+  "client_offer_short_button": {
+    "en": "Your fare",
+    "ru": "Своя цена",
+    "fr": "Votre prix",
+    "ar": "أجرتك"
+  },
+  "booking_ui_orderHint": {
+    "en": "Send a standard ride request.",
+    "ru": "Отправим обычный запрос на поездку.",
+    "fr": "Envoyer une demande de trajet standard.",
+    "ar": "إرسال طلب رحلة عادية."
+  },
+  "booking_ui_voteHint": {
+    "en": "I’ll take the first taxi to arrive.",
+    "ru": "Еду на первом прибывшем такси.",
+    "fr": "Je prends le premier taxi qui arrive.",
+    "ar": "سأركب أول تاكسي يصل."
+  },
+  "client_offer_hint": {
+    "en": "Enter your fare, then send your offer.",
+    "ru": "Укажите свою цену и отправьте предложение.",
+    "fr": "Indiquez votre prix, puis envoyez votre offre.",
+    "ar": "أدخل أجرتك ثم أرسل العرض."
+  },
+  "client_offer_order_button": {
+    "en": "Send fare offer",
+    "ru": "Отправить предложение",
+    "fr": "Envoyer votre offre",
+    "ar": "أرسل عرض الأجرة"
+  },
+  "booking_ui_search": {
+    "en": "Your route",
+    "ru": "Ваш маршрут",
+    "fr": "Votre trajet",
+    "ar": "مسارك"
+  },
+  "booking_ui_selectAddress": {
+    "en": "Choose an address from the results or on the map.",
+    "ru": "Выберите адрес из подсказок или на карте.",
+    "fr": "Sélectionnez une adresse ou un point sur la carte.",
+    "ar": "اختر عنواناً من النتائج أو على الخريطة."
+  },
+  "booking_ui_searching": {
+    "en": "Searching addresses…",
+    "ru": "Ищем адреса…",
+    "fr": "Recherche d’adresses…",
+    "ar": "جارٍ البحث عن العناوين…"
+  },
+  "booking_ui_noResults": {
+    "en": "No addresses found. Try a street and city, or choose on the map.",
+    "ru": "Адрес не найден. Укажите улицу и город или выберите точку на карте.",
+    "fr": "Aucune adresse. Indiquez la rue et la ville ou utilisez la carte.",
+    "ar": "لم يتم العثور على عنوان. أدخل الشارع والمدينة أو استخدم الخريطة."
+  },
+  "booking_ui_searchError": {
+    "en": "Address search is unavailable. Try again or choose on the map.",
+    "ru": "Поиск адресов недоступен. Попробуйте ещё раз или выберите точку на карте.",
+    "fr": "Recherche indisponible. Réessayez ou utilisez la carte.",
+    "ar": "البحث غير متاح. حاول مجدداً أو استخدم الخريطة."
+  },
+  "booking_ui_personal": {
+    "en": "Personal",
+    "ru": "Личный",
+    "fr": "Personnel",
+    "ar": "حديث"
+  },
+  "booking_ui_shared": {
+    "en": "Shared",
+    "ru": "Общий",
+    "fr": "Commun",
+    "ar": "محفوظ"
+  },
+  "booking_ui_map": {
+    "en": "Map",
+    "ru": "Карта",
+    "fr": "Carte",
+    "ar": "الخريطة"
+  },
+  "booking_ui_mapPickup": {
+    "en": "Choose pickup",
+    "ru": "Место посадки",
+    "fr": "Lieu de départ",
+    "ar": "نقطة الانطلاق"
+  },
+  "booking_ui_mapDestination": {
+    "en": "Choose destination",
+    "ru": "Место назначения",
+    "fr": "Destination",
+    "ar": "الوجهة"
+  },
+  "booking_ui_moveMap": {
+    "en": "Move the map to the right place, then confirm.",
+    "ru": "Переместите карту к нужному месту и подтвердите.",
+    "fr": "Déplacez la carte, puis confirmez le lieu.",
+    "ar": "حرك الخريطة إلى المكان المطلوب ثم أكد."
+  },
+  "booking_ui_confirmPoint": {
+    "en": "Confirm location",
+    "ru": "Подтвердить точку",
+    "fr": "Confirmer le lieu",
+    "ar": "تأكيد الموقع"
+  },
+  "booking_ui_back": {
+    "en": "Back",
+    "ru": "Назад",
+    "fr": "Retour",
+    "ar": "رجوع"
+  },
+  "booking_ui_addressDetails": {
+    "en": "Full address",
+    "ru": "Полный адрес",
+    "fr": "Adresse complète",
+    "ar": "العنوان الكامل"
+  },
+  "booking_ui_priceNote": {
+    "en": "Fares and currency follow the service settings.",
+    "ru": "Цена и валюта соответствуют настройкам сервиса.",
+    "fr": "Les prix et la devise suivent les paramètres du service.",
+    "ar": "الأسعار والعملة حسب إعدادات الخدمة."
+  },
+  "location_action": {
+    "en": "Location",
+    "ru": "Локация",
+    "fr": "Position",
+    "ar": "الموقع"
+  },
+  "booking_supply_nearby": {
+    "en": "Nearby taxis",
+    "ru": "Машины рядом",
+    "fr": "Taxis proches",
+    "ar": "سيارات قريبة"
+  },
+  "booking_supply_eta": {
+    "en": "Pickup ETA",
+    "ru": "Подача",
+    "fr": "Délai",
+    "ar": "وقت الوصول"
+  }
+}

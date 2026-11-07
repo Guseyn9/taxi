@@ -1,0 +1,687 @@
+{
+  "release": "taxi-morocco-20261104-r6",
+  "date": "2026-11-04",
+  "productionAccepted": false,
+  "requirements": [
+    {
+      "id": "SEC-01",
+      "priority": "P0",
+      "subject": "Секреты и эмулятор",
+      "status": "Локально подготовлено; нужна ротация",
+      "owner": "Администратор",
+      "next": "Проверить старые опубликованные credentials и CI-артефакты, отозвать их; проверить текущий bundle. Удаление литералов не отзывает прежние доступы.",
+      "frontendDone": "Пароли и manager-доступ удалены из публичного browser-кода.",
+      "productionAccepted": false
+    },
+    {
+      "id": "SEC-02",
+      "priority": "P0",
+      "subject": "Общий FSM токен",
+      "status": "Условие варианта FSM",
+      "owner": "Валентин и владелец FSM",
+      "next": "В этой сборке FSM выключен, общий токен отсутствует. Для B принять пользовательскую auth Query/Command/Status/WS; build guard запрещает общий browser token.",
+      "frontendDone": "Общий FSM-токен запрещён проверкой сборки.",
+      "productionAccepted": false
+    },
+    {
+      "id": "SEC-03",
+      "priority": "P1",
+      "subject": "Вычисление через eval",
+      "status": "Фронт подготовлен локально",
+      "owner": "Разработка и QA",
+      "next": "Парсер сохранён; окончательную цену проверяет сервер. В",
+      "frontendDone": "",
+      "productionAccepted": false
+    },
+    {
+      "id": "SEC-04",
+      "priority": "P1",
+      "subject": "Подстановка в RegExp",
+      "status": "Фронт подготовлен локально",
+      "owner": "Разработка и QA",
+      "next": "Сохранить регрессию специальных значений. Д",
+      "frontendDone": "",
+      "productionAccepted": false
+    },
+    {
+      "id": "SEC-05",
+      "priority": "P1",
+      "subject": "Конфигурация через query",
+      "status": "Нужна серверная приёмка",
+      "owner": "Backend и администратор",
+      "next": "Ограничить изменение и публикацию сервисного JS-словаря.",
+      "frontendDone": "Разрешённые tenants ограничены allowlist.",
+      "productionAccepted": false
+    },
+    {
+      "id": "SEC-06",
+      "priority": "P1",
+      "subject": "Двойной MD5",
+      "status": "Хранение пароля исправлено локально",
+      "owner": "Backend и администратор",
+      "next": "Версионированный bcrypt, миграция MD5 и DB-failure checks проверены. Принять на dev; безопасный одноразовый reset остаётся отдельной задачей.",
+      "frontendDone": "",
+      "productionAccepted": false
+    },
+    {
+      "id": "SEC-07",
+      "priority": "P1",
+      "subject": "Секреты в старых trace",
+      "status": "Нужна приёмка выпуска",
+      "owner": "CI owner и администратор",
+      "next": "Проверка прежних артефактов и ротация. Б1, Д",
+      "frontendDone": "",
+      "productionAccepted": false
+    },
+    {
+      "id": "SEC-08",
+      "priority": "P1",
+      "subject": "Авторизация legacy чата",
+      "status": "Нужна серверная приёмка чата",
+      "owner": "Владелец чата",
+      "next": "Это именно пункт про legacy chat authorization. Дополнительные SQL-исправления регистрации и lookup не закрывают SEC-08. Авторизовать sender/recipient/order либо исключить чат из пилота и принять иной канал связи.",
+      "frontendDone": "",
+      "productionAccepted": false
+    },
+    {
+      "id": "SEC-09",
+      "priority": "P1",
+      "subject": "OAuth state",
+      "status": "Выключено до приёмки",
+      "owner": "Владелец OAuth",
+      "next": "Google OAuth в этой сборке выключен. Включать только после server state/TTL/replay и реального callback E2E.",
+      "frontendDone": "Одноразовый OAuth state проверяется; Google-вход отключён до серверной поддержки.",
+      "productionAccepted": false
+    },
+    {
+      "id": "SEC-10",
+      "priority": "P1",
+      "subject": "Hash в callback URL",
+      "status": "Одноразовый обмен локально проверен",
+      "owner": "Backend и администратор",
+      "next": "Перенести и принять одноразовый auth_hash, отзыв и TTL; OAuth URL/callback проверяется отдельно при включении OAuth.",
+      "frontendDone": "Callback очищается из URL до запуска приложения.",
+      "productionAccepted": false
+    },
+    {
+      "id": "SEC-11",
+      "priority": "P1",
+      "subject": "Повторное URL декодирование",
+      "status": "Фронт подготовлен локально",
+      "owner": "Разработка и QA",
+      "next": "Регрессия callback на опубликованной связке. Д",
+      "frontendDone": "",
+      "productionAccepted": false
+    },
+    {
+      "id": "SEC-12",
+      "priority": "P1",
+      "subject": "Внешний script словаря",
+      "status": "Нужна серверная приёмка",
+      "owner": "Backend и администратор",
+      "next": "Обеспечить доверенную публикацию самого JS-словаря; утвердить переход на данные вместо исполняемого JS.",
+      "frontendDone": "Query-параметр не позволяет загрузить произвольный сервис.",
+      "productionAccepted": false
+    },
+    {
+      "id": "SEC-13",
+      "priority": "P1",
+      "subject": "Защитные заголовки",
+      "status": "Нужна приёмка выпуска",
+      "owner": "CI owner и администратор",
+      "next": "CSP/framing и реальные ответы API/хостинга. Б6, Д",
+      "frontendDone": "",
+      "productionAccepted": false
+    },
+    {
+      "id": "SEC-14",
+      "priority": "P2",
+      "subject": "Внешняя support ссылка",
+      "status": "Фронт подготовлен локально",
+      "owner": "Разработка и QA",
+      "next": "Проверить ссылку и noopener в целевых браузерах. Д",
+      "frontendDone": "",
+      "productionAccepted": false
+    },
+    {
+      "id": "SEC-15",
+      "priority": "P2",
+      "subject": "HTTP отправка координат",
+      "status": "Фронт подготовлен локально",
+      "owner": "Разработка и QA",
+      "next": "Удалённый helper не возвращается в выпуск. Д",
+      "frontendDone": "",
+      "productionAccepted": false
+    },
+    {
+      "id": "CMD-01",
+      "priority": "P1",
+      "subject": "Optimistic state водителя",
+      "status": "Фронт подготовлен локально",
+      "owner": "Разработка и QA",
+      "next": "Отказ и потеря ответа на общем dev. В, Д",
+      "frontendDone": "",
+      "productionAccepted": false
+    },
+    {
+      "id": "CMD-02",
+      "priority": "P1",
+      "subject": "Legacy HTTP timeout",
+      "status": "Фронт подготовлен локально",
+      "owner": "Разработка и QA",
+      "next": "Проверить proxy и восстановление polling. Д",
+      "frontendDone": "",
+      "productionAccepted": false
+    },
+    {
+      "id": "CMD-03",
+      "priority": "P1",
+      "subject": "Deadline принятия команды",
+      "status": "Фронт подготовлен локально",
+      "owner": "Разработка и QA",
+      "next": "Проверить реальный сервер и неизвестный исход. В, Д",
+      "frontendDone": "",
+      "productionAccepted": false
+    },
+    {
+      "id": "CMD-04",
+      "priority": "P1",
+      "subject": "Загрузка конфигурации",
+      "status": "Фронт подготовлен локально",
+      "owner": "Разработка и QA",
+      "next": "Отказ словаря, timeout и повтор на dev. Д",
+      "frontendDone": "",
+      "productionAccepted": false
+    },
+    {
+      "id": "CMD-05",
+      "priority": "P1",
+      "subject": "HTTP 4xx при чтении статуса",
+      "status": "Фронт подготовлен локально",
+      "owner": "Разработка и QA",
+      "next": "408/425/429 не повторяют команду; live тест. Д",
+      "frontendDone": "",
+      "productionAccepted": false
+    },
+    {
+      "id": "CMD-06",
+      "priority": "P1",
+      "subject": "Сверка Passenger Snapshot",
+      "status": "Фронт подготовлен локально",
+      "owner": "Разработка и QA",
+      "next": "Потерянное WS событие и recovery Query. Д",
+      "frontendDone": "",
+      "productionAccepted": false
+    },
+    {
+      "id": "CMD-07",
+      "priority": "P2",
+      "subject": "Событие до подписки",
+      "status": "Фронт подготовлен локально",
+      "owner": "Разработка и QA",
+      "next": "Корректность completed/duplicate instanceId. В, Д",
+      "frontendDone": "",
+      "productionAccepted": false
+    },
+    {
+      "id": "CMD-08",
+      "priority": "P2",
+      "subject": "Два вызова посадки и старта",
+      "status": "Нужна серверная гарантия",
+      "owner": "Backend",
+      "next": "Согласовать атомарную семантику PIN/boarding/start, повторов и потерянного ответа. Клиентская координация не заменяет серверный commit.",
+      "frontendDone": "",
+      "productionAccepted": false
+    },
+    {
+      "id": "CMD-09",
+      "priority": "P1",
+      "subject": "Серверная проверка PIN",
+      "status": "Серверный PIN проверен локально",
+      "owner": "Backend и QA",
+      "next": "Локальные валидный/неверный PIN и лимит попыток пройдены; повторить на dev, проверить гонки и права назначения.",
+      "frontendDone": "",
+      "productionAccepted": false
+    },
+    {
+      "id": "CMD-10",
+      "priority": "P2",
+      "subject": "Команда после unmount и reload",
+      "status": "Фронт подготовлен локально",
+      "owner": "Разработка и QA",
+      "next": "После reload один POST за всю операцию; чужая команда недоступна; ошибка чтения не считается отказом выполнения.",
+      "frontendDone": "",
+      "productionAccepted": false
+    },
+    {
+      "id": "CMD-11",
+      "priority": "P1",
+      "subject": "Ожидание correlationId",
+      "status": "Фронт подготовлен локально",
+      "owner": "Разработка и QA",
+      "next": "Сбой события не блокирует UI бесконечно. Д",
+      "frontendDone": "",
+      "productionAccepted": false
+    },
+    {
+      "id": "PAY-01",
+      "priority": "P1",
+      "subject": "Тип результата тарифа",
+      "status": "Фронт подготовлен локально",
+      "owner": "Разработка и QA",
+      "next": "Сохранить number/null и тест пересчёта. Д",
+      "frontendDone": "",
+      "productionAccepted": false
+    },
+    {
+      "id": "PAY-02",
+      "priority": "P1",
+      "subject": "submit_rice и submit_price",
+      "status": "Нужна серверная приёмка",
+      "owner": "Backend и администратор",
+      "next": "Выбрать каноническое поле и описать совместимую миграцию.",
+      "frontendDone": "Парсер принимает submit_price и прежний submit_rice.",
+      "productionAccepted": false
+    },
+    {
+      "id": "PAY-03",
+      "priority": "P1",
+      "subject": "NaN и Infinity",
+      "status": "Фронт подготовлен локально",
+      "owner": "Разработка и QA",
+      "next": "Сервер независимо проверяет денежные значения. В",
+      "frontendDone": "",
+      "productionAccepted": false
+    },
+    {
+      "id": "PAY-04",
+      "priority": "P1",
+      "subject": "Ошибка RegExp до try",
+      "status": "Фронт подготовлен локально",
+      "owner": "Разработка и QA",
+      "next": "Сохранить регрессии некорректной формулы. Д",
+      "frontendDone": "",
+      "productionAccepted": false
+    },
+    {
+      "id": "PAY-05",
+      "priority": "P2",
+      "subject": "Формула и цена в console",
+      "status": "Фронт подготовлен локально",
+      "owner": "Разработка и QA",
+      "next": "Privacy gate опубликованной диагностики. Д",
+      "frontendDone": "",
+      "productionAccepted": false
+    },
+    {
+      "id": "PAY-06",
+      "priority": "P1",
+      "subject": "Контракт цены и ETA",
+      "status": "Контракт подготовлен локально",
+      "owner": "Backend и Валентин",
+      "next": "Offer mode/options и ETA проходят локальные поездки. Перенести совместимым комплектом и подтвердить смысл полей/итоговую цену на dev.",
+      "frontendDone": "",
+      "productionAccepted": false
+    },
+    {
+      "id": "PAY-07",
+      "priority": "P1",
+      "subject": "Типы денег и округление",
+      "status": "Обязательное решение до пилота",
+      "owner": "Валентин и backend",
+      "next": "Утвердить валюту, единицы, правила округления/комиссии/возврата и серверный финансовый результат; клиентские cents helpers не принимают денежную модель.",
+      "frontendDone": "Дробные суммы разбираются и сохраняются без целочисленного округления на фронте.",
+      "productionAccepted": false
+    },
+    {
+      "id": "PLAT-01",
+      "priority": "P1",
+      "subject": "Хранение browser токена",
+      "status": "Нужна серверная приёмка",
+      "owner": "Backend и администратор",
+      "next": "Выдать защищённую пользовательскую cookie-сессию либо proxy вместо browser-токена.",
+      "frontendDone": "Токены перенесены в tab-local sessionStorage; обнаруженные XSS-пути ограничены.",
+      "productionAccepted": false
+    },
+    {
+      "id": "PLAT-02",
+      "priority": "P1",
+      "subject": "Allowlist конфигурации",
+      "status": "Нужна серверная приёмка",
+      "owner": "Backend и администратор",
+      "next": "Назначить владельца словаря и ограничить его изменение/публикацию.",
+      "frontendDone": "Загрузка config ограничена тем же allowlist, что SEC-05/12.",
+      "productionAccepted": false
+    },
+    {
+      "id": "PLAT-03",
+      "priority": "P1",
+      "subject": "Отзыв сессии при logout",
+      "status": "Отзыв credential исправлен локально",
+      "owner": "Backend и администратор",
+      "next": "46 проверок отзыва/обмена/копии cookie пройдены. Нужны dev-приёмка, независимые устройства, TTL и политика смены пароля.",
+      "frontendDone": "Logout отправляет захваченные credentials; старый запрос не стирает новый вход.",
+      "productionAccepted": false
+    },
+    {
+      "id": "PLAT-04",
+      "priority": "P1",
+      "subject": "Native START при render",
+      "status": "Фронт подготовлен локально",
+      "owner": "Разработка и QA",
+      "next": "Реальный целевой WebView. Д",
+      "frontendDone": "",
+      "productionAccepted": false
+    },
+    {
+      "id": "PLAT-05",
+      "priority": "P2",
+      "subject": "Jitter reconnect",
+      "status": "Фронт подготовлен локально",
+      "owner": "Разработка и QA",
+      "next": "Одновременный reconnect под нагрузкой. Д",
+      "frontendDone": "",
+      "productionAccepted": false
+    },
+    {
+      "id": "PLAT-06",
+      "priority": "P2",
+      "subject": "Неизвестные WS сообщения",
+      "status": "Фронт подготовлен локально",
+      "owner": "Разработка и QA",
+      "next": "Версия протокола и live совместимость. А, Д",
+      "frontendDone": "",
+      "productionAccepted": false
+    },
+    {
+      "id": "PLAT-07",
+      "priority": "P1",
+      "subject": "User ID из env",
+      "status": "Фронт подготовлен локально",
+      "owner": "Разработка и QA",
+      "next": "Сервер проверяет владельца каждого запроса. Б3",
+      "frontendDone": "",
+      "productionAccepted": false
+    },
+    {
+      "id": "PLAT-08",
+      "priority": "P2",
+      "subject": "CORS origin",
+      "status": "Нужна серверная приёмка",
+      "owner": "Backend и администратор",
+      "next": "Вернуть корректные CORS/credentials/OPTIONS заголовки для разрешённых origins.",
+      "frontendDone": "В нашей Vercel-конфигурации заявленный плохой CORS не найден.",
+      "productionAccepted": false
+    },
+    {
+      "id": "CI-01",
+      "priority": "P1",
+      "subject": "Unit в GitHub",
+      "status": "Нужна приёмка выпуска",
+      "owner": "CI owner и администратор",
+      "next": "Запустить Actions и включить required check. Д",
+      "frontendDone": "",
+      "productionAccepted": false
+    },
+    {
+      "id": "CI-02",
+      "priority": "P1",
+      "subject": "Typecheck в GitHub",
+      "status": "Нужна приёмка выпуска",
+      "owner": "CI owner и администратор",
+      "next": "Обязательная проверка типов приложения и E2E. Д",
+      "frontendDone": "",
+      "productionAccepted": false
+    },
+    {
+      "id": "CI-03",
+      "priority": "P1",
+      "subject": "Production build в CI",
+      "status": "Нужна приёмка выпуска",
+      "owner": "CI owner и администратор",
+      "next": "Чистая установка и блокировка merge. Д",
+      "frontendDone": "",
+      "productionAccepted": false
+    },
+    {
+      "id": "CI-04",
+      "priority": "P1",
+      "subject": "Очередь E2E workflow",
+      "status": "Нужна приёмка выпуска",
+      "owner": "CI owner и администратор",
+      "next": "Два workflow действительно сериализованы. Д",
+      "frontendDone": "",
+      "productionAccepted": false
+    },
+    {
+      "id": "CI-05",
+      "priority": "P2",
+      "subject": "Неправильный exit 0",
+      "status": "Фронт подготовлен локально",
+      "owner": "Разработка и QA",
+      "next": "Негативный пример останавливает workflow. Д",
+      "frontendDone": "",
+      "productionAccepted": false
+    },
+    {
+      "id": "CI-06",
+      "priority": "P1",
+      "subject": "Общие аккаунты тестов",
+      "status": "Нужна серверная приёмка",
+      "owner": "Backend и администратор",
+      "next": "Выделять отдельный namespace/аккаунты или отдельную БД каждому запуску.",
+      "frontendDone": "Локальный прогон использует отдельную БД, три учётки, один worker и cleanup.",
+      "productionAccepted": false
+    },
+    {
+      "id": "CI-07",
+      "priority": "P2",
+      "subject": "Секреты и хранение отчётов",
+      "status": "Нужна приёмка выпуска",
+      "owner": "CI owner и администратор",
+      "next": "Нет серверной доработки. Владельцу repo проверить прежние загрузки, доступы и ротацию при обнаружении секретов.",
+      "frontendDone": "Репортёр, проверка артефактов и ограничение upload реализованы и проверены локально.",
+      "productionAccepted": false
+    },
+    {
+      "id": "ARCH-01",
+      "priority": "P2",
+      "subject": "Крупные компоненты",
+      "status": "Следующая очередь",
+      "owner": "Разработка",
+      "next": "Большие компоненты сами по себе не блокируют пилот с пройденными сценариями. Рефакторить по конкретной регрессии, не переписывать весь frontend перед выпуском.",
+      "frontendDone": "",
+      "productionAccepted": false
+    },
+    {
+      "id": "ARCH-02",
+      "priority": "P1",
+      "subject": "Флаги FSM и Legacy",
+      "status": "Фронт подготовлен локально",
+      "owner": "Разработка и QA",
+      "next": "Проверить финальную конфигурацию выпуска. А, Д",
+      "frontendDone": "",
+      "productionAccepted": false
+    },
+    {
+      "id": "ARCH-03",
+      "priority": "P1",
+      "subject": "Неполная FSM миграция",
+      "status": "Условие варианта FSM",
+      "owner": "Валентин и владелец FSM",
+      "next": "Полная миграция нужна для B. Для A не блокирует пилот, если приняты реальные Universal-гарантии трёх режимов.",
+      "frontendDone": "",
+      "productionAccepted": false
+    },
+    {
+      "id": "ARCH-04",
+      "priority": "P2",
+      "subject": "Мониторинг и диагностика",
+      "status": "Безопасная диагностика локально готова",
+      "owner": "Администратор и backend",
+      "next": "Убраны публичные PHP diagnostics/request debug; request_id и безопасный журнал проверены. Развернуть сбор/retention/alerts и проверить инцидент от UI до сервера.",
+      "frontendDone": "Локальные безопасные журналы и диагностика реализованы.",
+      "productionAccepted": false
+    },
+    {
+      "id": "ARCH-05",
+      "priority": "P2",
+      "subject": "any и подавления hooks",
+      "status": "Следующая очередь",
+      "owner": "Разработка",
+      "next": "Убирать any и hooks suppressions в изменяемых критичных местах. Массовая перепись без поведенческого дефекта не является условием первого пилота.",
+      "frontendDone": "",
+      "productionAccepted": false
+    },
+    {
+      "id": "ARCH-06",
+      "priority": "P2",
+      "subject": "Дубли конфигурации",
+      "status": "Фронт подготовлен локально",
+      "owner": "Разработка и QA",
+      "next": "Перенести готовую очистку и entrypoint gate. Д",
+      "frontendDone": "",
+      "productionAccepted": false
+    },
+    {
+      "id": "ARCH-07",
+      "priority": "P2",
+      "subject": "Зависимости и инструменты",
+      "status": "Инструменты проверены локально",
+      "owner": "Разработка и CI owner",
+      "next": "Чистая установка и актуальный lock ранее проверены; свежие 1039 тестов, lint, types, build gates. Дополнительные массовые обновления зависимостей — после пилота, кроме доказанных блокеров.",
+      "frontendDone": "",
+      "productionAccepted": false
+    },
+    {
+      "id": "INT-01",
+      "priority": "P0",
+      "subject": "FSM и Universal API",
+      "status": "Оба варианта подготовлены; выбор Валентина",
+      "owner": "Валентин",
+      "next": "A: Universal сейчас, FSM отдельно. B: реальный FSM уже в пилоте. Зафиксировать контракт/tenant/версии и отдельную приёмку; зелёный Universal не доказывает B.",
+      "frontendDone": "",
+      "productionAccepted": false
+    },
+    {
+      "id": "INT-02",
+      "priority": "P1",
+      "subject": "Legacy вне FSM",
+      "status": "Зависит от варианта",
+      "owner": "Валентин и backend",
+      "next": "Зафиксировать владельца каждой команды и чтения. При B не делать fallback неизвестного write в Legacy; при A принимать Universal целиком.",
+      "frontendDone": "",
+      "productionAccepted": false
+    },
+    {
+      "id": "INT-03",
+      "priority": "P1",
+      "subject": "Options frontend и backend",
+      "status": "Миграция подготовлена локально",
+      "owner": "Администратор и backend",
+      "next": "Dry run/backup, совместимые options, backend и словарь переносятся вместе; затем общий dev E2E.",
+      "frontendDone": "Options проверены локально: 0/false, пустые и повторные значения сохраняются.",
+      "productionAccepted": false
+    },
+    {
+      "id": "INT-04",
+      "priority": "P1",
+      "subject": "Offer и b_only_offer",
+      "status": "Разделение Offer проверено локально",
+      "owner": "Backend и Валентин",
+      "next": "b_only_offer не переопределён; новый публичный Offer отмечен offer_mode. Подтвердить контракт и повторить оба режима на dev.",
+      "frontendDone": "Публичный Offer отделён от приглашения b_only_offer; локально проверены два водителя и разные цены.",
+      "productionAccepted": false
+    },
+    {
+      "id": "INT-05",
+      "priority": "P1",
+      "subject": "GHS вместо MAD",
+      "status": "Обязательная конфигурация до пилота",
+      "owner": "Валентин и администратор",
+      "next": "GHS локальной архивной базы и EUR прочитанного dev не являются утверждённым MAD. Не менять только подпись валюты.",
+      "frontendDone": "",
+      "productionAccepted": false
+    },
+    {
+      "id": "INT-06",
+      "priority": "P1",
+      "subject": "Классы и лицензии Марокко",
+      "status": "Обязательная конфигурация до пилота",
+      "owner": "Валентин и администратор",
+      "next": "Принять реальные полигоны/лицензии/классы и доступ водителей. Локальный тестовый прямоугольник не переносить как лицензию.",
+      "frontendDone": "",
+      "productionAccepted": false
+    },
+    {
+      "id": "INT-07",
+      "priority": "P0",
+      "subject": "Несовместимый выпуск",
+      "status": "Обязательная приёмка выпуска",
+      "owner": "Администратор и QA",
+      "next": "Один воспроизводимый backend/migration/dictionary/frontend комплект, smoke и совместимый rollback. Публикация frontend сама по себе не закрывает этот пункт.",
+      "frontendDone": "",
+      "productionAccepted": false
+    },
+    {
+      "id": "ORD-01",
+      "priority": "P1",
+      "subject": "Двойное создание заказа",
+      "status": "Фронт подготовлен локально",
+      "owner": "Разработка и QA",
+      "next": "Серверная идемпотентность между вкладками. В",
+      "frontendDone": "",
+      "productionAccepted": false
+    },
+    {
+      "id": "ORD-02",
+      "priority": "P2",
+      "subject": "Разбор boolean",
+      "status": "Фронт подготовлен локально",
+      "owner": "Разработка и QA",
+      "next": "Регрессии типов на принятом API. Д",
+      "frontendDone": "",
+      "productionAccepted": false
+    },
+    {
+      "id": "ORD-03",
+      "priority": "P2",
+      "subject": "String и number ID",
+      "status": "Фронт подготовлен локально",
+      "owner": "Разработка и QA",
+      "next": "Проверить идентичность участников на dev. Д",
+      "frontendDone": "",
+      "productionAccepted": false
+    },
+    {
+      "id": "WAIT-01",
+      "priority": "P1",
+      "subject": "Продление менее минуты",
+      "status": "Фронт подготовлен локально",
+      "owner": "Разработка и QA",
+      "next": "Серверные deadline/revision и тест продления. В",
+      "frontendDone": "",
+      "productionAccepted": false
+    },
+    {
+      "id": "WAIT-02",
+      "priority": "P1",
+      "subject": "Продление после нуля",
+      "status": "Фронт подготовлен локально",
+      "owner": "Разработка и QA",
+      "next": "Гонка истечения и обновления на dev. В, Д",
+      "frontendDone": "",
+      "productionAccepted": false
+    },
+    {
+      "id": "WAIT-03",
+      "priority": "P1",
+      "subject": "Vote таймер и отмена",
+      "status": "Фронт подготовлен локально",
+      "owner": "Разработка и QA",
+      "next": "Сверка с сервером до отмены действующего заказа. В",
+      "frontendDone": "",
+      "productionAccepted": false
+    }
+  ]
+}

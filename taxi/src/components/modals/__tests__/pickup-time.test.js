@@ -1,8 +1,8 @@
-jest.mock('react-redux',()=>({connect:()=>component=>component}))
 import React,{act} from 'react'
 import {createRoot} from 'react-dom/client'
 import moment from 'moment'
 import {PickTimeModal} from '../PickTimeModal'
+jest.mock('react-redux',()=>({connect:()=>component=>component}))
 jest.mock('../../../state/clientOrder',()=>({clientOrderSelectors:{},clientOrderActionCreators:{}}))
 jest.mock('../../../state/modals',()=>({modalsSelectors:{},modalsActionCreators:{}}))
 jest.mock('../../../localization',()=>({t:key=>key,TRANSLATION:{START_TIME:'Pickup time',TODAY:'Today',NOW:'Now',TOMORROW:'Tomorrow',SAVE:'Save',CANCEL:'Cancel'}}))

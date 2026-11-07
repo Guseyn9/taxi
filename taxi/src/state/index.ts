@@ -7,6 +7,7 @@ import { composeWithDevTools } from '@redux-devtools/extension'
 import createSagaMiddleware from 'redux-saga'
 import rootSaga from './rootSaga'
 import rootReducer from './rootReducer'
+import { sessionLifecycleMiddleware } from './sessionLifecycleMiddleware'
 
 const sagaMiddleware = createSagaMiddleware()
 const configureStore = () => {
@@ -18,7 +19,7 @@ const configureStore = () => {
     composeWithDevTools
   const store = createStore(
     rootReducer,
-    composeEnhancers(applyMiddleware(thunk, readHealthMiddleware, sagaMiddleware)),
+    composeEnhancers(applyMiddleware(sessionLifecycleMiddleware, thunk, readHealthMiddleware, sagaMiddleware)),
   )
 
   sagaMiddleware.run(rootSaga)

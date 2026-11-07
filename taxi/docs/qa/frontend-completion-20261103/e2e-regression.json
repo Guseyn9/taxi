@@ -1,0 +1,383 @@
+{
+  "stats": {
+    "startTime": "2026-11-03T18:33:52.439Z",
+    "duration": 234176.29799999998,
+    "expected": 21,
+    "skipped": 0,
+    "unexpected": 0,
+    "flaky": 0
+  },
+  "cases": [
+    {
+      "title": "водитель входит через форму приложения",
+      "ok": true,
+      "tests": [
+        {
+          "status": "expected",
+          "project": "setup",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 2058,
+              "annotations": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "пассажир входит через форму приложения",
+      "ok": true,
+      "tests": [
+        {
+          "status": "expected",
+          "project": "setup",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 2140,
+              "annotations": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "второй водитель входит через форму приложения",
+      "ok": true,
+      "tests": [
+        {
+          "status": "expected",
+          "project": "setup",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 2072,
+              "annotations": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "A: правильный код переводит заказ и интерфейс в Started",
+      "ok": true,
+      "tests": [
+        {
+          "status": "expected",
+          "project": "driver-boarding",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 5214,
+              "annotations": [
+                {
+                  "type": "ui-sync",
+                  "description": "7 ms"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "B: некорректный код не переводит заказ в Started",
+      "ok": true,
+      "tests": [
+        {
+          "status": "expected",
+          "project": "driver-boarding",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 4898,
+              "annotations": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "C: двойное подтверждение не ломает состояние заказа",
+      "ok": true,
+      "tests": [
+        {
+          "status": "expected",
+          "project": "driver-boarding",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 5748,
+              "annotations": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "D: после перезагрузки страница остаётся в Started",
+      "ok": true,
+      "tests": [
+        {
+          "status": "expected",
+          "project": "driver-boarding",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 6034,
+              "annotations": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "А.1.1 — стандартный вызов: от создания заказа до начала поездки",
+      "ok": true,
+      "tests": [
+        {
+          "status": "expected",
+          "project": "standard-order",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 16999,
+              "annotations": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "А.1.2 — голосование: от создания заказа до начала поездки",
+      "ok": true,
+      "tests": [
+        {
+          "status": "expected",
+          "project": "voting-order",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 17044,
+              "annotations": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "А.1.3 — предложение: от создания заказа до начала поездки",
+      "ok": true,
+      "tests": [
+        {
+          "status": "expected",
+          "project": "offer-order",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 17118,
+              "annotations": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "А.1.4 — отказ выбранного водителя: заказ не уезжает в поездку и возвращается в поиск",
+      "ok": true,
+      "tests": [
+        {
+          "status": "expected",
+          "project": "offer-driver-decline",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 18177,
+              "annotations": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "А.1.5 — отмена заказа пассажиром: заказ не уезжает в поездку и не возвращается в поиск",
+      "ok": true,
+      "tests": [
+        {
+          "status": "expected",
+          "project": "offer-passenger-cancel",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 15430,
+              "annotations": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "А.1.6 — Passenger SOS после Started: причина, подтверждение, отмена поездки",
+      "ok": true,
+      "tests": [
+        {
+          "status": "expected",
+          "project": "passenger-sos",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 21584,
+              "annotations": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "А.1.6 (Driver) — Alarm водителя остаётся прежним AlarmModal, Passenger SOS не затронут",
+      "ok": true,
+      "tests": [
+        {
+          "status": "expected",
+          "project": "passenger-sos",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 5730,
+              "annotations": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "008-A Standard: форма → POST /drive → обычный заказ → заказ в UI",
+      "ok": true,
+      "tests": [
+        {
+          "status": "expected",
+          "project": "passenger-order-creation",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 6274,
+              "annotations": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "008-B Voting: форма → POST /drive (голосование) → backend подтверждает Voting → заказ в UI",
+      "ok": true,
+      "tests": [
+        {
+          "status": "expected",
+          "project": "passenger-order-creation",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 5638,
+              "annotations": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "008-C Offer: форма → цена → POST /drive → контракт Offer на backend → заказ в UI",
+      "ok": true,
+      "tests": [
+        {
+          "status": "expected",
+          "project": "passenger-order-creation",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 6436,
+              "annotations": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "пассажир отменяет Standard до назначения водителя через UI",
+      "ok": true,
+      "tests": [
+        {
+          "status": "expected",
+          "project": "standard-order-cancel-before-assignment",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 6907,
+              "annotations": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "TEST-E2E-009 — Standard: форма пассажира → карточка водителя → принятие → Arrived → Started на одном b_id",
+      "ok": true,
+      "tests": [
+        {
+          "status": "expected",
+          "project": "passenger-driver-flow",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 22557,
+              "annotations": [
+                {
+                  "type": "set_performer",
+                  "description": "1: set_performer(performer=1)→HTTP 200 status=success code=200"
+                },
+                {
+                  "type": "cleanup",
+                  "description": "orderId=2057 b_state=3 в listActiveOrders=false подтверждено=true"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "штатное завершение: Started → Finished через кнопку карты водителя",
+      "ok": true,
+      "tests": [
+        {
+          "status": "expected",
+          "project": "trip-finish",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 24581,
+              "annotations": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "прерывание до точки назначения: Started → Canceled через UI водителя с причиной",
+      "ok": true,
+      "tests": [
+        {
+          "status": "expected",
+          "project": "trip-interruption",
+          "results": [
+            {
+              "status": "passed",
+              "duration": 5259,
+              "annotations": []
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

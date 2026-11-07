@@ -1,3 +1,4 @@
+import { redactDiagnosticText, isCredentialKey } from '../security/diagnosticRedaction'
 type JsonLike = string | number | boolean | null | JsonLike[] | { [key: string]: JsonLike }
 
 export interface RawLogRecord {
@@ -29,6 +30,23 @@ const MAX_ARRAY_ITEMS = 80
 const MAX_STRING_LENGTH = 1400
 
 let cachedRawRecords: RawLogRecord[] | null = null
+let flushTimer: ReturnType<typeof setTimeout> | null = null
+let pendingFlush = false
+export const RAW_LOG_FLUSH_MS = 1000
+
+/** Events stay immediately available in memory; persist a burst once, not per GPS update. */
+export function flushRawLog() {
+  if (flushTimer !== null) clearTimeout(flushTimer)
+  flushTimer = null
+  if (!pendingFlush || cachedRawRecords === null) return
+  pendingFlush = false
+  writeJsonStorage(RAW_LOG_STORAGE_KEY, cachedRawRecords)
+}
+
+function scheduleFlush() {
+  pendingFlush = true
+  if (flushTimer === null) flushTimer = setTimeout(flushRawLog, RAW_LOG_FLUSH_MS)
+}
 
 function isBrowser() {
   return typeof window !== 'undefined'
@@ -90,8 +108,10 @@ function writeJsonStorage(key: string, value: any) {
 }
 
 function getCachedRawRecords() {
-  if (cachedRawRecords === null)
-    cachedRawRecords = readJsonStorage<RawLogRecord[]>(RAW_LOG_STORAGE_KEY, [])
+  if (cachedRawRecords === null) {
+    const saved = readJsonStorage<RawLogRecord[]>(RAW_LOG_STORAGE_KEY, [])
+    cachedRawRecords = Array.isArray(saved) ? saved.slice(-MAX_RAW_RECORDS) : []
+  }
   return cachedRawRecords
 }
 
@@ -104,7 +124,7 @@ function sanitize(value: any, depth = 0): JsonLike {
 
   const type = typeof value
   if (type === 'string')
-    return value.length > MAX_STRING_LENGTH ? `${value.slice(0, MAX_STRING_LENGTH)}...` : value
+    return redactDiagnosticText(value).slice(0, MAX_STRING_LENGTH)
 
   if (type === 'number')
     return Number.isFinite(value) ? value : null
@@ -126,6 +146,7 @@ function sanitize(value: any, depth = 0): JsonLike {
     const output: { [key: string]: JsonLike } = {}
     Object.keys(value).slice(0, MAX_ARRAY_ITEMS).forEach(key => {
       const lower = key.toLowerCase()
+      if (isCredentialKey(key)) { output[key] = '[hidden]'; return }
       if (
         lower.includes('password') ||
         lower.includes('token') ||
@@ -233,11 +254,12 @@ export function writeRawLog(event: string, payload: any = {}) {
   if (records.length > MAX_RAW_RECORDS)
     records.splice(0, records.length - MAX_RAW_RECORDS)
 
-  writeJsonStorage(RAW_LOG_STORAGE_KEY, records)
+  scheduleFlush()
   return record
 }
 
 export function getRawLogSnapshot() {
+  flushRawLog()
   return {
     title: 'taxi raw immutable debug log',
     rawLevel: 0,
@@ -252,6 +274,9 @@ export function getRawLogSnapshot() {
 }
 
 export function clearRawLog() {
+  if (flushTimer !== null) clearTimeout(flushTimer)
+  flushTimer = null
+  pendingFlush = false
   cachedRawRecords = []
   writeJsonStorage(RAW_LOG_STORAGE_KEY, cachedRawRecords)
 }
@@ -279,7 +304,10 @@ export function setupRawLifecycleLogging() {
       visibilityState: document.visibilityState,
       online: window.navigator.onLine,
     })
+    if (document.visibilityState === 'hidden') flushRawLog()
   })
+
+  window.addEventListener('pagehide', flushRawLog)
 
   window.addEventListener('online', () => {
     writeRawLog('network_changed', {
@@ -301,5 +329,6 @@ export function setupRawLifecycleLogging() {
       visibilityState: document.visibilityState,
       online: window.navigator.onLine,
     })
+    flushRawLog()
   })
 }

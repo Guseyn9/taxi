@@ -1,3 +1,4 @@
+import { newAuthenticatedContext } from './fixtures/tabSession'
 /**
  * TEST-E2E-008 — создание заказа через UI пассажира. Живой backend.
  *
@@ -17,9 +18,8 @@
  * nth()/first() для бизнес-элементов. Единственный мок — тайлы карты. API здесь
  * нужен только для входа, независимого чтения заказа и уборки.
  *
- * Контракт (что именно уходит в запрос и сохраняется в backend, почему Offer
- * идёт на межгородское назначение, почему кнопка режима и есть «создать») —
- * в e2e/README.md, раздел TEST-E2E-008.
+ * Offer задаётся явно и проверяется на том же городском маршруте.
+ * Его диалог подтверждается отдельно; географический класс не задаёт режим.
  */
 
 import { Browser, BrowserContext, Page, devices, expect, test } from '@playwright/test'
@@ -46,7 +46,8 @@ import {
   watchOrderCreationRequest,
 } from './fixtures/passengerUi'
 import {
-  INTERCITY_LOCATION_CLASS,
+  CITY_LOCATION_CLASS,
+  orderOptionsOf,
   IOrderSnapshot,
   ISession,
   ISweepResult,
@@ -62,11 +63,8 @@ import {
 /** Цена заказчика в Offer — обычное значение для текущей конфигурации. */
 const OFFER_PRICE = 150
 
-/** Геокодер отдаёт координаты дома, а не фикстуры: разброс замерен ~30 м. */
+/** Допуск к проверенным координатам, без подмены результата геокодера. */
 const POINT_TOLERANCE_M = 150
-/** Межгородское назначение (Таганрог, Петровская 10): замерено 47.2069, 38.9426. */
-const INTERCITY_DESTINATION = { latitude: 47.2069, longitude: 38.9426 }
-const INTERCITY_TOLERANCE_M = 1000
 
 /**
  * Защита от двойного создания (AC-12). Первый запрос растягивается замедлением
@@ -100,7 +98,7 @@ function reportSweep(when: string, result: ISweepResult): void {
 
 /** Отдельная сессия пассажира: свежий браузерный контекст на каждый сценарий. */
 async function openPassengerSession(browser: Browser): Promise<BrowserContext> {
-  const session = await browser.newContext({
+  const session = await newAuthenticatedContext(browser, {
     ...devices['Desktop Chrome'],
     storageState: PASSENGER_STORAGE,
     baseURL: appUrl(),
@@ -350,8 +348,8 @@ test.describe('TEST-E2E-008 — создание заказа через UI па
       // Нет признаков Voting и Offer.
       expect(Boolean(payload.b_voting), 'UI: нажат Order → в запросе нет b_voting').toBe(false)
       expect(hasVotingService(payload.b_services), 'UI: нажат Order → в запросе нет услуги голосования').toBe(false)
-      expect(String(payload.b_cars_count ?? ''), 'UI: нажат Order → нет признака Offer b_cars_count=0').not.toBe('0')
-      expect(String(payload.b_location_class), 'UI: нажат Order → не межгородский класс поездки').not.toBe(INTERCITY_LOCATION_CLASS)
+      expect(payload.b_options?.offer_mode, 'Order не содержит режима Offer').not.toBe('OFFER')
+      expect(String(payload.b_location_class), 'городской маршрут').toBe(CITY_LOCATION_CLASS)
     })
 
     const order = await test.step('Backend: независимое чтение заказа', async() => {
@@ -384,7 +382,7 @@ test.describe('TEST-E2E-008 — создание заказа через UI па
       expect(hasVotingService(payload.b_services), 'UI: нажат Vote → в запросе должна быть услуга голосования (5); режим из UI не совпал с созданным').toBe(true)
       const waiting = Number(payload.b_max_waiting)
       expect(Number.isFinite(waiting) && waiting > 0, 'b_max_waiting — положительное число').toBe(true)
-      expect(String(payload.b_cars_count ?? ''), 'нет признака Offer b_cars_count=0').not.toBe('0')
+      expect(payload.b_options?.offer_mode, 'Vote не содержит режима Offer').not.toBe('OFFER')
     })
 
     const order = await test.step('Backend: независимое чтение заказа', async() => {
@@ -403,11 +401,8 @@ test.describe('TEST-E2E-008 — создание заказа через UI па
   })
 
   test('008-C Offer: форма → цена → POST /drive → контракт Offer на backend → заказ в UI', async() => {
-    await test.step('UI: ввод формы (межгородской маршрут) и цены', async() => {
-      // Класс поездки «2» приложение выставляет само только на межгородском
-      // маршруте; на городском UI шлёт «1» даже после ручного выбора Intercity
-      // (README, TEST-E2E-008). Поэтому Offer идёт на другое назначение.
-      await enterOrderForm(PASSENGER_ORDER_POINTS.intercityDestination, INTERCITY_LOCATION_CLASS)
+    await test.step('UI: короткий городской маршрут и цена', async() => {
+      await enterOrderForm(PASSENGER_ORDER_POINTS.destination, CITY_LOCATION_CLASS)
       await setPassengerOfferPrice(page, OFFER_PRICE)
     })
 
@@ -415,18 +410,19 @@ test.describe('TEST-E2E-008 — создание заказа через UI па
       clickCreate('offer'))
 
     await test.step('Network: запрос создания Offer', () => {
-      expectCreationRequest(created, INTERCITY_DESTINATION, INTERCITY_TOLERANCE_M)
+      expectCreationRequest(created, DESTINATION, POINT_TOLERANCE_M)
       const { payload } = created.request
-      expect(String(payload.b_location_class), 'UI: нажат Offer → в запросе межгородский класс поездки').toBe(INTERCITY_LOCATION_CLASS)
+      expect(String(payload.b_location_class), 'Offer остаётся городским маршрутом').toBe(CITY_LOCATION_CLASS)
+      expect(payload.b_options?.offer_mode, 'явный режим в запросе').toBe('OFFER')
       expect(customerPriceFrom(payload.b_options), 'UI: нажат Offer → в запросе цена заказчика из UI').toBe(OFFER_PRICE)
       expect(hasVotingService(payload.b_services), 'в запросе нет услуги голосования').toBe(false)
-      // b_cars_count=0 исторически признак Offer, но backend его не сохраняет
-      // (возвращает "1"), поэтому здесь он не проверяется и инвариантом не служит.
+      expect(Number(payload.b_cars_count), 'одна машина не определяет режим Offer').toBe(1)
     })
 
     const order = await test.step('Backend: независимое чтение заказа', async() => {
       const read = await readCreatedOrder(created)
-      expect(String(read.b_location_class), 'backend сохранил межгородский класс').toBe(INTERCITY_LOCATION_CLASS)
+      expect(String(read.b_location_class), 'backend сохранил городской класс').toBe(CITY_LOCATION_CLASS)
+      expect(orderOptionsOf(read).offer_mode, 'backend сохранил режим Offer').toBe('OFFER')
       expect(customerPriceOf(read), 'backend сохранил цену заказчика из UI').toBe(OFFER_PRICE)
       expect(String(read.b_voting ?? '0'), 'backend не считает заказ голосовым').not.toBe('1')
       expect(isOfferOrderSnapshot(read), 'приложение опознаёт заказ как «Предложение»').toBe(true)

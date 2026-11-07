@@ -1,3 +1,4 @@
+import { newAuthenticatedContext } from './fixtures/tabSession'
 /**
  * TEST-E2E-010 — штатное завершение поездки водителем.
  *
@@ -25,6 +26,7 @@ import {
   DRIVER_STORAGE,
   PICKUP,
   clickPrimaryAction,
+  departAndArrive,
   driverMapAction,
   expectDriverMapState,
   openOrderCard,
@@ -51,7 +53,7 @@ const createdOrders: string[] = []
 const reason = (error: unknown) => (error as Error)?.message ?? String(error)
 
 async function openSession(browser: import('@playwright/test').Browser, storageState: string) {
-  const context = await browser.newContext({
+  const context = await newAuthenticatedContext(browser, {
     ...devices['Desktop Chrome'],
     storageState,
     baseURL: appUrl(),
@@ -142,10 +144,10 @@ test('штатное завершение: Started → Finished через кн�
   // Leave the list-only driver emulator mode. The live map must consume browser
   // GPS and publish location updates; otherwise the backend's stale pickup point
   // would prevent the destination gate from opening.
-  await driverPage.goto('/driver-order?tab=map&driverEmulator=1')
+  await driverPage.goto('/driver-order?tab=map')
   await expectAppBooted(driverPage)
   await expectDriverMapState(driverPage, orderId, DRIVER_STATE.Performer, 'карта показывает назначенный заказ')
-  await clickPrimaryAction(driverPage)
+  await departAndArrive(driverPage)
   await expectBackendState(orderId, DRIVER_STATE.Arrived, 'водитель выехал')
   await expectDriverMapState(driverPage, orderId, DRIVER_STATE.Arrived, 'карта показывает Arrived')
   await clickPrimaryAction(driverPage)

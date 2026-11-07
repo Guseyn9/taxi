@@ -1,4 +1,9 @@
-import React, { useCallback, useState, useEffect } from 'react'
+import React, { useCallback, useState, useEffect, useRef, useId } from 'react'
+import { validateUploadBatch } from '../../security/fileUpload'
+import FilePreview from '../FilePreview'
+import {Eye,EyeOff} from 'lucide-react'
+import {dialogCopy} from '../modals/dialogCopy'
+import {PhoneCountryField} from '../modals/LoginModal/PhoneCountryField'
 import cn from 'classnames'
 import { ILanguage } from '../../types/types'
 import { getPhoneMask } from '../../tools/phoneUtils'
@@ -41,13 +46,19 @@ function JSONFormElement({
   } = formElement
 
   const [ errorMessage, setErrorMessage ] = useState<string>('')
+  const [passwordVisible,setPasswordVisible] = useState(false)
+  const errorId = useId()
   const [ files, setFiles ] = useState<[any, File][]>()
   const name: string = getCalculation(formElement.name, values, variables)
   const type = getCalculation(formElement.type, values, variables)
   const value = values[name]
+  const touched = useRef(false)
+  const validationSequence = useRef(0)
+  const currentValue = useRef(value)
+  currentValue.current = value
   const hintTextName = `hint_${name.split('.').slice(-1)[0]}`
   let hint = formElement.hint
-  if (!hint && getTranslation(hintTextName) !== hintTextName) {
+  if (!hint && t(hintTextName,{fallback:''})) {
     hint = getTranslation(hintTextName)
   }
 
@@ -59,14 +70,15 @@ function JSONFormElement({
 
   const validate = useCallback((value: any) => {
     if (!validationSchema) return
+    const sequence = ++validationSequence.current
     validationSchema.validate(value)
       .then(() => {
-        setErrorMessage('')
+        if (sequence === validationSequence.current && Object.is(value,currentValue.current)) setErrorMessage('')
       })
       .catch((error: any) => {
-        setErrorMessage(error.message)
+        if (sequence === validationSequence.current && Object.is(value,currentValue.current)) setErrorMessage(error.message)
       })
-  }, [])
+  }, [validationSchema])
 
   if (visible) {
     const isVisible = getCalculation(visible, values, variables)
@@ -80,14 +92,17 @@ function JSONFormElement({
   )
   const commonProperties = {
     name,
+    'aria-invalid':Boolean(errorMessage || errors[name]) || undefined,
+    'aria-describedby':errorMessage || errors[name] ? errorId : undefined,
     'aria-label': !['radio', 'checkbox'].includes(type) && formElement.label ? String(getTranslation(getCalculation(formElement.label, values, variables))) : undefined,
     disabled: calculatedDisabled,
     onChange(event: React.ChangeEvent<TElement>) {
       const value = getValue(event)
-      validate(value)
+      if (touched.current || errors[name]) validate(value)
       onChange(event, event.target.name, value)
     },
     onBlur(event: React.ChangeEvent<TElement>) {
+      touched.current = true
       validate(getValue(event))
     },
   }
@@ -201,14 +216,14 @@ function JSONFormElement({
   }
 
   if (type === 'phone') {
+    labelElement = null
     element = (
-      <input
-        {...commonProperties}
-        value={value || ''}
-        type="tel"
-        className='element__text_input'
-        placeholder={getPhoneMask()}
-      />
+      <PhoneCountryField name={name} value={value || ''} language={language?.iso}
+        label={String(getTranslation(getCalculation(formElement.label,values,variables)))}
+        required={Boolean(isRequired(formElement,values,variables))} disabled={Boolean(calculatedDisabled)}
+        error={errorMessage || errors[name]}
+        onChange={next => {if(touched.current || errors[name]) validate(next);onChange(null,name,next)}}
+        onBlur={() => {touched.current=true;validate(value)}}/>
     )
   } else if (type === 'file') {
     element = (
@@ -223,7 +238,7 @@ function JSONFormElement({
               onChange(e, name, newFiles.length ? newFiles : null)
             }}
           >
-            <img src={URL.createObjectURL(file[1])} alt="" />
+            <FilePreview file={file[1]}/>
           </div>
         ))}
         <label className={cn('element__file_add', {
@@ -241,6 +256,9 @@ function JSONFormElement({
               const inputFiles: [any, File][] = Array.from(e.target.files)
                 .map((file: File) => ([ null, file ]))
               const newFiles = (files || []).concat(inputFiles)
+              try { validateUploadBatch(newFiles.filter(file => !file[0]).map(file => file[1])) }
+              catch (error) { setErrorMessage((error as Error).message); e.target.value = ''; return }
+              setErrorMessage('')
               setFiles(newFiles)
               onChange(e, name, newFiles)
               e.target.value = ''
@@ -256,14 +274,14 @@ function JSONFormElement({
       <input
         {...commonProperties}
         value={value || ''}
-        type={type}
+        type={type === 'password' && passwordVisible ? 'text' : type}
         className='element__text_input'
         placeholder={placeholder}
       />
     )
   }
 
-  const Wrap = ['file', 'radio', 'checkbox'].includes(type) ? 'div' : 'label'
+  const Wrap = ['file', 'radio', 'checkbox', 'phone'].includes(type) ? 'div' : 'label'
 
   const subscription = type === 'file' && accept === 'image/png, image/jpeg, image/jpg' ? t('subscription_images_upload') : null
 
@@ -273,17 +291,20 @@ function JSONFormElement({
     })}
     >
       {labelElement}
-      <div className={type === 'file' || !hintElement ? '' : 'element__input'}>
+      <div className={type === 'password' ? 'element__password' : type === 'file' || !hintElement ? '' : 'element__input'}>
         {element}
+        {type === 'password' && <button type="button" className="auth-json-password-toggle" aria-pressed={passwordVisible}
+          aria-label={passwordVisible?dialogCopy(language?.iso).hidePassword:dialogCopy(language?.iso).showPassword}
+          onClick={()=>setPasswordVisible(previous=>!previous)}>{passwordVisible?<EyeOff size={20} aria-hidden="true"/>:<Eye size={20} aria-hidden="true"/>}</button>}
         {!labelElement && !!hint && hintElement}
       </div>
       {!!subscription && <div className="element__field_subscription">
         {subscription}
       </div>}
-      {!!errorMessage && <div className='element__field_error'>
+      {type !== 'phone' && !!errorMessage && <div className='element__field_error' id={errorId} role="alert">
         {errorMessage}
       </div>}
-      {!!errors[name] && !errorMessage && <div className='element__field_error'>
+      {type !== 'phone' && !!errors[name] && !errorMessage && <div className='element__field_error' id={errorId} role="alert">
         {errors[name]}
       </div>}
     </Wrap>

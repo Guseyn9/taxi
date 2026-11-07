@@ -20,3 +20,15 @@ test('shortens after selecting the locale, keeping the street name complete and 
  expect(displayShortAddress(raw,'ar')).toBe('Place Al Amal, Boulevard Hassan II شارع الحسن الثاني')
  expect(raw).toContain('Quartier administratif')
 })
+test('selects one declared Moroccan three-language alias without changing the stored address',()=>{
+ const raw='Avenue Kenitra, Hay Mohammedi ⵃⵉ ⵎⵓⵃⵎⴰⴷⵉ الحي المحمدي, Agadir'
+ expect(displayShortAddress(raw,'ru')).toBe('Avenue Kenitra, Hay Mohammedi')
+ expect(displayShortAddress(raw,'fr')).toBe('Avenue Kenitra, Hay Mohammedi')
+ expect(displayShortAddress(raw,'ar')).toBe('Avenue Kenitra, الحي المحمدي')
+ expect(displayShortAddress(raw,'zgh')).toBe('Avenue Kenitra, ⵃⵉ ⵎⵓⵃⵎⴰⴷⵉ')
+ expect(raw).toContain('Hay Mohammedi ⵃⵉ')
+})
+
+test('supports Latin Extended Additional characters in declared aliases',()=>{
+ expect(displayShortAddress('Iguil Oḍrḍour ⵉⵖⵉⵍ ⴰⴹⵔⴹⵓⵔ إغيل أضرضور, Imounsiss','ru')).toBe('Iguil Oḍrḍour, Imounsiss')
+})

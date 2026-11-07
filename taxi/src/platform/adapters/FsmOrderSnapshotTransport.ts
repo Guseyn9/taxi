@@ -12,6 +12,8 @@ import type {
   SnapshotRealtimeConnector,
 } from '../platform-interface'
 import { BackendInteractionError } from './backendError'
+import { withHttpDeadline } from './httpDeadline'
+import { subscribeRecoveryPolling } from './recoveryPolling'
 
 export interface FsmOrderSnapshot {
   readonly orderId: number | string
@@ -27,6 +29,7 @@ export interface FsmOrderTransportConfig {
   readonly apiToken?: string
   readonly webSocketUrl?: string
   readonly webSocketTokenQueryParameter?: string
+  readonly recoveryPollIntervalMs?: number
 }
 
 export interface FsmOrderTransportDependencies {
@@ -97,7 +100,12 @@ export class FsmOrderSnapshotTransport implements DomainSnapshotTransport {
   }
 
   subscribeSnapshots(listener: (snapshot: PlatformSnapshotInput) => void): Unsubscribe {
-    return this.transport.subscribeSnapshots(listener)
+    const stopRealtime = this.transport.subscribeSnapshots(listener)
+    const stopRecovery = subscribeRecoveryPolling(async() => {
+      const query = this.beginQuery()
+      return this.acceptSnapshot(await this.fetchSnapshot(), query)
+    }, listener, this.config.recoveryPollIntervalMs ?? 15000)
+    return () => { stopRecovery(); stopRealtime() }
   }
 
   private async loadFromQuery(): Promise<PlatformSnapshotInput> {
@@ -122,9 +130,14 @@ export class FsmOrderSnapshotTransport implements DomainSnapshotTransport {
     }
   }
 
-  private async fetchSnapshot(): Promise<FsmOrderSnapshot> {
+  private fetchSnapshot(): Promise<FsmOrderSnapshot> {
+    return withHttpDeadline(signal => this.fetchSnapshotBeforeDeadline(signal), 15000, 'FSM_QUERY_TIMEOUT')
+  }
+
+  private async fetchSnapshotBeforeDeadline(signal?: AbortSignal): Promise<FsmOrderSnapshot> {
     const response = await this.fetchRequest(this.queryUrl(), {
       method: 'GET',
+      signal,
       headers: this.httpHeaders(),
     })
     if (!response.ok) {
@@ -166,10 +179,8 @@ export class FsmOrderSnapshotTransport implements DomainSnapshotTransport {
         const message = parseRealtimeMessage(event.data)
         if (message.type === 'ping')
           return
-        if (
-          (message.type === 'snapshot' || message.type === 'entity.updated') &&
-          message.snapshot
-        ) {
+        if (message.type === 'snapshot' || message.type === 'entity.updated') {
+          if (!message.snapshot) throw new BackendInteractionError('FSM_REALTIME_PROTOCOL_ERROR', 'Snapshot payload is missing')
           const accepted = this.acceptSnapshot(message.snapshot)
           if (accepted) {
             this.realtimeEpoch += 1
@@ -177,11 +188,9 @@ export class FsmOrderSnapshotTransport implements DomainSnapshotTransport {
           }
           return
         }
-        throw new BackendInteractionError(
-          'FSM_REALTIME_PROTOCOL_ERROR',
-          `Unsupported FSM realtime message: ${String(message.type || 'unknown')}`,
-          message,
-        )
+        // Forward-compatible event types do not tear down a healthy connection.
+        // Query recovery remains responsible for authoritative state.
+        return
       } catch (error) {
         reportDisconnect(error)
       }

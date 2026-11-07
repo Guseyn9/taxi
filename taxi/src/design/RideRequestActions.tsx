@@ -7,11 +7,11 @@ import {bookingActionCopy} from './bookingActionCopy'
 type Mode='order'|'vote'|'offer'
 interface Props {
  mode:Mode;onChange:(mode:Mode)=>void;onSubmit:(mode:Mode)=>void
- disabled?:boolean;submitDisabled?:boolean;pending?:boolean;error?:string|null
+ disabled?:boolean;submitDisabled?:boolean;pending?:boolean;error?:string|null;blockedReason?:string
  iso?:string;priceField?:React.ReactNode;allowedModes?:readonly Mode[]
 }
 /** A main action submits once; the separate help action never creates a booking. */
-export function RideRequestActions({mode,onChange,onSubmit,disabled,submitDisabled,pending,error,iso,priceField,allowedModes=['order','vote','offer']}:Props){
+export function RideRequestActions({mode,onChange,onSubmit,disabled,submitDisabled,pending,error,blockedReason,iso,priceField,allowedModes=['order','vote','offer']}:Props){
  const copy=journeyCopy(iso)
  const details=bookingActionCopy(iso),hintId=useId()
  const [dialog,setDialog]=useState<{mode:Mode|null,price:boolean}|null>(null)
@@ -23,14 +23,15 @@ export function RideRequestActions({mode,onChange,onSubmit,disabled,submitDisabl
   onChange(value);onSubmit(value)
  }
  return <div className="rs-booking-actions">
+  {blockedReason&&<p id={`${hintId}-blocked`} className="rs-booking-blocked" role="status">{blockedReason}</p>}
   <button type="button" className="rs-booking-actions__help" data-testid="passenger-order-help"
-   aria-haspopup="dialog" aria-expanded={Boolean(dialog&&!dialog.price)} onClick={()=>setDialog({mode:null,price:false})}>
+   aria-label={copy.mode} aria-haspopup="dialog" aria-expanded={Boolean(dialog&&!dialog.price)} onClick={()=>setDialog({mode:null,price:false})}>
    <Info size={18} aria-hidden="true"/><span>{copy.mode}</span>
   </button>
   <div className="rs-booking-actions__list" aria-label={copy.mode}>
    {choices.map(({mode:choice,Icon})=><div key={choice} className={`rs-booking-action${mode===choice?' rs-booking-action--preferred':''}`} data-mode={choice} data-disabled={Boolean(disabled||pending||submitDisabled)}>
     <Button type="button" data-testid={`passenger-order-mode-${choice}`} className="rs-booking-action__submit"
-     aria-label={copy[choice]} aria-describedby={`${hintId}-${choice}`} aria-busy={Boolean(pending&&mode===choice)}
+     aria-label={copy[choice]} aria-describedby={`${hintId}-${choice}${blockedReason?` ${hintId}-blocked`:''}`} aria-busy={Boolean(pending&&mode===choice)}
      disabled={disabled||pending||submitDisabled} onClick={()=>{
       if(choice==='offer'&&priceField){onChange('offer');setDialog({mode:choice,price:true})}
       else submit(choice)

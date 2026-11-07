@@ -1,3 +1,5 @@
+import { finishJourneyThroughUi } from './fixtures/finishJourney'
+import { newAuthenticatedContext } from './fixtures/tabSession'
 /**
  * TEST-E2E-004 — А.1.3, предложение. Живой backend.
  *
@@ -20,28 +22,10 @@
  * здесь является fixture/предусловием и покрытием пассажирской формы создания
  * заказа НЕ считается. Обоснование — e2e/README.md.
  *
- * ЧЕМ А.1.3 ОТЛИЧАЕТСЯ ОТ ДВУХ ПРЕДЫДУЩИХ — всё установлено замерами на живом
- * gruzvill до написания теста (e2e/README.md, TEST-E2E-004):
- *
- * 1. Признак режима — межгородний класс поездки вместе с ценой заказчика. Это
- *    ЕДИНСТВЕННЫЙ признак «Предложения», переживающий backend: `b_cars_count=0`
- *    возвращается как "1", `b_only_offer` не возвращается вовсе, а
- *    `b_options.order_mode` бэкенд не принимает. Проверяется он не равенством
- *    поля, а `isOfferOrderSnapshot` — тем же контрактом, по которому режим
- *    определяет приложение.
- *
- * 2. Предложение водителя — ДВА шага в интерфейсе: сначала открывается форма,
- *    затем вводится цена и отправляется. Кнопки подписаны одинаково, поэтому
- *    различаются атрибутом, а не текстом.
- *
- * 3. Кода посадки в А.1.3 НЕТ. Переход `Arrived → Started` идёт прямым действием,
- *    как у А.1.1: путь через код гейтится `isVotingOrder`, а не `isOfferOrder`
- *    (pages/Driver/Map.tsx). Тест отдельно проверяет, что формы кода не было.
- *
- * 4. Заказ создаётся БЕЗ метки [DRV:<id>] и с `b_max_waiting = 900` — по тем же
- *    причинам, что и голосование: метка спрятала бы заказ от второго водителя, а
- *    вне окна 0 < x ≤ 900 пассажирский интерфейс сам отменяет choice-заказ через
- *    180 с (VotingForm.tsx).
+ * Текущий контракт: короткая городская поездка, b_options.offer_mode=OFFER,
+ * положительная исходная цена, одна машина. Класс маршрута не определяет режим.
+ * Водитель открывает форму и отправляет собственные цену/ETA/комментарий.
+ * Выбор исполнителя и начало проверяются независимо на backend и в обеих UI.
  *
  * ПОЧЕМУ ВОДИТЕЛЕЙ ДВА. Один заказ должен получить два РАЗНЫХ предложения: только
  * так проверяются бизнес-инвариант «исполнитель ровно один», отсутствие путаницы
@@ -53,7 +37,7 @@ import { appUrl, driver2Account, driverAccount, passengerAccount } from './fixtu
 import { stubMapTiles } from './fixtures/appShell'
 import {
   DRIVER_STATE,
-  INTERCITY_LOCATION_CLASS,
+  CITY_LOCATION_CLASS,
   cancelOrder,
   cancelTestOrders,
   createOfferOrder,
@@ -81,6 +65,7 @@ import {
   PICKUP,
   STATE_NAMES,
   clickPrimaryAction,
+  departAndArrive,
   confirmActionResult,
   expectUiDriverState,
   isBoardingFormVisible,
@@ -150,7 +135,7 @@ function reportSweep(when: string, result: ISweepResult): void {
  * с разными storageState: общих cookies и localStorage у ролей нет.
  */
 async function openSession(browser: Browser, storageState: string): Promise<BrowserContext> {
-  const context = await browser.newContext({
+  const context = await newAuthenticatedContext(browser, {
     ...devices['Desktop Chrome'],
     storageState,
     baseURL: appUrl(),
@@ -237,7 +222,7 @@ test.afterEach(async({}, testInfo) => {
   while (createdOrders.length) {
     const orderId = createdOrders.pop() as string
     try {
-      await cancelOrder(passenger, orderId)
+      if (Number((await readOrder(passenger, orderId)).b_state) !== 4) await cancelOrder(passenger, orderId)
     } catch (error) {
       console.error(
         `E2E CLEANUP FAILED: orderId=${orderId} — заказ остался на бэкенде, ` +
@@ -308,7 +293,7 @@ async function makeOffer(role: IRole, price: number): Promise<void> {
     .toBe(false)
 }
 
-test('А.1.3 — предложение: от создания заказа до начала поездки', async() => {
+test('А.1.3 — предложение: от создания заказа до завершения поездки', async({}, testInfo) => {
   // ШАГ 1. Предусловие: у пассажира есть заказ режима «Предложение», общий для
   // обоих водителей и с ожиданием из доверенного окна.
   const orderId = await createOfferOrder(passenger, {
@@ -327,7 +312,7 @@ test('А.1.3 — предложение: от создания заказа до
   const created = await readOrder(passenger, orderId)
   expect(created.b_id, 'заказ создан и читается с бэкенда').toBe(orderId)
   expect(isOfferOrderSnapshot(created), 'заказ опознаётся приложением как «Предложение»').toBe(true)
-  expect(String(created.b_location_class), 'класс поездки межгородний').toBe(INTERCITY_LOCATION_CLASS)
+  expect(String(created.b_location_class), 'Offer на коротком городском маршруте').toBe(CITY_LOCATION_CLASS)
   expect(customerPriceOf(created), 'у заказа есть цена заказчика').toBe(150)
   expect(String(created.b_voting ?? '0'), 'заказ НЕ голосовой — это другой режим').toBe('0')
   expect(Number(created.b_state), 'заказ активен и ждёт водителей').toBe(ORDER_STATE.Processing)
@@ -452,8 +437,6 @@ test('А.1.3 — предложение: от создания заказа до
   // Карта открывается переходом, а не вкладкой: исполнителем водитель стал уже
   // после отправки предложения и ЧУЖИМ действием — выбором пассажира, — поэтому
   // на карточке заказа основного действия карты ещё нет (как и у А.1.2).
-  await openDriverMap(driver1.page)
-
   // Приложение сообщает водителю, что его предложение приняли, и пока это окно
   // открыто, до карты не добраться — оно модальное. Это часть контракта А.1.3, а
   // не помеха: у стандартного заказа и у голосования такого уведомления нет
@@ -463,9 +446,14 @@ test('А.1.3 — предложение: от создания заказа до
   await confirmActionResult(
     driver1.page, 'success', 'водитель 1 уведомлён, что его предложение принято')
 
+  // Confirm the realtime notification on the page that received it. A full
+  // navigation can discard that transient UI before this assertion observes it.
+  await openDriverMap(driver1.page)
+
   await expectUiDriverState(
     driver1.page, DRIVER_STATE.Performer, 'карта водителя показывает принятый заказ')
-  await clickPrimaryAction(driver1.page)
+  await expect(driver1.page.getByTestId('message-modal'), 'принятое и уже показанное предложение не перекрывает карту повторным уведомлением после reload').toBeHidden()
+  await departAndArrive(driver1.page)
   await expectBackendState(orderId, driver1, DRIVER_STATE.Arrived, 'бэкенд перевёл заказ в Arrived')
   await expectUiDriverState(driver1.page, DRIVER_STATE.Arrived, 'карта показывает прибытие')
   await expectPassengerDriverState(
@@ -507,4 +495,6 @@ test('А.1.3 — предложение: от создания заказа до
     offerPriceOf(started, driver1.session.userId),
     'поездка идёт по цене принятого предложения',
   ).toBe(OFFER_PRICE.driver1)
+  await finishJourneyThroughUi(driver1.page, passengerPage, driver1.session, orderId, testInfo)
+
 })

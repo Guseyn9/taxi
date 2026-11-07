@@ -9,7 +9,7 @@
  * «Поехал», «Приехал» и подтверждение кода делает браузер через интерфейс.
  */
 
-import { apiBase, IAccount } from './accounts'
+import { apiBase, passengerPhone, IAccount } from './accounts'
 
 export interface ISession {
   readonly token: string
@@ -32,17 +32,19 @@ export interface IOrderDriver {
    * e2e/README.md, TEST-E2E-004). Может прийти объектом или JSON-строкой.
    */
   readonly c_options?: unknown
+  readonly c_rating?: string | number | null
 }
 
 export interface IOrderSnapshot {
   readonly b_id: string
   readonly b_state?: string | number
+  readonly b_rating?: string | number | null
   readonly b_voting?: string | number
   readonly b_cars_count?: string | number
   readonly b_services?: unknown
   readonly b_confirm_state?: string | number
   readonly b_driver_code?: string
-  /** Класс поездки: `2` — межгородская. Признак режима «Предложение». */
+  /** Geographic class is independent of the request mode. */
   readonly b_location_class?: string | number
   readonly b_car_class?: string | number
   /** Может прийти объектом или JSON-строкой — нормализуется `orderOptionsOf`. */
@@ -172,7 +174,7 @@ export async function login(account: IAccount, label: string): Promise<ISession>
 const authFields = (session: ISession, extra: Record<string, unknown> = {}) =>
   ({ token: session.token, u_hash: session.uHash, ...extra })
 
-/** Машина водителя: из неё же берётся код посадки (номер по борту). */
+/** Машина привязана к тестовому водителю. Код посадки читается отдельно из заказа. */
 export async function getDriverCar(session: ISession): Promise<ICar> {
   const response = await post(`/user/${session.userId}/car`, authFields(session, { array_type: 'list' }))
   const cars = response?.data?.car
@@ -182,23 +184,11 @@ export async function getDriverCar(session: ISession): Promise<ICar> {
   return car
 }
 
-/**
- * Код посадки ровно по тому же правилу, что и в приложении
- * (tools/driverDoorNumber.ts): первое значение из 3–4 цифр.
- */
-export function boardingCodeOf(car: ICar): string {
-  const candidates = [
-    (car as any).door_number,
-    (car as any).profile_number,
-    car.c_id,
-    car.registration_plate,
-  ]
-  for (const candidate of candidates) {
-    const normalized = String(candidate ?? '').replace(/\D/g, '').slice(0, 4)
-    if (/^\d{3,4}$/.test(normalized))
-      return normalized
-  }
-  throw new BackendError('не удалось определить код посадки водителя', car)
+/** The order PIN is read from the server; car IDs are never boarding codes. */
+export function boardingCodeOf(order: IOrderSnapshot): string {
+  const code = String(order.b_driver_code ?? '').trim()
+  if (/^[A-Za-z0-9]{1,32}$/.test(code)) return code
+  throw new BackendError('сервер не передал код посадки заказа', {b_id:order.b_id})
 }
 
 /** Водитель «на линии»: машина в рейсе и координата отправлена. */
@@ -213,17 +203,6 @@ export async function goOnline(
     throw new BackendError(`не удалось включить машину: ${drive?.message}`, drive)
 
   assertOk(await post('/location', authFields(session, position)), 'отправка координаты водителя')
-}
-
-function startDatetime(offsetMinutes: number): string {
-  const date = new Date(Date.now() + offsetMinutes * 60000)
-  const pad = (value: number) => String(value).padStart(2, '0')
-  const offset = -date.getTimezoneOffset()
-  const sign = offset >= 0 ? '+' : '-'
-  const absolute = Math.abs(offset)
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ` +
-    `${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}` +
-    `${sign}${pad(Math.floor(absolute / 60))}:${pad(absolute % 60)}`
 }
 
 export interface ICreateOrderOptions {
@@ -254,7 +233,7 @@ export type ICreateVotingOrderOptions = ICreateOrderOptions
 /**
  * Общая часть заказа — те же поля, что собирает форма пассажира
  * (pages/Passenger/VotingForm.tsx). Тип заказа задаётся НЕ здесь: голосование
- * добавляет b_voting/b_services, предложение — b_cars_count=0, а стандартный
+ * добавляет b_voting/b_services, предложение — b_options.offer_mode=OFFER, а стандартный
  * вызов не добавляет ничего.
  */
 function orderPayload(options: ICreateOrderOptions): Record<string, unknown> {
@@ -265,8 +244,8 @@ function orderPayload(options: ICreateOrderOptions): Record<string, unknown> {
     b_destination_address: `E2E destination ${options.label}`,
     b_destination_latitude: String(options.destination.latitude),
     b_destination_longitude: String(options.destination.longitude),
-    b_contact: '+70000000000',
-    b_start_datetime: startDatetime(2),
+    b_contact: passengerPhone(),
+    b_start_datetime: 'now',
     b_passengers_count: 1,
     b_payment_way: 1,
     b_max_waiting: options.maxWaitingSeconds ?? 7200,
@@ -280,7 +259,7 @@ function orderPayload(options: ICreateOrderOptions): Record<string, unknown> {
     b_options: {
       fromShortAddress: `E2E pickup ${options.label}`,
       toShortAddress: `E2E destination ${options.label}`,
-      customer_price: 150,
+      customer_price: 0,
     },
   }
   if (options.carClassId)
@@ -307,7 +286,8 @@ export async function createVotingOrder(
 ): Promise<string> {
   const orderId = await postDrive(
     session,
-    { ...orderPayload(options), b_voting: 1, b_services: [5] },
+    { ...orderPayload(options), b_voting: 1, b_services: [5], b_cars_count:1,
+      b_location_class:CITY_LOCATION_CLASS,b_max_waiting:options.maxWaitingSeconds ?? 900 },
     'голосовой заказ',
   )
 
@@ -323,53 +303,28 @@ export async function createVotingOrder(
 /**
  * Стандартный вызов — заказ А.1.1. Отличается от двух остальных типов ровно
  * отсутствием их признаков: нет b_voting/b_services=[5] голосования и нет
- * b_cars_count=0 предложения (pages/Passenger/VotingForm.tsx, mode='order').
+ * offer_mode=OFFER предложения (pages/Passenger/VotingForm.tsx, mode='order').
  * set_confirm_state приложение для такого заказа не шлёт — не шлём и мы.
  */
 export async function createStandardOrder(
   session: ISession,
   options: ICreateOrderOptions,
 ): Promise<string> {
-  return postDrive(session, orderPayload(options), 'стандартный заказ')
+  return postDrive(session, {...orderPayload(options), b_cars_count:1, b_services:[1], b_location_class:CITY_LOCATION_CLASS}, 'стандартный заказ')
 }
 
-/**
- * Класс поездки «Межгородская» (`alias: countries_list`) в конфигурации
- * gruzvill. Вместе с `b_options.customer_price` это ЕДИНСТВЕННЫЙ признак режима
- * «Предложение», который переживает backend, — остальные замерены и отброшены
- * (e2e/README.md, TEST-E2E-004).
- *
- * Идентификатор берётся из конфигурации приложения `booking_location_classes`;
- * если он изменится, тест А.1.3 упадёт на проверке режима, а не молча уедет на
- * стандартный вызов — `isOfferOrderSnapshot` сверяет именно это поле.
- */
+/** Geographic classes are independent of Order/Vote/Offer. */
+export const CITY_LOCATION_CLASS = '1'
 export const INTERCITY_LOCATION_CLASS = '2'
 
-/**
- * Заказ режима «Предложение» — А.1.3.
- *
- * Отличается от стандартного вызова межгородним классом поездки: в паре с
- * `b_options.customer_price` (его добавляет `orderPayload`) приложение опознаёт
- * такой заказ как OFFER (`isOfferOrder`, src/tools/driverOffer.ts).
- *
- * Чего здесь СОЗНАТЕЛЬНО нет:
- *
- * * `b_cars_count: 0` — легаси-признак, на gruzvill возвращается как `"1"`;
- * * `b_only_offer: 1` — backend его принимает, но заказ уходит в другой поток:
- *   пропадает из списка водителей и отбивает предложение «not selected driver»;
- * * `set_confirm_state` — его требует только голосование.
- *
- * `b_car_class` задаётся классом машины тестового водителя (`carClassId`):
- * межгородний класс авто увёл бы заказ от водителей, у которых машины городского
- * класса.
- */
+/** Explicit city Offer, one vehicle and a positive fixed customer proposal. */
 export async function createOfferOrder(
   session: ISession,
   options: ICreateOrderOptions,
 ): Promise<string> {
   return postDrive(
     session,
-    { ...orderPayload(options), b_location_class: INTERCITY_LOCATION_CLASS },
+    { ...orderPayload(options), b_cars_count:1, b_location_class: CITY_LOCATION_CLASS, b_options: { ...(orderPayload(options).b_options as object), customer_price:150, offer_mode: 'OFFER' } },
     'заказ-предложение',
   )
 }
@@ -444,23 +399,10 @@ export const orderOptionsOf = (order: IOrderSnapshot): Record<string, any> =>
 export const customerPriceOf = (order: IOrderSnapshot): number | undefined =>
   numberOrUndefined(orderOptionsOf(order).customer_price)
 
-/**
- * Опознаёт ли приложение этот заказ как режим «Предложение» (А.1.3).
- *
- * Повторяет ту ветку `isOfferOrder()` (src/tools/driverOffer.ts), которая
- * работает от данных заказа: цена заказчика + межгородний класс поездки.
- * Ветки на localStorage сюда не входят — заказ создан через API, и у ролей в
- * браузере ничего не сохранено.
- *
- * Проверяется контракт, а не одно поле: заказ, у которого пропал любой из двух
- * признаков, приложением как «Предложение» уже не считается, и водительской
- * формы предложения в интерфейсе не будет.
- */
+/** Independent persisted-mode assertion; no frontend storage or class heuristic. */
 export function isOfferOrderSnapshot(order: IOrderSnapshot): boolean {
   const isVoting = String(order.b_voting ?? '0') === '1'
-  return !isVoting &&
-    customerPriceOf(order) !== undefined &&
-    String(order.b_location_class) === INTERCITY_LOCATION_CLASS
+  return !isVoting && optionsObject(order.b_options).offer_mode === 'OFFER'
 }
 
 /**
@@ -635,3 +577,8 @@ export const cancelTestOrders = (
 ): Promise<ISweepResult> =>
   sweepActiveOrders(passenger, (orderId, order) =>
     orderId !== keepOrderId && isTestOrder(order))
+
+function optionsObject(value: unknown): Record<string, unknown> {
+  if (typeof value === 'string') { try { value = JSON.parse(value) } catch { return {} } }
+  return value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : {}
+}

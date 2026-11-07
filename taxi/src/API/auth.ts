@@ -184,7 +184,6 @@ const _googleLogin = (
     auth_hash: string | null
   },
 ): Promise<{ user: IUser, tokens: ITokens } | null> => {
-  console.log(auth)
   if(auth.auth_hash === null) {
     addToFormData(formData, {
       ...auth.data,
@@ -232,7 +231,10 @@ export const googleLogin = apiMethod<typeof _googleLogin>(_googleLogin, { authRe
 
 const _logout = (
   { formData }: IApiMethodArguments,
+  tokens: ITokens | null,
 ): Promise<any> => {
-  return axios.post(`${Config.API_URL}/logout/?`)
+  if (!tokens) return Promise.resolve()
+  addToFormData(formData, { token: tokens.token, u_hash: tokens.u_hash })
+  return axios.post(`${Config.API_URL}/logout/?`, formData)
 }
 export const logout = apiMethod<typeof _logout>(_logout, { authRequired: false })

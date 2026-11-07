@@ -1,3 +1,4 @@
+import { normalizeMoney, moneyDraft } from '../../tools/money'
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { formatEstimatedFare } from '../../design/fareDisplay'
 import { configSelectors } from '../../state/config'
@@ -265,8 +266,7 @@ function useMoneySegment({
   const [draft, setDraft] = useState('0')
   const [editing, setEditing] = useState(false)
   const hasValue = value !== undefined && value !== null
-  const numericValue = hasValue ? Number(value) : 0
-  const safeValue = Number.isFinite(numericValue) ? Math.max(0, numericValue) : 0
+  const safeValue = normalizeMoney(value) ?? 0
   const configuredMinValue = normalizeMoneyNumber(minValue)
   const committedFloor = Math.max(
     0,
@@ -293,7 +293,7 @@ function useMoneySegment({
   }, [value, editing, safeValue])
 
   const commitValue = (rawValue: number) => {
-    const safeNextValue = Number.isFinite(rawValue) ? Math.max(0, rawValue) : 0
+    const safeNextValue = normalizeMoney(rawValue) ?? 0
     const committedValue = increaseOnly ?
       Math.max(committedFloor, safeNextValue) :
       safeNextValue
@@ -323,7 +323,8 @@ function useMoneySegment({
         setValue(0)
     },
     onChange: next => {
-      const rawValue = String(next ?? '').replace(/[^\d]/g, '')
+      const rawValue = moneyDraft(next)
+      if (rawValue === null) return
       setEditing(true)
       setDraft(rawValue)
 
@@ -333,7 +334,8 @@ function useMoneySegment({
         return
       }
 
-      const nextValue = Number(rawValue)
+      const nextValue = normalizeMoney(rawValue)
+      if (nextValue === null) return
       if (!Number.isFinite(nextValue)) return
 
       const safeNextValue = Math.max(0, nextValue)
@@ -344,7 +346,7 @@ function useMoneySegment({
       setValue(nextStoredValue)
     },
     onBlur: () => {
-      const nextValue = Number(draft || 0)
+      const nextValue = normalizeMoney(draft.replace(/[.,]$/, '')) ?? 0
       commitValue(nextValue)
     },
   }
@@ -354,39 +356,12 @@ function formatMoneyValue(value?: number | string | null, showZero = false) {
   if (value === undefined || value === null || value === '')
     return ''
 
-  const rawValue = String(value).trim()
-  const normalizedValue = Number(rawValue.replace(',', '.').replace(/[^\d.-]/g, ''))
-
-  if (Number.isFinite(normalizedValue)) {
-    const roundedValue = Math.round(normalizedValue)
-
-    return roundedValue === 0 && !showZero ? '' : String(roundedValue)
-  }
-
-  const withoutCurrency = rawValue
-    .replace(CURRENCY.NAME, '')
-    .replace(CURRENCY.SIGN, '')
-    .replace(/\s+/g, ' ')
-    .trim()
-
-  return (withoutCurrency === '0' && !showZero) || withoutCurrency === '-' ? '' : withoutCurrency
-}
-
-function normalizeCustomerPriceInput(value: string) {
-  return value.replace(/[^\d]/g, '')
+  const amount = normalizeMoney(value)
+  return amount === null || (amount === 0 && !showZero) ? '' : String(amount)
 }
 
 function normalizeMoneyNumber(value?: number | string | null) {
-  if (value === undefined || value === null || value === '')
-    return null
-
-  const numberValue = Number(String(value).replace(',', '.').replace(/[^\d.-]/g, ''))
-
-  return Number.isFinite(numberValue) ? Math.max(0, valueToRoundedMoney(numberValue)) : null
-}
-
-function valueToRoundedMoney(value: number) {
-  return Math.round(value)
+  return normalizeMoney(value)
 }
 
 export default connector(PriceInput)
@@ -440,7 +415,8 @@ function PriceInputItem({
               className="price-input__segment-input"
               data-testid="passenger-order-price"
               data-price-key={item.key}
-              inputMode="numeric"
+              inputMode="decimal"
+              name={`${item.key}Price`}
               aria-label={item.label}
               autoComplete="off"
               value={item.value}
@@ -459,7 +435,7 @@ function PriceInputItem({
               }}
               onBlur={item.onBlur}
               onChange={event => {
-                item.onChange?.(normalizeCustomerPriceInput(event.target.value))
+                item.onChange?.(event.target.value)
               }}
             />
           ) : (

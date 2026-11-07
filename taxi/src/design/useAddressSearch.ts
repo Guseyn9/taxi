@@ -30,7 +30,7 @@ export function useAddressSearch({ query, contextKey, search }: Options) {
     let settled = false
     let timeout: number | undefined
     setState({ identity, status: 'idle', suggestions: [] })
-    if (!normalizedQuery) return () => { active = false }
+    if (Array.from(normalizedQuery).length < 3) return () => { active = false }
 
     const complete = (status: AddressSearchStatus, suggestions: ISuggestion[] = []) => {
       if (!active || settled || latestIdentity.current !== identity) return
@@ -62,7 +62,7 @@ export function useAddressSearch({ query, contextKey, search }: Options) {
   }, [identity, normalizedQuery])
 
   const retry = useCallback(() => {
-    if (normalizedQuery) setAttempt(value => value + 1)
+    if (Array.from(normalizedQuery).length >= 3) setAttempt(value => value + 1)
   }, [normalizedQuery])
   // A new query must never briefly render suggestions belonging to the previous one.
   const current = state.identity === identity ? state : { status: 'idle' as AddressSearchStatus, suggestions: [] }

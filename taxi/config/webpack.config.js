@@ -79,7 +79,16 @@ module.exports = function(webpackEnv) {
       },
       {
         loader: require.resolve('css-loader'),
-        options: cssOptions,
+        options: {
+          ...cssOptions,
+          // Root URLs point at public/, while relative Sass/library URLs still
+          // need webpack resolution. CSS-module consumers retain a default map.
+          url: { filter: url => !url.startsWith('/') },
+          modules: cssOptions.modules ? {
+            ...cssOptions.modules,
+            namedExport: false,
+          } : false,
+        },
       },
       {
         // Options for PostCSS as we reference these options twice
@@ -89,20 +98,21 @@ module.exports = function(webpackEnv) {
         options: {
           // Necessary for external CSS imports to work
           // https://github.com/facebook/create-react-app/issues/2677
-          ident: 'postcss',
-          plugins: () => [
-            require('postcss-flexbugs-fixes'),
-            require('postcss-preset-env')({
-              autoprefixer: {
-                flexbox: 'no-2009',
-              },
-              stage: 3,
-            }),
-            // Adds PostCSS Normalize as the reset css with default options,
-            // so that it honors browserslist config in package.json
-            // which in turn let's users customize the target behavior as per their needs.
-            postcssNormalize(),
-          ],
+          postcssOptions: {
+            config: false,
+            plugins: [
+              require('postcss-flexbugs-fixes')(),
+              require('postcss-preset-env')({
+                autoprefixer: {
+                  flexbox: 'no-2009',
+                },
+                stage: 3,
+              }),
+              // Normalize remains opt-in through CSS imports and respects the
+              // application's browserslist; no reset is injected globally.
+              postcssNormalize(),
+            ],
+          },
           sourceMap: isEnvProduction && shouldUseSourceMap,
         },
       },
@@ -119,6 +129,8 @@ module.exports = function(webpackEnv) {
           loader: require.resolve(preProcessor),
           options: {
             sourceMap: true,
+            implementation: require('sass'),
+            api: 'modern',
           },
         },
       )
@@ -300,6 +312,10 @@ module.exports = function(webpackEnv) {
       strictExportPresence: true,
       rules: [
         {
+          test: /[\\/]maplibre-gl[\\/]dist[\\/]maplibre-gl(?:-dev)?\.mjs$/,
+          use: [path.resolve(__dirname, '../tools/maplibre-worker-url-loader.cjs')],
+        },
+        {
           // "oneOf" will traverse all following loaders until one will
           // match the requirements. When no loader matches it will fall
           // back to the "file" loader at the end of the loader list.
@@ -332,6 +348,13 @@ module.exports = function(webpackEnv) {
                   loader: '@svgr/webpack',
                   options: {
                     typescript: true,
+                    exportType: 'default',
+                    svgoConfig: {
+                      plugins: [
+                        { name: 'preset-default', params: { overrides: { removeViewBox: false } } },
+                        'prefixIds',
+                      ],
+                    },
                   },
                 },
               ],

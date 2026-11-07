@@ -3,7 +3,7 @@ import { EInputTypes } from '../../Input'
 import { t, TRANSLATION } from '../../../localization'
 import Checkbox from '../../Checkbox'
 import { getPhoneError } from '../../../tools/utils'
-import { useForm, useWatch } from 'react-hook-form'
+import { Controller, useForm, useWatch } from 'react-hook-form'
 import Button from '../../Button'
 import { IRootState } from '../../../state'
 import { userSelectors, userActionCreators } from '../../../state/user'
@@ -26,6 +26,7 @@ import { Input } from './elements'
 import { Eye, EyeOff, Mail, Phone } from 'lucide-react'
 import { configSelectors } from '../../../state/config'
 import { dialogCopy } from '../dialogCopy'
+import { PhoneCountryField } from './PhoneCountryField'
 
 const mapStateToProps = (state: IRootState) => {
   return {
@@ -81,20 +82,19 @@ const getYupImageSchema = (isRequired: boolean = false) => {
     .test('type', t(TRANSLATION.REQUIRED_FILE_IMAGE_TYPE), (value) => {
       if(value && value[0]) {
         return (
-          value[0].type === 'image/jpeg' ||
-          value[0].type === 'image/png'
+          value.every((file: File) => file.type === 'image/jpeg' || file.type === 'image/png')
         )
       } else {
         return true
       }
     })
-  return isRequired ? schema : schema.required(TRANSLATION.REQUIRED_FILE)
+  return isRequired ? schema.required(TRANSLATION.REQUIRED_FILE) : schema
 }
 
 const getYupSchema = (schema: any, isRequired: boolean = false) =>
   isRequired ? schema.required(t(TRANSLATION.REQUIRED_FIELD)) : schema
 
-const RegisterForm: React.FC<IProps> = ({
+export const RegisterForm: React.FC<IProps> = ({
   status,
   message,
   tab,
@@ -161,7 +161,7 @@ const RegisterForm: React.FC<IProps> = ({
         then: yup.string().required(t(TRANSLATION.REQUIRED_FIELD)).trim(),
       })
       .trim(),
-    u_phone: yup.string().when('type', {
+    u_phone: yup.string().required(t(TRANSLATION.REQUIRED_FIELD)).test('phone', t(TRANSLATION.PHONE_PATTERN_ERROR), value => !value || !getPhoneError(value, true)).when('type', {
       is: (type: ERegistrationType) => type === ERegistrationType.Phone,
       then: yup.string().required(t(TRANSLATION.REQUIRED_FIELD)).trim(),
     }),
@@ -185,12 +185,13 @@ const RegisterForm: React.FC<IProps> = ({
   const {
     register: formRegister,
     handleSubmit,
-    formState: { errors, isValid },
+    formState: { errors, touchedFields, isSubmitted },
     control,
     setValue,
   } = useForm<IFormValues>({
     criteriaMode: 'all',
-    mode: 'all',
+    mode: 'onTouched',
+    reValidateMode: 'onChange',
     defaultValues: {
       type: ERegistrationType.Email,
       u_role: !location.pathname.includes('/driver-order') ? EUserRoles.Client : EUserRoles.Driver,
@@ -349,12 +350,12 @@ const RegisterForm: React.FC<IProps> = ({
   }
 
   const isDriver = Number(u_role) === EUserRoles.Driver
-  let isValidFrom = isValid
+  let isValidFrom = status !== EStatuses.Loading
   if (isDriver && requireFeildsMap.passport_photo && !filesMap.passport_photo.length) isValidFrom = false
   if (isDriver && requireFeildsMap.driver_license_photo && !filesMap.driver_license_photo.length) isValidFrom = false
   if (isDriver && requireFeildsMap.license_photo && !filesMap.license_photo) isValidFrom = false
   return (
-    <form className="login-form sign-up-subform" data-registration-role={isDriver ? 'driver' : 'passenger'} onSubmit={handleSubmit(onSubmit)}>
+    <form noValidate className="login-form sign-up-subform" data-registration-role={isDriver ? 'driver' : 'passenger'} onSubmit={handleSubmit(onSubmit)}>
      <div className="auth-register-fields">
       {isDriver &&
         <Input
@@ -385,19 +386,12 @@ const RegisterForm: React.FC<IProps> = ({
         )}
         error={errors.u_name?.message}
       />
-      <Input
-        inputProps={{
-          autoComplete: 'tel',
-          inputMode: 'tel',
-          ...formRegister('u_phone', {
-            required: t(TRANSLATION.REQUIRED_FIELD),
-          }),
-          required: true,
-        }}
-        label={t(TRANSLATION.PHONE)}
-        inputType={EInputTypes.Default}
-        error={getPhoneError(u_phone, type === ERegistrationType.Phone)}
-      />
+      <Controller name="u_phone" control={control} render={({field}) => <PhoneCountryField
+        value={field.value || ''} onChange={field.onChange} onBlur={field.onBlur} name={field.name}
+        language={language?.iso} label={t(TRANSLATION.PHONE)}
+        error={touchedFields.u_phone || isSubmitted ? errors.u_phone?.message : undefined}
+      />}/>
+
 
       {/*{type === ERegistrationType.Phone && (*/}
       {/*  <Checkbox*/}

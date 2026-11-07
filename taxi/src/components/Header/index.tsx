@@ -1,5 +1,6 @@
 import TestMapArea from '../../design/maps/TestMapArea'
 import LanguagePicker from './LanguagePicker'
+import PassengerHistory, { passengerHistoryCopy } from '../PassengerHistory'
 import {zoneCopy} from '../../admin/zones/copy'
 import {UserRound,ChevronRight} from 'lucide-react'
 import React, { useState } from 'react'
@@ -69,6 +70,7 @@ const mapStateToProps = (state: IRootState) => ({
   activeOrders: ordersSelectors.activeOrders(state),
   selectedOrder: clientOrderSelectors.selectedOrder(state),
   primaryCar: carsSelectors.userPrimaryCar(state),
+  carsLoading: carsSelectors.moduleSelector(state).userCars === undefined,
 })
 
 const mapDispatchToProps = {
@@ -104,6 +106,7 @@ function Header({
   activeOrders,
   selectedOrder,
   primaryCar,
+  carsLoading,
   getUserCars,
   setLanguage,
   setLoginModal,
@@ -117,6 +120,8 @@ function Header({
 
   const [seconds, setSeconds] = useState(0)
   const [menuOpened, setMenuOpened] = useState(false)
+  const [historyOpened, setHistoryOpened] = useState(false)
+  React.useEffect(() => setHistoryOpened(false), [user?.u_id])
   const [statusMenuOpen, setStatusMenuOpen] = useState(false)
   const [statusMenuClosing, setStatusMenuClosing] = useState(false)
   const [statusChanging, setStatusChanging] = useState(false)
@@ -301,7 +306,7 @@ function Header({
       'inactive-with-car' :
       isOnlineDriver ? 'active' : 'approved-offline'
 
-  const driverStatusText = !hasCar ?
+  const driverStatusText = carsLoading ? t(TRANSLATION.LOADING) : !hasCar ?
     `${t('driver_line_no_car')}. ${t('driver_status_need_car')}` :
     !isApprovedDriver ?
       `${t('driver_profile_pending_label')}. ${t('driver_status_hint_profile_check')}` :
@@ -491,7 +496,6 @@ function Header({
   })
 
   const languages = SITE_CONSTANTS.LANGUAGES
-    .filter(x => x.iso !== (config.SavedConfig !== 'children' ? ' ' : 'ru'))
 
   const handleLanguageChange = (lang: ILanguage) => {
     setCookie('user_lang', lang.iso)
@@ -574,6 +578,7 @@ function Header({
 
                       </li>
                     ))}
+                    {user && [EUserRoles.Client, EUserRoles.Agent].includes(user.u_role) && <li className="menu__item"><button type="button" className="menu__button" onClick={() => { setMenuOpened(false); setHistoryOpened(true) }}>{passengerHistoryCopy(language?.iso).title}</button></li>}
                     <li><details className="menu__tools"><summary>{toolsLabel}</summary>{menuItems.slice(1).map((item,index)=><button key={index} type="button" className="menu__button" onClick={()=>item.href?navigation.navigatePath(item.href):item.action?.(index+1)}>{item.label}</button>)}<GraphDiagnostics iso={language?.iso}/><TestMapArea iso={language?.iso}/>
                       {moroccoConfigMismatch(CURRENCY.NAME, SITE_CONSTANTS.DEFAULT_PHONE_MASK) &&
                         <details className="service-config-diagnostics">
@@ -606,6 +611,7 @@ function Header({
         )}
         <div className="header-location-slot" data-header-location-slot />
         <LanguagePicker language={language} languages={languages} label={t('language')} onChange={handleLanguageChange} dismiss={menuOpened} onOpen={()=>{setMenuOpened(false);if(statusMenuOpen)closeStatusMenu()}}/>
+        {historyOpened && user && [EUserRoles.Client, EUserRoles.Agent].includes(user.u_role) && <PassengerHistory key={user.u_id} owner={String(user.u_id)} iso={language?.iso} onClose={() => setHistoryOpened(false)} />}
         {isDriver && <div
           className={cn('header-avatar-status', { 'header-avatar-status--driver': isDriver })}
         >
@@ -621,7 +627,8 @@ function Header({
                   if (statusMenuOpen) closeStatusMenu()
                   else setStatusMenuOpen(true)
                 }}
-                disabled={statusChanging}
+                disabled={statusChanging || carsLoading}
+                aria-busy={carsLoading}
               >
                 <DriverStatusAvatar
                   status={driverVisualStatus}

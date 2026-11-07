@@ -1,4 +1,5 @@
 import { orderMatchesCar } from '../../pilot/rules'
+import {withLiveDriverLocations} from '../../tools/liveDriverLocations'
 import { mergeDriverHistory } from '../../tools/recentDriverHistory'
 import { List as ImmutableList, is } from 'immutable'
 import { createSelector, weakMapMemoize } from 'reselect'
@@ -166,7 +167,7 @@ export const moduleSelector = (state: IRootState) => state[moduleName]
 const ordersData = (state: IRootState) => moduleSelector(state).orders
 export const orders = createSelector(
   ordersData,
-  orders => orders.map(order => order.value ?? order.partial).filter(Boolean),
+  orders => orders.map(order => withLiveDriverLocations(order.value,order.partial)).filter(Boolean),
   { memoizeOptions: {
     resultEqualityCheck: (oldValue, newValue) => newValue.equals(oldValue),
   } },
@@ -176,7 +177,7 @@ export function order(
   id: IOrder['b_id'],
 ): IOrder | undefined {
   const orderData = ordersData(state).get(id)
-  const currentOrder = orderData?.value ?? orderData?.partial ?? undefined
+  const currentOrder = withLiveDriverLocations(orderData?.value,orderData?.partial) ?? undefined
   if (!currentOrder) return undefined
   const clientEmulatorMode = isBrowserEmulatorRunning('clients')
   const driverEmulatorMode = isBrowserEmulatorRunning('drivers')
@@ -263,7 +264,7 @@ const ordersGroupSelector = (
   (orders, ids) => ids
     ?.map(id => {
       const orderData = orders.get(id)
-      return orderData?.value ?? orderData?.partial
+      return withLiveDriverLocations(orderData?.value,orderData?.partial)
     })
     .filter((order): order is IOrder => Boolean(order)),
   { memoizeOptions: { resultEqualityCheck: is } },

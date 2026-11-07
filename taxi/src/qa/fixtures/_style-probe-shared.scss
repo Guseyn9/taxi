@@ -1,0 +1,5 @@
+$probe-gap: 12px;
+@mixin probe-row {
+  display: flex;
+  gap: $probe-gap;
+}

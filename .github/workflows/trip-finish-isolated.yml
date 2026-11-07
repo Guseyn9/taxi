@@ -16,6 +16,7 @@ on:
 # Do not run either workflow concurrently against those accounts.
 concurrency:
   group: playwright-e2e-live-backend
+  queue: max
   cancel-in-progress: false
 
 jobs:
@@ -51,6 +52,11 @@ jobs:
         env:
           E2E_APP_URL: http://localhost:3000
           E2E_API_BASE: ${{ secrets.E2E_API_BASE }}
+          E2E_PASSENGER_PHONE: ${{ secrets.E2E_PASSENGER_PHONE }}
+          E2E_PICKUP_QUERY: ${{ vars.E2E_PICKUP_QUERY }}
+          E2E_PICKUP_MATCH: ${{ vars.E2E_PICKUP_MATCH }}
+          E2E_DESTINATION_QUERY: ${{ vars.E2E_DESTINATION_QUERY }}
+          E2E_DESTINATION_MATCH: ${{ vars.E2E_DESTINATION_MATCH }}
           E2E_DRIVER_LOGIN: ${{ secrets.E2E_DRIVER_LOGIN }}
           E2E_DRIVER_PASSWORD: ${{ secrets.E2E_DRIVER_PASSWORD }}
           E2E_DRIVER_TYPE: ${{ secrets.E2E_DRIVER_TYPE }}
@@ -94,6 +100,11 @@ jobs:
         env:
           E2E_APP_URL: http://localhost:3000
           E2E_API_BASE: ${{ secrets.E2E_API_BASE }}
+          E2E_PASSENGER_PHONE: ${{ secrets.E2E_PASSENGER_PHONE }}
+          E2E_PICKUP_QUERY: ${{ vars.E2E_PICKUP_QUERY }}
+          E2E_PICKUP_MATCH: ${{ vars.E2E_PICKUP_MATCH }}
+          E2E_DESTINATION_QUERY: ${{ vars.E2E_DESTINATION_QUERY }}
+          E2E_DESTINATION_MATCH: ${{ vars.E2E_DESTINATION_MATCH }}
           E2E_DRIVER_LOGIN: ${{ secrets.E2E_DRIVER_LOGIN }}
           E2E_DRIVER_PASSWORD: ${{ secrets.E2E_DRIVER_PASSWORD }}
           E2E_DRIVER_TYPE: ${{ secrets.E2E_DRIVER_TYPE }}

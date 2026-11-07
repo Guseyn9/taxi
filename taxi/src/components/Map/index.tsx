@@ -11,7 +11,7 @@ import MapBoundary from '../../design/maps/MapBoundary'
 import {displayAddress} from '../../design/addressPresentation'
 import {canAutoCenter,validMapPoint} from '../../design/maps/locationPolicy'
 import {configSelectors} from '../../state/config'
-import { PASSENGER } from '../../design/maps/markers/assets'
+import { PASSENGER, MAP_CENTER } from '../../design/maps/markers/assets'
 import RsaleBasemap, {viewportPadding} from '../../design/maps/RsaleBasemap'
 import {passengerInitialCamera} from '../../design/maps/passengerCamera'
 import { MOROCCO_CENTER, MOROCCO_ZOOM, MOROCCO_VIEW, MOROCCO_MAX_ZOOM, isInMoroccoView } from '../../design/maps/morocco'
@@ -1321,6 +1321,7 @@ function MapContent({
   ])
 
   useEffect(() => {
+    let current = true
     if (isOpen) {
       backendGateway.getWashTrips()
         .then(items => items.filter(item =>
@@ -1343,9 +1344,11 @@ function MapContent({
             // @ts-ignore
             tooltip: item.t_complete_datetime.format('DD.MM HH:mm'),
           }))
-          setStaticMarkers(markers)
+          if (current) setStaticMarkers(markers)
         })
+        .catch(() => { if (current) setStaticMarkers([]) })
     }
+    return () => { current = false }
   }, [isOpen])
 
   useEffect(() => {
@@ -1470,7 +1473,7 @@ function MapContent({
     }
 
     syncCenter()
-    safeLeafletAction(() => map.on('moveend resize', syncCenter))
+    safeLeafletAction(() => map.on('move moveend resize', syncCenter))
     const observer=new ResizeObserver(syncCenter)
     observer.observe(map.getContainer())
     const surface=map.getContainer().closest('.passenger')
@@ -1478,7 +1481,7 @@ function MapContent({
     if(sheet)observer.observe(sheet)
     return () => {
       observer.disconnect()
-      safeLeafletAction(() => map.off('moveend resize', syncCenter))
+      safeLeafletAction(() => map.off('move moveend resize', syncCenter))
     }
   }, [map, setCenter])
 
@@ -2354,7 +2357,7 @@ function MapContent({
           aria-label={t(TRANSLATION.SHOW_MY_LOCATION)}
           title={t(TRANSLATION.SHOW_MY_LOCATION)}
         >
-          {!isModal&&containerClassName?.includes('passenger__form-map-container')?<><Navigation2 size={18} aria-hidden="true"/><span className="header-location-label">Location</span></>:<img src={images.mapLocationButton} alt="" />}
+          {!isModal&&containerClassName?.includes('passenger__form-map-container')?<><Navigation2 size={18} aria-hidden="true"/><span className="header-location-label">{t('location_action',{fallback:'Location'})}</span></>:<img src={images.mapLocationButton} alt="" />}
         </button></MapLocationAction>
       }
       {
@@ -2532,7 +2535,7 @@ function MapContent({
         />
       }
       {shouldShowCenterMarker && <img
-        src={PASSENGER}
+        src={MAP_CENTER}
         className="map-container__center-marker"
         alt=""
         aria-hidden="true"

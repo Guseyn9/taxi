@@ -1,4 +1,5 @@
 import React, { useMemo } from 'react'
+import { supportHref } from '../../security/supportUrl'
 import { connect, ConnectedProps } from 'react-redux'
 import cn from 'classnames'
 import { IRootState } from '../../state'
@@ -129,11 +130,9 @@ const MessageModal: React.FC<IProps> = ({
   const handleSupportAction = () => {
     if (!supportLink) return
 
-    const supportText = String(supportLink)
-    const href = supportText.includes('@') && !supportText.startsWith('mailto:') ?
-      `mailto:${supportText}` :
-      supportText
-    window.open(href, '_blank')
+    const href = supportHref(supportLink)
+    if (!href) return
+    window.open(href, '_blank', 'noopener,noreferrer')
   }
 
   return (

@@ -1,16 +1,17 @@
-import React from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { connect, ConnectedProps } from 'react-redux'
 import Button from '../Button'
 import OrderId from '../OrderId'
 import './styles.scss'
-import { passengerGateway } from '../../platform/adapters/LegacyPassengerGateway'
+import { driverMapGateway } from '../../platform/adapters/DriverMapGateway'
 import { t, TRANSLATION } from '../../localization'
 import { modalsActionCreators, modalsSelectors } from '../../state/modals'
 import { IRootState } from '../../state'
 import Overlay from './Overlay'
 import { orderSelectors } from '../../state/order'
 import { userSelectors } from '../../state/user'
-import { clearOrderCancelledByDriver, markOrderCancelledByDriver } from '../../tools/driverSelfCancel'
+import { runDriverSelfCancellation } from '../../tools/driverSelfCancel'
+import { getApiErrorMessage } from '../../tools/apiMessages'
 import { PLATFORM_ROUTES, usePlatformNavigate } from '../../platform/platform-interface'
 
 const mapStateToProps = (state: IRootState) => ({
@@ -21,6 +22,7 @@ const mapStateToProps = (state: IRootState) => ({
 
 const mapDispatchToProps = {
   setDriverCancelModal: modalsActionCreators.setDriverCancelModal,
+  closeAllModals: modalsActionCreators.closeAllModals,
 }
 
 const connector = connect(mapStateToProps, mapDispatchToProps)
@@ -28,38 +30,49 @@ const connector = connect(mapStateToProps, mapDispatchToProps)
 interface IProps extends ConnectedProps<typeof connector> {
 }
 
-const CancelDriverOrderModal: React.FC<IProps> = ({
+export const CancelDriverOrderModal: React.FC<IProps> = ({
   isOpen,
   setDriverCancelModal,
+  closeAllModals,
   selectedOrderId,
   user,
 }) => {
   const navigate = usePlatformNavigate()
+  const pending = useRef(false)
+  const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState('')
+  useEffect(() => { if (isOpen) setError('') }, [isOpen, selectedOrderId])
 
-  const onCancel = () => {
-    console.log('onCancel', selectedOrderId)
-    if (selectedOrderId) {
-      // Отмена водителем не должна отзываться окном «Клиент отменил заказ».
-      markOrderCancelledByDriver(selectedOrderId, user?.u_id)
-      passengerGateway.cancelOrder(selectedOrderId)
-        .catch(error => {
-          console.error(error)
-          clearOrderCancelledByDriver(selectedOrderId, user?.u_id)
-        })
+  const close = () => { if (!pending.current) setDriverCancelModal(false) }
+  const onCancel = async() => {
+    if (!selectedOrderId || pending.current) return
+    pending.current = true
+    setSubmitting(true)
+    setError('')
+    try {
+      // The driver port resolves only after a successful backend response or
+      // FSM completion. Keep the dialog and current route until then.
+      await runDriverSelfCancellation(selectedOrderId, user?.u_id,
+        () => driverMapGateway.cancel(selectedOrderId))
+      closeAllModals()
       navigate(PLATFORM_ROUTES.DriverOrders)
+    } catch (failure) {
+      setError(getApiErrorMessage(failure, { context: 'driver-order' }))
+    } finally {
+      pending.current = false
+      setSubmitting(false)
     }
-    setDriverCancelModal(false)
   }
 
   return (
     <Overlay
       isOpen={isOpen}
-      onClick={() => setDriverCancelModal(false)}
+      onClick={close}
     >
       <div
         className="modal your-order-modal"
       >
-        <form>
+        <form onSubmit={event => event.preventDefault()}>
           <fieldset>
             <legend>
               {t(TRANSLATION.CANCEL_ORDER)} <OrderId orderId={selectedOrderId} variant="full" />
@@ -71,11 +84,15 @@ const CancelDriverOrderModal: React.FC<IProps> = ({
                 // назначенного заказа. Подпись — «OK», по ней окно не отличить
                 // от других подтверждений.
                 data-testid="driver-order-cancel-confirm"
-                text={t(TRANSLATION.OK)}
+                type="button"
+                disabled={submitting || !selectedOrderId}
+                aria-busy={submitting}
+                text={t(submitting ? TRANSLATION.LOADING : TRANSLATION.OK)}
                 className="ok-btn"
                 onClick={onCancel}
               />
             </div>
+            {error && <p role="alert">{error}</p>}
           </fieldset>
         </form>
       </div>

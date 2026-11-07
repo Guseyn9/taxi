@@ -46,6 +46,7 @@ export const watchOrder = (
 
 export const clearOrders = (): TAction => ({ type: ActionTypes.CLEAR })
 export const refreshActiveOrders = (): TAction => ({ type: ActionTypes.GET_ACTIVE_ORDERS_REQUEST })
+export const refreshReadyOrders = (): TAction => ({ type: ActionTypes.GET_READY_ORDERS_REQUEST })
 // Перечитать ОДИН заказ тем же механизмом, которым его обновляет watchOrder
 // (getOrderSaga). Нужно там, где состояние заказа изменила команда, выполненная
 // в обход redux-мутации: store должен догнать бэкенд, не дожидаясь опроса.

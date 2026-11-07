@@ -255,6 +255,7 @@ function RegisterForm({
 
   return (
     <JSONForm
+      className="json-registration-form"
       fields={fields}
       onSubmit={handleSubmit}
       errors={errors}

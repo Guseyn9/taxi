@@ -7,8 +7,12 @@ export function uiLanguageAttributes(iso?: string): { lang: string; dir: 'rtl' |
   let lang = 'en'
   try { lang = Intl.getCanonicalLocales(parts.join('-'))[0] || 'en' } catch { lang = 'en' }
   const base = lang.split('-')[0]
-  if (!['ru', 'en', 'fr', 'ar'].includes(base)) lang = 'en'
-  return { lang, dir: lang.split('-')[0] === 'ar' ? 'rtl' : 'ltr' }
+  if (!['ru', 'en', 'es', 'fr', 'ar', 'ary', 'zgh'].includes(base)) lang = 'en'
+  // The Morocco dictionary distinguishes Arabic and Latin scripts for Darija.
+  // Script wins over language: ary-Arab is RTL, ary-Latn is LTR.
+  const script = lang.split('-').find(part => /^[A-Z][a-z]{3}$/.test(part))
+  const rtl = script ? script === 'Arab' : ['ar', 'ary'].includes(lang.split('-')[0])
+  return { lang, dir: rtl ? 'rtl' : 'ltr' }
 }
 
 export function applyUiDocumentLanguage(iso: string | undefined, root: Pick<HTMLElement, 'setAttribute'>) {

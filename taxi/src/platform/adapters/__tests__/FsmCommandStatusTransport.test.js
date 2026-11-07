@@ -15,6 +15,16 @@ function createResponse(body, status = 200) {
 }
 
 describe('FsmCommandStatusTransport', () => {
+  it('preserves Retry-After for a throttled read without claiming the command failed', async() => {
+    const response = createResponse({ detail: 'Too many requests' }, 429)
+    response.headers = { get: key => key === 'Retry-After' ? '3' : null }
+    const transport = new FsmCommandStatusTransport({ apiUrl: 'https://fsm.example.test' }, {
+      fetch: jest.fn().mockResolvedValue(response),
+    })
+    await expect(transport.getStatus(7)).rejects.toEqual(expect.objectContaining({
+      code: 'FSM_COMMAND_STATUS_HTTP_429', details: { response: { detail: 'Too many requests' }, retryAfterMs: 3000 },
+    }))
+  })
   it('loads one authenticated command execution by instanceId', async() => {
     const payload = { instanceId: 7, status: 'PROCESSING' }
     const fetchRequest = jest.fn().mockResolvedValue(createResponse(payload))
@@ -26,13 +36,13 @@ describe('FsmCommandStatusTransport', () => {
     await expect(transport.getStatus(7)).resolves.toEqual(payload)
     expect(fetchRequest).toHaveBeenCalledWith(
       'https://fsm.example.test/api/commands/7',
-      {
+      expect.objectContaining({
         method: 'GET',
         headers: {
           Accept: 'application/json',
           Authorization: 'Bearer driver-token',
         },
-      },
+      }),
     )
   })
 

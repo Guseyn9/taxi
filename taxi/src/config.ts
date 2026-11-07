@@ -1,33 +1,52 @@
-import { getCacheVersion } from './API/cacheVersion'
+import { loadTenantDictionary } from './security/tenantDictionary'
 import store from './state'
 import { setConfigError, setConfigLoaded } from './state/config/actionCreators'
 import { DEFAULT_CONFIG_NAME } from './constants'
+import { serviceEndpoints } from './serviceEndpoints'
+import { SESSION_DOMAIN_RESET, clearPrivateDerivedStorage, setPrivateDataOwner } from './security/sessionLifecycle'
+import { clearSessionTokens } from './security/sessionTokens'
 
 let _configName: string
+let configLoadGeneration = 0
+const resetTenantIdentity = (previous: string | null, next: string) => {
+  if (!previous || previous === next) return
+  clearSessionTokens();clearPrivateDerivedStorage();setPrivateDataOwner(null)
+  // Config can be constructed during store imports; dispatch after that synchronous bootstrap.
+  Promise.resolve().then(() => store.dispatch({type:SESSION_DOMAIN_RESET,payload:{clearUser:true}}))
+}
 
 const normalizeConfigName = (name?: string | null) => {
+  // A dedicated stand must not inherit another service's tenant from an old tab.
+  const fixedConfig = process.env.REACT_APP_SERVICE_CONFIG?.trim()
+  if (fixedConfig) return fixedConfig
   const configName = (name || '').trim()
-  return !configName || configName === '0' ?
+  const allowed = new Set([DEFAULT_CONFIG_NAME, ...(process.env.REACT_APP_ALLOWED_SERVICE_CONFIGS || '').split(',').map(value => value.trim()).filter(value => /^[A-Za-z0-9_-]+$/.test(value))])
+  return !configName || configName === '0' || !/^[A-Za-z0-9_-]+$/.test(configName) || !allowed.has(configName) ?
     DEFAULT_CONFIG_NAME :
     configName
 }
 
 const applyConfigName = (url: string, name?: string | null) => {
-  const script = document.createElement('script'),
-    configName = normalizeConfigName(name),
-    _name = `data_${configName}.js`
-  getCacheVersion(url).then(ver => {
-    script.src = `https://ibronevik.ru/taxi/cache/${_name}?ver=${ver}`
-    script.async = true
-    script.onload = () => {
-      store.dispatch(setConfigLoaded())
-    }
-    script.onerror = () => {
-      store.dispatch(setConfigError())
-    }
-
-    document.body.appendChild(script)
-  })
+  const generation = ++configLoadGeneration
+  let deadline: ReturnType<typeof setTimeout>
+  let settled = false
+  const fail = () => {
+    if (settled || generation !== configLoadGeneration) return
+    settled = true
+    clearTimeout(deadline)
+    document.getElementById('preloader')?.classList.remove('active')
+    store.dispatch(setConfigError())
+  }
+  // A single bounded JSON read replaces execution of a remote tenant script.
+  deadline = setTimeout(fail, 15000)
+  loadTenantDictionary(url).then(({ dictionary, metadata }) => {
+    if (settled || generation !== configLoadGeneration) {clearTimeout(deadline);return}
+    settled = true
+    clearTimeout(deadline)
+    ;(window as any).data = dictionary
+    for (const [key, value] of Object.entries(metadata)) (window as any)[key] = value
+    store.dispatch(setConfigLoaded())
+  }).catch(fail)
 }
 
 class Config {
@@ -62,15 +81,18 @@ class Config {
 
   setConfig(name?: string | null) {
     const configName = normalizeConfigName(name)
+    resetTenantIdentity(localStorage.getItem('config'), configName)
     localStorage.setItem('config', configName)
     _configName = configName
     applyConfigName(this.API_URL, configName)
   }
 
   clearConfig() {
+    const previous = localStorage.getItem('config')
     localStorage.removeItem('config')
-    _configName = DEFAULT_CONFIG_NAME
-    applyConfigName(this.API_URL, DEFAULT_CONFIG_NAME)
+    _configName = normalizeConfigName()
+    resetTenantIdentity(previous, _configName)
+    applyConfigName(this.API_URL, _configName)
   }
 
   setDefaultName() {
@@ -78,11 +100,11 @@ class Config {
   }
 
   get API_URL() {
-    return `${this.SERVER_URL}/api/v1`
+    return serviceEndpoints(_configName || normalizeConfigName()).apiUrl
   }
 
   get SERVER_URL() {
-    return `https://ibronevik.ru/taxi/c/${_configName || DEFAULT_CONFIG_NAME}`
+    return serviceEndpoints(_configName || normalizeConfigName()).serverUrl
   }
 
   get SavedConfig() {

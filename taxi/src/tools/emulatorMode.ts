@@ -1,4 +1,5 @@
 import { writeRawLog } from './rawLog'
+import { emulatorTestReady } from '../components/DriverEmulatorPanel/testRuntime'
 import { recordEmulatorGeoState } from './driverLocationLog'
 import { IOrder, IDriver, EBookingDriverState } from '../types/types'
 
@@ -286,7 +287,11 @@ function saveIdentity(key: string, identity: TEmulatorIdentity) {
 export function getBrowserEmulatorState(): TPersistentState {
   const storage = getStorage()
   if (!storage) return {}
-  return safeJsonParse<TPersistentState>(storage.getItem(BROWSER_EMULATOR_STATE_KEY), {})
+  const saved = safeJsonParse<TPersistentState>(storage.getItem(BROWSER_EMULATOR_STATE_KEY), {})
+  return {
+    drivers: emulatorTestReady('drivers') ? saved?.drivers : undefined,
+    clients: emulatorTestReady('clients') ? saved?.clients : undefined,
+  }
 }
 
 export function setBrowserEmulatorRunning(mode: TBrowserEmulatorMode, running: boolean) {
@@ -333,6 +338,7 @@ export function isAnyBrowserEmulatorModeRunning() {
 export const EXTERNAL_EMULATOR_FLAG_KEY = 'gruzvill_external_emulator'
 
 export function isExternalEmulatorEnabled() {
+  if (!emulatorTestReady('drivers') && !emulatorTestReady('clients')) return false
   try {
     if (typeof window !== 'undefined' && window.location && typeof URLSearchParams !== 'undefined') {
       const params = new URLSearchParams(window.location.search)

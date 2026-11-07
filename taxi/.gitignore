@@ -13,3 +13,11 @@ e2e-results/
 playwright-report/
 .vercel
 .env*
+
+# Generated diagnostics and standalone operator configuration
+design-review/
+output/
+tmp/
+artifacts/
+driver-emulator/config.json
+driver-emulator/data/

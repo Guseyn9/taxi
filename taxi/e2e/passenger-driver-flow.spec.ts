@@ -1,3 +1,4 @@
+import { newAuthenticatedContext } from './fixtures/tabSession'
 /**
  * TEST-E2E-009 — сквозной Standard-заказ: создание пассажиром через UI и обработка
  * водителем через UI. Живой backend.
@@ -43,6 +44,7 @@ import {
   PICKUP,
   DESTINATION,
   driverMapAction,
+  departAndArrive,
   expectDriverMapState,
   expectOrderInDriverList,
   isBoardingFormVisible,
@@ -217,7 +219,7 @@ function expectSingleExecutor(order: IOrderSnapshot, message: string): void {
 }
 
 async function openSession(browser: Browser, storageState: string): Promise<BrowserContext> {
-  const context = await browser.newContext({
+  const context = await newAuthenticatedContext(browser, {
     ...devices['Desktop Chrome'],
     storageState,
     baseURL: appUrl(),
@@ -473,20 +475,14 @@ test('TEST-E2E-009 — Standard: форма пассажира → карточ�
   })
 
   await test.step('Запросы принятия: контракт назначения, а не число запросов', async() => {
-    // Приложение само может повторить set_performer: первый запрос уходит с
-    // b_driver_code, который gruzvill отклоняет, и повторяется без него
-    // (API/order.ts, takeOrderRequest). Сколько запросов уйдёт, зависит от
-    // реализации и данных машины, поэтому число не фиксируется — ни «два», ни
-    // «не больше двух». Фиксируется то, что обязано быть верно при любом их
-    // числе: назначение состоялось один раз, после успешного назначения новых
-    // запросов принятия не было, а на backend остался один исполнитель (выше).
+    // One click must issue one assignment; never retry after dropping a rejected PIN/options.
     await expectActionsAnswered(orderId, 'set_performer')
     const attempts = actionWatch!.of(orderId, 'set_performer')
     const sequence = actionWatch!.describe(orderId)
     test.info().annotations.push({ type: 'set_performer', description: `${attempts.length}: ${sequence}` })
     console.log(`E2E set_performer orderId=${orderId} запросов=${attempts.length}: ${sequence}`)
 
-    expect(attempts.length, `водитель отправил хотя бы один запрос принятия: ${sequence}`).toBeGreaterThanOrEqual(1)
+    expect(attempts.length, `один клик — один запрос принятия: ${sequence}`).toBe(1)
     expect(
       attempts.filter(item => item.status === 'success').length,
       `назначение принято backend ровно один раз: ${sequence}`,
@@ -509,11 +505,9 @@ test('TEST-E2E-009 — Standard: форма пассажира → карточ�
   await switchToDriverMap(driverPage)
   await expectDriverMapState(driverPage, orderId, DRIVER_STATE.Performer, 'карта показывает принятый заказ')
 
-  enterStage('8. «Поехал» → Arrived')
-  await test.step('Водитель жмёт основное действие: Performer → Arrived', async() => {
-    const action = driverMapAction(driverPage, orderId)
-    await expect(action, 'основное действие доступно').toBeEnabled({ timeout: 60_000 })
-    await action.click()
+  enterStage('8. Выезд и прибытие')
+  await test.step('Водитель выезжает, затем отдельно подтверждает прибытие', async() => {
+    await departAndArrive(driverPage)
 
     // Сначала backend: оптимистичное состояние карты доказательством не является.
     await expectBackendDriverState(orderId, DRIVER_STATE.Arrived, 'backend перевёл заказ в Arrived')
@@ -533,7 +527,7 @@ test('TEST-E2E-009 — Standard: форма пассажира → карточ�
     ).toEqual(['success'])
   })
 
-  enterStage('9. «Приехал» → Started')
+  enterStage('9. Подтверждение посадки → Started')
   await test.step('Водитель жмёт основное действие: Arrived → Started', async() => {
     // Приложение блокирует «Приехал», пока водитель дальше 100 м от точки посадки
     // (pages/Driver/Map.tsx, requiresPickupArrival). Расстояние идёт в сообщение,

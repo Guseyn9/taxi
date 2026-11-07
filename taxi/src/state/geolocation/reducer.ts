@@ -18,6 +18,8 @@ export default function(
       return state
         .set('geoposition', payload)
     }
+    case ActionTypes.GET_FAIL:
+      return state.set('geoposition', undefined)
 
     default:
       return state

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { connect, ConnectedProps } from 'react-redux'
 import cn from 'classnames'
 import { EStatuses } from '../../types/types'
@@ -52,7 +52,7 @@ const connector = connect(mapStateToProps, mapDispatchToProps)
 interface IProps extends ConnectedProps<typeof connector> {
 }
 
-const CancelOrderModal: React.FC<IProps> = ({
+export const CancelOrderModal: React.FC<IProps> = ({
   selectedOrder,
   isOpen,
   setCancelModal,
@@ -68,6 +68,7 @@ const CancelOrderModal: React.FC<IProps> = ({
 
   const [reason, setReason] = useState(REASONS[0]?.id ?? '0')
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const pending = useRef(false)
 
   useEffect(() => {
     if (isOpen && !selectedOrder) setCancelModal(false)
@@ -86,11 +87,13 @@ const CancelOrderModal: React.FC<IProps> = ({
   }
 
   function onDenial() {
-    if (!selectedOrder || isSubmitting) {
+    if (pending.current) return
+    if (!selectedOrder) {
       closeModal()
       return
     }
 
+    pending.current = true
     setIsSubmitting(true)
     cancelOrder(
       selectedOrder,
@@ -109,13 +112,13 @@ const CancelOrderModal: React.FC<IProps> = ({
           message: t(TRANSLATION.ERROR),
         })
       })
-      .finally(() => setIsSubmitting(false))
+      .finally(() => { pending.current = false; setIsSubmitting(false) })
   }
 
   return (
     <Overlay
       isOpen={isOpen && Boolean(selectedOrder)}
-      onClick={() => setCancelModal(false)}
+      onClick={() => { if (!pending.current) setCancelModal(false) }}
     >
       <div className="modal cancel-order-modal message-window">
         <h2>{t(TRANSLATION.CANCEL_ORDER, { toUpper: false })}</h2>
@@ -124,8 +127,7 @@ const CancelOrderModal: React.FC<IProps> = ({
             <OrderId orderId={selectedOrder} variant="full" />
           </div>
         )}
-        <fieldset className="cancel-order-modal__reasons" disabled={isSubmitting}>
-          <legend className="sr-only">{t(TRANSLATION.CANCEL_ORDER, { toUpper: false })}</legend>
+        <fieldset className="cancel-order-modal__reasons" aria-label={t(TRANSLATION.CANCEL_ORDER, { toUpper: false })} disabled={isSubmitting}>
           {REASONS.map(item => <label key={item.id} className={cn('reason-item', {'reason-item--active': reason === item.id})}>
             <input type="radio" name="passenger-cancel-reason" checked={reason === item.id} onChange={() => setReason(item.id)} />
             <span>{item.label}</span>
@@ -146,8 +148,9 @@ const CancelOrderModal: React.FC<IProps> = ({
           />
           <Button
             intent="neutral"
+            disabled={isSubmitting}
             text={t(TRANSLATION.CANCEL)}
-            onClick={() => setCancelModal(false)}
+            onClick={() => { if (!pending.current) setCancelModal(false) }}
           />
         </div>
       </div>

@@ -1,3 +1,5 @@
+@use 'sass:color';
+
 .overlay {
   cursor: pointer;
   background: rgba(0, 0, 0, 0.17);
@@ -1407,7 +1409,7 @@
 }
 
 .delete-file-modal {
-  background-color: transparentize(#fff, .1);
+  background-color: color.adjust(#fff, $alpha: -0.1);
 
   &__text {
     margin: 20px auto;
@@ -1726,4 +1728,11 @@
     line-height: 16px;
     margin-top: 4px;
   }
+}
+
+// Keep the destructive action distinct from the dismiss action.
+body .overlay__wrapper .driver-trip-cancel-modal [data-testid="driver-trip-cancel-confirm"] {
+  background: var(--drive-red, #b51218) !important;
+  color: #fff !important;
+  &:disabled { opacity: .6; }
 }

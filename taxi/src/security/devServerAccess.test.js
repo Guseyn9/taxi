@@ -1,0 +1,10 @@
+const policy=require('../../config/devServerAccessPolicy')('127.0.0.1',null,3022)
+test.each(['localhost:3022','127.0.0.1:3022','[::1]:3022'])('valid development Host works: %s',value=>expect(policy.isAllowedHost(value)).toBe(true))
+test.each(['evil.invalid:3022','203.0.113.7:3022','[2001:db8::7]:3022','localhost:3022@evil.invalid','localhost:3022/path','localhost:3022,evil.invalid','localhost:3022\\evil.invalid','http://[::1',null])('unknown or malformed Host is rejected: %s',value=>expect(policy.isAllowedHost(value)).toBe(false))
+test.each(['http://localhost:3022','http://127.0.0.1:3022','http://[::1]:3022'])('valid browser Origin works: %s',value=>expect(policy.isAllowedOrigin(value)).toBe(true))
+test.each(['http://evil.invalid:3022','http://203.0.113.7:8080','http://[2001:db8::7]:3022','http://localhost:3000','https://localhost:3022','http://[::1','null',undefined,'http://localhost:3022@evil.invalid','http://localhost:3022/path','http://localhost:3022#x','http://localhost:3022?x','http://localhost:3022\\@evil.invalid'])('foreign/invalid Origin is denied without throwing: %s',value=>expect(policy.isAllowedOrigin(value)).toBe(false))
+test('explicit LAN host works on the configured port without opening other origins',()=>{
+ const lan=require('../../config/devServerAccessPolicy')('0.0.0.0','192.168.0.20',3022)
+ expect(lan.isAllowedHost('192.168.0.20:3022')).toBe(true);expect(lan.isAllowedOrigin('http://192.168.0.20:3022')).toBe(true)
+ expect(lan.isAllowedOrigin('http://192.168.0.21:3022')).toBe(false)
+})

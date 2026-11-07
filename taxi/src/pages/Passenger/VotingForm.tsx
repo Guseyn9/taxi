@@ -1,10 +1,16 @@
+import PendingVotingConfirmation from '../../pilot/PendingVotingConfirmation'
+import PassengerBoardingCode from '../../pilot/PassengerBoardingCode'
+import { normalizeMoney } from '../../tools/money'
 import BoundaryButtons from '../../components/BoundaryButtons'
+import { offerBookingOptions } from '../../API/legacyContract'
 import LockedRouteSummary from '../../design/LockedRouteSummary'
 import {markPendingOffer} from '../../pilot/pendingOffer'
 import {usePendingOffer} from '../../pilot/usePendingOffer'
-import {orderCurrency,startedTripDriver,canExpireSearch} from '../../design/reliability/rideData'
+import {displayFare,orderCurrency,startedTripDriver,canExpireSearch} from '../../design/reliability/rideData'
 import {displayShortAddress,addressLocale} from '../../design/addressPresentation'
 import { RideRequestActions } from '../../design/RideRequestActions'
+import {bookingBlock, bookingReadinessCopy} from '../../design/bookingReadiness'
+import NearbySupply from '../../design/NearbySupply'
 import { passengerRequestMode } from '../../tools/passengerRequestMode'
 import ZoneCheckNotice from '../../design/reliability/ZoneCheckNotice'
 import { retryZonePoint, zoneCheckState, zoneCheckCopy } from '../../design/reliability/zoneCheck'
@@ -17,6 +23,7 @@ import { Button as UiButton } from '../../components/ui/button'
 import { ChevronDown, ChevronRight, Clock3, SlidersHorizontal, Info } from 'lucide-react'
 import Overlay from '../../components/modals/Overlay'
 import { rideCopy, isRideRtl } from '../../design/copy'
+import {useReleaseCanceledPassengerChoice} from '../../tools/useReleaseCanceledPassengerChoice'
 import React, {
   useState, useRef, useLayoutEffect,
   useMemo, useCallback, useImperativeHandle, useEffect,
@@ -49,8 +56,6 @@ import {
   clearPassengerChoiceWaitingExtension,
   getPassengerPickupEta,
   getPassengerRejectedChoices,
-  getChoiceDriverIdsToReleaseBeforeChoosing,
-  isChoiceDriverSelectionBlockedError,
   isChoiceOrder,
   isOfferOrder,
   isStoredSimpleOrderMode,
@@ -83,7 +88,6 @@ import { useReliableNow, useCachedState } from '../../tools/hooks'
 import { getStableRemainingLifetimeSeconds, getTimestamp as getReliableTimestamp } from '../../tools/reliableTime'
 import { getDriverTripStartedAt } from '../../tools/tripTimer'
 import { getDriverColor } from '../../tools/driverColors'
-import { getDriverDoorNumber, normalizeDriverDoorNumber, shouldShowDriverDoorNumber } from '../../tools/driverDoorNumber'
 import { writeFlowEvent } from '../../tools/flowLog'
 import { PassengerUiConfig } from '../../types/passengerUi'
 import './voting-form.scss'
@@ -118,7 +122,6 @@ interface IProps extends PassengerVotingFormStoreProps {
   minimizedPartRef: React.Ref<HTMLElement>
   noSwipeElementsRef: React.Ref<HTMLElement[]>
   uiConfig?: PassengerUiConfig
-  onVoiceSubmitReady?: (submit: (() => Promise<boolean>) | null) => void
 }
 
 const VotingForm = function VotingForm({
@@ -164,7 +167,6 @@ const VotingForm = function VotingForm({
   noSwipeElementsRef,
   uiConfig,
   getMapSearchCenter,
-  onVoiceSubmitReady,
 }: IProps) {
 
   const uiCopy = rideCopy(language?.iso)
@@ -397,17 +399,10 @@ const VotingForm = function VotingForm({
     }
 
     if (isOffer) {
-      // Offer order is still created through the old backend schema.
-      // gruzvill validates b_options values as arrays. Do not send helper keys
-      // like fromShortAddress/toShortAddress here; they can be rejected by backend.
-      payload.b_cars_count = 0
-      delete payload.b_options
-
-      if (safeOrderPrice > 0) {
-        payload.b_options = {
-          customer_price: [safeOrderPrice],
-        }
-      }
+      // This opt-in contract requires FrontendContract.php and its dictionary migration.
+      // b_only_offer retains its separate legacy invitation semantics.
+      payload.b_cars_count = 1
+      payload.b_options = offerBookingOptions(safeOrderPrice)
 
       const offerMarkerComments = getOfferResponseBookingCommentIds()
       if (offerMarkerComments.length) {
@@ -422,6 +417,7 @@ const VotingForm = function VotingForm({
     setSubmitting(true)
     try {
       const data = await createOrder(payload)
+      if (data.confirmationPending) setMessageModal({isOpen:true,status:EStatuses.Fail,message:t('voting_confirmation_pending')})
       let verifiedOffer = isOffer
       if (isOffer) {
         clearStoredChoiceOrderMode(data.b_id)
@@ -467,11 +463,6 @@ const VotingForm = function VotingForm({
     setIsExpanded, onSubmit, resetClientOrder,
   ])
 
-  useEffect(() => {
-    onVoiceSubmitReady?.(() => submit('order'))
-    return () => onVoiceSubmitReady?.(null)
-  }, [onVoiceSubmitReady, submit])
-
   const [submitting, setSubmitting] = useState(false)
   const [canceling, setCanceling] = useState(false)
   const [finishing, setFinishing] = useState(false)
@@ -479,7 +470,6 @@ const VotingForm = function VotingForm({
   const [candidateCars, setCandidateCars] = useState<ICar[]>([])
   const [selectedDriverUser, setSelectedDriverUser] = useState<IUser | null>(null)
   const [selectedDriverCar, setSelectedDriverCar] = useState<ICar | null>(null)
-  const [selectedDoorNumber, setSelectedDoorNumber] = useState('')
   const [activeCandidate, setActiveCandidate] = useState<IUser['u_id'] | null>(null)
   const [heldCandidate, setHeldCandidate] = useState<IUser['u_id'] | null>(null)
   const [driverCancelReasonModalOpen, setDriverCancelReasonModalOpen] = useState(false)
@@ -514,7 +504,8 @@ const VotingForm = function VotingForm({
     ))
   }, [lockedOrder?.b_id])
 
-  const [confirmedChoiceId, setConfirmedChoiceId] = useState<IUser['u_id'] | null>(() => getPassengerConfirmedChoice(lockedOrder?.b_id))
+  const [storedConfirmedChoiceId, setConfirmedChoiceId] = useState<IUser['u_id'] | null>(() => getPassengerConfirmedChoice(lockedOrder?.b_id))
+  const confirmedChoiceId = useReleaseCanceledPassengerChoice(lockedOrder, storedConfirmedChoiceId, setConfirmedChoiceId)
   const [pickupEtaVersion, setPickupEtaVersion] = useState(0)
 
   const [rejectedChoiceIds, setRejectedChoiceIds] = useState<IUser['u_id'][]>(() => getPassengerRejectedChoices(lockedOrder?.b_id))
@@ -834,20 +825,7 @@ const VotingForm = function VotingForm({
     }
   }, [selectedDriver?.u_id, selectedDriver?.c_id])
 
-  useEffect(() => {
-    if (!selectedDriver) {
-      setSelectedDoorNumber('')
-      return
-    }
 
-    setSelectedDoorNumber(getDriverDoorNumber(selectedDriver, selectedDriverCar))
-  }, [
-    lockedOrder?.b_id,
-    selectedDriver?.u_id,
-    selectedDriver?.c_id,
-    selectedDriverCar?.c_id,
-    selectedDriverCar?.registration_plate,
-  ])
 
   const shouldRunLiveTimer = Boolean(
     lockedOrder && (
@@ -980,68 +958,7 @@ const VotingForm = function VotingForm({
 
     setSubmitting(true)
     try {
-      const releaseIds = Array.from(new Set([
-        ...getChoiceDriverIdsToReleaseBeforeChoosing(lockedOrder, nextCandidateId),
-        ...rejectedChoiceIds
-          .map(String)
-          .filter(rejectedId => rejectedId && rejectedId !== String(nextCandidateId)),
-      ]))
-
-      // Сначала пробуем снять назначение на уровне заказа.
-      // На части backend-версий после отмены выбранного водителя заказ всё ещё
-      // считается занятым старым performer, и следующий выбор падает с ошибкой.
-      try {
-        await passengerGateway.releaseCandidate(lockedOrder.b_id)
-      } catch (error) {
-        console.error(error)
-      }
-
-      for (const releaseId of releaseIds) {
-        try {
-          await passengerGateway.releaseCandidate(lockedOrder.b_id, releaseId)
-        } catch (error) {
-          console.error(error)
-        }
-      }
-
-      try {
-        await passengerGateway.selectCandidate(lockedOrder.b_id, nextCandidateId)
-      } catch (error) {
-        if (!isChoiceDriverSelectionBlockedError(error))
-          throw error
-
-        const hardReleaseIds = Array.from(new Set([
-          ...releaseIds,
-          ...(lockedOrder.drivers ?? [])
-            .filter(driver =>
-              String(driver.u_id ?? '') &&
-              String(driver.u_id) !== String(nextCandidateId) &&
-              [
-                EBookingDriverState.Performer,
-                EBookingDriverState.Arrived,
-                EBookingDriverState.Started,
-              ].includes(driver.c_state),
-            )
-            .map(driver => String(driver.u_id)),
-        ]))
-
-        try {
-          await passengerGateway.releaseCandidate(lockedOrder.b_id)
-        } catch (releaseError) {
-          console.error(releaseError)
-        }
-
-        for (const releaseId of hardReleaseIds) {
-          try {
-            await passengerGateway.releaseCandidate(lockedOrder.b_id, releaseId)
-          } catch (releaseError) {
-            console.error(releaseError)
-          }
-        }
-
-        await wait(650)
-        await passengerGateway.selectCandidate(lockedOrder.b_id, nextCandidateId)
-      }
+      await passengerGateway.selectCandidate(lockedOrder.b_id, nextCandidateId)
 
       setPassengerConfirmedChoice(lockedOrder.b_id, nextCandidateId)
       setConfirmedChoiceId(nextCandidateId)
@@ -1060,25 +977,6 @@ const VotingForm = function VotingForm({
       setIsExpanded(false)
     } catch (error) {
       console.error(error)
-
-      if (canUseLocalChoiceFallback(lockedOrder, nextCandidateId, rejectedChoiceIds)) {
-        setPassengerConfirmedChoice(lockedOrder.b_id, nextCandidateId)
-        setConfirmedChoiceId(nextCandidateId)
-        writeFlowEvent('ORDER_SEARCH_FINISHED', {
-          orderId: lockedOrder.b_id,
-          driverId: nextCandidateId,
-          screen: 'PassengerVotingForm',
-          uiState: 'DriverSelectedLocalFallback',
-          data: {
-            orderId: lockedOrder.b_id,
-            driverId: nextCandidateId,
-            reason: 'local_choice_fallback',
-          },
-        })
-        refreshActiveOrders()
-        setIsExpanded(false)
-        return
-      }
 
       writeFlowEvent('ERROR_SHOWN_TO_CLIENT', {
         orderId: lockedOrder.b_id,
@@ -1199,7 +1097,7 @@ const VotingForm = function VotingForm({
 
 
   const handleLockedCustomerPriceCommit = useCallback((value: number) => {
-    const safeValue = Math.max(0, Math.round(Number(value) || 0))
+    const safeValue = normalizeMoney(value) ?? 0
     const floorValue = Math.max(0, lockedCustomerPrice)
 
     if (!lockedOrder || isOfferOrder(lockedOrder) || selectedDriver || savingLockedCustomerPrice || safeValue <= floorValue) {
@@ -1297,9 +1195,13 @@ const VotingForm = function VotingForm({
   }, [phone, setPhone])
 
   const allowedModes = orderFormLayout.orderModeResolution.allowedModes
+  const readinessCopy = bookingReadinessCopy(languageIso)
+  const blocked = bookingBlock({from,to,fromZoneStatus,toZoneStatus,zonesReady,
+    hasClass:orderFormLayout.classResolution.availableClassIds.length > 0,
+    phoneValid:!getPhoneNumberError(phone),pending:submitting})
   const effectiveMode = selectedMode && allowedModes.includes(selectedMode) ? selectedMode : (preferOfferMode ? 'offer' : 'order')
-  const submitButtons = <RideRequestActions mode={effectiveMode} iso={languageIso} allowedModes={allowedModes}
-    submitDisabled={!zonesReady}
+  const submitButtons = <>{blocked==='phone'&&<UiButton type="button" variant="ghost" className="rs-booking-phone-fix" onClick={openOptions}>{readinessCopy.editPhone}</UiButton>}<RideRequestActions mode={effectiveMode} iso={languageIso} allowedModes={allowedModes}
+    submitDisabled={Boolean(blocked)} blockedReason={blocked ? readinessCopy[blocked] : undefined}
     disabled={!available} pending={submitting} error={submitError}
     priceField={<div ref={priceInputRef} className="rs-request-price">
       <PriceInput forceCustomerPrice customerOfferEditable visibleItems={['customer']} customerLabel={journeyCopy(languageIso).offer} disabled={submitting}/>
@@ -1307,7 +1209,7 @@ const VotingForm = function VotingForm({
     onChange={mode => {
       setSelectedMode(mode)
       setSubmitError(null)
-    }} onSubmit={mode => submit(mode)} />
+    }} onSubmit={mode => submit(mode)} /></>
 
   const showLockedDriverPanel = Boolean(selectedDriver) && isBlockVisible('driverCard')
   const isLockedTripStarted = selectedDriver?.c_state === EBookingDriverState.Started
@@ -1416,13 +1318,13 @@ const VotingForm = function VotingForm({
         <div className="passenger-voting-form__selected-offer">
           <div className="passenger-voting-form__selected-offer-row">
             <span>{t(TRANSLATION.CUSTOMER_PRICE)}</span>
-            <strong>{formatOfferPrice(lockedCustomerPrice)}</strong>
+            <strong>{formatOfferPrice(lockedCustomerPrice,orderCurrency(lockedOrder,CURRENCY.NAME),languageIso)}</strong>
           </div>
           {selectedDriverOfferExpanded && (
             <>
               <div className="passenger-voting-form__selected-offer-row">
                 <span>{t(TRANSLATION.DRIVER_OFFER_PRICE)}</span>
-                <strong>{formatOfferPrice(selectedDriverOffer?.price) || '—'}</strong>
+                <strong>{formatOfferPrice(selectedDriverOffer?.price,orderCurrency(lockedOrder,CURRENCY.NAME),languageIso) || '—'}</strong>
               </div>
               <div className="passenger-voting-form__selected-offer-row">
                 <span>{t(TRANSLATION.DRIVER_OFFER_ETA)}</span>
@@ -1436,24 +1338,7 @@ const VotingForm = function VotingForm({
           )}
         </div>
       )}
-      {shouldShowDriverDoorNumber(selectedDriver) && (
-        <div className="passenger-voting-form__boarding-code passenger-voting-form__boarding-code--door-number">
-          <span className="passenger-voting-form__boarding-code-icon" aria-hidden="true">
-            <BoardingCodeMiniIcon />
-          </span>
-          <span className="passenger-voting-form__boarding-code-label">{t(TRANSLATION.DRIVE_NUMBER)}</span>
-          <input
-            className="passenger-voting-form__door-number-input"
-            value={selectedDoorNumber}
-            inputMode="numeric"
-            pattern="[0-9]*"
-            maxLength={4}
-            placeholder="000"
-            aria-label={t(TRANSLATION.DRIVE_NUMBER)}
-            onChange={event => setSelectedDoorNumber(normalizeDriverDoorNumber(event.target.value))}
-          />
-        </div>
-      )}
+      <PassengerBoardingCode order={lockedOrder} driver={selectedDriver} className="passenger-voting-form__boarding-code"/>
     </div>
   ) : null
 
@@ -1494,7 +1379,7 @@ const VotingForm = function VotingForm({
     </div>
   )
 
-  const lockedCandidates = locked && lockedOrder && !selectedDriver && isBlockVisible('candidateList') && (isExpanded || candidateDrivers.length > 0) ? (
+  const lockedCandidates = locked && lockedOrder && !(lockedOrder.b_voting && lockedOrder.b_confirm_state === false) && isChoiceOrder(lockedOrder) && !selectedDriver && isBlockVisible('candidateList') && (isExpanded || candidateDrivers.length > 0) ? (
     <div className="passenger-voting-form__candidates">
       <div className={`passenger-voting-form__candidates-title${lockedVotingRemainingText ? ' passenger-voting-form__candidates-title--with-waiting-timer' : ''}`}>
         {serviceCopy(languageIso).responders}
@@ -1534,7 +1419,7 @@ const VotingForm = function VotingForm({
               const seatsText = getFirstFilledOfferValue(offer.seats) || '—'
               const candidateCarClassKind = getCandidateCarClassKind(candidateCar, lockedOrder ?? null)
               const candidateColor = getDriverColor(candidate, lockedOrder?.drivers ?? candidateDrivers)
-              const sideValue = requestIsOffer ? formatOfferPrice(offer.price) : pickupEta
+              const sideValue = requestIsOffer ? formatOfferPrice(offer.price,orderCurrency(lockedOrder,CURRENCY.NAME),languageIso) : pickupEta
               const sideLabel = requestIsOffer ? '' : t(TRANSLATION.CLIENT_PICKUP_ETA)
 
               return (
@@ -1610,6 +1495,7 @@ const VotingForm = function VotingForm({
                         data-offer-price={requestIsOffer ? offer.price : undefined}
                       >
                         <strong>{sideValue}</strong>
+                        {requestIsOffer && <small>{pickupEta}</small>}
                         {sideLabel ? <small>{sideLabel}</small> : null}
                       </span>
                     ) : null}
@@ -1689,6 +1575,8 @@ const VotingForm = function VotingForm({
             }}>{uiCopy.done}</UiButton>}
         </CardHeader>}
       <div className="rs-ride-body" ref={rideBodyRef}>
+      {!locked && <div className="rs-trip-scope"><BoundaryButtons /></div>}
+      {locked && lockedOrder && <PendingVotingConfirmation key={lockedOrder.b_id} order={lockedOrder} onUpdated={refreshActiveOrders}/>}
       <div
         ref={minimizedPartRef as React.Ref<HTMLDivElement>}
         className="passenger-voting-form__group"
@@ -1738,6 +1626,7 @@ const VotingForm = function VotingForm({
 
         {lockedCandidates}
         {lockedDriverPanel}
+        {locked && lockedOrder && !selectedDriver && !isChoiceOrder(lockedOrder) && <div className="passenger-voting-form__candidates-empty" role="status">{t(TRANSLATION.CLIENT_SEARCHING_DRIVER)}</div>}
 
       {!locked && (
         <div className="passenger-voting-form__car-class">
@@ -1765,6 +1654,7 @@ const VotingForm = function VotingForm({
             <ChevronDown aria-hidden="true" className={isExpanded ? 'rs-chevron-open' : ''} />
           </UiButton>
         </div>}
+        {!locked && <NearbySupply iso={languageIso}/>}
         {locked && !isExpanded && (
           <ShortInfo
             orderSnapshot={lockedOrder}
@@ -1780,7 +1670,6 @@ const VotingForm = function VotingForm({
       </div>
 
       {!locked && optionsView && <div className="rs-booking-preferences">
-        <BoundaryButtons />
         <div className="rs-preferences-heading"><span>{uiCopy.pickClass}</span><button type="button" className="ride-service-help-button" aria-label={serviceCopy(languageIso).classes} onClick={()=>setServiceHelpOpen(true)}><Info size={18} aria-hidden="true"/></button></div>
         <CarClassSlider />
       </div>}
@@ -1957,12 +1846,7 @@ function getLockedCustomerPrice(order: IOrder | null, draft: IRequestOrderDraft 
 }
 
 function normalizeCustomerPriceValue(value?: number | string | null) {
-  if (value === undefined || value === null || value === '')
-    return null
-
-  const numberValue = Number(String(value).replace(',', '.').replace(/[^\d.-]/g, ''))
-
-  return Number.isFinite(numberValue) ? Math.max(0, Math.round(numberValue)) : null
+  return normalizeMoney(value)
 }
 
 function formatChoiceRemainingSeconds(seconds: number) {
@@ -2183,9 +2067,6 @@ function isDelayedPickupTime(value: any) {
   return pickupTime.isValid() && pickupTime.diff(moment(), 'minutes') > 15
 }
 
-function wait(ms: number) {
-  return new Promise(resolve => window.setTimeout(resolve, ms))
-}
 
 
 function ReadonlyLocationInput({ className, value, placeholder, iso }: { className?: string, value?: string, placeholder?: string, iso?:string }) {
@@ -2243,17 +2124,6 @@ function getCandidateDrivers(
     .filter(driver => isVisibleChoiceDriverState(driver.c_state))
 }
 
-function canUseLocalChoiceFallback(
-  order: IOrder | null,
-  nextCandidateId: IUser['u_id'],
-  rejectedChoiceIds: IUser['u_id'][],
-) {
-  if (!order || !isChoiceOrder(order) || !rejectedChoiceIds.length)
-    return false
-
-  const nextCandidate = order.drivers?.find(driver => String(driver.u_id) === String(nextCandidateId))
-  return Boolean(nextCandidate && isVisibleChoiceDriverState(nextCandidate.c_state))
-}
 
 function getAvatarSrc(user?: IUser | null, driver?: IDriver | null) {
   const src = [
@@ -2514,11 +2384,11 @@ function getFirstPositiveNumber(...values: unknown[]) {
   return undefined
 }
 
-function formatOfferPrice(price: unknown) {
+function formatOfferPrice(price: unknown, currency = CURRENCY.NAME, iso?: string) {
   if (price === undefined || price === null || price === '')
     return ''
 
-  return `${price} ${CURRENCY.SIGN}`
+  return displayFare(price,currency,iso)
 }
 
 function formatDriverPrice(driver: IDriver) {

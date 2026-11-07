@@ -1,4 +1,5 @@
 'use strict';
+require('./tools/check-entrypoints.cjs').assertEntryPoints(__dirname);
 require('./tools/prepare-road-graph.cjs').prepare();
 
 const fs = require('fs');

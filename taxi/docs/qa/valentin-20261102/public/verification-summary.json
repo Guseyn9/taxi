@@ -1,0 +1,212 @@
+{
+  "unitTests": 751,
+  "unitSuites": 152,
+  "unitResult": "passed",
+  "typeScript": "passed",
+  "productionBuild": "passed",
+  "backendBoundary": {
+    "unchangedCoreFiles": 223,
+    "unchangedBusinessHandlers": 64,
+    "intentionalFrontendChanges": [
+      {
+        "file": "src/API/cacheVersion.ts",
+        "reason": "Bound the existing read-only configuration version request; URL and response field unchanged"
+      },
+      {
+        "file": "src/API/index.ts",
+        "reason": "Geocoder read requests include localized name metadata for presentation; other functions checked unchanged"
+      },
+      {
+        "file": "src/API/order.ts",
+        "reason": "15s timeouts for order reads only; mutation AST bodies checked unchanged"
+      },
+      {
+        "file": "src/API/polygon.ts",
+        "reason": "Bound and validate zone lookup reads; keep the original endpoint, fields and coordinate key"
+      },
+      {
+        "file": "src/API/user.ts",
+        "reason": "Bound session verification read; distinguish authentication refusal from temporary service failure"
+      },
+      {
+        "file": "src/API/way.ts",
+        "reason": "Load the same local road data through worker/cache; remote backend commands unchanged"
+      },
+      {
+        "file": "src/state/areas/selectors.ts",
+        "reason": "Attach prepared graph views and preserve multi-area routing"
+      },
+      {
+        "file": "src/state/clientOrder/__tests__/orderFormResolvers.test.js",
+        "reason": "Regression coverage for service mode availability"
+      },
+      {
+        "file": "src/state/clientOrder/constants.ts",
+        "reason": "Add frontend-only per-address zone check states"
+      },
+      {
+        "file": "src/state/clientOrder/orderFormResolvers.ts",
+        "reason": "Frontend availability: hide immediate Voting for intercity/delayed routes; class algorithm unchanged"
+      },
+      {
+        "file": "src/state/clientOrder/reducer.ts",
+        "reason": "Track per-address zone verification and invalidate it when the address changes"
+      },
+      {
+        "file": "src/state/clientOrder/sagas.ts",
+        "reason": "Report zone lookup failures; retain takeLatest and existing polygon lookup request"
+      },
+      {
+        "file": "src/state/clientOrder/selectors.ts",
+        "reason": "Expose zone verification state for submission gating"
+      },
+      {
+        "file": "src/state/clientOrder/util.ts",
+        "reason": "Recognize the service spelling PETTI as Petit; route, zone and seating rules unchanged"
+      },
+      {
+        "file": "src/state/config/reducer.ts",
+        "reason": "Restore a saved UI language after remote configuration loads; the original reducer is checked after removing this addition"
+      },
+      {
+        "file": "src/state/index.ts",
+        "reason": "Observe read status for stale/offline UI without changing API actions"
+      },
+      {
+        "file": "src/state/orders/__tests__/readyOrdersPolling.test.js",
+        "reason": "Exercise polling without emulator flags"
+      },
+      {
+        "file": "src/state/orders/constants.ts",
+        "reason": "Frontend-only bounded recent terminal history; no API schema change"
+      },
+      {
+        "file": "src/state/orders/reducer.ts",
+        "reason": "Retain server-confirmed driver terminal orders until archive catches up; clear on logout"
+      },
+      {
+        "file": "src/state/orders/sagas.ts",
+        "reason": "Remove forced-empty emulator gate; keep backend requests unchanged"
+      },
+      {
+        "file": "src/state/orders/selectors.ts",
+        "reason": "Normal-mode visibility and car-class filtering"
+      },
+      {
+        "file": "src/state/user/sagas.ts",
+        "reason": "Tab-session credential vault and cross-tab logout generation; API commands unchanged"
+      },
+      {
+        "file": "src/platform/adapters/LegacyChatGateway.ts",
+        "reason": "Expose optional connection state; original URL and message payloads protected by tests"
+      },
+      {
+        "file": "src/platform/adapters/LegacyPassengerChannelStoreAdapter.ts",
+        "reason": "Expose zone status and read the latest confirmation before submitting; no new command"
+      },
+      {
+        "file": "src/platform/adapters/__tests__/DriverBoardingCommandPath.test.js",
+        "reason": "Protect boarding gateway on all three UI surfaces; forbid direct start"
+      },
+      {
+        "file": "src/platform/platform-interface/__tests__/ReconnectingWebSocketClient.test.js",
+        "reason": "Regression for bounded connect timeout and cleanup"
+      },
+      {
+        "file": "src/platform/platform-interface/realtime/ReconnectingWebSocketClient.ts",
+        "reason": "Bound socket opening time and report disconnects without replaying commands"
+      },
+      {
+        "file": "src/platform/platform-interface/surfaces/passenger/PassengerPresentation.ts",
+        "reason": "Terminal booking status precedes stale choice candidates; exact remaining source checked"
+      },
+      {
+        "file": "src/tools/addressBook.ts",
+        "reason": "Match personal history in French, Arabic and Tifinagh; retain the same storage key and payload"
+      },
+      {
+        "file": "src/tools/api.ts",
+        "reason": "Serialize valid 0 and false values; API endpoints and command schema unchanged"
+      },
+      {
+        "file": "src/tools/driverBoarding.test.ts",
+        "reason": "Regression for 111 versus 000"
+      },
+      {
+        "file": "src/tools/driverCapacity.ts",
+        "reason": "Release seats and reject taking terminal bookings; exact remaining source checked"
+      },
+      {
+        "file": "src/tools/legacyLogReasons.ts",
+        "reason": "Remove obsolete emulator_not_running reason"
+      },
+      {
+        "file": "src/tools/liveOrderProfit.ts",
+        "reason": "Use the actually driven car for the same local estimate on list, map and details"
+      },
+      {
+        "file": "src/tools/order.ts",
+        "reason": "Bounded arithmetic replaces eval; profit and distance handlers checked separately"
+      },
+      {
+        "file": "src/tools/phoneUtils.ts",
+        "reason": "Correct display formatting without changing API phone normalization"
+      },
+      {
+        "file": "src/tools/rawLog.ts",
+        "reason": "Batch local RAW persistence and flush on lifecycle/export; record schema and business commands unchanged"
+      },
+      {
+        "file": "src/tools/swipe.ts",
+        "reason": "Guard a hidden or detached UI panel during ResizeObserver updates; exact original comparison after removing the guard"
+      },
+      {
+        "file": "src/tools/utils.ts",
+        "reason": "Read authoritative order quotes for all UI surfaces; original tariff fallback preserved"
+      },
+      {
+        "file": "src/types/types.ts",
+        "reason": "Optional isCurrent coordinate-request marker; every other byte checked"
+      },
+      {
+        "file": "src/localization/index.ts",
+        "reason": "Service DB translations precede offline fallback; no configuration writes"
+      },
+      {
+        "file": "src/appCache.ts",
+        "reason": "Preserve active trip choice and boarding continuity across reload; derived emulator caches still removed"
+      },
+      {
+        "file": "src/siteConstants.ts",
+        "reason": "Recognize PETTI when choosing the initial city class; configuration and manual selection unchanged"
+      },
+      {
+        "file": "src/config.ts",
+        "reason": "Bound configuration bootstrap; expose failure/retry and ignore late responses; same service URL and configuration name"
+      },
+      {
+        "file": "src/App.tsx",
+        "reason": "UI language/RTL, cross-tab logout and connection banner; original App preserved after removing explicit additions"
+      }
+    ],
+    "intentionalHandlerChanges": [
+      "src/Routes.tsx :: AppRoutesWrapper",
+      "src/Routes.tsx :: AppRoutes",
+      "src/pages/Passenger/VotingForm.tsx :: submit",
+      "src/pages/Passenger/VotingForm.tsx :: handleLockedCustomerPriceCommit",
+      "src/pages/Passenger/index.tsx :: onSubmit"
+    ],
+    "intentionalPresentationFiles": [
+      "src/Routes.tsx::UnavailableBase"
+    ],
+    "failures": [],
+    "ok": true
+  },
+  "publication": "none",
+  "sourceCheckoutChanges": "none in src/public/tools",
+  "liveBackend": "configuration unavailable during verification",
+  "physicalAndroidReproduction": "not performed",
+  "localSource": "taxi-pr-integration/taxi; synced to taxi-rsale-react",
+  "gitHead": "580a3bd",
+  "scope": "Local frontend and controlled fixtures; no live trip completion claim"
+}

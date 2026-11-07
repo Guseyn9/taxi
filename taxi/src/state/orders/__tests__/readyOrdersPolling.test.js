@@ -35,7 +35,7 @@ jest.mock('../../user/selectors', () => ({
 }))
 // Именно этот селектор решает, в какую ветку пойдёт цикл: `null` — машин нет,
 // `undefined` — машины ещё не загружены, объект — основная машина водителя.
-jest.mock('../../cars/selectors', () => ({ userPrimaryCar: state => state.primaryCar }))
+jest.mock('../../cars/selectors', () => ({ userPrimaryCar: state => state.primaryCar, userDrivenCar: state => state.primaryCar }))
 jest.mock('../../geolocation/selectors', () => ({ geoposition: () => undefined }))
 
 const POLL_INTERVAL_MS = 3000
@@ -253,99 +253,36 @@ describe('опрос готовых заказов: у водителя нет �
 
 })
 
-describe('опрос готовых заказов: машина не в рейсе (used_car_not_found)', () => {
-
-  /**
-   * Сценарий свежей страницы водителя: getUserCars() и watchReadyOrders()
-   * вызываются в соседних эффектах одного монтирования (pages/Driver/index.tsx),
-   * поэтому на первом цикле машины ещё не загружены. Ветка `=== null` здесь не
-   * срабатывает — сага идёт в API, и зависание наступает в ветке
-   * used_car_not_found, где попытка взять машину в рейс ждёт загрузки машин.
-   */
-  it('машины ещё не загружены: цикл завершается, опрос не ждёт попытку рейса', async() => {
+describe('ready polling never activates a vehicle implicitly', () => {
+  it('unloaded cars are refreshed while polling continues without a drive mutation', async () => {
     const API = mockApi()
     API.getOrders.mockResolvedValue(usedCarNotFound())
-
-    const polling = startPolling({ primaryCar: undefined })
+    const polling = startPolling({primaryCar:undefined})
     await settle()
-
-    expect(API.getOrders).toHaveBeenCalledTimes(1)
     expect(polling.fails()).toBe(1)
-    expect(polling.ofType(polling.T.GET_READY_ORDERS_FAIL)[0].payload)
-      .toEqual({ detail: 'used_car_not_found' })
-    // Попытка рейса запросила машины и ждёт их — это не должно держать опрос.
     expect(polling.carsRequests()).toBe(1)
-    expect(API.driveCar).not.toHaveBeenCalled()
-
     await nextCycle()
-
-    expect(polling.requests()).toBe(2)
     expect(API.getOrders).toHaveBeenCalledTimes(2)
-    // Пока первая попытка не завершилась, вторая не запускается.
-    expect(polling.carsRequests()).toBe(1)
+    expect(polling.carsRequests()).toBe(2)
+    expect(API.driveCar).not.toHaveBeenCalled()
   })
-
-  it('рейс не удался («машина уже в рейсе»): одна попытка, одно предупреждение, опрос идёт', async() => {
+  it('a backend rejection of the stored active vehicle never activates the first car', async () => {
     const API = mockApi()
     API.getOrders.mockResolvedValue(usedCarNotFound())
-    API.driveCar.mockResolvedValue(alreadyDriven())
-
-    const polling = startPolling({ primaryCar: CAR })
-    await settle()
-
-    expect(API.driveCar).toHaveBeenCalledTimes(1)
-    expect(polling.messageModals()).toBe(1)
-
-    await nextCycle()
-    await nextCycle()
-
+    const polling = startPolling({primaryCar:CAR})
+    await settle();await nextCycle();await nextCycle()
     expect(API.getOrders).toHaveBeenCalledTimes(3)
     expect(polling.fails()).toBe(3)
-    // Рейс не повторяется на каждом цикле, окно не открывается заново.
-    expect(API.driveCar).toHaveBeenCalledTimes(1)
-    expect(polling.messageModals()).toBe(1)
+    expect(API.driveCar).not.toHaveBeenCalled()
+    expect(polling.messageModals()).toBe(0)
   })
-
-  it('рейс удался, а список всё ещё недоступен: один немедленный повтор, без цикла запросов', async() => {
+  it('resumes after vehicle readback and keeps retrying subsequent failures', async () => {
     const API = mockApi()
-    // Предохранитель теста, а не часть сценария. Без исправления эта ветка
-    // крутит «запрос → рейс → запрос» без задержки, и цикл идёт на одних
-    // микротасках: он голодит event loop, и зависает весь файл, а не падает
-    // один тест. После 20 вызовов мок перестаёт отвечать — цикл останавливается,
-    // и регрессия видна как упавшее утверждение о числе вызовов.
-    const LOOP_GUARD = 20
-    API.getOrders.mockImplementation(() =>
-      API.getOrders.mock.calls.length > LOOP_GUARD ?
-        new Promise(() => {}) :
-        Promise.resolve(usedCarNotFound()))
-    API.driveCar.mockResolvedValue(driveOk())
-
-    startPolling({ primaryCar: CAR })
-    await settle()
-
-    // Без продвижения времени: исходный цикл и один повтор после удачного рейса.
-    expect(API.driveCar).toHaveBeenCalledTimes(1)
-    expect(API.getOrders).toHaveBeenCalledTimes(2)
-  })
-
-  it('после успешной выборки автоматическая попытка рейса снова разрешена', async() => {
-    const API = mockApi()
-    API.getOrders
-      .mockResolvedValueOnce(usedCarNotFound())
-      .mockResolvedValueOnce(ok([ORDER]))
-      .mockResolvedValue(usedCarNotFound())
-    API.driveCar.mockResolvedValue(alreadyDriven())
-
-    const polling = startPolling({ primaryCar: CAR })
-    await settle()
-    expect(API.driveCar).toHaveBeenCalledTimes(1)
-
-    await nextCycle()
+    API.getOrders.mockResolvedValueOnce(usedCarNotFound()).mockResolvedValueOnce(ok([ORDER])).mockResolvedValue(usedCarNotFound())
+    const polling = startPolling({primaryCar:CAR})
+    await settle();await nextCycle();await nextCycle()
     expect(polling.successes()).toBe(1)
-
-    await nextCycle()
-    expect(API.getOrders).toHaveBeenCalledTimes(3)
-    expect(API.driveCar).toHaveBeenCalledTimes(2)
+    expect(polling.fails()).toBe(2)
+    expect(API.driveCar).not.toHaveBeenCalled()
   })
-
 })

@@ -402,6 +402,7 @@ function isPetitCarClass(carClass: ICarClass) {
   ].map(normalizeConstantText).join(' ')
 
   return text.includes('petit') ||
+    text.includes('petti') ||
     text.includes('петит') ||
     text.includes('econom') ||
     text.includes('эконом') ||

@@ -1,0 +1,95 @@
+{
+  "fixture": "isolated HTTP contract, not production backend acceptance",
+  "rows": [
+    {
+      "scenario": "physical reload after acceptance",
+      "posts": 1,
+      "reads": 3,
+      "order": "Поездка началась"
+    },
+    {
+      "scenario": "responsive unconfirmed action",
+      "size": {
+        "width": 320,
+        "height": 568
+      },
+      "metrics": {
+        "width": 320,
+        "scrollWidth": 320,
+        "buttons": [
+          {
+            "x": 40,
+            "right": 237.90625,
+            "height": 44
+          }
+        ]
+      }
+    },
+    {
+      "scenario": "responsive unconfirmed action",
+      "size": {
+        "width": 390,
+        "height": 844
+      },
+      "metrics": {
+        "width": 390,
+        "scrollWidth": 390,
+        "buttons": [
+          {
+            "x": 40,
+            "right": 237.90625,
+            "height": 44
+          }
+        ]
+      }
+    },
+    {
+      "scenario": "responsive unconfirmed action",
+      "size": {
+        "width": 844,
+        "height": 390
+      },
+      "metrics": {
+        "width": 844,
+        "scrollWidth": 844,
+        "buttons": [
+          {
+            "x": 630.09375,
+            "right": 828,
+            "height": 44
+          }
+        ]
+      }
+    },
+    {
+      "scenario": "responsive unconfirmed action",
+      "size": {
+        "width": 1440,
+        "height": 900
+      },
+      "metrics": {
+        "width": 1440,
+        "scrollWidth": 1440,
+        "buttons": [
+          {
+            "x": 1106.09375,
+            "right": 1304,
+            "height": 44
+          }
+        ]
+      }
+    },
+    {
+      "scenario": "lookup failure and manual status retry",
+      "posts": 1,
+      "reads": 3
+    },
+    {
+      "scenario": "execution failure does not advance the trip",
+      "posts": 1,
+      "reads": 2,
+      "order": "Водитель прибыл"
+    }
+  ],
+  "errors": []
+}

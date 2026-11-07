@@ -21,3 +21,22 @@ test('worker startup errors stay recoverable and do not permanently cache a fail
  await expect(getArea(0)).rejects.toThrow('worker blocked');await expect(getArea(0)).rejects.toThrow('worker blocked')
  expect(createGraphWorker).toHaveBeenCalledTimes(2);expect(graphState().status).toBe('error')
 })
+test('postMessage failure terminates the worker immediately and a later attempt can recover',async()=>{
+ const {createGraphWorker}=require('./workerFactory'),worker={terminate:jest.fn(),postMessage:jest.fn(()=>{throw new Error('post blocked')})}
+ createGraphWorker.mockReturnValue(worker)
+ const {loadRoadArea}=require('./client')
+ await expect(loadRoadArea()).rejects.toThrow('post blocked')
+ expect(worker.terminate).toHaveBeenCalledTimes(1);expect(worker.onmessage).toBeNull();expect(worker.onerror).toBeNull()
+ await expect(loadRoadArea()).rejects.toThrow('post blocked');expect(createGraphWorker).toHaveBeenCalledTimes(2)
+})
+test('timeout terminates one shared worker, rejects all consumers, and permits retry',async()=>{
+ jest.useFakeTimers()
+ try{
+  const {createGraphWorker}=require('./workerFactory'),worker={terminate:jest.fn(),postMessage:jest.fn()};createGraphWorker.mockReturnValue(worker)
+  const {loadRoadArea}=require('./client'),pending=loadRoadArea(),assertion=expect(pending).rejects.toThrow('timed out')
+  expect(loadRoadArea()).toBe(pending);jest.advanceTimersByTime(30000);await assertion
+  expect(worker.terminate).toHaveBeenCalledTimes(1);expect(worker.onmessage).toBeNull()
+  const retry=loadRoadArea(),next=expect(retry).rejects.toThrow('timed out');jest.advanceTimersByTime(30000);await next
+  expect(createGraphWorker).toHaveBeenCalledTimes(2)
+ }finally{jest.useRealTimers()}
+})

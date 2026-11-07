@@ -18,6 +18,13 @@ it('requires valid circle coordinates and a positive finite radius',()=>{
  expect(zonePayload({var:'a',json:{lat:'30',lng:'-9',radius:'250',custom:false}},'circle').json).toEqual({lat:30,lng:-9,radius:250,custom:false})
  for(const json of [{lat:null,lng:0,radius:250},{lat:0,lng:0,radius:0},{lat:0,lng:0,radius:NaN},{lat:91,lng:0,radius:200}])expect(validateZone({var:'a',json},'circle')).toBe('circle')
 })
+it('rejects whitespace coordinates, booleans and non-finite circle values instead of converting them to zero',()=>{
+ for(const value of ['   ','\t',true,[],{},Infinity,'Infinity']){
+  expect(validateZone({var:'a',json:{lat:value,lng:-9,radius:200}},'circle')).toBe('circle')
+  expect(validateZone({var:'a',json:{lat:30,lng:value,radius:200}},'circle')).toBe('circle')
+ }
+ expect(zonePayload({var:'a',json:{lat:'0',lng:'0',radius:'200'}},'circle').json).toEqual({lat:0,lng:0,radius:200})
+})
 it('normalizes PHP catalog IDs and string coordinates, while rejecting malformed answers',()=>{
  const result=readZones({'79':{var:'petti_agadir',coordinates:[ring.map(p=>p.map(String))],json:'{"custom":0}'}})
  expect(result[0]).toEqual({id:'79',var:'petti_agadir',coordinates:[ring],json:{custom:0}})

@@ -13,6 +13,15 @@ function localizedName(names: Names | undefined, iso?: string): string {
   const locale = addressLocale(iso)
   return clean(names[`name:${locale}`] ?? names[locale])
 }
+function declaredTrilingualAlias(part: string, iso?: string): string {
+  // Some Moroccan OSM names explicitly repeat the same label as three script
+  // blocks. Select one alias only for that unambiguous form. Do not strip mixed
+  // proper names such as "Rue محمد V" or translate an unknown street ourselves.
+  const aliases = part.match(/^([A-Za-z\u00c0-\u024f\u1e00-\u1eff0-9'’().\- ]+)\s+([\u2d30-\u2d7f0-9'’\- ]+)\s+([\u0600-\u06ff0-9'’\- ]+)$/)
+  if (!aliases) return part
+  const locale = addressLocale(iso)
+  return clean(aliases[locale === 'ar' ? 3 : ['zgh','tzm'].includes(locale) ? 2 : 1]) || part
+}
 interface Presentation { names?: Names; raw: string }
 const placeNames = new Map<string, Presentation>()
 function pointKey(lat: unknown, lng: unknown): string | null {
@@ -38,7 +47,8 @@ export function displayAddress(value: unknown, iso?: string, lat?: unknown, lng?
   // Metadata belongs to the exact first component, not to an arbitrary nearby street.
   const hasLocalizedName = Boolean(name && cached?.raw.split(/[,،]/)[0].trim() === parts[0])
   if (hasLocalizedName) parts[0] = name
-  return parts.filter((part, index, all) => all.indexOf(part) === index).join(', ')
+  return parts.map(part => declaredTrilingualAlias(part, iso))
+    .filter((part, index, all) => all.indexOf(part) === index).join(', ')
 }
 
 /** Shorten only after applying structured localization; never truncate the stored source. */

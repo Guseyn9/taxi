@@ -1,0 +1,68 @@
+name: Frontend checks
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  frontend:
+    name: Frontend ${{ matrix.check }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        check: [unit, lint, typecheck, build, boundary, styles, road-cache, entrypoints]
+    defaults:
+      run:
+        working-directory: taxi
+    steps:
+      - uses: actions/checkout@v4
+      - name: Checkout reviewed upstream baseline
+        if: matrix.check == 'boundary'
+        uses: actions/checkout@v4
+        with:
+          ref: 1d4065058c90e9ad39dfb301bc3affc3da8847a5
+          path: .boundary-baseline
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: taxi/package.json
+          cache: npm
+          cache-dependency-path: taxi/package-lock.json
+      - run: npm ci
+      - name: Canonical entrypoints and retired duplicates
+        if: matrix.check == 'entrypoints'
+        run: npm run check:entrypoints
+      - name: Unit and regression tests
+        if: matrix.check == 'unit'
+        run: node scripts/test.js --watchAll=false --runInBand
+        env:
+          CI: 'true'
+      - name: TypeScript
+        if: matrix.check == 'typecheck'
+        run: npm run typecheck
+      - name: Install Chromium for isolated browser checks
+        if: matrix.check == 'styles' || matrix.check == 'road-cache'
+        run: npx playwright install --with-deps chromium
+      - name: CSS and SVG browser compatibility
+        if: matrix.check == 'styles'
+        run: npm run test:styles
+        env:
+          STYLE_CHECK_DIR: ${{ runner.temp }}/taxi-style-check
+      - name: Road-provider cache and HTTP timeouts
+        if: matrix.check == 'road-cache'
+        run: npm run test:road-cache
+        env:
+          ROAD_CACHE_CHECK_DIR: ${{ runner.temp }}/taxi-road-cache-check
+      - name: Lint errors
+        if: matrix.check == 'lint'
+        run: npm run lint -- --quiet
+      - name: Production build
+        if: matrix.check == 'build'
+        run: node tools/build-release.cjs
+      - name: Frontend integration boundary
+        if: matrix.check == 'boundary'
+        run: node tools/verify-design-boundary.cjs
+        env:
+          TAXI_BASELINE_DIR: ${{ github.workspace }}/.boundary-baseline/taxi

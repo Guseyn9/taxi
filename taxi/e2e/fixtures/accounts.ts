@@ -2,8 +2,8 @@
  * Учётные данные для E2E. В репозиторий не попадают: тест читает их из окружения
  * (или из .env.e2e.local рядом с package.json — файл в .gitignore).
  *
- * Аккаунты — существующие тестовые учётки gruzvill, те же, что использует
- * driver-emulator. Ни одного мока: и водитель, и пассажир настоящие.
+ * Аккаунты принадлежат явно выбранному тестовому стенду. Данные API
+ * не подменяются; production по умолчанию не выбирается.
  */
 
 import fs from 'fs'
@@ -42,7 +42,7 @@ const fileEnv = loadEnvFile()
  * делает dotenv: секрет, заданный как "user@example.com", иначе дошёл бы до
  * формы вместе с кавычками и не прошёл бы её проверку формата.
  */
-function readValue(name: string): string {
+export function readValue(name: string): string {
   const raw = (process.env[name] ?? fileEnv[name] ?? '').trim()
   const quoted = /^(['"])(.*)\1$/.exec(raw)
   return quoted ? quoted[2] : raw
@@ -93,8 +93,14 @@ export const passengerAccount = () => readAccount('E2E_PASSENGER', 'пассаж
 export const passengerPhone = () =>
   readValue('E2E_PASSENGER_PHONE').replace(/\D/g, '') || '233555000111'
 
-export const apiBase = () =>
-  readValue('E2E_API_BASE') || 'https://ibronevik.ru/taxi/c/gruzvill/api/v1'
+export const apiBase = () => {
+  const value = readValue('E2E_API_BASE')
+  if (!value) throw new Error('E2E_API_BASE is required; tests never choose a live backend implicitly')
+  const url = new URL(value)
+  if (url.username || url.password || url.search || url.hash || !/\/c\/[^/]+\/api\/v1\/?$/.test(url.pathname))
+    throw new Error('E2E_API_BASE must be the explicit service API URL without credentials or query')
+  return value.replace(/\/$/, '')
+}
 
 export const appUrl = () =>
   readValue('E2E_APP_URL') || 'http://localhost:3000'

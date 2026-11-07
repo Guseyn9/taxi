@@ -1,7 +1,8 @@
 import {taxiColor} from '../../design/maps/taxiPalette'
 import SITE_CONSTANTS from '../../siteConstants'
 import VehicleArtwork from './VehicleArtwork'
-import { Check } from 'lucide-react'
+import {getClassArtworkKind} from '../CarClassBadge'
+import { Check, CarFront } from 'lucide-react'
 import React, { useRef, useMemo, useEffect } from 'react'
 import { connect, ConnectedProps } from 'react-redux'
 import cn from 'classnames'
@@ -57,24 +58,24 @@ export function CarClassSlider({ carClasses, carClass, locationClass, locationCl
       setCarClass(visibleCarClasses[0].id)
   }, [visibleCarClasses, carClass, setCarClass])
 
-  return <div className={cn('car-class-slider car-class-slider--native', {'car-class-slider--disabled':disabled})}>
+  return <div data-class-count={visibleCarClasses.length} className={cn('car-class-slider car-class-slider--native', {'car-class-slider--disabled':disabled})}>
     <ul className="car-class-slider__options">
       {visibleCarClasses.map(cc => <li key={cc.id}>
           <button
             type="button"
             disabled={disabled}
             aria-pressed={cc.id === carClass}
-            aria-label={`${t(TRANSLATION.CAR_CLASSES[cc.id]).replace(/petti/ig, 'PETIT')}, ${formatCurrency(cc.courier_call_rate)}`}
+            aria-label={`${classLabel(cc)}, ${formatCurrency(cc.courier_call_rate)}`}
             onClick={() => setCarClass(cc.id)}
             className={cn('glide__slide car-class-slider__slide', {
               'car-class-slider__slide--active': cc.id === carClass,
             })}
           >
             <div className="car-class-slider__icon">
-              <VehicleArtwork kind={isPetitCarClass(cc) ? 'petit' : 'grand'} color={taxiColor({kind:isPetitCarClass(cc)?'petit':'grand',point:fromPoint?.latitude!==undefined&&fromPoint?.longitude!==undefined?[fromPoint.latitude,fromPoint.longitude]:null,palette:fromPoint?.latitude!==undefined&&fromPoint?.longitude!==undefined?SITE_CONSTANTS.PALETTE?.primary?.main:undefined})}/>
+              {String(cc.id) === '0' ? <CarFront className="car-class-slider__any-icon" size={40} aria-hidden="true"/> : <VehicleArtwork kind={getClassArtworkKind(cc.id)} color={taxiColor({kind:getClassArtworkKind(cc.id),point:fromPoint?.latitude!==undefined&&fromPoint?.longitude!==undefined?[fromPoint.latitude,fromPoint.longitude]:null,palette:fromPoint?.latitude!==undefined&&fromPoint?.longitude!==undefined?SITE_CONSTANTS.PALETTE?.primary?.main:undefined})}/>}
             </div>
             <span className="car-class-slider__title">
-              {t(TRANSLATION.CAR_CLASSES[cc.id]).replace(/petti/ig, 'PETIT')}
+              {classLabel(cc)}
               {cc.id === carClass && <Check className="rs-car-selected" aria-hidden="true" />}
             </span>
             <span className="car-class-slider__value">
@@ -87,6 +88,12 @@ export function CarClassSlider({ carClasses, carClass, locationClass, locationCl
 
 }
 
+
+function classLabel(carClass: any) {
+  const fallback = String(carClass.name || carClass.title || carClass.label || carClass.id)
+  const key = TRANSLATION.CAR_CLASSES[carClass.id]
+  return String((key && t(key,{fallback})) || fallback).replace(/petti/ig,'PETIT')
+}
 
 function isPetitCarClass(carClass: any) {
   const text = [

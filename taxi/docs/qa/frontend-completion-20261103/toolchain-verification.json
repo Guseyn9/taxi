@@ -1,0 +1,57 @@
+{
+  "unit": {
+    "passed": 971,
+    "suites": 187
+  },
+  "browser": {
+    "passed": 21,
+    "flaky": 0,
+    "retries": 0
+  },
+  "visual": {
+    "capturedStates": 25,
+    "viewportSizes": [
+      "320x568",
+      "390x844",
+      "844x390",
+      "768x1024",
+      "1440x900"
+    ],
+    "pageErrors": 0,
+    "documentHorizontalOverflow": 0,
+    "engine": "Chromium",
+    "physicalDevicesTested": false
+  },
+  "toolchain": {
+    "node": "24.22.1",
+    "npmCi": "passed without legacy-peer-deps",
+    "opensslLegacyProvider": false,
+    "lintErrors": 0,
+    "lintWarnings": 11245,
+    "npmAudit": {
+      "info": 0,
+      "low": 9,
+      "moderate": 50,
+      "high": 8,
+      "critical": 0,
+      "total": 67
+    },
+    "httpBrowserChecks": 8,
+    "developmentServerHttpWsChecks": 17
+  },
+  "reportPrivacy": {
+    "fixtureTests": 3,
+    "actualE2ePassed": 21,
+    "decodedHtmlZipEntries": 14,
+    "secretMatches": 0,
+    "rawOutputUploaded": false,
+    "historicalCiArtifactsAccepted": false
+  },
+  "physicalDevices": false,
+  "productionFsmAccepted": false,
+  "publishedThisFollowup": false,
+  "typecheck": "passed",
+  "boundary": true,
+  "productionBuild": "passed without OpenSSL legacy option",
+  "latestStyleFollowup": "style-pipeline-verification.json"
+}

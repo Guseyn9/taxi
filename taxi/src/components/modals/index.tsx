@@ -4,23 +4,20 @@ import { useDispatch } from '../../tools/hooks'
 import { setRefCodeModal } from '../../state/modals/actionCreators'
 import { ERegistrationType } from '../../state/user/constants'
 import ModalStack from './ModalStack'
-import { replaceAllString } from '../../tools/compat'
+import { consumeRegistrationCallback } from '../../security/authCallback'
 
 export function ModalHost(_props?: { languageIso?: string }) {
   const dispatch = useDispatch()
 
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search)
-    const email = params.get('u_email')
-    const name = params.get('u_name')
-
-    if (email && name)
+    const callback = consumeRegistrationCallback()
+    if (callback)
       dispatch(setRefCodeModal({
         isOpen: true,
         data: {
-          u_name: replaceAllString(decodeURIComponent(name), '+', ' '),
+          u_name: callback.name,
           u_phone: '',
-          u_email: decodeURIComponent(email),
+          u_email: callback.email,
           type: ERegistrationType.Email,
           u_role: EUserRoles.Client,
           ref_code: '',

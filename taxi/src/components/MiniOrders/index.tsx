@@ -363,12 +363,7 @@ function formatLabelWithColon(label: string) {
 }
 
 function getMiniOrderRatingLabel() {
-  const headerLabel = t(TRANSLATION.RATING_HEADER)
-  if (headerLabel && headerLabel !== TRANSLATION.RATING_HEADER)
-    return headerLabel
-
-  const fallbackLabel = t(TRANSLATION.RATING)
-  return fallbackLabel && fallbackLabel !== TRANSLATION.RATING ? fallbackLabel : 'Рейтинг'
+  return t('driver_rating_label')
 }
 
 function isSimpleSearchingOrder(order: IOrder) {
@@ -566,12 +561,13 @@ export function MiniOrders({
           const candidatesCount = getCandidateDrivers(order).length
           const isTripStarted = orderDriver?.c_state === EBookingDriverState.Started
           const isModePending = pendingOffer(ownerId,order.b_id)
+          const confirmationPending = Boolean(order.b_voting && order.b_confirm_state === false && !orderDriver)
           const pendingText = ({ru:'Тип уточняется',fr:'Type à confirmer',ar:'النوع غير مؤكد'} as Record<string,string>)[addressLocale(languageIso)] || 'Type unconfirmed'
-          const statusText = isModePending ? pendingText : getOrderStatusText(order, orderDriver)
+          const statusText = confirmationPending ? t('voting_confirmation_status') : isModePending ? pendingText : getOrderStatusText(order, orderDriver)
           const ratingText = getDriverRating(orderDriver)
           const typeText = getOrderTypeText(order)
           const uiConfigApplies = Boolean(uiConfig && isCardSelected && !uiConfig.legacy)
-          const shouldShowCardTimer = uiConfigApplies ? uiConfig!.timerKind !== 'none' : isCardSelected
+          const shouldShowCardTimer = !confirmationPending && (uiConfigApplies ? uiConfig!.timerKind !== 'none' : isCardSelected)
           const timeText = !shouldShowCardTimer ? '' : uiConfigApplies ? (
             uiConfig!.timerKind === 'search' && !orderDriver ?
               formatSimpleOrderWaitingDuration(order, now) :
@@ -614,12 +610,12 @@ export function MiniOrders({
               <div className="mini-orders__main">
                 <div className="mini-orders__header">
                   <span className="mini-orders__id">№{String(order.b_id)}</span>
-                  <span className="mini-orders__status">{isModePending ? pendingText : getMiniOrderTitleText(order, statusText, orderDriver)}</span>
+                  <span className="mini-orders__status">{confirmationPending ? statusText : isModePending ? pendingText : getMiniOrderTitleText(order, statusText, orderDriver)}</span>
                 </div>
 
                 <div className="mini-orders__body">
                   <span className={cn('mini-orders__metric', 'mini-orders__metric--primary', `mini-orders__metric--primary-${orderMode}`)}>
-                    {getPrimaryMetricText(order, orderDriver, candidatesCount, ratingText, now)}
+                    {confirmationPending ? t('voting_confirmation_retry') : getPrimaryMetricText(order, orderDriver, candidatesCount, ratingText, now)}
                   </span>
                   {timeText && (
                     <span className={cn('mini-orders__metric', 'mini-orders__metric--time', `mini-orders__metric--time-${orderMode}`)} title={t(TRANSLATION.CLIENT_ROUTE_DURATION)}>

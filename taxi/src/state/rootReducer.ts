@@ -1,4 +1,7 @@
 import { combineReducers } from 'redux'
+import { SESSION_DOMAIN_RESET } from '../security/sessionLifecycle'
+import { emptyClientOrderState } from './clientOrder/reducer'
+import { TAction } from '../types'
 
 import { moduleName as geolocationModule } from './geolocation/constants'
 import geolocationReducer from './geolocation/reducer'
@@ -23,7 +26,8 @@ import areasReducer from './areas/reducer'
 import { moduleName as orderControlModeModule } from './orderControlMode/constants'
 import orderControlModeReducer from './orderControlMode/reducer'
 
-const rootReducer = combineReducers({
+const combinedReducer = combineReducers({
+  sessionGeneration:(state = 0, action: TAction) => action.type === SESSION_DOMAIN_RESET ? state + 1 : state,
   [geolocationModule]: geolocationReducer,
   [userModule]: userReducer,
   [carsModule]: carsReducer,
@@ -36,5 +40,19 @@ const rootReducer = combineReducers({
   [areasModule]: areasReducer,
   [orderControlModeModule]: orderControlModeReducer,
 })
+
+const rootReducer = (state: ReturnType<typeof combinedReducer> | undefined, action: TAction): ReturnType<typeof combinedReducer> => {
+  if (state && action.type === SESSION_DOMAIN_RESET) {
+    const clean = combinedReducer(undefined, {type:'@@session/INIT'})
+    state = {
+      ...clean, sessionGeneration:state.sessionGeneration,
+      user:clean.user.set('tab',state.user.tab).set('tokens',action.payload?.preserveCurrentTokens ? state.user.tokens : null),
+      config:state.config, areas:state.areas,
+      clientOrder:action.payload?.preserveGuestDraft ? state.clientOrder.set('fromLoading',false).set('toLoading',false) : emptyClientOrderState(),
+      modals:clean.modals.set('isLoginModalOpen',state.modals.isLoginModalOpen),
+    }
+  }
+  return combinedReducer(state, action)
+}
 
 export default rootReducer

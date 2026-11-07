@@ -1,4 +1,5 @@
 import {useDriverDepartures,driverJourneyCopy} from '../../tools/driverPickupJourney'
+import {claimDriverOfferNotification} from '../../tools/driverOfferNotifications'
 import type { IOrder } from '../../types/types'
 import { MapPin, Plus, Minus } from 'lucide-react'
 import { formatPhoneNumber } from '../../tools/phoneUtils'
@@ -34,8 +35,8 @@ import images from '../../constants/images'
 import { useForm } from 'react-hook-form'
 import cn from 'classnames'
 import { getStableRemainingLifetimeSeconds } from '../../tools/reliableTime'
-import { DRIVER_DOOR_NUMBER_PATTERN, getDriverDoorNumber, normalizeDriverDoorNumber } from '../../tools/driverDoorNumber'
-import { confirmDriverBoarding, isBoardingCodeAccepted } from '../../tools/driverBoarding'
+import { getDriverDoorNumber } from '../../tools/driverDoorNumber'
+import { BOARDING_CODE_PATTERN, normalizeBoardingCode, confirmDriverBoarding, isBoardingCodeAccepted } from '../../tools/driverBoarding'
 import './styles.scss'
 import { CURRENCY } from '../../siteConstants'
 import ChatToggler from '../../components/Chat/Toggler'
@@ -603,33 +604,8 @@ const Order: React.FC<IProps> = ({
   })
   const offerEtaValue = watch('offerEta') || t(TRANSLATION.DRIVER_OFFER_ETA_15)
 
-  useEffect(() => {
-    if (!user?.u_id)
-      return
+  // Passenger PIN is entered by the driver; never prefill a vehicle number.
 
-    // Тот же контракт, что и в карточке заказа (components/modals/CardModal.tsx):
-    // свой номер подставляется только в ПУСТОЕ поле и никогда не перетирает то,
-    // что водитель уже набрал.
-    if (normalizeDriverDoorNumber(getValues('votingNumber')) !== '')
-      return
-
-    let cancelled = false
-
-    backendGateway.getUserCar(user.u_id)
-      .then(car => {
-        if (cancelled)
-          return
-
-        const doorNumber = getDriverDoorNumber(userAsDriver, car)
-        if (doorNumber && normalizeDriverDoorNumber(getValues('votingNumber')) === '')
-          setValue('votingNumber', doorNumber, { shouldValidate: false })
-      })
-      .catch(error => console.error(error))
-
-    return () => {
-      cancelled = true
-    }
-  }, [id, user?.u_id, userAsDriver?.c_id, getValues, setValue])
 
   useEffect(() => {
     setHideConfirmOpen(false)
@@ -966,7 +942,7 @@ const Order: React.FC<IProps> = ({
     if (offerEvent === 'accepted') {
       setHandledOfferEvent(offerEvent)
       setLocalDriverOffer(currentDriverOffer ? { ...currentDriverOffer, status: 'accepted' } : null)
-      setMessageModal({
+      if (claimDriverOfferNotification(id,user?.u_id,'accepted')) setMessageModal({
         isOpen: true,
         status: EStatuses.Success,
         message: [t(TRANSLATION.DRIVER_OFFER_ACCEPTED), getOrderIdText(id, activeOrderIds)]
@@ -1078,7 +1054,7 @@ const Order: React.FC<IProps> = ({
       return
     }
 
-    backendGateway.takeOrder(id, { ...getValues() }, isCandidate)
+    backendGateway.takeOrder(id, { performers_price: getValues('performers_price'), offerEta: getValues('offerEta') }, isCandidate)
       .then(() => {
         getOrder(id)
         setMessageModal({
@@ -1149,7 +1125,6 @@ const Order: React.FC<IProps> = ({
   const confirmClientSelectedOffer = () => {
     const values = getValues()
     backendGateway.takeOrder(id, {
-      votingNumber: values.votingNumber,
       performers_price: currentDriverOffer?.price ?? values.performers_price,
     }, false)
       .then(() => {
@@ -1332,19 +1307,11 @@ const Order: React.FC<IProps> = ({
     if (boardingPendingRef.current)
       return
 
-    const enteredCode = normalizeDriverDoorNumber(votingNumber)
+    const enteredCode = normalizeBoardingCode(votingNumber)
     boardingPendingRef.current = true
     setBoardingPending(true)
-    let expectedCode = normalizeDriverDoorNumber(order?.b_driver_code)
-    try {
-      if (!expectedCode) expectedCode = getDriverDoorNumber(userAsDriver, await backendGateway.getUserCar(user!.u_id))
-    } catch {
-      boardingPendingRef.current = false
-      setBoardingPending(false)
-      setMessageModal({ isOpen: true, message: t(TRANSLATION.ERROR), status: EStatuses.Fail })
-      return
-    }
-    if (!expectedCode || !isBoardingCodeAccepted(expectedCode, enteredCode)) {
+    const expectedCode = order?.b_driver_code
+    if (!isBoardingCodeAccepted(expectedCode, enteredCode)) {
       boardingPendingRef.current = false
       setBoardingPending(false)
       setMessageModal({ isOpen: true, message: t(TRANSLATION.WRONG_BOARDING_CODE), status: EStatuses.Fail })
@@ -1621,6 +1588,8 @@ const Order: React.FC<IProps> = ({
           inputProps={{
             ...register('offerPrice', { required: t(TRANSLATION.REQUIRED_FIELD), min: 0, valueAsNumber: true }),
             type: 'number',
+              inputMode: 'decimal',
+              step: '0.01',
             min: 0,
             defaultValue: offerDesiredPrice,
           }}
@@ -1719,21 +1688,22 @@ const Order: React.FC<IProps> = ({
               ...register('votingNumber', {
                 required: t(TRANSLATION.REQUIRED_FIELD),
                 pattern: {
-                  value: DRIVER_DOOR_NUMBER_PATTERN,
-                  message: t(TRANSLATION.DRIVE_NUMBER_HINT),
+                  value: BOARDING_CODE_PATTERN,
+                  message: t(TRANSLATION.WRONG_BOARDING_CODE),
                 },
                 onChange: event => {
-                  event.target.value = normalizeDriverDoorNumber(event.target.value)
+                  event.target.value = normalizeBoardingCode(event.target.value)
                 },
               }),
               type: 'text',
-              inputMode: 'numeric',
-              pattern: '[0-9]*',
-              maxLength: 4,
+              inputMode: 'text',
+              maxLength: 32,
+              autoCapitalize: 'none',
+              spellCheck: false,
               autoComplete: 'off',
             }}
             error={errors?.votingNumber?.message}
-            label={t(TRANSLATION.DRIVE_NUMBER)}
+            label={t(TRANSLATION.CLIENT_BOARDING_CODE)}
           />
         )}
         {isVotingArrived && (
@@ -1777,6 +1747,8 @@ const Order: React.FC<IProps> = ({
           inputProps={{
             ...register('performers_price', { required: t(TRANSLATION.REQUIRED_FIELD), min: 0, valueAsNumber: true }),
             type: 'number',
+              inputMode: 'decimal',
+              step: '0.01',
             min: 0,
           }}
           error={errors?.performers_price?.message}

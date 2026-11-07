@@ -63,20 +63,21 @@ export function RatingModal({
     inFlight.current = false
     setPending(false)
     setSubmissionError('')
-    return () => { submission.current++ }
-  }, [isOpen, _orderID])
-  const order = useSimpleSelector(useCallback((state: IRootState) =>
-    detailedOrder ??
-    (_orderID ? ordersSelectors.order(state, _orderID) : undefined)
-  , [detailedOrder ?? _orderID]))
-
-  // Reset stars, tips and comment when modal opens for a new order
-  useEffect(() => {
     if (isOpen) {
       setStars(0)
       setTips('')
       setComment('')
+    }
+    return () => { submission.current++ }
+  }, [isOpen, _orderID])
+  const order = useSimpleSelector(useCallback((state: IRootState) =>
+    (_orderID && String(detailedOrder?.b_id) === String(_orderID) ? detailedOrder : undefined) ??
+    (_orderID ? ordersSelectors.order(state, _orderID) : undefined)
+  , [detailedOrder, _orderID]))
 
+  // Loading the same order's details must not erase a rating already selected.
+  useEffect(() => {
+    if (isOpen) {
       if (_orderID) {
         writeFlowEvent('REVIEW_SCREEN_OPEN', {
           orderId: _orderID,
@@ -109,7 +110,7 @@ export function RatingModal({
   }, [isOpen, _orderID, order?.b_id])
 
   const onRating = async() => {
-    if (!_orderID || stars === 0 || inFlight.current) return
+    if (!isOpen || !_orderID || stars === 0 || inFlight.current) return
     inFlight.current = true
     const request = ++submission.current
     setPending(true)
@@ -227,7 +228,7 @@ export function RatingModal({
                 type="submit"
                 text={t(pending ? TRANSLATION.LOADING : TRANSLATION.RATE)}
                 className="rating-modal_rating-btn"
-                disabled={stars === 0 || pending}
+                disabled={!_orderID || stars === 0 || pending}
               />
             </div>
           </fieldset>

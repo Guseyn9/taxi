@@ -1,3 +1,5 @@
+import { finishJourneyThroughUi } from './fixtures/finishJourney'
+import { newAuthenticatedContext } from './fixtures/tabSession'
 /**
  * TEST-E2E-002 — А.1.1, стандартный вызов. Живой backend.
  *
@@ -28,6 +30,7 @@ import {
   cancelOrder,
   cancelTestOrders,
   createStandardOrder,
+  isOfferOrderSnapshot,
   driverStateOf,
   DRIVER_STATE,
   getDriverCar,
@@ -45,6 +48,7 @@ import {
   DRIVER_STORAGE,
   PICKUP,
   clickPrimaryAction,
+  departAndArrive,
   expectUiDriverState,
   isBoardingFormVisible,
   openOrderCard,
@@ -94,7 +98,7 @@ function reportSweep(when: string, result: ISweepResult): void {
  * разными storageState: одной сессией двух пользователей не изображаем.
  */
 async function openSession(browser: Browser, storageState: string): Promise<BrowserContext> {
-  const context = await browser.newContext({
+  const context = await newAuthenticatedContext(browser, {
     ...devices['Desktop Chrome'],
     storageState,
     baseURL: appUrl(),
@@ -157,7 +161,7 @@ test.afterEach(async({}, testInfo) => {
   while (createdOrders.length) {
     const orderId = createdOrders.pop() as string
     try {
-      await cancelOrder(passenger, orderId)
+      if (Number((await readOrder(passenger, orderId)).b_state) !== 4) await cancelOrder(passenger, orderId)
     } catch (error) {
       console.error(
         `E2E CLEANUP FAILED: orderId=${orderId} — заказ остался на бэкенде, ` +
@@ -213,7 +217,7 @@ function votingServiceOf(order: IOrderSnapshot): boolean {
   return list.some(item => String(item).trim() === '5')
 }
 
-test('А.1.1 — стандартный вызов: от создания заказа до начала поездки', async() => {
+test('А.1.1 — стандартный вызов: от создания заказа до завершения поездки', async({}, testInfo) => {
   // ШАГ 1. Предусловие: у пассажира есть стандартный заказ.
   const orderId = await createStandardOrder(passenger, {
     pickup: PICKUP,
@@ -228,28 +232,10 @@ test('А.1.1 — стандартный вызов: от создания зак
   const created = await readOrder(passenger, orderId)
   expect(created.b_id, 'заказ создан и читается с бэкенда').toBe(orderId)
 
-  // ПРОВЕРКА 2 — тип заказа А.1.1. Голосование помечается b_voting и услугой 5,
-  // предложение — b_cars_count=0 (src/tools/driverOffer.ts). У стандартного
-  // вызова нет ни одного из этих признаков.
+  // Request mode comes from persisted booking fields, independently of class and price.
   expect(String(created.b_voting ?? '0'), 'заказ не голосовой').toBe('0')
-  expect(votingServiceOf(created), 'у заказа нет услуги «голосование»').toBe(false)
-
-  // b_cars_count по контракту: ноль — это «предложение» (А.1.3), по нему
-  // приложение и опознаёт тип (src/tools/driverOffer.ts). У стандартного вызова
-  // поле либо отсутствует, либо содержит положительное число машин; нечисловое
-  // значение — тоже нарушение контракта и проходить не должно.
-  //
-  // ВАЖНО: на gruzvill эта проверка сейчас ничего не отсекает. Бэкенд не
-  // сохраняет нулевое значение — заказ, созданный с `b_cars_count = 0`,
-  // читается обратно как `"1"` (проверено и числом, и строкой). То есть
-  // полями заказа А.1.3 на этой конфигурации не отличить, и единственная
-  // работающая опора — поведение FSM ниже. Сверка контракта оставлена: если
-  // бэкенд начнёт хранить признак, тест это увидит.
-  const carsCount = carsCountOf(created)
-  expect(
-    carsCount === undefined || (Number.isInteger(carsCount) && carsCount > 0),
-    `заказ не «предложение»: b_cars_count = ${JSON.stringify(created.b_cars_count)}`,
-  ).toBe(true)
+  expect(votingServiceOf(created), 'у заказа нет услуги голосования').toBe(false)
+  expect(isOfferOrderSnapshot(created), 'заказ не является Offer').toBe(false)
 
   // ШАГ 2. Пассажир видит свой заказ в приложении. Выбрать его пока нельзя:
   // до появления исполнителя плашка стандартного заказа неактивна.
@@ -301,7 +287,7 @@ test('А.1.1 — стандартный вызов: от создания зак
   // ШАГ 5. ПРОВЕРКА 6 — переход Performer → Arrived кликом «Поехал».
   await switchToDriverMap(driverPage)
   await expectUiDriverState(driverPage, DRIVER_STATE.Performer, 'карта показывает принятый заказ')
-  await clickPrimaryAction(driverPage)
+  await departAndArrive(driverPage)
   await expectBackendState(orderId, DRIVER_STATE.Arrived, 'бэкенд перевёл заказ в Arrived')
   await expectUiDriverState(driverPage, DRIVER_STATE.Arrived, 'карта показывает прибытие')
   await expectPassengerDriverState(
@@ -322,4 +308,6 @@ test('А.1.1 — стандартный вызов: от создания зак
   // ПРОВЕРКА 8 — пассажир видит начало поездки.
   await expectPassengerDriverState(
     passengerPage, DRIVER_STATE.Started, 'пассажир видит, что поездка началась')
+  await finishJourneyThroughUi(driverPage, passengerPage, driver, orderId, testInfo)
+
 })

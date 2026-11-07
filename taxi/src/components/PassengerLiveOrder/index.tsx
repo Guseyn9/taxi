@@ -1,8 +1,11 @@
+import PendingVotingConfirmation from '../../pilot/PendingVotingConfirmation'
+import PassengerBoardingCode from '../../pilot/PassengerBoardingCode'
 import {displayFare,orderCurrency} from '../../design/reliability/rideData'
 import {displayAddress} from '../../design/addressPresentation'
 import { formatDriverRating } from '../../tools/driverRating'
 import { isAnyBrowserEmulatorOrder } from '../../tools/emulatorMode'
 import { serverPickupEta } from '../../pilot/rules'
+import {useReleaseCanceledPassengerChoice} from '../../tools/useReleaseCanceledPassengerChoice'
 import React, { useEffect, useMemo, useState } from 'react'
 import cn from 'classnames'
 import { passengerGateway } from '../../platform/adapters/LegacyPassengerGateway'
@@ -23,6 +26,7 @@ import {
 } from '../../types/types'
 import { distanceBetweenEarthCoordinates, formatCurrency, getPayment } from '../../tools/utils'
 import { candidateMode } from '../../tools/order'
+import { participantName } from '../../tools/identity'
 import { getDriverOfferCommentLabels, getDriverOfferEtaLabels } from '../../tools/siteConstantOptions'
 import {
   addPassengerRejectedChoice,
@@ -30,8 +34,6 @@ import {
   getPassengerConfirmedChoice,
   getPassengerPickupEta,
   getPassengerRejectedChoices,
-  getChoiceDriverIdsToReleaseBeforeChoosing,
-  isChoiceDriverSelectionBlockedError,
   isChoiceOrder,
   isOfferOrder,
   isStoredSimpleOrderMode,
@@ -41,7 +43,6 @@ import {
   setPassengerConfirmedChoice,
 } from '../../tools/driverOffer'
 import { getDriverColor } from '../../tools/driverColors'
-import { getDriverDoorNumber, normalizeDriverDoorNumber, shouldShowDriverDoorNumber } from '../../tools/driverDoorNumber'
 import { getTimestamp } from '../../tools/reliableTime'
 import CarClassBadge, { getCandidateCarClassKind, getRequiredCarClassKind } from '../CarClassBadge'
 import DriverChoiceCancelReasonModal from '../modals/DriverChoiceCancelReasonModal'
@@ -71,7 +72,8 @@ function PassengerLiveOrder({
 }: IProps) {
   const languageIso = language?.iso
 
-  const [confirmedChoiceId, setConfirmedChoiceId] = useState<IDriver['u_id'] | null>(() => getPassengerConfirmedChoice(order.b_id))
+  const [storedConfirmedChoiceId, setConfirmedChoiceId] = useState<IDriver['u_id'] | null>(() => getPassengerConfirmedChoice(order.b_id))
+  const confirmedChoiceId = useReleaseCanceledPassengerChoice(order, storedConfirmedChoiceId, setConfirmedChoiceId)
   const [rejectedChoiceIds, setRejectedChoiceIds] = useState<IDriver['u_id'][]>(() => getPassengerRejectedChoices(order.b_id))
   const [pickupEtaVersion, setPickupEtaVersion] = useState(0)
   const candidateDriversCacheRef = React.useRef<Record<string, IDriver[]>>({})
@@ -115,7 +117,6 @@ function PassengerLiveOrder({
 
   const [driverUser, setDriverUser] = useState<IUser | null>(null)
   const [driverCar, setDriverCar] = useState<ICar | null>(null)
-  const [driverDoorNumber, setDriverDoorNumber] = useState('')
   const [candidateUsers, setCandidateUsers] = useState<IUser[]>([])
   const [candidateCars, setCandidateCars] = useState<ICar[]>([])
   const [activeCandidate, setActiveCandidate] = useState<IDriver['u_id'] | null>(null)
@@ -209,20 +210,7 @@ function PassengerLiveOrder({
     }
   }, [selectedDriver?.u_id, selectedDriver?.c_id])
 
-  useEffect(() => {
-    if (!selectedDriver) {
-      setDriverDoorNumber('')
-      return
-    }
 
-    setDriverDoorNumber(getDriverDoorNumber(selectedDriver, driverCar))
-  }, [
-    order.b_id,
-    selectedDriver?.u_id,
-    selectedDriver?.c_id,
-    driverCar?.c_id,
-    driverCar?.registration_plate,
-  ])
 
   useEffect(() => {
     let cancelled = false
@@ -383,65 +371,7 @@ function PassengerLiveOrder({
     const nextCandidateId = selectedCandidate.u_id
     setIsChoosing(true)
     try {
-      const releaseIds = Array.from(new Set([
-        ...getChoiceDriverIdsToReleaseBeforeChoosing(order, nextCandidateId),
-        ...rejectedChoiceIds
-          .map(String)
-          .filter(rejectedId => rejectedId && rejectedId !== String(nextCandidateId)),
-      ]))
-
-      try {
-        await passengerGateway.releaseCandidate(order.b_id)
-      } catch (error) {
-        console.error(error)
-      }
-
-      for (const releaseId of releaseIds) {
-        try {
-          await passengerGateway.releaseCandidate(order.b_id, releaseId)
-        } catch (error) {
-          console.error(error)
-        }
-      }
-
-      try {
-        await passengerGateway.selectCandidate(order.b_id, nextCandidateId)
-      } catch (error) {
-        if (!isChoiceDriverSelectionBlockedError(error))
-          throw error
-
-        const hardReleaseIds = Array.from(new Set([
-          ...releaseIds,
-          ...(order.drivers ?? [])
-            .filter(driver =>
-              String(driver.u_id ?? '') &&
-              String(driver.u_id) !== String(nextCandidateId) &&
-              [
-                EBookingDriverState.Performer,
-                EBookingDriverState.Arrived,
-                EBookingDriverState.Started,
-              ].includes(driver.c_state),
-            )
-            .map(driver => String(driver.u_id)),
-        ]))
-
-        try {
-          await passengerGateway.releaseCandidate(order.b_id)
-        } catch (releaseError) {
-          console.error(releaseError)
-        }
-
-        for (const releaseId of hardReleaseIds) {
-          try {
-            await passengerGateway.releaseCandidate(order.b_id, releaseId)
-          } catch (releaseError) {
-            console.error(releaseError)
-          }
-        }
-
-        await wait(650)
-        await passengerGateway.selectCandidate(order.b_id, nextCandidateId)
-      }
+      await passengerGateway.selectCandidate(order.b_id, nextCandidateId)
 
       setPassengerConfirmedChoice(order.b_id, nextCandidateId)
       setConfirmedChoiceId(nextCandidateId)
@@ -449,14 +379,6 @@ function PassengerLiveOrder({
       refreshActiveOrders()
     } catch (error) {
       console.error(error)
-
-      if (canUseLocalChoiceFallback(order, nextCandidateId, rejectedChoiceIds)) {
-        setPassengerConfirmedChoice(order.b_id, nextCandidateId)
-        setConfirmedChoiceId(nextCandidateId)
-        setActiveCandidate(nextCandidateId)
-        refreshActiveOrders()
-        return
-      }
 
       setMessageModal({
         isOpen: true,
@@ -559,6 +481,7 @@ function PassengerLiveOrder({
       'passenger-live-order--trip': isTripStarted,
     })}>
       <div className="passenger-live-order__handle" />
+      <PendingVotingConfirmation key={order.b_id} order={order} onUpdated={refreshActiveOrders}/>
 
       {!hasDriver ? (
         <div className="passenger-live-order__search-body">
@@ -759,22 +682,7 @@ function PassengerLiveOrder({
             </div>
           </div>
 
-          {shouldShowDriverDoorNumber(selectedDriver) && (
-            <div className="passenger-live-order__boarding-code passenger-live-order__boarding-code--door-number">
-              <span>{t(TRANSLATION.DRIVE_NUMBER)}</span>
-              <input
-                className="passenger-live-order__door-number-input"
-                value={driverDoorNumber}
-                inputMode="numeric"
-                pattern="[0-9]*"
-                maxLength={4}
-                placeholder="000"
-                aria-label={t(TRANSLATION.DRIVE_NUMBER)}
-                onChange={event => setDriverDoorNumber(normalizeDriverDoorNumber(event.target.value))}
-              />
-              <small>{t(TRANSLATION.DRIVE_NUMBER_HINT)}</small>
-            </div>
-          )}
+          <PassengerBoardingCode order={order} driver={selectedDriver} className="passenger-live-order__boarding-code"/>
         </>
       )}
 
@@ -880,9 +788,6 @@ function PassengerLiveOrder({
   )
 }
 
-function wait(ms: number) {
-  return new Promise(resolve => window.setTimeout(resolve, ms))
-}
 
 export default passengerLiveOrderConnector(PassengerLiveOrder)
 
@@ -955,17 +860,6 @@ function getCandidateDrivers(
     .filter(driver => isVisibleChoiceDriverState(driver.c_state))
 }
 
-function canUseLocalChoiceFallback(
-  order: IOrder,
-  nextCandidateId: IDriver['u_id'],
-  rejectedChoiceIds: IDriver['u_id'][],
-) {
-  if (!isChoiceOrder(order) || !rejectedChoiceIds.length)
-    return false
-
-  const nextCandidate = order.drivers?.find(driver => String(driver.u_id) === String(nextCandidateId))
-  return Boolean(nextCandidate && isVisibleChoiceDriverState(nextCandidate.c_state))
-}
 
 function ChatIcon() {
   return (
@@ -1035,14 +929,7 @@ function getDriverRating(driver?: IDriver | null) {
 }
 
 function getDriverName(driver?: IDriver | null, user?: IUser | null) {
-  const name = [
-    user?.u_name,
-    user?.u_family,
-    driver?.u_name,
-    driver?.u_family,
-    driver?.user?.u_name,
-    driver?.user?.u_family,
-  ].filter(Boolean).join(' ').trim()
+  const name = participantName(user, driver?.user, driver)
 
   if (name)
     return name

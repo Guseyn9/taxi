@@ -1,5 +1,6 @@
 import { rideCopy } from '../../design/copy'
 import useAddressSearch from '../../design/useAddressSearch'
+import {scopeAddressSuggestions} from '../../design/addressSuggestionScope'
 import { journeyCopy } from '../../design/journeyCopy'
 import { MOROCCO_CENTER } from '../../design/maps/morocco'
 import {displayAddress,displayShortAddress} from '../../design/addressPresentation'
@@ -39,7 +40,7 @@ const mapDispatchToProps = {
 
 const connector = connect(mapStateToProps, mapDispatchToProps)
 
-const hasCoordinates = (point?: IAddressPoint | null): point is IAddressPoint =>
+const hasCoordinates = (point?: IAddressPoint | null): point is IAddressPoint & {latitude:number;longitude:number} =>
   point?.latitude != null && point?.longitude != null &&
   Number.isFinite(Number(point.latitude)) && Number.isFinite(Number(point.longitude))
 
@@ -116,12 +117,12 @@ function LocationInput({
 
   const locationClassData = SITE_CONSTANTS.BOOKING_LOCATION_CLASSES
     .find(({ id }) => id === locationClass)!
-  const isIntercity = locationClassData.kind === EBookingLocationKinds.Intercity
+  const isIntercity = locationClassData?.kind === EBookingLocationKinds.Intercity
   const typedQuery = String(point?.address || '')
   const {suggestions,status:searchStatus,retry}=useAddressSearch({
     query:searchActive&&!hasCoordinates(point)?typedQuery:'',
-    contextKey:`${language?.iso}:${isIntercity}:${suggestionSearchCenterKey}`,
-    search:query=>backendGateway.getPointSuggestions(query,isIntercity,suggestionSearchCenter),
+    contextKey:`${type}:${language?.iso}:${locationClass}:${isIntercity}:${suggestionSearchCenterKey}`,
+    search:query=>backendGateway.getPointSuggestions(query,isIntercity,suggestionSearchCenter).then(items=>scopeAddressSuggestions(items,suggestionSearchCenter)),
   })
 
   const uiCopy = rideCopy(language?.iso)
@@ -206,7 +207,7 @@ function LocationInput({
         if (
           selectedPoint &&
           (selectedPoint.address || selectedPoint.shortAddress) &&
-          !(selectedPoint.latitude && selectedPoint.longitude)
+          !hasCoordinates(selectedPoint)
         ) {
           setPoint({
             ...selectedPoint,
@@ -220,7 +221,7 @@ function LocationInput({
     {detailsAsDialog && <Overlay isOpen={detailsOpen} onClick={() => setDetailsOpen(false)}>
      <div className="modal ride-service-dialog ride-address-dialog">
       <h2>{searchCopy.addressDetails}: {pointLabel}</h2>
-      <p dir="auto">{point?.address || point?.shortAddress}</p>
+      <p dir="auto">{displayAddress(point?.address || point?.shortAddress,language?.iso,point?.latitude,point?.longitude)}</p>
       <button type="button" onClick={() => setDetailsOpen(false)}>{uiCopy.done}</button>
      </div>
     </Overlay>}

@@ -247,6 +247,8 @@ export interface IDriver {
 }
 
 export interface IOptions {
+  /** Explicit public fare-offer contract; separate from legacy b_only_offer. */
+  offer_mode?: 'OFFER'
   submitPrice?: string;
   fromShortAddress?: string
   toShortAddress?: string
@@ -820,9 +822,7 @@ export type TBlockObject = { [key: string]: any }
 
 export interface IRegisterResponse {
   u_id: number,
-  string: string,
-  token?: string,
-  u_hash?: string
+  email_status?: boolean,
 }
 
 export type IFileUpload = {

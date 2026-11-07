@@ -36,6 +36,8 @@ import {
   configuredCommandStatusPollInterval,
   createConfiguredFsmCommandStatusTransport,
 } from './FsmCommandStatusTransport'
+import { getSessionRecoveryId } from '../../security/sessionTokens'
+import { DriverCommandRecovery, CommandRecoveryScope, DriverCommandRecoveryOptions } from './DriverCommandRecovery'
 
 export const DRIVER_MAP_ACTIONS = {
   Arrive: 'driver.order.arrive',
@@ -57,6 +59,7 @@ export const DRIVER_MAP_EVENTS = {
   CardOpened: 'driver.order.card.opened',
   AreasRequested: 'driver.route.areas.requested',
   Failed: 'driver.order.action.failed',
+  RecoveryChecked: 'driver.order.command.recovery_checked',
 } as const
 
 interface DriverOrderActionPayload {
@@ -104,20 +107,48 @@ export class DriverMapGateway {
   private readonly commandTransport: TaxiCommandTransport | null
   private readonly completionWaiter: DriverCommandCompletionWaiter
   private mountCount = 0
+  private inFlight = 0
+  private readonly eventTimeoutMs: number
   private stopHandler: Unsubscribe | null = null
+  private recoveryUserId: string | null = null
+  private sendingOrders = new Set<string>()
+  private actionScopes = new Map<string, CommandRecoveryScope | null>()
+  readonly recovery: DriverCommandRecovery | null
 
   constructor(
     runtime: PlatformInterfaceRuntime = platformInterface.runtime,
     commandTransport: TaxiCommandTransport | null = createConfiguredFsmTaxiCommandTransport(),
     completionTimeoutMs = 60000,
     completionWaiter?: DriverCommandCompletionWaiter,
+    recoveryOptions?: DriverCommandRecoveryOptions | null,
   ) {
+    this.eventTimeoutMs = Number.isFinite(completionTimeoutMs) && completionTimeoutMs > 0 ? Math.min(completionTimeoutMs, 15000) : 15000
     this.runtime = runtime
     this.commandTransport = commandTransport
     this.completionWaiter = completionWaiter ?? createDefaultCompletionWaiter(
       runtime,
       completionTimeoutMs,
     )
+    const options = recoveryOptions === undefined ? process.env.REACT_APP_FSM_API_URL?.trim() ? {
+      scope: () => {
+        const service = process.env.REACT_APP_FSM_API_URL?.trim().replace(/\/+$/, '')
+        const sessionId = getSessionRecoveryId()
+        return service && sessionId && this.recoveryUserId ? { service, sessionId, userId: this.recoveryUserId } : null
+      },
+    } : null : recoveryOptions
+    this.recovery = commandTransport && this.completionWaiter.supportsInstanceRecovery && options ?
+      new DriverCommandRecovery(this.completionWaiter, { ...options, onRecovered: (command, result) => {
+        // Recovered metadata never advances local trip state. Query refresh owns it.
+        this.runtime.publish({ type: DRIVER_MAP_EVENTS.RecoveryChecked,
+          payload: { orderId: command.orderId, instanceId: command.instanceId, status: result.status, failureKind: result.failureKind },
+          metadata: { source: 'driver.command.recovery', timestamp: new Date().toISOString() } })
+        options.onRecovered?.(command, result)
+      } }) : null
+  }
+
+  setRecoveryIdentity(userId: string | number | null): void {
+    this.recoveryUserId = userId === null ? null : String(userId)
+    this.recovery?.activate()
   }
 
   mount(): Unsubscribe {
@@ -130,11 +161,7 @@ export class DriverMapGateway {
         return
       unmounted = true
       this.mountCount = Math.max(0, this.mountCount - 1)
-      if (this.mountCount === 0 && this.stopHandler) {
-        this.stopHandler()
-        this.stopHandler = null
-        this.completionWaiter.cancelAll()
-      }
+      this.releaseIdleHandler()
     }
   }
 
@@ -199,6 +226,18 @@ export class DriverMapGateway {
   }
 
   private dispatch<TPayload>(type: string, payload: TPayload): Promise<void> {
+    const lifecycle = Boolean(this.commandTransport && isDriverLifecycleAction(type))
+    const orderId = lifecycle ? String((payload as unknown as DriverOrderActionPayload).orderId) : ''
+    let scope: CommandRecoveryScope | null = null
+    if (lifecycle) {
+      try {
+        if (this.sendingOrders.has(orderId)) throw new BackendInteractionError('FSM_COMMAND_PENDING', 'This order already has an action in progress.')
+        this.recovery?.assertCanSend(orderId)
+        scope = this.recovery?.captureScope() || null
+        if (this.recovery && !scope) throw new BackendInteractionError('FSM_COMMAND_SESSION_CHANGED', 'An authenticated driver session is required before sending an action.')
+      } catch (error) { return Promise.reject(error) }
+      this.sendingOrders.add(orderId)
+    }
     this.ensureHandler()
     const action: InteractionAction<TPayload> = {
       type,
@@ -209,39 +248,56 @@ export class DriverMapGateway {
         correlationId: createCorrelationId(),
       },
     }
-    if (this.commandTransport && isDriverLifecycleAction(type)) {
-      return this.dispatchServerLifecycle(
-        action,
-        payload as unknown as DriverOrderActionPayload,
-      )
-    }
-    return this.dispatchAndWaitForEvent(action, this.successEventFor(type))
+    if (lifecycle) this.actionScopes.set(action.metadata!.correlationId!, scope)
+    this.inFlight += 1
+    const result = this.commandTransport && isDriverLifecycleAction(type) ?
+      this.dispatchServerLifecycle(action, payload as unknown as DriverOrderActionPayload) :
+      this.dispatchAndWaitForEvent<void>(action, this.successEventFor(type), () => undefined)
+    return result.finally(() => {
+      if (lifecycle) { this.sendingOrders.delete(orderId); this.actionScopes.delete(action.metadata!.correlationId!) }
+      this.inFlight -= 1
+      this.releaseIdleHandler()
+    })
   }
 
-  private dispatchAndWaitForEvent(
+  private releaseIdleHandler(): void {
+    // An accepted command belongs to the app, not to the currently mounted map.
+    if (this.mountCount === 0 && this.inFlight === 0 && this.stopHandler) {
+      this.stopHandler()
+      this.stopHandler = null
+    }
+  }
+
+  private dispatchAndWaitForEvent<T>(
     action: InteractionAction,
     completionType: string,
-  ): Promise<void> {
+    read: (event: InteractionEvent) => T,
+  ): Promise<T> {
     return new Promise((resolve, reject) => {
-      const unsubscribe = this.runtime.subscribe(event => {
-        if (event.metadata?.correlationId !== action.metadata?.correlationId)
-          return
-        if (event.type === completionType) {
-          unsubscribe()
-          resolve()
-          return
-        }
-        if (event.type === DRIVER_MAP_EVENTS.Failed) {
-          unsubscribe()
-          const failure = event.payload as DriverMapFailurePayload
-          reject(new BackendInteractionError(failure.code, failure.message, failure))
-        }
-      })
-
-      void this.runtime.dispatch(action).catch(error => {
+      let settled = false
+      let unsubscribe: Unsubscribe = () => undefined
+      const settle = (error?: unknown, value?: T) => {
+        if (settled) return
+        settled = true
+        clearTimeout(deadline)
         unsubscribe()
-        reject(normalizeBackendError(error))
+        if (error) reject(normalizeBackendError(error))
+        else resolve(value as T)
+      }
+      const deadline = setTimeout(() => settle(new BackendInteractionError(
+        'DRIVER_EVENT_TIMEOUT', 'The result is unknown. Refresh the order before trying again.',
+        { actionType: action.type, correlationId: action.metadata?.correlationId },
+      )), this.eventTimeoutMs)
+      unsubscribe = this.runtime.subscribe(event => {
+        if (event.metadata?.correlationId !== action.metadata?.correlationId) return
+        if (event.type === completionType) settle(undefined, read(event))
+        else if (event.type === DRIVER_MAP_EVENTS.Failed) {
+          const failure = event.payload as DriverMapFailurePayload
+          settle(new BackendInteractionError(failure.code, failure.message, failure))
+        }
       })
+      if (settled) unsubscribe()
+      Promise.resolve().then(() => this.runtime.dispatch(action)).catch(error => settle(error))
     })
   }
 
@@ -250,26 +306,9 @@ export class DriverMapGateway {
     payload: DriverOrderActionPayload,
   ): Promise<void> {
     const baseline = this.completionWaiter.captureBaseline(payload.orderId)
-    const accepted = await new Promise<DriverCommandAcceptedPayload>((resolve, reject) => {
-      const unsubscribeEvents = this.runtime.subscribe(event => {
-        if (event.metadata?.correlationId !== action.metadata?.correlationId)
-          return
-        if (event.type === DRIVER_MAP_EVENTS.CommandAccepted) {
-          unsubscribeEvents()
-          resolve(event.payload as DriverCommandAcceptedPayload)
-          return
-        }
-        if (event.type === DRIVER_MAP_EVENTS.Failed) {
-          unsubscribeEvents()
-          const failure = event.payload as DriverMapFailurePayload
-          reject(new BackendInteractionError(failure.code, failure.message, failure))
-        }
-      })
-      void this.runtime.dispatch(action).catch(error => {
-        unsubscribeEvents()
-        reject(normalizeBackendError(error))
-      })
-    })
+    const accepted = await this.dispatchAndWaitForEvent<DriverCommandAcceptedPayload>(
+      action, DRIVER_MAP_EVENTS.CommandAccepted, event => event.payload as DriverCommandAcceptedPayload,
+    )
 
     const result = await this.completionWaiter.wait({
       actionType: action.type,
@@ -277,6 +316,9 @@ export class DriverMapGateway {
       instanceId: accepted.instanceId,
       baseline,
     })
+    const scope = this.actionScopes.get(action.metadata!.correlationId!) || null
+    this.recovery?.settle(accepted.instanceId, result, scope)
+    if (scope && !this.recovery?.isCurrent(scope)) throw new BackendInteractionError('FSM_COMMAND_SESSION_CHANGED', 'The session changed while checking the action.')
     if (result.status === COMMAND_COMPLETION_STATUSES.Completed) {
       // Тот же событийный контракт, что и в legacy-режиме: подписчик узнаёт об
       // успешном переходе одинаково, независимо от того, ждали мы бэкенд
@@ -355,6 +397,9 @@ export class DriverMapGateway {
           commandPayload,
           action.metadata,
         )
+        const scope = this.actionScopes.get(action.metadata!.correlationId!) || null
+        if (scope && !this.recovery?.isCurrent(scope)) throw new BackendInteractionError('FSM_COMMAND_SESSION_CHANGED', 'The session changed while accepting the action.')
+        this.recovery?.remember({ actionType: action.type, orderId: payload.orderId, instanceId: accepted.instanceId, baseline: { state: null } }, scope)
         this.publish(action, DRIVER_MAP_EVENTS.CommandAccepted, {
           actionType: action.type,
           orderId: payload.orderId,

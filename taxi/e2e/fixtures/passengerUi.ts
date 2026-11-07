@@ -9,6 +9,7 @@
 import path from 'path'
 import { expect, Page, Request, Response } from '@playwright/test'
 import { expectAppBooted } from './appShell'
+import {readValue} from './accounts'
 
 export const PASSENGER_PAGE = '/passenger-order'
 
@@ -82,9 +83,8 @@ export async function expectOrderVisibleToPassenger(page: Page, orderId: string)
  * Выбрать свой заказ в списке. После выбора форма переходит в режим активного
  * заказа и показывает панель водителя (pages/Passenger/VotingForm.tsx).
  *
- * До назначения водителя плашка стандартного заказа неактивна
- * (components/MiniOrders/index.tsx) — выбирать заказ имеет смысл только после
- * того, как исполнитель появился.
+ * Плашки активных заказов доступны сразу; этот helper дополнительно ждёт
+ * назначенного водителя, поскольку вызывается в сценариях поездки.
  */
 export async function selectPassengerOrder(page: Page, orderId: string): Promise<void> {
   const card = miniOrderCard(page, orderId)
@@ -300,7 +300,7 @@ export async function waitForCancelResponse(page: Page, orderId: string) {
  * Создание заказа через форму пассажира (TEST-E2E-008).
  *
  * Хелперы ниже моделируют ДЕЙСТВИЯ ПОЛЬЗОВАТЕЛЯ: ввод адреса, выбор подсказки,
- * свайп, ввод телефона и цены, клик по кнопке режима. Redux, localStorage и
+ * открытие параметров, ввод телефона и цены, клик по кнопке режима. Redux, localStorage и
  * page.evaluate() для бизнес-состояния не используются, `/drive` не мокается и из
  * теста не вызывается. Контракт, на котором они построены, замерен разведкой
  * (e2e/README.md, TEST-E2E-008).
@@ -319,13 +319,16 @@ export interface IPassengerOrderPoint {
   readonly match: string
 }
 
-/** Точки, замеренные разведкой на живом gruzvill. */
-export const PASSENGER_ORDER_POINTS: Readonly<Record<'pickup' | 'destination' | 'intercityDestination', IPassengerOrderPoint>> = {
-  // Standard и Voting идут PICKUP → DESTINATION (город), Offer — на межгородское назначение.
-  pickup: { query: 'улица Содружества 35 Ростов-на-Дону', match: 'Содружества' },
-  destination: { query: 'Акмолинская улица 79 Ростов-на-Дону', match: 'Акмолинская' },
-  // Таганрог, 52 км: единственный маршрут, на котором UI сам выставляет класс поездки «2».
-  intercityDestination: { query: 'Таганрог, Петровская улица 10', match: 'Bogudoniya' },
+/** UI geocoder inputs must belong to the same Agadir points as the API fixtures.
+ * Configure verified queries and labels for the target service; no Rostov fallback. */
+function configuredPoint(which:'PICKUP'|'DESTINATION'):IPassengerOrderPoint {
+  const query=readValue(`E2E_${which}_QUERY`),match=readValue(`E2E_${which}_MATCH`)
+  if (!query||!match) throw new Error(`Set E2E_${which}_QUERY and E2E_${which}_MATCH to verified Agadir address results`)
+  return {query,match}
+}
+export const PASSENGER_ORDER_POINTS = {
+  get pickup(){return configuredPoint('PICKUP')},
+  get destination(){return configuredPoint('DESTINATION')},
 }
 
 const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
@@ -335,11 +338,12 @@ export const passengerOrderForm = (page: Page) => page.getByTestId('passenger-or
 const pointInput = (page: Page, which: 'from' | 'to') => page.getByTestId(`passenger-order-${which}`)
 
 /**
- * Подсказка нужной точки: источник «Карта» (`official`) и текст адреса. Источник
- * читается атрибутом, а не подписью — подписи «Карта/Личный/Общий» зависят от языка.
+ * Подсказка с конкретным адресом. После первого выбора история может заменить
+ * дублирующую подсказку карты. Источник не фиксируется: координаты выбранного
+ * адреса независимо сверяются по реальному запросу создания и readback.
  */
 const pointSuggestion = (page: Page, which: 'from' | 'to', point: IPassengerOrderPoint) =>
-  page.locator(`[data-testid="passenger-order-${which}-suggestion"][data-suggestion-source="official"]`)
+  page.locator(`[data-testid="passenger-order-${which}-suggestion"]`)
     .filter({ hasText: point.match })
 
 /** Открыть форму заказа пассажира: приложение поднялось, форма свободна для ввода. */
@@ -360,6 +364,7 @@ export async function pickPassengerPoint(
   which: 'from' | 'to',
   point: IPassengerOrderPoint,
 ): Promise<void> {
+  await closePassengerOptions(page)
   const input = pointInput(page, which)
   await input.click()
   await input.fill('')
@@ -394,46 +399,23 @@ const locationClassButton = (page: Page, id: string) =>
  * Класс не выбирается — проверяется то, что пассажир ВИДИТ.
  */
 export async function expectPassengerLocationClass(page: Page, id: string): Promise<void> {
-  await expect(locationClassButton(page, id), `маршрут определён, класс поездки ${id} выбран`)
-    .toHaveAttribute('data-active', 'true', { timeout: 60_000 })
+  const wasOpen = await passengerOrderForm(page).getAttribute('data-options-view') === 'true'
+  await expandPassengerOrderForm(page)
+  await expect(locationClassButton(page,id), `маршрут определён, выбран класс ${id}`)
+    .toHaveAttribute('data-active','true',{timeout:60_000})
+  if (!wasOpen) await closePassengerOptions(page)
 }
 
-/**
- * Раскрыть форму настоящим touch-жестом. Раскрывается она только свайпом
- * (tools/swipe.ts, события touchstart/move/end), клика нет. Жест шлётся браузеру
- * через CDP `Input.dispatchTouchEvent` — это обычный ввод пользователя, а не
- * подмена состояния.
- */
+/** Preferences have an explicit keyboard/touch-accessible button; no private CDP gesture. */
 export async function expandPassengerOrderForm(page: Page): Promise<void> {
-  const form = passengerOrderForm(page)
-  if (await form.getAttribute('data-expanded') === 'true')
-    return
-
-  await expect(async() => {
-    const box = await form.boundingBox()
-    if (!box)
-      throw new Error('форма заказа не отрисована')
-
-    const x = Math.round(box.x + box.width / 2)
-    const fromY = Math.round(box.y + 40)
-    const toY = Math.max(60, fromY - 450)
-    const cdp = await page.context().newCDPSession(page)
-    try {
-      const touch = (type: 'touchStart' | 'touchMove' | 'touchEnd', y?: number) => cdp.send('Input.dispatchTouchEvent', {
-        type,
-        touchPoints: y === undefined ? [] : [{ x, y }],
-      })
-      await touch('touchStart', fromY)
-      for (let step = 1; step <= 8; step += 1) {
-        await touch('touchMove', fromY + ((toY - fromY) * step) / 8)
-        await page.waitForTimeout(40)
-      }
-      await touch('touchEnd')
-    } finally {
-      await cdp.detach().catch(() => undefined)
-    }
-    await expect(form).toHaveAttribute('data-expanded', 'true', { timeout: 3_000 })
-  }, 'форма заказа раскрылась свайпом').toPass({ timeout: 30_000, intervals: [500, 1_000] })
+  if (await passengerOrderForm(page).getAttribute('data-options-view') === 'true') return
+  await page.getByTestId('ride-options-toggle').click()
+  await expect(passengerOrderForm(page)).toHaveAttribute('data-options-view','true')
+}
+export async function closePassengerOptions(page: Page): Promise<void> {
+  if (await passengerOrderForm(page).getAttribute('data-options-view') !== 'true') return
+  await page.getByTestId('ride-options-done').click()
+  await expect(passengerOrderForm(page)).toHaveAttribute('data-options-view','false')
 }
 
 /**
@@ -442,11 +424,12 @@ export async function expandPassengerOrderForm(page: Page): Promise<void> {
  * форматирует ввод сама — сверяются только цифры.
  */
 export async function fillPassengerPhone(page: Page, phone: string): Promise<void> {
+  await expandPassengerOrderForm(page)
   const digits = phone.replace(/\D/g, '')
   const input = page.getByTestId('passenger-order-phone')
   await expect(input, 'поле телефона видно в раскрытой форме').toBeVisible({ timeout: 30_000 })
   await input.click()
-  await input.press('Control+A')
+  await input.press('ControlOrMeta+A')
   await input.press('Backspace')
 
   // Маска (`+233(___)-___-___`) сама показывает код страны. Если набрать номер
@@ -455,6 +438,7 @@ export async function fillPassengerPhone(page: Page, phone: string): Promise<voi
   // после очистки набирается только то, чего в маске ещё нет.
   const shown = (await input.inputValue()).replace(/\D/g, '')
   const rest = digits.startsWith(shown) ? digits.slice(shown.length) : digits
+  await input.press('End')
   await input.pressSequentially(rest, { delay: 40 })
 
   await expect
@@ -463,35 +447,34 @@ export async function fillPassengerPhone(page: Page, phone: string): Promise<voi
       timeout: 15_000,
     })
     .toBe(digits)
+  await page.locator('button.passenger-voting-form__phone-save-button').click()
+  await closePassengerOptions(page)
 }
 
 /**
- * Цена заказчика в режиме «Предложение»: третий сегмент блока цены. Редактируется,
- * пока режим не выбран (после клика по Vote/Order он становится неактивным).
+ * «Своя цена» открывает диалог без создания заказа. Цена вводится в диалоге;
+ * запрос создаёт только явное подтверждение.
  */
 export async function setPassengerOfferPrice(page: Page, price: number): Promise<void> {
-  const segment = page.locator('[data-testid="passenger-order-price-segment"][data-price-key="customer"]')
-  const input = page.locator('[data-testid="passenger-order-price"][data-price-key="customer"]')
-  await expect(segment, 'сегмент цены заказчика виден в раскрытой форме').toBeVisible({ timeout: 30_000 })
-  await segment.click()
-  await expect(input, 'поле цены заказчика доступно для ввода').toBeEditable({ timeout: 15_000 })
+  await closePassengerOptions(page)
+  const button=passengerOrderModeButton(page,'offer')
+  await expect(button).toBeEnabled()
+  await button.click() // Opens the fare dialog; does not create the booking.
+  const input=page.locator('[data-testid="passenger-order-price"][data-price-key="customer"]')
+  await expect(input).toBeEditable()
   await input.fill(String(price))
   await input.blur()
-  await expect(input, 'поле цены содержит введённое значение').toHaveValue(String(price))
+  await expect.poll(async()=>Number((await input.inputValue()).replace(',','.'))).toBe(price)
 }
 
-/** Кнопка режима — она же создание заказа: отдельной кнопки «Создать» в форме нет. */
 export const passengerOrderModeButton = (page: Page, mode: TPassengerOrderMode) =>
   page.getByTestId(`passenger-order-mode-${mode}`)
 
-/**
- * Нажать кнопку режима. Один клик = создание заказа выбранного режима
- * (`setSelectedMode(mode); submit(mode)` в pages/Passenger/VotingForm.tsx), поэтому
- * «выбрать режим» и «создать» в UI — одно действие.
- */
+/** Order/Vote submit directly. Offer submits only from its explicit fare dialog. */
 export async function submitPassengerOrder(page: Page, mode: TPassengerOrderMode): Promise<void> {
-  const button = passengerOrderModeButton(page, mode)
-  await expect(button, `кнопка режима «${mode}» доступна`).toBeEnabled({ timeout: 30_000 })
+  await closePassengerOptions(page)
+  const button=mode==='offer'?page.getByTestId('passenger-order-submit'):passengerOrderModeButton(page,mode)
+  await expect(button,`подтверждение ${mode} доступно`).toBeEnabled({timeout:30_000})
   await button.click()
 }
 
@@ -658,7 +641,7 @@ export async function pressPassengerOrderModeAgain(
   mode: TPassengerOrderMode,
   presses: number,
 ): Promise<void> {
-  const button = passengerOrderModeButton(page, mode)
+  const button = mode==='offer'?page.getByTestId('passenger-order-submit'):passengerOrderModeButton(page, mode)
   for (let press = 0; press < presses; press += 1)
     await button.click({ force: true, timeout: 5_000 })
 }

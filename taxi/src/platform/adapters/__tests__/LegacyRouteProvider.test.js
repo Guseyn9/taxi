@@ -45,4 +45,18 @@ describe('LegacyRouteProvider', () => {
     expect(route.points).toHaveLength(4)
     expect(global.fetch).not.toHaveBeenCalled()
   })
+
+  it.each(['connection', 'body'])('bounds the OSRM fallback %s without leaving the caller waiting', async phase => {
+    jest.useFakeTimers()
+    backendGateway.makeRoutePoints.mockRejectedValueOnce(new Error('not configured'))
+    global.fetch.mockImplementation(() => phase === 'body' ? Promise.resolve({ ok: true, json: () => new Promise(() => {}) }) : new Promise(() => {}))
+    const log = jest.spyOn(console, 'error').mockImplementation(() => {})
+    try {
+      const result = new LegacyRouteProvider().makeRoutePoints(FROM, TO)
+      const assertion = expect(result).rejects.toThrow('Route by roads is not available')
+      await jest.advanceTimersByTimeAsync(10001)
+      await assertion
+      expect(global.fetch.mock.calls[0][1].signal.aborted).toBe(true)
+    } finally { jest.useRealTimers(); log.mockRestore() }
+  })
 })

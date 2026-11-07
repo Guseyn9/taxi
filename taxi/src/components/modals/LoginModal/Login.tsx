@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { Eye, EyeOff,Mail,MessageCircle } from 'lucide-react'
 import { configSelectors } from '../../../state/config'
 import { dialogCopy } from '../dialogCopy'
+import { authCopy } from './authCopy'
 import Config from '../../../config'
 import { t, TRANSLATION } from '../../../localization'
 import Checkbox from '../../Checkbox'
@@ -23,7 +24,7 @@ import { GoogleLoginButton } from 'react-social-login-buttons'
 import { useLocation } from 'react-router-dom'
 import { modalsActionCreators,  modalsSelectors } from '../../../state/modals'
 import { Input } from './elements'
-import { replaceAllString } from '../../../tools/compat'
+import { beginGoogleOAuth, googleOAuthAvailable } from '../../../security/authCallback'
 import { usePlatformNavigator } from '../../../platform/platform-interface'
 
 
@@ -62,7 +63,7 @@ interface IProps extends ConnectedProps<typeof connector> {
 }
 
 
-const LoginForm: React.FC<IProps> = ({
+export const LoginForm: React.FC<IProps> = ({
   language,
   user,
   status,
@@ -80,6 +81,7 @@ const LoginForm: React.FC<IProps> = ({
   message,
 }) => {
   const copy = dialogCopy(language?.iso)
+  const auth = authCopy(language?.iso)
   const [isPasswordShows, setIsPasswordShows] = useState(false)
   const [dataToLogin, setDataToLogin] = useState({})
   const [isVisible, toggleVisibility] = useVisibility(false)
@@ -94,6 +96,7 @@ const LoginForm: React.FC<IProps> = ({
 
   const schema = yup.object({
     type: yup.string().required(t(TRANSLATION.REQUIRED_FIELD)),
+    password: yup.string().required(t(TRANSLATION.REQUIRED_FIELD)),
     login: yup.string().required(t(TRANSLATION.REQUIRED_FIELD)).when('type', {
       is: (type: ERegistrationType) => (type === ERegistrationType.Email),
       then: yup.string().required(t(TRANSLATION.REQUIRED_FIELD)).matches(emailRegex, t(TRANSLATION.EMAIL_ERROR)),
@@ -110,7 +113,8 @@ const LoginForm: React.FC<IProps> = ({
     trigger,
   } = useForm<IFormValues>({
     criteriaMode: 'all',
-    mode: 'all',
+    mode: 'onTouched',
+    reValidateMode: 'onChange',
     defaultValues: {
       login: user?.u_email || '',
       type: ERegistrationType.Email,
@@ -128,27 +132,6 @@ const LoginForm: React.FC<IProps> = ({
       toggleVisibility()
     }
   }, [isOpen])
-
-  useEffect(() => {
-    let u_email = getParamFromURL('u_email')
-    let u_name = getParamFromURL('u_name')
-
-    if (typeof u_email === 'string' && typeof u_name === 'string') {
-      setRefOpen({
-        isOpen: true,
-        data: {
-          u_name: replaceAllString(decodeURIComponent(u_name), '+', ' '),
-          u_phone: '',
-          u_email: decodeURIComponent(u_email),
-          type: ERegistrationType.Email,
-          u_role: EUserRoles.Client,
-          ref_code: '',
-          u_details: {},
-          st: '1',
-        },
-      })
-    }
-  }, [])
 
   useEffect(() => {
     isDirty && trigger()
@@ -210,20 +193,18 @@ const LoginForm: React.FC<IProps> = ({
     }
   }
 
-  const getParamFromURL = (param: string) => {
-    const value = new URLSearchParams(location.search).get(param)
-    return value && decodeURIComponent(value)
-  }
-
   return (
     <form
       className="login-form sign-in-subform"
+      noValidate
       aria-busy={status===EStatuses.Loading}
       onSubmit={handleSubmit(onSubmit)}
     >
+      <div className="auth-login-fields">
       <Input
         inputProps={{
           ...formRegister('login'),
+          required: true,
           autoComplete: 'username',
           inputMode: type === ERegistrationType.Email ? 'email' : 'tel',
           autoCapitalize: 'none',
@@ -240,6 +221,7 @@ const LoginForm: React.FC<IProps> = ({
             <Input
               inputProps={{
                 ...formRegister('password'),
+                required: true,
                 autoComplete: 'current-password',
                 autoCapitalize: 'none',
                 spellCheck: false,
@@ -260,26 +242,15 @@ const LoginForm: React.FC<IProps> = ({
                   'aria-pressed': isPasswordShows,
                   onClick: () => setIsPasswordShows(prev => !prev),
                 },
-                {
-                  ...(!user ?
-                    {
-                      className: 'restore-password-block__button',
-                      wrapperProps: { className: 'auth-restore-control' },
-                      type: 'button',
-                      onClick: () => {
-                        formLogin && window.confirm(t(TRANSLATION.PASSWORD_RESET_MESSAGE)) && remindPassword(formLogin)
-                      },
-                      disabled: !formLogin || !!errors?.login,
-                      text: t(TRANSLATION.RESTORE_PASSWORD),
-                      skipHandler: true,
-                    } :
-                    {}
-                  ),
-                },
               ].filter(item => Object.values(item).length)}
             />
       }
 
+      {!user && <div className="auth-recovery-row"><button type="button" className="auth-recovery-link"
+        disabled={!formLogin || !!errors.login || status === EStatuses.Loading}
+        onClick={() => { formLogin && window.confirm(t(TRANSLATION.PASSWORD_RESET_MESSAGE)) && remindPassword(formLogin) }}>
+        {t(TRANSLATION.RESTORE_PASSWORD)}
+      </button></div>}
       <fieldset className="auth-channel-options"><legend className="sr-only">{t('login_method')}</legend><div className="auth-channel-choice"><Mail size={18} aria-hidden="true"/><Checkbox
         {...formRegister('type')}
         type="radio"
@@ -287,10 +258,11 @@ const LoginForm: React.FC<IProps> = ({
         value={ERegistrationType.Email}
         id="email"
       />
-      </div><div className="auth-channel-choice"><MessageCircle size={18} aria-hidden="true"/><Checkbox
+      </div><div className="auth-channel-choice auth-channel-choice--unavailable" title={auth.unavailable}><MessageCircle size={18} aria-hidden="true"/><Checkbox
         {...formRegister('type')}
         type="radio"
-        label={'WhatsApp'}
+        label={`WhatsApp · ${auth.unavailable}`}
+        disabled
         value={ERegistrationType.Whatsapp}
         id="whatsapp"
       />
@@ -307,44 +279,21 @@ const LoginForm: React.FC<IProps> = ({
             </div>
       }
 
-      {Number(role) !== EUserRoles.Driver && (
-        // <LoginSocialGoogle
-        //   client_id={googleClientId}
-        //   onLoginStart={() => {}}
-        //   redirect_uri={''}
-        //   scope="profile email"
-        //   access_type="online"
-        //   onResolve={(data) => {
-        //     console.log(data)
-        //   // const obj = {
-        //   //   u_name: data?.name,
-        //   //   u_phone: '',
-        //   //   u_email: 'moj14frffefff@gmail.com',          // TODO: заменить на data?.email
-        //   //   type: ERegistrationType.Email,
-        //   //   u_role: EUserRoles.Client,
-        //   //   ref_code: '',
-        //   //   u_details: {},
-        //   //   st: '1',
-        //   // }
-        //   //googleLogin(obj)
-        //   }}
-        //   onReject={err => {
-        //     console.log(err)
-        //   }}
-        // >
-        <a className="auth-google" href={`https://accounts.google.com/o/oauth2/v2/auth?response_type=code&access_type=offline&client_id=${googleClientId}&redirect_uri=${Config.SERVER_URL}/google/&state&scope=email%20profile&prompt=select_account`}>
+      {Number(role) !== EUserRoles.Driver && Boolean(googleClientId) && googleOAuthAvailable() && (
+        <a className="auth-google" onClick={event => { event.preventDefault(); window.location.assign(beginGoogleOAuth(event.currentTarget.href)) }} href={`https://accounts.google.com/o/oauth2/v2/auth?response_type=code&access_type=offline&client_id=${googleClientId}&redirect_uri=${Config.SERVER_URL}/google/&scope=email%20profile&prompt=select_account`}>
           <GoogleLoginButton text={t('google_sign_in')} style={{margin:0,width:'100%',height:48,boxShadow:'none',background:'#fff',border:'1px solid #e6e3eb',borderRadius:12,fontSize:14}} activeStyle={{background:'#f8f7fa'}}/>
         </a>
 
       )}
-
+      </div>
       <Button
         type="submit"
         text={!!user ? t(TRANSLATION.LOGOUT) : t(TRANSLATION.SIGN_IN)}
         fixedSize={false}
         className="login-modal_login-btn"
+        wrapperProps={{className:'auth-login-footer'}}
         skipHandler={true}
-        disabled={status===EStatuses.Loading || !!Object.values(errors).length}
+        disabled={status===EStatuses.Loading}
         status={status}
       />
     </form>

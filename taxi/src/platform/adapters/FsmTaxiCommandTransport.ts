@@ -1,5 +1,6 @@
 import type { InteractionMetadata } from '../interaction-contract'
 import { BackendInteractionError } from './backendError'
+import { withHttpDeadline } from './httpDeadline'
 
 export interface TaxiCommandTransport {
   send(
@@ -24,6 +25,7 @@ export interface FsmCommandAccepted {
 export interface FsmTaxiCommandConfig {
   readonly apiUrl: string
   readonly apiToken?: string
+  readonly acceptanceTimeoutMs?: number
 }
 
 export interface FsmTaxiCommandDependencies {
@@ -60,6 +62,20 @@ export class FsmTaxiCommandTransport implements TaxiCommandTransport {
     payload: Readonly<Record<string, unknown>> = {},
     metadata?: InteractionMetadata,
   ): Promise<FsmCommandAccepted> {
+    return withHttpDeadline(
+      signal => this.sendBeforeDeadline(orderId, intent, payload, metadata, signal),
+      this.config.acceptanceTimeoutMs,
+      'FSM_COMMAND_ACCEPT_TIMEOUT',
+    )
+  }
+
+  private async sendBeforeDeadline(
+    orderId: number | string,
+    intent: string,
+    payload: Readonly<Record<string, unknown>>,
+    metadata?: InteractionMetadata,
+    signal?: AbortSignal,
+  ): Promise<FsmCommandAccepted> {
     const normalizedOrderId = String(orderId).trim()
     if (!normalizedOrderId)
       throw new Error('FSM command orderId is required')
@@ -70,6 +86,7 @@ export class FsmTaxiCommandTransport implements TaxiCommandTransport {
       `${trimTrailingSlash(this.config.apiUrl)}/api/commands/taxi/order/${encodeURIComponent(normalizedOrderId)}`,
       {
         method: 'POST',
+        signal,
         headers: this.headers(commandId),
         body: JSON.stringify({
           schemaVersion: '1.0',

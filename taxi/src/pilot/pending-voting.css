@@ -1,0 +1,6 @@
+.pending-voting{box-sizing:border-box;width:100%;padding:14px;margin:8px 0;border:1px solid #e6c9c5;border-radius:14px;background:#fff6f3;color:#171717}
+.pending-voting p{margin:0 0 10px;font:500 14px/1.45 Manrope,sans-serif;overflow-wrap:anywhere}
+.pending-voting [role=alert]{color:#a9171d}
+.pending-voting button{display:block;box-sizing:border-box;min-height:44px;width:100%;padding:10px 14px;border:0;border-radius:10px;background:var(--drive-red,#b51218);color:white;font:700 14px/1.4 Manrope,sans-serif;cursor:pointer}
+.pending-voting button:focus-visible{outline:2px solid #171717;outline-offset:3px}
+.pending-voting button:disabled{opacity:.6;cursor:wait}

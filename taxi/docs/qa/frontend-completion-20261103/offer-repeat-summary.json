@@ -1,0 +1,14 @@
+{
+  "stats": {
+    "startTime": "2026-11-03T21:35:05.916Z",
+    "duration": 81156.79100000001,
+    "expected": 5,
+    "skipped": 0,
+    "unexpected": 0,
+    "flaky": 0
+  },
+  "businessJourneys": 2,
+  "setupLogins": 3,
+  "retries": 0,
+  "consecutiveOfferJourneysIncludingFullRun": 3
+}

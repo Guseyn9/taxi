@@ -3,7 +3,7 @@ import SITE_CONSTANTS from '../siteConstants'
 import { EBookingDriverState, ICar, IOrder, IUser } from '../types/types'
 
 /** Вместимость салона, когда ни у машины, ни у её класса нет данных о числе мест. */
-export const DEFAULT_CAR_SEATS = 4
+export const DEFAULT_CAR_SEATS = 0
 
 /**
  * Состояния, в которых места заказа уже заняты: водитель едет за пассажирами,
@@ -17,9 +17,9 @@ const SEATS_OCCUPYING_STATES = [
 ]
 
 function toPositiveInt(value: unknown): number | undefined {
+  if (typeof value !== 'number' && (typeof value !== 'string' || !/^\d+$/.test(value.trim()))) return undefined
   const number = Number(value)
-
-  return Number.isFinite(number) && number > 0 ? Math.floor(number) : undefined
+  return Number.isSafeInteger(number) && number > 0 ? number : undefined
 }
 
 /** Сколько мест занимает заказ. Без указанного числа пассажиров считаем одного. */

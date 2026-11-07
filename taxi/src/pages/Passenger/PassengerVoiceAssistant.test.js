@@ -1,5 +1,7 @@
 import React,{act} from 'react'
 import {createRoot} from 'react-dom/client'
+import {PassengerVoiceAssistant} from './PassengerVoiceAssistant'
+import {isConfirmation,isRejection} from './voiceIntent'
 let mockHandler
 const mockGeocode=jest.fn()
 jest.mock('../../platform/adapters/LegacyPassengerGateway',()=>({passengerGateway:{geocode:(...args)=>mockGeocode(...args)}}))
@@ -7,8 +9,6 @@ jest.mock('../../platform/platform-interface',()=>({platformInterface:{runtime:{
 jest.mock('../../platform/voice-channel/BrowserVoiceChannel',()=>({VOICE_TRANSCRIPT_RECEIVED:'voice.transcript.received',BrowserVoiceChannel:class{
  isRecognitionSupported(){return true} speak(){return Promise.resolve()} listenOnce(){return new Promise(()=>{})} stop(){}
 }}))
-import {PassengerVoiceAssistant} from './PassengerVoiceAssistant'
-import {isConfirmation,isRejection} from './voiceIntent'
 let host,root,from,to,submit
 const address={lat:'30.42',lon:'-9.6',display_name:'Avenue Hassan II'}
 const render=(languageIso='ru')=>act(async()=>root.render(<PassengerVoiceAssistant languageIso={languageIso} getMapSearchCenter={()=>[30.42,-9.6]} setFrom={from} setTo={to} onSubmitOrder={submit}/>))

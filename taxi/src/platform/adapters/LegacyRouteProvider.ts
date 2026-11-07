@@ -1,6 +1,7 @@
 import type { IWayGraph } from '../../tools/maps'
 import type { IAddressPoint, IRouteInfo } from '../../types/types'
 import { backendGateway } from './LegacyBackendGateway'
+import { withHttpDeadline } from './httpDeadline'
 
 /** Route provider preserving the legacy ORS -> local graph -> OSRM strategy. */
 export class LegacyRouteProvider {
@@ -45,11 +46,11 @@ async function makeOsrmRoutePoints(
     `${from.longitude},${from.latitude};${to.longitude},${to.latitude}`,
     '?overview=full&geometries=geojson',
   ].join('')
-  const response = await fetch(url)
-  if (!response.ok)
-    return null
-
-  const data = await response.json()
+  const data = await withHttpDeadline(async signal => {
+    const response = await fetch(url, { signal })
+    return response.ok ? response.json() : null
+  }, 10000, 'ROUTE_QUERY_TIMEOUT')
+  if (!data) return null
   const route = data?.routes?.[0]
   const coordinates = route?.geometry?.coordinates
   if (!Array.isArray(coordinates) || coordinates.length < 2)

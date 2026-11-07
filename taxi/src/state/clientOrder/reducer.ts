@@ -50,6 +50,7 @@ const record = Record<IClientOrderState>({
   customerPrice: defaultRecord.customerPrice,
   pickupPrice: defaultRecord.pickupPrice,
 })
+export const emptyClientOrderState = () => new record(defaultRecord)
 
 export default function reducer(
   state = new record(),

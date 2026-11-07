@@ -1,3 +1,10 @@
+import { runSaga, stdChannel } from 'redux-saga'
+import { saga } from '../sagas'
+import reducer from '../reducer'
+import { ActionTypes } from '../constants'
+import { getPolygonsIdsOnPoint } from '../../../API'
+import { getCurrentPosition } from '../../../tools/utils'
+import { zoneChecksReady, retryZonePoint } from '../../../design/reliability/zoneCheck'
 jest.mock('../../../API', () => ({ getPolygonsIdsOnPoint: jest.fn(), reverseGeocode: jest.fn(), getPointSuggestions: jest.fn() }))
 jest.mock('../../../siteConstants', () => ({ __esModule: true, default: {
   DEFAULT_CAR_CLASS: 'petit', DEFAULT_BOOKING_LOCATION_CLASS: 'city',
@@ -16,13 +23,6 @@ jest.mock('../util', () => ({
   manualLocationClasses: () => [{ id: 'city' }], polygonsLocationClasses: () => [{ id: 'city' }],
   carClassSupportsLocationClass: () => true, carClassAllowedForRoute: () => true, maxAvailableSeats: () => 4,
 }))
-import { runSaga, stdChannel } from 'redux-saga'
-import { saga } from '../sagas'
-import reducer from '../reducer'
-import { ActionTypes } from '../constants'
-import { getPolygonsIdsOnPoint } from '../../../API'
-import { getCurrentPosition } from '../../../tools/utils'
-import { zoneChecksReady, retryZonePoint } from '../../../design/reliability/zoneCheck'
 
 const point = { latitude: 30.4278, longitude: -9.5981, address: 'Agadir' }
 const settle = async () => { for (let i = 0; i < 5; i++) await new Promise(resolve => jest.requireActual('timers').setImmediate(resolve)) }

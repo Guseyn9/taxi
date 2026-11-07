@@ -1,5 +1,6 @@
 import React from 'react'
 import {MapPin, X} from 'lucide-react'
+import {serviceText} from '../serviceText'
 import {locationFailure} from './freshLocation'
 import './location-feedback.css'
 const copy={
@@ -9,16 +10,16 @@ const copy={
  ar:{outside:'أنت خارج المغرب',title:'تعذر تحديد موقعك',blocked:'الوصول للموقع محظور',message:'اختر نقطة الانطلاق على الخريطة أو اسمح بالموقع في إعدادات المتصفح.',pick:'اختر على الخريطة',retry:'حاول مجدداً',busy:'جارٍ تحديد الموقع…',close:'إغلاق',settings:'كيفية السماح بالموقع',help:'افتح إعدادات الموقع بجانب العنوان ثم الموقع ثم السماح، وحاول مجدداً. إذا كان المتصفح محظوراً، تحقق من إعدادات الجهاز.'}
 }
 export default function LocationFeedback({code,iso,busy,onAllow,onClose,onPickMap}:{code:number,iso?:string,busy:boolean,onAllow:()=>void,onClose:()=>void,onPickMap?:()=>void}){
- const lang=(iso||'en').split('-')[0] as keyof typeof copy, labels=copy[lang]||copy.en
+ const lang=(iso||'en').split('-')[0] as keyof typeof copy, labels=serviceText(copy[lang]||copy.en,'location_feedback')
  return <div className="map-location-feedback" role="status" dir={lang==='ar'?'rtl':undefined}>
   <div className="map-location-feedback__heading"><MapPin size={20} aria-hidden="true"/><strong>{code===1?labels.blocked:code===4?labels.outside:labels.title}</strong>
    <button type="button" className="map-location-feedback__close" aria-label={labels.close} onClick={onClose}><X size={18}/></button>
   </div>
-  <p>{code===1?labels.message:locationFailure(code,iso)}</p>
+  {code!==1&&<p>{locationFailure(code,iso)}</p>}
   <div className="map-location-feedback__actions">
    {onPickMap&&<button type="button" className="map-location-feedback__pick" onClick={onPickMap}>{labels.pick}</button>}
    <button type="button" className="map-location-feedback__allow" disabled={busy} aria-busy={busy} onClick={onAllow}>{busy?labels.busy:labels.retry}</button>
   </div>
-  {code===1&&<details><summary>{labels.settings}</summary><p>{labels.help}</p></details>}
+  {code===1&&<details><summary>{labels.settings}</summary><p>{labels.message} {labels.help}</p></details>}
  </div>
 }

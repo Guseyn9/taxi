@@ -1,5 +1,8 @@
+@use 'sass:color';
+
 $height: 80px;
 $red: #ff2400;
+
 
 .header {
   position: relative;
@@ -278,7 +281,7 @@ $red: #ff2400;
       border-bottom-right-radius: 15px;
       border-top-right-radius: 15px;
       padding: 0;
-      box-shadow: 0 0 5px darken(#fff, 50);
+      box-shadow: 0 0 5px color.adjust(#fff, $lightness: -50%);
       z-index: 1;
 
       &--active {
@@ -316,7 +319,7 @@ $red: #ff2400;
       &:hover,
       &:focus,
       &:active {
-        background-color: darken(#fff, 5);
+        background-color: color.adjust(#fff, $lightness: -5%);
       }
     }
 

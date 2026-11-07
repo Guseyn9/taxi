@@ -1,7 +1,7 @@
-jest.mock('react-redux',()=>({connect:()=>component=>component}))
 import React, {act} from 'react'
 import {createRoot} from 'react-dom/client'
 import {ShortInfo} from './index'
+jest.mock('react-redux',()=>({connect:()=>component=>component}))
 jest.mock('../../state/clientOrder',()=>({clientOrderSelectors:{}}))
 jest.mock('../../tools/utils',()=>({getPhoneNumberError:()=>null,formatCurrency:value=>`${value} GHS`,getPayment:()=>({value:12.5})}))
 jest.mock('../../localization',()=>({t:value=>value,TRANSLATION:{NOW:'Now',CAR_CLASSES:{50:'PETIT'}}}))

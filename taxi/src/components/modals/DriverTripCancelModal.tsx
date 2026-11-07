@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { connect, ConnectedProps } from 'react-redux'
 import { useNavigate } from 'react-router-dom'
 import cn from 'classnames'
@@ -15,6 +15,7 @@ import { driverMapGateway } from '../../platform/adapters/DriverMapGateway'
 import Button from '../Button'
 import OrderId from '../OrderId'
 import Overlay from './Overlay'
+import { getApiErrorMessage } from '../../tools/apiMessages'
 import { getOrderIdText } from '../../tools/orderId'
 import './styles.scss'
 
@@ -39,7 +40,7 @@ interface IProps extends ConnectedProps<typeof connector> {
  * trip that is already under way must be attributed, so the reason travels to
  * the backend with the cancel request (same `reason` field the passenger uses).
  */
-const DriverTripCancelModal: React.FC<IProps> = ({
+export const DriverTripCancelModal: React.FC<IProps> = ({
   modal,
   activeOrders,
   user,
@@ -53,23 +54,27 @@ const DriverTripCancelModal: React.FC<IProps> = ({
 
   const [reason, setReason] = useState(reasons[0]?.id ?? '0')
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [error, setError] = useState('')
+  const pending = useRef(false)
 
   useEffect(() => {
     if (isOpen) {
       setReason(reasons[0]?.id ?? '0')
-      setIsSubmitting(false)
+      setError('')
     }
   }, [isOpen, reasons])
 
   const handleClose = () => {
-    if (!isSubmitting)
+    if (!pending.current)
       setDriverTripCancelModal({ isOpen: false })
   }
 
   const handleConfirm = () => {
-    if (isSubmitting || !orderId)
+    if (pending.current || !orderId)
       return
 
+    pending.current = true
+    setError('')
     setIsSubmitting(true)
     // Метку ставим до запроса: опрос активных заказов может увидеть отмену
     // раньше, чем вернётся ответ, и показать «Клиент отменил заказ».
@@ -88,14 +93,12 @@ const DriverTripCancelModal: React.FC<IProps> = ({
         })
         navigate('/driver-order')
       })
-      .catch(error => {
-        console.error(error)
+      .catch(failure => {
+        setError(getApiErrorMessage(failure, { context: 'driver-order' }))
+      })
+      .finally(() => {
+        pending.current = false
         setIsSubmitting(false)
-        setMessageModal({
-          isOpen: true,
-          status: EStatuses.Fail,
-          message: t(TRANSLATION.ERROR),
-        })
       })
   }
 
@@ -104,32 +107,29 @@ const DriverTripCancelModal: React.FC<IProps> = ({
       isOpen={isOpen}
       onClick={handleClose}
     >
-      <div className="modal cancel-order-modal message-window">
+      <div className="modal cancel-order-modal driver-trip-cancel-modal message-window">
         <h3>{t(TRANSLATION.DRIVER_TRIP_CANCEL_TITLE)}</h3>
         {!!orderId && (
           <div className="cancel-order-modal__order-id">
             <OrderId orderId={orderId} variant="full" />
           </div>
         )}
-        {reasons.map(item => {
-          const active = reason === item.id
-          return (
-            <div
-              key={item.id}
-              onClick={() => !isSubmitting && setReason(item.id)}
-              className={cn('reason-item', { 'reason-item--active': active })}
-              style={{ color: active ? SITE_CONSTANTS.PALETTE.primary.dark : undefined }}
-            >
-              {item.label}
-            </div>
-          )
-        })}
+        <fieldset className="cancel-order-modal__reasons" aria-label={t(TRANSLATION.DRIVER_TRIP_CANCEL_TITLE)} disabled={isSubmitting}>
+          {reasons.map(item => <label key={item.id} className={cn('reason-item', { 'reason-item--active': reason === item.id })}>
+            <input type="radio" name="driver-trip-cancel-reason" checked={reason === item.id} onChange={() => setReason(item.id)} />
+            <span>{item.label}</span>
+          </label>)}
+        </fieldset>
+        {error && <p role="alert">{error}</p>}
         <div className="modal__buttons-block">
           <Button
+            type="button"
+            data-testid="driver-trip-cancel-confirm"
+            aria-busy={isSubmitting}
             intent="danger"
             text={isSubmitting ? t(TRANSLATION.LOADING) : t(TRANSLATION.INTERRUPT_TRIP)}
             onClick={handleConfirm}
-            disabled={isSubmitting}
+            disabled={isSubmitting || !orderId}
           />
           <Button
             intent="neutral"

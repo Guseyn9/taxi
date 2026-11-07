@@ -56,6 +56,7 @@ export {
 } from './car'
 export {
   postDrive,
+  confirmDrive,
   cancelDrive,
   getOrders,
   getOrder,
@@ -92,13 +93,16 @@ const _uploadFile = (
       addToFormData(formData, {
         token: data.token,
         u_hash: data.u_hash,
-        file: JSON.stringify({ base64, u_id: data.u_id }),
-        private: 0,
+        file: JSON.stringify({ base64, u_id: data.u_id, private: 1 }),
       })
       return formData
     })
     .then(form => axios.post(`${Config.API_URL}/dropbox/file`, form))
-    .then(res => ({ ...res, dl_id: res?.data?.data?.dl_id }))
+    .then(res => {
+      const id = res?.data?.data?.dl_id
+      if (res?.data?.status !== 'success' || String(res?.data?.code) !== '200' || !/^[1-9]\d*$/.test(String(id))) throw new Error('Image upload was not confirmed')
+      return { ...res, dl_id: String(id) }
+    })
 }
 
 export const uploadFile = apiMethod<typeof _uploadFile>(_uploadFile, { authRequired: false })
@@ -651,7 +655,8 @@ export const geocode = (
     )
 }
 
-const orsToken = '5b3ce3597851110001cf6248b6254554dbfc488a8585d67081a4000f'
+// An optional provider key is public browser configuration, never a shared default.
+const orsToken = getConfigValue('ORS_API_KEY')
 const routeCacheStorageKey = 'orsRouteCache.v1'
 
 const getFiniteRouteNumber = (value: unknown): number | null => {
@@ -718,6 +723,9 @@ export const makeRoutePoints = (from: IAddressPoint, to: IAddressPoint): Promise
   if (cachedRoute)
     return Promise.resolve(cachedRoute)
 
+  if (!orsToken)
+    return Promise.reject(new Error('External route provider is not configured'))
+
   return axios.post(
     'https://api.openrouteservice.org/v2/directions/driving-car/geojson',
     {
@@ -783,17 +791,6 @@ export const makeRoutePoints = (from: IAddressPoint, to: IAddressPoint): Promise
 
       return Promise.reject(error)
     })
-}
-
-export const notifyPosition = (point: IAddressPoint) => {
-  const userID = userSelectors.user(store.getState())?.u_id
-
-  axios.post('http://jecat.ru/car_api/api/notifypos.php', {
-    driver: userID,
-    lat: point.latitude,
-    lon: point.longitude,
-    time: new Date().getTime() / 1000,
-  })
 }
 
 export const getPointSuggestions = async(

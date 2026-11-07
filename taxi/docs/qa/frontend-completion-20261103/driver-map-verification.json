@@ -1,0 +1,169 @@
+{
+  "date": "2026-11-04T09:36:51.101595+01:00",
+  "scope": "Local frontend only; isolated PHP stand. No production acceptance or publication.",
+  "defect": "An order-list update canceled snap results while leaving the old order marked handled; coordinate edits and React effect replay also lost or retained incorrect results.",
+  "beforeRegression": {
+    "failed": 3,
+    "passed": 1,
+    "method": "Previous Driver Map effect and snap function extracted unchanged, then exercised through React."
+  },
+  "fix": "Per-coordinate in-flight work, fresh subscriber for the current plan, independent order completion, exclusion of stale/removed results, and immediate disabled-mode exclusion.",
+  "unit": {
+    "passed": 993,
+    "suites": 188,
+    "focusedHookCases": 22,
+    "relatedPlanAndArrivalCases": 51
+  },
+  "browser": {
+    "passed": 21,
+    "setup": 3,
+    "scenarios": 18,
+    "flaky": 0,
+    "retries": 0,
+    "skipped": 0,
+    "tripModes": [
+      "standard",
+      "vote",
+      "offer"
+    ],
+    "server": "isolated local PHP"
+  },
+  "responsive": {
+    "states": 25,
+    "viewports": [
+      "320x568",
+      "390x844",
+      "844x390",
+      "768x1024",
+      "1440x900"
+    ],
+    "pageErrors": 0,
+    "horizontalDocumentOverflow": 0,
+    "physicalDevices": false
+  },
+  "typecheck": "passed",
+  "lintErrors": 0,
+  "existingLintParserWarnings": 3,
+  "focusedExhaustiveDeps": "passed without suppressions",
+  "productionBuild": "passed",
+  "boundary": {
+    "comparedCoreFiles": 268,
+    "comparedBusinessHandlers": 69,
+    "unchangedBusinessHandlers": 50,
+    "ok": true,
+    "failures": []
+  },
+  "privacy": {
+    "secretMatches": [],
+    "decodedZipEntries": 14,
+    "files": 2
+  },
+  "originalBackendAndCheckoutChanged": false,
+  "published": false,
+  "limitations": [
+    "Road nearest-service cache policy was not changed in this phase.",
+    "Real booked points are never snapped by this hook.",
+    "Large Driver Map, other hook suppressions and dependency debt remain open.",
+    "Physical phones, accepted production FSM and pilot load are not proven."
+  ],
+  "sourceSha256": {
+    "src/pages/Driver/Map.tsx": "af9fc8692f3c6f779c44f1209e825bd7cff93136a4de7e86cd18cb6ae910fbc8",
+    "src/tools/useDemoOrderPoints.ts": "4a372ce1e15e65215902926a41478a91ae15bd21593b12f9fa062bc3ab106d38",
+    "src/tools/useDemoOrderPoints.test.jsx": "b534fe55f5ddd55c90f47f1ba53765f3497c2340f8a371c229f5062debd06b28",
+    "src/.eslintrc.json": "3975532c88469e3109fb073674c1e572b9c32b80b22dd7404f039e499ed90201",
+    "tools/build-release.cjs": "f3a7af57c4414f0b00d17d8eca30a80742ea1ca0703bf32c05dc3eccc486960e"
+  },
+  "journeyScreenshots": {
+    "date": "2026-11-04",
+    "count": 12,
+    "source": "21-test local isolated PHP run; UI commands; simulated GPS; tile provider stubbed",
+    "files": [
+      {
+        "mode": "standard-order",
+        "role": "driver",
+        "stage": "started",
+        "sha256": "8dbafaba72da754cdc54b0a11d5c9f82a681f6edecc44830302dd1d4882d41b0"
+      },
+      {
+        "mode": "standard-order",
+        "role": "driver",
+        "stage": "finished",
+        "sha256": "75424f7e8ac37a7731da3bd63f758a9d079720aa5131e2733494139abcd872d1"
+      },
+      {
+        "mode": "standard-order",
+        "role": "client",
+        "stage": "started",
+        "sha256": "8151c3be4b084c1dda783baf5b472f1d92269349deb53b1e8ff62106fedc9a8b"
+      },
+      {
+        "mode": "standard-order",
+        "role": "client",
+        "stage": "finished",
+        "sha256": "a45ec04e7056c04f359553d1cd2a06787b5c76a8b53dc598177de0b96ced92b3"
+      },
+      {
+        "mode": "voting-order",
+        "role": "driver",
+        "stage": "started",
+        "sha256": "88e69e78aace2460873cf0a358f863caec6929349bfb42578a7ed1e59a402da5"
+      },
+      {
+        "mode": "voting-order",
+        "role": "driver",
+        "stage": "finished",
+        "sha256": "bca00dfdcaf2815d1335e6a546c44307646747d8bb22d5e7ad14b9a66505858d"
+      },
+      {
+        "mode": "voting-order",
+        "role": "client",
+        "stage": "started",
+        "sha256": "d72d33cf1db69d992e9c60f57cddbc7254073e977f1c53629c17133ead796ee4"
+      },
+      {
+        "mode": "voting-order",
+        "role": "client",
+        "stage": "finished",
+        "sha256": "35d03e722dcf236c07ce5364dd3d04a4578e7a2ff2316833e6e249ba82d3a090"
+      },
+      {
+        "mode": "offer-order",
+        "role": "driver",
+        "stage": "started",
+        "sha256": "8dbafaba72da754cdc54b0a11d5c9f82a681f6edecc44830302dd1d4882d41b0"
+      },
+      {
+        "mode": "offer-order",
+        "role": "driver",
+        "stage": "finished",
+        "sha256": "533fab813e6fccef64def971be64283ddcd23705cff06275d02253ad892e4914"
+      },
+      {
+        "mode": "offer-order",
+        "role": "client",
+        "stage": "started",
+        "sha256": "71d640c10c00db7a03e604a20fb0e8ce9cae6f2fe676fa520a0953448a3725e5"
+      },
+      {
+        "mode": "offer-order",
+        "role": "client",
+        "stage": "finished",
+        "sha256": "dbd5f053edf4efa48cca26cac220602065b99e425040c1e5f9edd12acc7c2e67"
+      }
+    ]
+  },
+  "scopedHookRule": {
+    "active": true,
+    "missingDependencyRejected": true,
+    "actualHookErrors": 0,
+    "actualHookWarnings": 0
+  },
+  "reportBrowser": {
+    "rows": 68,
+    "images": 20,
+    "journeyScreenshots": 12,
+    "filter": true,
+    "errors": [],
+    "published": false
+  }
+}

@@ -26,6 +26,7 @@ const mapStateToProps = (state: IRootState) => ({
   status: configSelectors.status(state),
   user: userSelectors.user(state),
   language: configSelectors.language(state),
+  generation: state.sessionGeneration,
 })
 
 const connector = connect(mapStateToProps)
@@ -34,12 +35,12 @@ interface IProps extends ConnectedProps<typeof connector> {
 
 }
 
-const AppRoutesWrapper: React.FC<IProps> = ({ status, user, language }) => {
+const AppRoutesWrapper: React.FC<IProps> = ({ status, user, language, generation }) => {
   usePlatformNavigationBridge()
   const languageIso = language?.iso
 
   return status === EStatuses.Success ?
-    <Suspense fallback={<UnavailableBase status={EStatuses.Loading}/>}><AppRoutes user={user} languageIso={languageIso}/></Suspense> :
+    <Suspense fallback={<UnavailableBase status={EStatuses.Loading}/>}><AppRoutes key={generation} user={user} languageIso={languageIso}/></Suspense> :
     <UnavailableBase status={status}/>
 }
 

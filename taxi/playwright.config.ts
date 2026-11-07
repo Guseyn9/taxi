@@ -1,4 +1,5 @@
 import { defineConfig, devices } from '@playwright/test'
+import {apiBase, appUrl} from './e2e/fixtures/accounts'
 
 /**
  * E2E прогоняются против ЖИВОГО backend (см. e2e/README.md): Taxi API, Command
@@ -6,7 +7,9 @@ import { defineConfig, devices } from '@playwright/test'
  * проверяемому сценарию не относится, — тайлы карты.
  */
 
-const APP_URL = process.env.E2E_APP_URL || 'http://localhost:3000'
+const APP_URL = appUrl()
+const targetApi = new URL(apiBase())
+const servicePath = /^(.*)\/c\/([^/]+)\/api\/v1\/?$/.exec(targetApi.pathname)!
 const REUSE_SERVER = !process.env.CI || !!process.env.E2E_APP_URL
 const STRIP_SETUP_SNAPSHOTS = './e2e/reporters/stripSetupErrorContext.ts'
 
@@ -22,18 +25,19 @@ export default defineConfig({
   fullyParallel: false,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
-  // Стоит первым: снимает с результатов `setup` снимок страницы с логином и
-  // паролем до того, как его увидят HTML- и JSON-репортёр.
+  // First and the only console sink: redact credentials before HTML/JSON.
+  // Authentication steps/attachments are excluded even when setup succeeds.
   reporter: process.env.CI ?
-    [[STRIP_SETUP_SNAPSHOTS], ['list'], ['html', { open: 'never' }], ['json', { outputFile: 'e2e-results/results.json' }]] :
-    [[STRIP_SETUP_SNAPSHOTS], ['list'], ['html', { open: 'never' }]],
+    [[STRIP_SETUP_SNAPSHOTS], ['html', { open: 'never' }], ['json', { outputFile: 'e2e-results/results.json' }]] :
+    [[STRIP_SETUP_SNAPSHOTS], ['html', { open: 'never' }]],
   outputDir: 'e2e-results/artifacts',
 
   use: {
     baseURL: APP_URL,
     locale: 'ru-RU',
     // §23 ТЗ: при падении должно остаться чем разбираться.
-    trace: 'retain-on-failure',
+    // Authenticated requests contain token/u_hash; never upload a network trace.
+    trace: 'off',
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',
     permissions: ['geolocation'],
@@ -161,6 +165,10 @@ export default defineConfig({
     timeout: 5 * 60 * 1000,
     stdout: 'ignore',
     stderr: 'pipe',
-    env: { BROWSER: 'none' },
+    env: {
+      BROWSER:'none',
+      REACT_APP_API_ROOT:targetApi.origin + servicePath[1],
+      REACT_APP_SERVICE_CONFIG:decodeURIComponent(servicePath[2]),
+    },
   },
 })

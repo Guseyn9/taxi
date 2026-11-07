@@ -1,5 +1,7 @@
 import React, { createContext, useEffect, useRef, useState } from 'react'
+import {claimDriverOfferNotification} from '../../tools/driverOfferNotifications'
 import DriverOrders from './Orders'
+import ActiveVehiclePicker from '../../components/ActiveVehiclePicker'
 import { LogIn } from 'lucide-react'
 import DriverMap from './Map'
 import { t, TRANSLATION } from '../../localization'
@@ -348,7 +350,7 @@ const Driver: React.FC<IProps> = ({
 
       if (event === 'accepted') {
         updateStoredDriverOfferStatus(order.b_id, user.u_id, 'accepted')
-        setMessageModal({
+        if (claimDriverOfferNotification(order.b_id,user.u_id,'accepted')) setMessageModal({
           isOpen: true,
           status: EStatuses.Success,
           message: [t(TRANSLATION.DRIVER_OFFER_ACCEPTED), getOrderIdText(order.b_id, activeOrders.map(item => item.b_id))]
@@ -361,6 +363,9 @@ const Driver: React.FC<IProps> = ({
         updateStoredDriverOfferStatus(order.b_id, user.u_id, 'rejected')
         addHiddenOrder(order.b_id, user.u_id)
         closeAllModals()
+        // A driver's own cancellation is not a rejection by the passenger.
+        if (wasOrderCancelledByDriver(order.b_id, user.u_id))
+          continue
         setMessageModal({
           isOpen: true,
           status: EStatuses.Warning,
@@ -550,6 +555,7 @@ const Driver: React.FC<IProps> = ({
     <>
       <OrderModeDecisionModal />
       <OrderModeToast />
+      <ActiveVehiclePicker />
       <div className="driver-tabs" data-order-source={emulatorOrdersEnabled ? 'emulator' : 'normal'}>
         <button
           onClick={onFirstTabClick}

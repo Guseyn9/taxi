@@ -34,7 +34,7 @@ describe('isAlongTheWayCandidate', () => {
   })
 
   it('отсекает оффер', () => {
-    expect(isAlongTheWayCandidate(order('A', { b_cars_count: 0 }), context())).toBe(false)
+    expect(isAlongTheWayCandidate(order('A', { b_cars_count: 1, b_options: {offer_mode:'OFFER'} }), context())).toBe(false)
   })
 
   it('отсекает заказ, в котором водитель уже участвует', () => {

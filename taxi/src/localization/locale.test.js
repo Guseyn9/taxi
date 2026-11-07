@@ -1,8 +1,8 @@
 import {setLocalizationLanguageReader} from './runtime'
-jest.mock('../state',()=>({__esModule:true,default:{getState:()=>({})}}))
-jest.mock('../state/config',()=>({configSelectors:{language:jest.fn()}}))
 import {configSelectors} from '../state/config'
 import {t} from './index'
+jest.mock('../state',()=>({__esModule:true,default:{getState:()=>({})}}))
+jest.mock('../state/config',()=>({configSelectors:{language:jest.fn()}}))
 setLocalizationLanguageReader(()=>configSelectors.language())
 const prior=window.data
 afterEach(()=>{window.data=prior})
@@ -37,4 +37,18 @@ it('booking state descriptions supplied by the service also keep priority',()=>{
  configSelectors.language.mockReturnValue({id:1,iso:'ru'})
  window.data={booking_driver_states:{1:{ru:'DB considering'}}}
  expect(t('booking_driver_states.1')).toBe('DB considering')
+})
+
+it('new controls and errors use database text without a rebuild, including the original Vote key',()=>{
+ const {bookingReadinessCopy}=require('../design/bookingReadiness')
+ const {authCopy}=require('../components/modals/LoginModal/authCopy')
+ const {zoneCheckCopy}=require('../design/reliability/zoneCheck')
+ const {journeyCopy}=require('../design/journeyCopy')
+ configSelectors.language.mockReturnValue({id:1,iso:'ru'})
+ window.data={lang_vls:{location_action:{1:'DB location'},booking_readiness_phone:{1:'DB phone'},auth_ui_country:{1:'DB country'},zone_check_error:{1:'DB zone error'},vote:{1:'DB vote'}}}
+ expect(t('location_action')).toBe('DB location')
+ expect(bookingReadinessCopy('ru').phone).toBe('DB phone')
+ expect(authCopy('ru').country).toBe('DB country')
+ expect(zoneCheckCopy('ru').error).toBe('DB zone error')
+ expect(journeyCopy('ru').vote).toBe('DB vote')
 })

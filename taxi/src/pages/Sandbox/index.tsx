@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react'
 import { useSelector } from 'react-redux'
 import { configSelectors } from '../../state/config'
 import { sandboxCopy, parseSandboxSettings } from './copy'
+import { SANDBOX_MAX_BYTES } from '../../security/sandboxSettings'
 // import ErrorBoundary from '../components/ErrorBoundary'
 import 'jsoneditor/dist/jsoneditor.css'
 import _ from 'lodash'
@@ -32,8 +33,12 @@ const Sandbox = () => {
     const onChange = _.debounce(() => {
       try {
         if (editor.current) {
-          setSettings(editor.current.get())
-          localStorage.setItem('settings', JSON.stringify(editor.current.get()))
+          const text = JSON.stringify(editor.current.get())
+          const parsed = parseSandboxSettings(text)
+          if (!parsed) { setFileError('invalid'); return }
+          setFileError(null)
+          setSettings(parsed)
+          localStorage.setItem('settings', text)
         }
         updateFrameKey()
       } catch (error) {
@@ -60,6 +65,7 @@ const Sandbox = () => {
   const openFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.length && e.target.files[0]
     if (file) {
+      if (file.size > SANDBOX_MAX_BYTES) { setFileError('invalid'); return }
       const reader = new window.FileReader()
       reader.readAsText(file, 'UTF-8')
       reader.onload = (event) => {

@@ -1,0 +1,11 @@
+{
+  "stats": {
+    "startTime": "2026-11-03T21:20:24.905Z",
+    "duration": 311598.952,
+    "expected": 20,
+    "skipped": 0,
+    "unexpected": 0,
+    "flaky": 1
+  },
+  "observedDefect": "Offer acceptance notification displayed again after reload and blocked departure; retry succeeded. Not a clean pass."
+}

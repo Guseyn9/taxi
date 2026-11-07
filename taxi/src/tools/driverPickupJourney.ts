@@ -48,9 +48,9 @@ export function useDriverDepartures(owner:string){
 }
 
 const copy={
-  ru:{board:'Подтвердить посадку',near:'Подтвердите прибытие рядом с точкой посадки (до 100 м).',location:'Ожидаем координаты водителя. Включите геолокацию.',failed:'Действие не подтверждено. Проверьте состояние заказа перед повтором.'},
-  en:{board:'Confirm pickup',near:'Confirm arrival within 100 m of the pickup point.',location:'Waiting for driver location. Enable location access.',failed:'Action not confirmed. Check the order status before retrying.'},
-  fr:{board:'Confirmer la prise en charge',near:'Confirmez votre arrivée à moins de 100 m du départ.',location:'Position du chauffeur indisponible. Activez la localisation.',failed:'Action non confirmée. Vérifiez le trajet avant de réessayer.'},
-  ar:{board:'تأكيد الركوب',near:'أكد الوصول ضمن 100 متر من نقطة الانطلاق.',location:'في انتظار موقع السائق. فعّل تحديد الموقع.',failed:'لم يتم تأكيد الإجراء. تحقق من حالة الرحلة قبل المحاولة مجدداً.'},
+  ru:{checking:'Проверяем состояние заказа…',board:'Подтвердить посадку',near:'Подтвердите прибытие рядом с точкой посадки (до 100 м).',location:'Ожидаем координаты водителя. Включите геолокацию.',failed:'Действие не подтверждено. Проверьте состояние заказа перед повтором.'},
+  en:{checking:'Checking the order status…',board:'Confirm pickup',near:'Confirm arrival within 100 m of the pickup point.',location:'Waiting for driver location. Enable location access.',failed:'Action not confirmed. Check the order status before retrying.'},
+  fr:{checking:'Vérification du trajet…',board:'Confirmer la prise en charge',near:'Confirmez votre arrivée à moins de 100 m du départ.',location:'Position du chauffeur indisponible. Activez la localisation.',failed:'Action non confirmée. Vérifiez le trajet avant de réessayer.'},
+  ar:{checking:'جارٍ التحقق من حالة الرحلة…',board:'تأكيد الركوب',near:'أكد الوصول ضمن 100 متر من نقطة الانطلاق.',location:'في انتظار موقع السائق. فعّل تحديد الموقع.',failed:'لم يتم تأكيد الإجراء. تحقق من حالة الرحلة قبل المحاولة مجدداً.'},
 }
 export function driverJourneyCopy(iso?:string){return copy[(iso?.split('-')[0]||'en') as keyof typeof copy]||copy.en}

@@ -1,3 +1,4 @@
+import {serviceText} from '../serviceText'
 import React, { useEffect, useRef, useState } from 'react'
 import L from 'leaflet'
 import { useMap } from 'react-leaflet'
@@ -13,29 +14,31 @@ import { MOROCCO_VIEW, MOROCCO_ZOOM, MOROCCO_MAX_ZOOM, moroccoCities, canApplyIn
 import './maps.css'
 import OnMapPreview from './markers/OnMapPreview'
 import {TEST_MAP_AREA_EVENT} from './TestMapArea'
+import { observeMapRenderer } from '../../diagnostics/mapRendererHealth'
+import {visibleMapLayout} from './visibleMapLayout'
 
 
 setWorkerUrl('/maps/maplibre-gl-worker.mjs')
 setWorkerCount(2)
 
-function mapCopy(iso?: string) {
+function fallbackMapCopy(iso?: string) {
   if (iso?.startsWith('ru')) return { country: 'Марокко', area: 'Область карты', zoomIn: 'Приблизить', zoomOut: 'Отдалить', loading: 'Загружаем карту…', fallback: 'Упрощённая карта', retry: 'Повторить загрузку' }
   if (iso?.startsWith('fr')) return { country: 'Maroc', area: 'Zone de la carte', zoomIn: 'Zoom avant', zoomOut: 'Zoom arrière', loading: 'Chargement de la carte…', fallback: 'Carte simplifiée', retry: 'Réessayer' }
   if (iso?.toLowerCase().includes('arab') || iso === 'ar') return { country: 'المغرب', area: 'منطقة الخريطة', zoomIn: 'تكبير', zoomOut: 'تصغير', loading: 'جار تحميل الخريطة…', fallback: 'خريطة مبسطة', retry: 'إعادة المحاولة' }
   return { country: 'Morocco', area: 'Map area', zoomIn: 'Zoom in', zoomOut: 'Zoom out', loading: 'Loading map…', fallback: 'Simplified map', retry: 'Retry map' }
 }
 
+function mapCopy(iso?:string) {return serviceText(fallbackMapCopy(iso),'map_ui')}
+
 export function viewportPadding(map: L.Map) {
   const mapBox = map.getContainer().getBoundingClientRect()
   const surface = map.getContainer().closest('.passenger')
+  const availableFrame = surface ? map.getContainer().closest('.map-container')?.getBoundingClientRect() : undefined
   const sheet = surface?.querySelector('.passenger__form-container')?.getBoundingClientRect()
   const desktop = window.matchMedia('(min-width: 900px), (min-width: 600px) and (max-width: 899px) and (max-height: 500px) and (orientation: landscape)').matches
   const card = surface?.querySelector('.passenger__draggable')?.getBoundingClientRect()
-  const visibleHeight = !desktop && card ? Math.max(48, card.top - mapBox.top) : mapBox.height
+  const {visibleHeight,coveredBottom,coveredLeft} = visibleMapLayout(mapBox,sheet,card,desktop,Boolean(surface?.classList.contains('taxi-map-fullscreen')),availableFrame?.height ? availableFrame : mapBox)
   map.getContainer().style.setProperty('--rs-map-visible-height', desktop ? '100%' : `${visibleHeight}px`)
-  const coveredBottom = !desktop && sheet ? Math.max(0, mapBox.top + visibleHeight - sheet.top) : 0
-  const coveredLeft = window.matchMedia('(min-width: 900px)').matches && sheet ?
-    Math.max(0, Math.min(sheet.right - mapBox.left + 16, mapBox.width - 240)) : 0
   map.getContainer().style.setProperty('--rs-map-covered-bottom', `${coveredBottom}px`)
   return {
     paddingTopLeft: L.point(Math.max(18, coveredLeft), 16),
@@ -89,11 +92,14 @@ export default function RsaleBasemap({ initialOverview = false, showRegionContro
     let disposed = false
     let vector: L.MaplibreGL | undefined
     let fallback: L.TileLayer | undefined
+    let detachHealth: (() => void) | undefined
     const attribution = L.control.attribution({ position: 'bottomright', prefix: false }).addTo(map)
     attribution.addAttribution(MAP_ATTRIBUTION)
     setStatus('loading')
-    const useFallback = () => {
+    const activateFallback = () => {
       if (disposed || fallback) return
+      detachHealth?.()
+      detachHealth = undefined
       if (vector && map.hasLayer(vector)) map.removeLayer(vector)
       vector = undefined
       attribution.removeAttribution(MAP_ATTRIBUTION)
@@ -101,7 +107,7 @@ export default function RsaleBasemap({ initialOverview = false, showRegionContro
       fallback = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { minZoom:MOROCCO_ZOOM,maxZoom:MOROCCO_MAX_ZOOM,bounds:MOROCCO_VIEW,noWrap:true,keepBuffer:1 }).addTo(map)
       setStatus('fallback')
     }
-    const timeout = window.setTimeout(useFallback, 20000)
+    const timeout = window.setTimeout(activateFallback, 20000)
     try {
       // The Leaflet adapter supports padding (its 0.1 default is in the
       // installed source), although its published type omits this option.
@@ -110,17 +116,18 @@ export default function RsaleBasemap({ initialOverview = false, showRegionContro
       }
       vector = maplibreGL(layerOptions).addTo(map)
       const renderer = vector.getMaplibreMap()
+      detachHealth = observeMapRenderer(renderer, activateFallback)
       renderer.once('load', () => {
         if (!disposed) { window.clearTimeout(timeout); setStatus('ready') }
       })
       // Errors are contained here; a source outage must never break trip controls.
-      renderer.on('error', () => {})
     } catch {
       window.clearTimeout(timeout)
-      useFallback()
+      activateFallback()
     }
     return () => {
       disposed = true
+      detachHealth?.()
       window.clearTimeout(timeout)
       if (vector && map.hasLayer(vector)) map.removeLayer(vector)
       if (fallback && map.hasLayer(fallback)) map.removeLayer(fallback)
@@ -132,6 +139,10 @@ export default function RsaleBasemap({ initialOverview = false, showRegionContro
     const update = () => viewportPadding(map)
     const observer = new ResizeObserver(update)
     observer.observe(map.getContainer())
+    // A notice or keyboard can move the sheet without resizing its fixed-height
+    // body. Observe the available frame too; the Leaflet child is already sized.
+    const availableFrame = map.getContainer().closest('.map-container')
+    if (availableFrame) observer.observe(availableFrame)
     const sheet = map.getContainer().closest('.passenger')?.querySelector('.passenger__form-container')
     if (sheet) observer.observe(sheet)
     const frame = window.requestAnimationFrame(() => {

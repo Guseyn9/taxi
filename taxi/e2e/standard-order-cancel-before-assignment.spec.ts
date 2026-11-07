@@ -1,3 +1,4 @@
+import { newAuthenticatedContext } from './fixtures/tabSession'
 /**
  * TEST-E2E-012 — пассажир отменяет Standard до назначения водителя.
  *
@@ -42,7 +43,7 @@ const createdOrderIds: string[] = []
 
 test.beforeAll(async({ browser }) => {
   passenger = await login(passengerAccount(), 'TEST-E2E-012 пассажир')
-  context = await browser.newContext({
+  context = await newAuthenticatedContext(browser, {
     baseURL: appUrl(),
     storageState: PASSENGER_STORAGE,
     locale: 'ru-RU',

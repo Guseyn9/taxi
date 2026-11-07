@@ -19,6 +19,8 @@ import { uploadRegisterFiles, uploadFiles } from './helpers'
 import { ActionTypes } from './constants'
 import { setUser } from './actionCreators'
 import { saveSessionTokens, loadSessionTokens, clearSessionTokens } from '../../security/sessionTokens'
+import { consumeOAuthHash } from '../../security/authCallback'
+let authenticationAttempt = 0
 
 export const saga = function* () {
   yield all([
@@ -33,10 +35,12 @@ export const saga = function* () {
   ])
 }
 
-function* loginSaga(data: TAction) {
+export function* loginSaga(data: TAction) {
+  const attempt = ++authenticationAttempt
   yield put({ type: ActionTypes.LOGIN_START })
   try {
     const result = yield* call(API.login, data.payload)
+    if (attempt !== authenticationAttempt) return
     if (!result) throw new Error('wrong login response')
 
     if(result.data === 'wrong login') {
@@ -78,6 +82,7 @@ function* loginSaga(data: TAction) {
     })
     yield put(setLoginModal(false))
   } catch (error: any) {
+    if (attempt !== authenticationAttempt) return
     console.error('catch', error)
     yield put({
       type: ActionTypes.LOGIN_FAIL,
@@ -87,10 +92,12 @@ function* loginSaga(data: TAction) {
 }
 
 function* googleLoginSaga(data: TAction) {
+  const attempt = ++authenticationAttempt
   yield put({ type: ActionTypes.GOOGLE_LOGIN_START })
   try {
 
     const result = yield* call(API.googleLogin, data.payload)
+    if (attempt !== authenticationAttempt) return
 
     if (!result) throw new Error('Wrong login response')
     if (!result.tokens) throw new Error('Invalid session credentials')
@@ -103,6 +110,7 @@ function* googleLoginSaga(data: TAction) {
     yield put(setLoginModal(false))
     yield put(setRefCodeModal({ isOpen: false }))
   } catch (error) {
+    if (attempt !== authenticationAttempt) return
     console.error(error)
     yield put({ type: ActionTypes.GOOGLE_LOGIN_FAIL })
   }
@@ -177,16 +185,21 @@ function* registerSaga(data: TAction) {
   }
 }
 
-function* logoutSaga() {
+export function* logoutSaga() {
+  authenticationAttempt++
+  const tokens = loadSessionTokens()
   yield put({ type: ActionTypes.LOGOUT_START })
   try {
     localStorage.removeItem('state.user.user')
     clearSessionTokens()
+    yield put(clearOrders())
 
-    yield* call(API.logout)
+    yield* call(API.logout, tokens)
+    if (loadSessionTokens()) return
     yield put({ type: ActionTypes.LOGOUT_SUCCESS })
     yield put(clearOrders())
   } catch (error) {
+    if (loadSessionTokens()) return
     console.error(error)
     yield put({ type: ActionTypes.LOGOUT_FAIL })
   }
@@ -288,14 +301,18 @@ function* whatsappSignUpSaga(data: TAction) {
 }
 
 function* handleRedirectSaga() {
-  const params = new URLSearchParams(window.location.search)
-  const authHash = params.get('auth_hash')
-  if (authHash)
-    yield put({
+  try {
+    const authHash = consumeOAuthHash()
+    if (authHash) yield put({
       type: ActionTypes.GOOGLE_LOGIN_REQUEST,
       payload: {
         data: null,
-        auth_hash: decodeURIComponent(authHash),
+        auth_hash: authHash,
       },
     })
+  } catch {
+    // A malformed/stale link must not cancel the root saga or exchange a credential.
+    yield put({ type: ActionTypes.GOOGLE_LOGIN_FAIL })
+    yield put(setLoginModal(true))
+  }
 }

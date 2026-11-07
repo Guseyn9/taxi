@@ -1,3 +1,5 @@
+@use 'sass:color';
+
 .chat {
   position: fixed !important;
   right: 10px;
@@ -17,7 +19,7 @@
   }
 
   &__toggler {
-    background: lighten(green, 10%);
+    background: color.adjust(green, $lightness: 10%);
     padding: 5px;
     font-size: 18px;
     height: 50px;
@@ -73,7 +75,7 @@
 
   &__name {
     display: block;
-    color: lighten(black, 20%);
+    color: color.adjust(black, $lightness: 20%);
     font-size: 15px;
   }
 

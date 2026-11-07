@@ -1,0 +1,210 @@
+{
+  "date": "2026-11-04T10:27:05.600175+01:00",
+  "scope": "Local separate frontend only. No Git, Vercel or production-backend changes.",
+  "unit": {
+    "passed": 1032,
+    "suites": 189,
+    "roadAdapterCases": 36,
+    "mapHookCases": 25
+  },
+  "regressionsBefore": {
+    "initialCacheCasesFailed": 5,
+    "mapRecoveryCasesFailed": 2,
+    "uncancelablePhysicalCapFailed": 1
+  },
+  "roadHttpBrowser": {
+    "cases": [
+      {
+        "case": "parallel requests and immutable cache",
+        "passed": true,
+        "httpRequests": 1
+      },
+      {
+        "case": "network recovery after negative TTL",
+        "passed": true,
+        "httpRequests": 2
+      },
+      {
+        "case": "malformed coordinates rejected",
+        "passed": true,
+        "httpRequests": 1
+      },
+      {
+        "case": "invalid input makes no request",
+        "passed": true,
+        "httpRequests": 0
+      },
+      {
+        "case": "slow body aborts",
+        "passed": true,
+        "httpRequests": 1,
+        "elapsedMs": 6008
+      },
+      {
+        "case": "timeout without AbortController",
+        "passed": true,
+        "httpRequests": 1,
+        "elapsedMs": 6003
+      },
+      {
+        "case": "React plan recovery after provider outage; two orders share one retry",
+        "passed": true,
+        "httpRequests": 2
+      }
+    ],
+    "errors": [],
+    "scope": "Isolated loopback HTTP. No live provider, application backend, auth or orders."
+  },
+  "tripE2E": {
+    "passed": 21,
+    "setup": 3,
+    "scenarios": 18,
+    "retries": 0,
+    "flaky": 0,
+    "skipped": 0,
+    "server": "isolated local PHP; UI commands; simulated GPS; tile provider stubbed"
+  },
+  "policy": {
+    "successTtlMs": 900000,
+    "failureTtlMs": 5000,
+    "maxCacheEntries": 256,
+    "maxPendingRequests": 16,
+    "physicalReadCap": 16,
+    "httpAndBodyTimeoutMs": 6000,
+    "clock": "monotonic where available",
+    "persistentLocationCache": false,
+    "automaticHttpRetries": false
+  },
+  "mapRecovery": "Unavailable points may retry on an updated plan or existing stalled-route recovery. Successful/near-road results remain shared. Negative TTL bounds actual network reads.",
+  "unchanged": "Exact original isReachable and ensureReachablePoint implementations retained; same OSRM URL. No Taxi API commands, road graph/profit algorithm, booking coordinates, palettes or license rules changed.",
+  "boundary": {
+    "comparedCoreFiles": 268,
+    "comparedBusinessHandlers": 71,
+    "unchangedBusinessHandlers": 52,
+    "failures": [],
+    "ok": true
+  },
+  "responsive": {
+    "states": 25,
+    "viewports": [
+      "320x568",
+      "390x844",
+      "844x390",
+      "768x1024",
+      "1440x900"
+    ],
+    "pageErrors": 0,
+    "documentHorizontalOverflow": 0,
+    "physicalDevices": false
+  },
+  "productionBuild": "passed",
+  "typecheck": "passed",
+  "lintErrors": 0,
+  "privacy": {
+    "secretMatches": [],
+    "decodedZipEntries": 14,
+    "files": 2
+  },
+  "ci": "Added test:road-cache and isolated browser job; GitHub Actions execution not yet accepted because branch is unpublished.",
+  "published": false,
+  "open": [
+    "Architecture and other type/hook debt",
+    "Remaining dependency warnings",
+    "Accepted-server sessions, OAuth, Offer/ETA and service configuration",
+    "Physical devices, production FSM acceptance and pilot load"
+  ],
+  "sourceSha256": {
+    "src/tools/mapReachability.ts": "3e1c9ef5eb9a35682037d59a14b26999dde2603c9f19cf2e53850ba320c868b0",
+    "src/tools/mapReachability.test.ts": "bfd8e1c75bb3dfd912f3ad76d3e3263ded387c118d48d40a7a0e305df738a779",
+    "src/tools/useDemoOrderPoints.ts": "9e8bab04eaec40ccc17978eb3dd146e7c1b82a8df354e2c1122e73df703355c2",
+    "src/tools/useDemoOrderPoints.test.jsx": "01eb2450c08ab1a71015dca4f8e1cee3a4eb8b40f38db784b74aa4169acc5d08",
+    "src/pages/Driver/Map.tsx": "85e082b58f2dff00d8a26c8be6676decaabfaf13e2cc19c382fa07eab1e0486d",
+    "src/qa/road-cache-entry.ts": "e50024b7d6610b9ae47ccc59a29cc7897d876103b20abb9461dd76154ed3b39c",
+    "tools/check-road-cache.cjs": "32ced32d876cfb81a9c1ef1d1b62a8bf47ecc2c6e3065dfc3d5788ea3530ba74",
+    "tools/test-road-cache-browser.cjs": "553d0e45289a3c90f961fc643c1228d37d486ccb88f2e96adec61c0436e32f01",
+    "tools/verify-design-boundary.cjs": "cace786793a37f767fd662abccddeef490ac31314ac8303d0fd8efd70f22c4cc",
+    "tools/contracts/reviewed-integration-20261103.json": "299685fc8790282146aaa120b75b0e6e6cf54979dcb6f6ed0efaf04b1a975963",
+    "package.json": "f8f97768c53c9206134962a3a71219bc37d1a9a695bd33adcc30f36d71c3a690",
+    "../.github/workflows/frontend-checks.yml": "71b037b98a971233fc2b2970e4163b0b28a52d97c77739d2a4588e0238f70604"
+  },
+  "journeyScreenshots": {
+    "count": 12,
+    "date": "2026-11-04T10:27:05.600175+01:00",
+    "files": [
+      {
+        "mode": "standard-order",
+        "role": "driver",
+        "stage": "started",
+        "sha256": "8dbafaba72da754cdc54b0a11d5c9f82a681f6edecc44830302dd1d4882d41b0"
+      },
+      {
+        "mode": "standard-order",
+        "role": "driver",
+        "stage": "finished",
+        "sha256": "97181b1152ba8326ddcd217024c0dccb71f6c0e75bc268e9aa05ab551d5b20de"
+      },
+      {
+        "mode": "standard-order",
+        "role": "client",
+        "stage": "started",
+        "sha256": "e59af6b3926e3711edc03d7902f6a1c18b02f9894b7a9ecf788d4ae48dff41e8"
+      },
+      {
+        "mode": "standard-order",
+        "role": "client",
+        "stage": "finished",
+        "sha256": "95830ad87c05ba4098ef3ac1174289cf7cfe9654a763de5abe1c578f8ecbf713"
+      },
+      {
+        "mode": "voting-order",
+        "role": "driver",
+        "stage": "started",
+        "sha256": "88e69e78aace2460873cf0a358f863caec6929349bfb42578a7ed1e59a402da5"
+      },
+      {
+        "mode": "voting-order",
+        "role": "driver",
+        "stage": "finished",
+        "sha256": "0ca50c6673ac8106535a4a0da2f210da4fff87a5400bf7288841125914b794a2"
+      },
+      {
+        "mode": "voting-order",
+        "role": "client",
+        "stage": "started",
+        "sha256": "b1489ee7eaf167fb2372033acabf4246c8589941d1e62d12fb2587d83836a963"
+      },
+      {
+        "mode": "voting-order",
+        "role": "client",
+        "stage": "finished",
+        "sha256": "a8113a6dcbd729710bc5860509e3eba7e80843136165b60a70c9d737eea8712a"
+      },
+      {
+        "mode": "offer-order",
+        "role": "driver",
+        "stage": "started",
+        "sha256": "8dbafaba72da754cdc54b0a11d5c9f82a681f6edecc44830302dd1d4882d41b0"
+      },
+      {
+        "mode": "offer-order",
+        "role": "driver",
+        "stage": "finished",
+        "sha256": "712d38ab277847ff24eede581b7e171097acb7681a806ca2fee5de317c2bad8a"
+      },
+      {
+        "mode": "offer-order",
+        "role": "client",
+        "stage": "started",
+        "sha256": "cd70945f1ca372fc4a8211983a2f5fa94fa35d70fdf5731bb98acb3dcc0d267c"
+      },
+      {
+        "mode": "offer-order",
+        "role": "client",
+        "stage": "finished",
+        "sha256": "7b3191d8de8795c11b49503763d93ebaa67981e1c08082b200ae184a1373e2ef"
+      }
+    ]
+  },
+  "browserEvidenceSha256": "578e06326984e7aa90aeb366969d914dae3c9105ba301f85e609a594bba7c2c1",
+  "pdf": "pdf-verification.json"
+}

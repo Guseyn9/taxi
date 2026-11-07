@@ -1,0 +1,860 @@
+{
+  "schemaVersion": 1,
+  "reviewDate": "2026-11-07",
+  "baselineCommit": "1d4065058c90e9ad39dfb301bc3affc3da8847a5",
+  "scope": "Local frontend integration only; not production backend or FSM acceptance",
+  "paths": {
+    "src/API/order.ts": {
+      "baselineSha256": "144d2b4cb314db4b469f26ef09023b36bd07f2e64cd63e068b4c30670a2f716b",
+      "currentSha256": "b314a8e582ee0438b9d5245bfbcd0f721263616b60a9324c8840e24373a6ae55",
+      "reason": "Single creation, cents-preserving edits, persisted ETA, server PIN, lifecycle readback and confirmation recovery by existing ID. New option/PIN contract requires backend rollout.",
+      "evidence": [
+        "src/API/order.transport.test.js",
+        "src/API/legacyContract.test.js",
+        "src/tools/mutationReadback.test.ts"
+      ]
+    },
+    "src/API/index.ts": {
+      "baselineSha256": "a2f5e79e933f9089dd166e82b83e050a521c02a757cd575835f821dade91aaba",
+      "currentSha256": "0109ccd6fe8f2ab85c665317d996105f74865512f68f9d1606a4f2ef0ef982a2",
+      "reason": "Validate raster uploads and confirmed file IDs, request privacy in existing JSON file field; remove unused synthetic location acknowledgement.; omit unconfigured external routing rather than expose a built-in shared provider key.",
+      "evidence": [
+        "src/API/upload.transport.test.js",
+        "src/state/geolocation/sagas.test.js"
+      ]
+    },
+    "src/types/types.ts": {
+      "baselineSha256": "e819cf211b2ea4b3c5c2c553d7cfc37a09a484061a23995662579b6453aede8d",
+      "currentSha256": "f349f538ae11015b9d44f2bdf9f572800f0b7e7ac4d52d69e36314825d5efdb3",
+      "reason": "Type the explicit frontend Offer marker and remove credential fields from retained signup response.",
+      "evidence": [
+        "src/API/order.transport.test.js",
+        "src/security/sessionIsolation.test.js"
+      ]
+    },
+    "src/config.ts": {
+      "baselineSha256": "9dbb0225fb87694f986b38ef37338034cef9bebfb6778e0b33526441de37cf72",
+      "currentSha256": "bf7681a549aea9e90fc82ffb1ebda8ccacf85fb632f88d24ad7ea04728971c8b",
+      "reason": "Fetch validated tenant JSON with deadline; fixed tenant allowlist and identity cleanup.",
+      "evidence": [
+        "src/security/tenantDictionary.test.ts",
+        "src/serviceEndpoints.test.ts"
+      ]
+    },
+    "src/App.tsx": {
+      "baselineSha256": "1a2355ee3a7327b8cfac0ccd3eb889d3a88f89a34c7d8b626c14b40e566931d6",
+      "currentSha256": "73b014d841fd7a482caba9fcf51452a4ae54a7553a83ab85fb91a307c93775b5",
+      "reason": "Run native startup in effect, refresh on lifecycle recovery, bind providers to current session, avoid revocation echo.",
+      "evidence": [
+        "src/tools/nativeStartup.test.js",
+        "src/security/sessionIsolation.test.js",
+        "src/tools/orderWake.test.js"
+      ]
+    },
+    "src/state/orders/actionCreators.ts": {
+      "baselineSha256": "ba16b3bd48216edcc1b8ef023c4424af68f9b9822210a77948ce7e6bd4c2cffe",
+      "currentSha256": "59e4f71f473f066c78151cb70cd57ef0dd0cbd3187e679e9b1aacd08b964aeef",
+      "reason": "Add read-only ready-order refresh; retain mutation delegation.",
+      "evidence": [
+        "src/state/orders/__tests__/refreshOrder.test.js",
+        "src/tools/orderWake.test.js"
+      ]
+    },
+    "src/state/orders/selectors.ts": {
+      "baselineSha256": "afd9f935d501578f8ba2871c3179d72bc675727ded6c34bc662dff8a9f597593",
+      "currentSha256": "d17f3a39965d7fa3353a1e1ab556b04f895ee4f5e05d8cc8d98b5da4b844f77a",
+      "reason": "Newer timestamped GPS may update detail records; lifecycle, fare, route and profile preserved. Earlier class/visibility filtering retained.",
+      "evidence": [
+        "src/tools/liveDriverLocations.test.ts"
+      ]
+    },
+    "src/platform/adapters/LegacyBackendGateway.ts": {
+      "baselineSha256": "85ccfec093cfc387d5030c5e546a03488b9a90ca2ae2edfadc95824c6345989d",
+      "currentSha256": "b9b0824139dce51a07f2f66a3ca2354c3056c5b8484fcb0928d448445ef0222a",
+      "reason": "Instrument existing confirmation and archive-read methods without changing endpoint contracts.",
+      "evidence": [
+        "src/platform/adapters/__tests__/LegacyPassengerGateway.test.js",
+        "src/components/PassengerHistory/index.test.jsx"
+      ]
+    },
+    "src/platform/adapters/LegacyPassengerGateway.ts": {
+      "baselineSha256": "8e7e60ceb122c074abf65f3de4b3bd15dcbbac56c4ed54be6df32f9b419793e7",
+      "currentSha256": "02514030ae189ac143683b0668323ac8d6079ef8b5c8257ee5a94f7b2cfb4908",
+      "reason": "Confirmation recovery enters PI with an existing ID; adapter owns HTTP and propagates refusal.",
+      "evidence": [
+        "src/platform/adapters/__tests__/LegacyPassengerGateway.test.js",
+        "src/pilot/PendingVotingConfirmation.test.jsx"
+      ]
+    },
+    "src/platform/adapters/__tests__/LegacyPassengerGateway.test.js": {
+      "baselineSha256": "5ed217f447307159f29b410c6665444ae84e95df2299468db07af5b47658020c",
+      "currentSha256": "10540362d2a1536f459f776551eadf6f50493dbed5e8a322ce162e00442d6eb2",
+      "reason": "Add PI confirmation success/refusal coverage through a functioning test runtime.",
+      "evidence": [
+        "src/API/order.transport.test.js",
+        "src/API/legacyContract.test.js",
+        "src/tools/mutationReadback.test.ts"
+      ]
+    },
+    "src/platform/platform-interface/surfaces/passenger/passengerActions.ts": {
+      "baselineSha256": "69f9eee1c1bf603ffcb811b5f401557321d2daa8728fc6442cdfb2198b350924",
+      "currentSha256": "c86018556e2c7182f931d2db0825d86afafbd8e944cca514474b74714f159a00",
+      "reason": "Add order_confirm; existing action strings unchanged.",
+      "evidence": [
+        "src/platform/adapters/__tests__/LegacyPassengerGateway.test.js"
+      ]
+    },
+    "src/platform/adapters/__tests__/FsmCommandStatusTransport.test.js": {
+      "baselineSha256": "1dcdf9d4e1d044589bf608c2ee91bf2452b44d97991eec376da88d5e4daffb0f",
+      "currentSha256": "1f745c5836109ff17dad8859e9ce4addb67ee2e20d634651720397317717ee99",
+      "reason": "Regression evidence for finite waits, accepted-command navigation, rate limits, realtime forward compatibility or jitter; existing success/refusal cases retained.",
+      "evidence": [
+        "src/platform/adapters/__tests__/FsmCommandStatusTransport.test.js"
+      ]
+    },
+    "src/tools/alongTheWayCandidate.test.ts": {
+      "baselineSha256": "28df88e9db9e8fffb497aef237af1ee63c62df2293b12e93f070f12ce0e2f391",
+      "currentSha256": "8fe87bce89f010766bb90f6fe0ef70d5afb29fbd6aa97a352f2baef39ae1976d",
+      "reason": "Use the explicit persistent OFFER marker and positive car count in the excluded-candidate fixture.",
+      "evidence": [
+        "src/tools/orderDecisionMatrix.test.ts"
+      ]
+    },
+    "src/tools/apiMessages.ts": {
+      "baselineSha256": "2af42129f123187e0804c5658c7fa1a26caf100a60a44300f354a462baa6158e",
+      "currentSha256": "2c060fa2909ad56690b0fc36caf1f08a66b58787c70c134aa7de22bc458993bb",
+      "reason": "Retain API diagnostics policy and map pending-command/session-change errors to localized, actionable user text.",
+      "evidence": [
+        "src/tools/apiMessages.test.js"
+      ]
+    },
+    "src/tools/driverBoarding.ts": {
+      "baselineSha256": "be709f1ac5142f335ed1fb9fe143450c5d98f57efa13c95a384c9b361cf70904",
+      "currentSha256": "e9fd1ee03a757a728d7f4c677160c2a937d00cb9ae24045236a0e2b80b72b01f",
+      "reason": "Match server alphabet including star and ambiguous-letter mapping; reject overlong codes without truncating. Commands stay on driver port.",
+      "evidence": [
+        "src/tools/driverBoarding.test.ts",
+        "src/pilot/BoardingGate.test.js"
+      ]
+    },
+    "src/tools/driverOffer.ts": {
+      "baselineSha256": "ed53ccd08b84b5f0c575ae9958b5294ee77b74ad04e46697a99742579c48467e",
+      "currentSha256": "ea4c5db95397c0d3928ec74266d9758116330de5772a5f5f5818cd6f6c9df3b2",
+      "reason": "Server mode/service flags precede draft history; b_only_offer is not public fare Offer; free text is not a mode marker.",
+      "evidence": [
+        "src/tools/orderDecisionMatrix.test.ts",
+        "src/tools/alongTheWayCandidate.test.ts",
+        "src/API/legacyContract.test.js"
+      ]
+    },
+    "src/pages/Passenger/VotingForm.tsx": {
+      "baselineSha256": "5c1d5f7e314bc4fbfbb994751026eb0dd9eb76ec9af20f24f9bcac648a4a48bd",
+      "currentSha256": "ae35082abc92d20d664fb293162a4e8bcc98e28eab3d80c4628a26ccc4dfddee",
+      "reason": "One explicit selection; no implicit releases, retries or fake local success. Readback releases a canceled choice; pending confirmation has its own recovery. 2026-11-04: remove the voice submission registration and show the existing boundary selector before route entry; submit and order handlers unchanged from r6.",
+      "evidence": [
+        "src/tools/useReleaseCanceledPassengerChoice.test.jsx",
+        "src/API/order.transport.test.js",
+        "src/pilot/PendingVotingConfirmation.test.jsx"
+      ]
+    },
+    "src/components/PriceInput/index.tsx": {
+      "baselineSha256": "09d1322df6a139777fd0933a11c538e0d982e20bbe528e68ea3de7e5efd349ac",
+      "currentSha256": "ccf369ead8e9d331cf9640436c0c26a234a97f9c9fef565e55958d09be7371da",
+      "reason": "Shared cents parsing/drafts replaces integer stripping/rounding; retain increase-only floor and explicit commit.",
+      "evidence": [
+        "src/tools/money.test.ts",
+        "src/API/order.transport.test.js"
+      ]
+    },
+    "src/API/legacyContract.ts": {
+      "baselineSha256": null,
+      "currentSha256": "c82d05e910e2517915563f9cbd6c869dd0d36b07d6d1426764e185cb44210598",
+      "reason": "Option assignment and persisted fare/ETA shapes; requires backend allowlist rollout.",
+      "evidence": [
+        "src/API/order.transport.test.js",
+        "src/API/legacyContract.test.js",
+        "src/tools/mutationReadback.test.ts"
+      ]
+    },
+    "src/tools/money.ts": {
+      "baselineSha256": null,
+      "currentSha256": "dd6ee0d37f50a4c50ba2752f49bd66434f4427f473d9adb2754706550569f120",
+      "reason": "Shared finite non-negative cents and editing drafts.",
+      "evidence": [
+        "src/tools/money.test.ts"
+      ]
+    },
+    "src/tools/mutationReadback.ts": {
+      "baselineSha256": null,
+      "currentSha256": "5d83d5079dd218dce51615eaf9ada295d2ab1e2cb14251719a0d15835d397348",
+      "reason": "Persist intent before POST, serialize writes and require a read before retry.",
+      "evidence": [
+        "src/tools/mutationReadback.test.ts"
+      ]
+    },
+    "src/platform/adapters/httpDeadline.ts": {
+      "baselineSha256": null,
+      "currentSha256": "6f38592a349fcbceeaaf1c594581575d678d357821a5d61f059721c6ed5dd849",
+      "reason": "Bound HTTP and decoding without automatically retrying mutations.",
+      "evidence": [
+        "src/platform/adapters/__tests__/httpDeadline.test.js"
+      ]
+    },
+    "src/platform/adapters/recoveryPolling.ts": {
+      "baselineSha256": null,
+      "currentSha256": "b3b7ba8b85ff8cd039bc9ff6e07faaf6ce81d9e2ed4b309ec5912b81c1659ee3",
+      "reason": "Read again only after prior settlement; ignore delivery after stop.",
+      "evidence": [
+        "src/platform/adapters/__tests__/FsmOrderSnapshotTransport.test.js"
+      ]
+    },
+    "src/serviceEndpoints.ts": {
+      "baselineSha256": null,
+      "currentSha256": "4023726ee42ffa0ae353300439059ee1df0a4ce3ad079fd43eb7bca0cd635195",
+      "reason": "Existing production default plus validated HTTPS/loopback isolated override.",
+      "evidence": [
+        "src/serviceEndpoints.test.ts"
+      ]
+    },
+    "src/tools/nativeStartup.ts": {
+      "baselineSha256": null,
+      "currentSha256": "48a022e2cfc8377a9fe113ec80ed5b05df65477d4833d439607f0dce93e818ad",
+      "reason": "Notify a given native bridge once.",
+      "evidence": [
+        "src/tools/nativeStartup.test.js"
+      ]
+    },
+    "src/tools/orderWake.ts": {
+      "baselineSha256": null,
+      "currentSha256": "93b3aede174ffcd6b0e1cedeb89e6eb29eb51ffae67b1d526de1285c3695273b",
+      "reason": "Read refresh on focus/visibility/online with listener cleanup.",
+      "evidence": [
+        "src/tools/orderWake.test.js"
+      ]
+    },
+    "src/tools/liveDriverLocations.ts": {
+      "baselineSha256": null,
+      "currentSha256": "eeb302a8951fd09c9ecaec4dc48fd9eafc02cf5ab92b4a4df4bc642eea7b1a93",
+      "reason": "Monotonic GPS merge only; stale, missing, foreign or invalid coordinates cannot replace current values.",
+      "evidence": [
+        "src/tools/liveDriverLocations.test.ts"
+      ]
+    },
+    "src/tools/useReleaseCanceledPassengerChoice.ts": {
+      "baselineSha256": null,
+      "currentSha256": "9f99a5c611e82aee2301f1ed797f535640c57403a7c07276e4bfd3ffb0cc8c26",
+      "reason": "Resolve omitted chosen driver with complete read; ignore late/failed queries.",
+      "evidence": [
+        "src/tools/useReleaseCanceledPassengerChoice.test.jsx"
+      ]
+    },
+    "src/pilot/BoardingGate.tsx": {
+      "baselineSha256": null,
+      "currentSha256": "30bb3b87a2002501b414d791efc425cd08d0acee8e25d6b9fbe364fa40bba703",
+      "reason": "Shared server alphabet; unknown PIN checked by server, duplicate submit blocked.",
+      "evidence": [
+        "src/pilot/BoardingGate.test.js"
+      ]
+    },
+    "src/pilot/PendingVotingConfirmation.tsx": {
+      "baselineSha256": null,
+      "currentSha256": "3b01e4f9c11559f33df264dda8a2bf6f8d2472ea3a332986b0fca68173298386",
+      "reason": "Recover confirmation only, await acknowledgement, retain errors and preserve booking ID.",
+      "evidence": [
+        "src/pilot/PendingVotingConfirmation.test.jsx"
+      ]
+    },
+    "src/platform/adapters/FsmCommandStatusTransport.ts": {
+      "baselineSha256": "25240dbb49206fe5a0fa4dbd3d743387abef2c6d30b79c2905b43941c761bd00",
+      "currentSha256": "cf0951172d1cf5ff4bed5615f56aaeac4bce32acd754b9ddd369b48b506622be",
+      "reason": "Bound HTTP reads and preserve Retry-After for transient status failures.",
+      "evidence": [
+        "src/platform/adapters/__tests__/FsmCommandStatusTransport.test.js",
+        "src/platform/adapters/__tests__/httpDeadline.test.js"
+      ]
+    },
+    "src/platform/adapters/FsmTaxiCommandTransport.ts": {
+      "baselineSha256": "6edde027db16180bd1f3eec5c12ac1ff44850cab48863a6c7fbc301cd6cef5dc",
+      "currentSha256": "9460bc605c80082433100f13330673456d312e98492a936828deb38b811fd921",
+      "reason": "Finite acceptance/status HTTP and decoding; preserve URL, intent, payload, auth and command ID, no retry.",
+      "evidence": [
+        "src/platform/adapters/__tests__/FsmTaxiCommandTransport.test.js",
+        "src/platform/adapters/__tests__/httpDeadline.test.js"
+      ]
+    },
+    "src/platform/adapters/FsmDriverSnapshotTransport.ts": {
+      "baselineSha256": "88b2dc7db6b1dfb29d17088fe595dea993cf02b3c9d9726096b2a6b907ed1066",
+      "currentSha256": "afd6fa740b4c121f10bb3b826cb064f5d49d55a4a16d70b621205e0a00c5690a",
+      "reason": "Sequential bounded Query recovery, session identity priority, ignore unknown event types but reject malformed known snapshots.",
+      "evidence": [
+        "src/platform/adapters/__tests__/FsmDriverSnapshotTransport.test.js",
+        "src/platform/adapters/__tests__/httpDeadline.test.js"
+      ]
+    },
+    "src/platform/adapters/FsmOrderSnapshotTransport.ts": {
+      "baselineSha256": "69eb940253f2f72a8d43083ab26240079abcb21cd3d7723cb6db5e97c0922457",
+      "currentSha256": "96c4dd548a049137cb488d210653088d3efcffa0321fb4f6d6ff6d96d7c29339",
+      "reason": "Sequential bounded Query recovery; ignore future event types while preserving schema errors for known snapshot messages.",
+      "evidence": [
+        "src/platform/adapters/__tests__/FsmOrderSnapshotTransport.test.js",
+        "src/platform/adapters/__tests__/httpDeadline.test.js"
+      ]
+    },
+    "src/state/orders/sagas.ts": {
+      "baselineSha256": "42d2e9c08a79a685c264b25fe265af8b40b2e8d194d45e6fdfc092f8016834a7",
+      "currentSha256": "e6ea6b8db0735084d4bd67305de62c0e4c17b2a3e5891c45c8242c2a313d9c49",
+      "reason": "Bound polling recovery, reconcile detail projections, retain canonical terminal history and avoid client-driven timeout cancellation.",
+      "evidence": [
+        "src/state/orders/__tests__/readyOrdersPolling.test.js",
+        "src/state/orders/__tests__/votingExpiry.test.js"
+      ]
+    },
+    "src/tools/orderDetailRefresh.ts": {
+      "baselineSha256": null,
+      "currentSha256": "41033d180d36922137ea4b779c7888a809004826182e7efa6de4bb217842a5f3",
+      "reason": "Compare list/detail business fields to request a fresh authoritative detail; excludes GPS and normalizes canceled participant omission and JSON options.",
+      "evidence": [
+        "src/tools/orderDetailRefresh.test.ts"
+      ]
+    },
+    "src/pilot/rules.ts": {
+      "baselineSha256": null,
+      "currentSha256": "d9b0e9cc156c328d5742b760ea277b4a6d107a13bd66fe4b9885d747ee469452",
+      "reason": "Legacy unrestricted request class 0 is not a mismatch with a concrete car; direct /drive/now contract observation confirms both class 0 and class 1 orders returned to class 1 driver. Explicit positive classes still require matching; driver class 0 is not a wildcard.",
+      "evidence": [
+        "src/pilot/rules.test.js"
+      ]
+    },
+    "src/API/auth.ts": {
+      "baselineSha256": "2ad1617e00aa3172544c029ded3c28a6a5fe72a78db25ef9191fe24c580b51a5",
+      "currentSha256": "1e3fbe43aba89e79a9ad3583767612d39de718d48609f274f1738e5558f6adbc",
+      "reason": "Remove OAuth credential logging. Logout sends captured session credentials after local revocation, without clearing a later sign-in.",
+      "evidence": [
+        "src/state/user/logout.test.js",
+        "src/security/authCallback.test.ts"
+      ]
+    },
+    "src/state/user/sagas.ts": {
+      "baselineSha256": "b8f72768508572010b31e129d30af4ebfed3558b2be02690933505e63802169d",
+      "currentSha256": "4a3ce6286004cc86c104132608f89d29a7d5e024abef486e2b9172311cb16efe",
+      "reason": "Validate callback without repeated decoding; ignore obsolete login/logout; no raw credentials in logs.",
+      "evidence": [
+        "src/security/sessionIsolation.test.js",
+        "src/state/startupCallbackResilience.test.js"
+      ]
+    },
+    "src/security/authCallback.ts": {
+      "baselineSha256": null,
+      "currentSha256": "ae132fb50c498defd5489817b3d6490c96fe56f9452dfb47a73352404524bc18",
+      "reason": "Capture and scrub callback before bootstrap, decode once, validate one-shot state for login and registration; disabled until matching server callback.",
+      "evidence": [
+        "src/security/authCallback.test.ts"
+      ]
+    },
+    "src/preBootstrap.ts": {
+      "baselineSha256": "d0f16c1b2577ba2fb51d95f47e64b08a5ada50dc1c40ef6f0f09702e0b719764",
+      "currentSha256": "23730bfec3fe72700d8cbb2839145ea73c4b5f1d54ca6bde9107936b13d44222",
+      "reason": "Consume credential callback before logging and discard unowned private state.",
+      "evidence": [
+        "src/security/authCallback.test.ts",
+        "src/security/sessionIsolation.test.js"
+      ]
+    },
+    "src/components/DriverEmulatorPanel/browserEmulator.ts": {
+      "baselineSha256": "094a4e1146a82ecba24699d9ef10448005cd412fceb5e0762c82ddbd95b747ec",
+      "currentSha256": "3de06224990b3f68a7f27d26968722dc66002d5500513c266aec90ad5f672fbf",
+      "reason": "Remove embedded user/manager credentials, account provisioning and administrative approval/class mutation. All start/check paths require memory-only disposable accounts and loopback API.",
+      "evidence": [
+        "src/components/DriverEmulatorPanel/testRuntime.test.ts"
+      ]
+    },
+    "src/components/DriverEmulatorPanel/testRuntime.ts": {
+      "baselineSha256": null,
+      "currentSha256": "8373042e5a58390ce807a2002ece02db67575a601c29fa5f21fb723057a9d187",
+      "reason": "Validate loopback page and endpoint; keep explicitly supplied disposable accounts in memory; no public shared pool.",
+      "evidence": [
+        "src/components/DriverEmulatorPanel/testRuntime.test.ts"
+      ]
+    },
+    "src/platform/adapters/DriverCommandCompletionWaiter.ts": {
+      "baselineSha256": "ab8cf1fe1f02a9739801a0c7b76e246fc44f5c45904bf18c71aebd6e7dcb5606",
+      "currentSha256": "432a95f016dbdabdcea25a90f78201c94fee3c021881eab8529cdc5d6cb86c55",
+      "reason": "Only the real command-status waiter supports instance recovery; snapshot heuristics cannot settle restored commands. Existing finite deadlines and read retries retained.",
+      "evidence": [
+        "src/platform/adapters/__tests__/DriverCommandRecovery.test.js",
+        "src/platform/adapters/__tests__/DriverCommandCompletionWaiter.test.js"
+      ]
+    },
+    "src/platform/adapters/DriverMapGateway.ts": {
+      "baselineSha256": "5a39912ed9d76bfb98a6edd9f9ed5eab6e04bf78e7cf2c17262e21368783301f",
+      "currentSha256": "8dcee8bef1d8fb84594d63b923a00929fdd4bf696687689b2498d5d02712e02c",
+      "reason": "Persist accepted commands and gate pending orders; refuse FSM sends without the recovery login identity. Never replay a restored command.",
+      "evidence": [
+        "src/platform/adapters/__tests__/DriverMapGateway.test.js",
+        "tools/test-command-recovery-browser.cjs"
+      ]
+    },
+    "src/platform/platform-interface/realtime/ReconnectingWebSocketClient.ts": {
+      "baselineSha256": "eeafd7f67de075c77b50350438cce5f8679374070c870bb2651e7049577d72f9",
+      "currentSha256": "d943db7ea1ee16bd174c274f439f40067d701ca557499ce8b334e8df24e0a438",
+      "reason": "Spread retry delay from half to the bounded exponential cap, cancel retry on stop.",
+      "evidence": [
+        "src/platform/platform-interface/__tests__/ReconnectingWebSocketClient.test.js"
+      ]
+    },
+    "src/tools/order.ts": {
+      "baselineSha256": "5095946bca6dfce435a5f10cc091ecf1e92fc35e54c8468dd5f99ebeceff44ed",
+      "currentSha256": "ed375afe9dc33b58409dab56dbd983c687b43d5b933393928807a8e40507370d",
+      "reason": "Expose numeric-or-null fare result for duration refresh while preserving the legacy string formatting API and rounding. Server remains billing authority.",
+      "evidence": [
+        "src/tools/wireValues.test.ts",
+        "src/tools/money.test.ts"
+      ]
+    },
+    "src/tools/convert.ts": {
+      "baselineSha256": "4acd906bc1d1fd0ebcee4713d626f5ee93fac3d1681a4146ba8f1bac635d0a11",
+      "currentSha256": "f1402165a45c95c0580048a1bb8df383564c5e5714f9f55f293652e4a2802457",
+      "reason": "Parse native/string boolean wire values consistently; retain existing numeric/string identity conversion boundary.",
+      "evidence": [
+        "src/tools/wireValues.test.ts"
+      ]
+    },
+    "src/tools/parse.ts": {
+      "baselineSha256": "cee87a9637c4f64d9de58791201d8272c424f7d31a6fdc57423cf2cf0d9af4dd",
+      "currentSha256": "62391af4983e1f48eea5bde3adfb453abdf7b55cc4c39318e08a4fd78888467f",
+      "reason": "Use shared boolean parsing for payment submode flags, including true and false strings.",
+      "evidence": [
+        "src/tools/wireValues.test.ts"
+      ]
+    },
+    "src/tools/boolean.ts": {
+      "baselineSha256": null,
+      "currentSha256": "bb07b4b77ce702b9514230bcd782c76ec91f8b9c51849179542b159aadc542e4",
+      "reason": "Finite explicit boolean conversion with legacy nonzero numeric support and fail-closed invalid values.",
+      "evidence": [
+        "src/tools/wireValues.test.ts"
+      ]
+    },
+    "src/tools/identity.ts": {
+      "baselineSha256": null,
+      "currentSha256": "b1eabe7f6ea5267b6a9c20ae0bf9e93f9e3720002b92c4d691732c4ec9b0fa7d",
+      "reason": "Compare present user identifiers after trimming and string normalization.",
+      "evidence": [
+        "src/tools/wireValues.test.ts"
+      ]
+    },
+    "src/tools/reliableTime.ts": {
+      "baselineSha256": "5bb538656d50817af45998bea02bb5fe4cf60699d7571abf034438cf85915244",
+      "currentSha256": "b195096e8f6ae64383533dd1274c5a8c53842d1269c3e30eee0ebee615d13514",
+      "reason": "Accept changed server lifetime or waiting interval before/after local zero; identical stale response cannot reset the countdown.",
+      "evidence": [
+        "src/tools/reliableTime.test.ts"
+      ]
+    },
+    "src/platform/adapters/__tests__/DriverCommandCompletionWaiter.test.js": {
+      "baselineSha256": "0dca95aa672b9824c4ada4869b9f7f6087304a653dd0827732bdb70233d89c2d",
+      "currentSha256": "e0455eaf173146c153608635d812c3b5cdbd915dcaa996bfe71ff8b96645fed7",
+      "reason": "Regression evidence for finite waits, accepted-command navigation, rate limits, realtime forward compatibility or jitter; existing success/refusal cases retained.",
+      "evidence": [
+        "src/platform/adapters/__tests__/DriverCommandCompletionWaiter.test.js"
+      ]
+    },
+    "src/platform/adapters/__tests__/DriverMapGateway.test.js": {
+      "baselineSha256": "021d005be23f1df39fd202d5cd9437726069b2fab7d998373a52c8dd7832b9c3",
+      "currentSha256": "1695df1aa22c1ee2a44d364f6e3550e1354770e60b5bf69e3e05317eda700c20",
+      "reason": "Recovery and missing-login regression tests; original lifecycle contracts retained.",
+      "evidence": [
+        "src/platform/adapters/__tests__/DriverMapGateway.test.js"
+      ]
+    },
+    "src/platform/adapters/__tests__/FsmDriverSnapshotTransport.test.js": {
+      "baselineSha256": "5dff1cfd4bac80cfe4b4e2c557c368d2dbfb648e2ea76a88dc9d8624cbf9fe83",
+      "currentSha256": "deef37cfab8141f720008acae115193c2604311bb13487f565cc19cbb3ef04a3",
+      "reason": "Regression evidence for finite waits, accepted-command navigation, rate limits, realtime forward compatibility or jitter; existing success/refusal cases retained.",
+      "evidence": [
+        "src/platform/adapters/__tests__/FsmDriverSnapshotTransport.test.js"
+      ]
+    },
+    "src/platform/platform-interface/__tests__/ReconnectingWebSocketClient.test.js": {
+      "baselineSha256": "8ee07b19f2fef7a69a5266a5c4be60b45c42872341ac487f03ed51fb33e56507",
+      "currentSha256": "a0507445a5ab5e5f07c7cd6897374c633311ad99e71b79b79920d500ecd65bad",
+      "reason": "Regression evidence for finite waits, accepted-command navigation, rate limits, realtime forward compatibility or jitter; existing success/refusal cases retained.",
+      "evidence": [
+        "src/platform/platform-interface/__tests__/ReconnectingWebSocketClient.test.js"
+      ]
+    },
+    "src/tools/phoneUtils.ts": {
+      "baselineSha256": "fa9783a17f8456ac06c90fd6497a3a192d334f0a4aedd57266705aa9af4812af",
+      "currentSha256": "fcec521540c7312ab62a61479454f9a1f43a37ed412acefce799d39b4f1de07d",
+      "reason": "Remove raw phone numbers from console logs only; formatting and API normalization behavior preserved. Existing +11 internal driver convention remains a backend contract.",
+      "evidence": [
+        "src/components/modals/LoginModal/PhoneCountryField.test.js"
+      ]
+    },
+    "src/platform/adapters/DriverCommandRecovery.ts": {
+      "baselineSha256": null,
+      "currentSha256": "01a6c9851781dd51a784101f905e2207e427da5d69f6ee3449246811b87811ce",
+      "reason": "Tab-session journal stores no credentials, PIN or command body; status-only recovery, bounded validated input and exact owner/service/login isolation.",
+      "evidence": [
+        "src/platform/adapters/__tests__/DriverCommandRecovery.test.js",
+        "tools/test-command-recovery-browser.cjs"
+      ]
+    },
+    "src/security/sessionTokens.ts": {
+      "baselineSha256": null,
+      "currentSha256": "f8247df7ff390f7c840968940ccb8e6dec408d4e3a24158122aeb4a8a79855f5",
+      "reason": "Tab-scoped credentials with bounded recovery identity and cross-tab revocation.",
+      "evidence": [
+        "src/security/sessionTokens.test.js",
+        "src/security/sessionIsolation.test.js"
+      ]
+    },
+    "src/localization/index.ts": {
+      "baselineSha256": "7c149da56433970b312de35c89f2c23593889b1cc8478f3b3bbba229571bc032",
+      "currentSha256": "1953d5a6541671d5a662a40d51d44ce1ce05c2f81e2efd14fca970a61d76bff2",
+      "reason": "Service DB translations still take precedence; add offline fallback copy for pending commands and account changes.",
+      "evidence": [
+        "src/localization/locale.test.js",
+        "src/tools/apiMessages.test.js"
+      ]
+    },
+    "src/components/DriverCommandRecoveryNotice/index.tsx": {
+      "baselineSha256": null,
+      "currentSha256": "acfe2462b35ee585322863272da0d1d3fdde90a678ae986730023ebc5c1f1e09",
+      "reason": "Compact read-only recovery status, exact-owner filtering, accessible status-check/dismiss controls; no execution-retry button.",
+      "evidence": [
+        "src/components/DriverCommandRecoveryNotice/index.test.jsx",
+        "tools/test-command-recovery-browser.cjs"
+      ]
+    },
+    "src/tools/driverOfferNotifications.ts": {
+      "baselineSha256": null,
+      "currentSha256": "6cdb1d8883b14693ca5cf9666d82003da411da7c4a93184f4ef61100cd4e9b56",
+      "reason": "One accepted-offer notification across list/card/detail and reload; tab/session/service-scoped, bounded metadata only, no command or server-state changes.",
+      "evidence": [
+        "src/tools/driverOfferNotifications.test.ts",
+        "e2e/offer-order.spec.ts"
+      ]
+    },
+    "src/pages/Driver/index.tsx": {
+      "baselineSha256": "06b3d0ea62b8011537ec2ef054185052ee7a59c558b5ef40e43b3bf2ff7eaea4",
+      "currentSha256": "86a807784e2598a76774968cc32a1bbfce145c3f683ab08bd98511139e711605",
+      "reason": "Start ordinary Driver polling and GPS publication independently of emulator flags.",
+      "evidence": [
+        "src/state/orders/__tests__/readyOrdersPolling.test.js",
+        "src/state/geolocation/sagas.test.js"
+      ]
+    },
+    "src/components/modals/CardModal.tsx": {
+      "baselineSha256": "30935063ac73595a0830f0d602c39751e298417a9ab93cb4764fcf2a8f8efa39",
+      "currentSha256": "9b433339c578ee321cefcf1666a6c721f797d20ee8dd2693a11d9ada83443fce",
+      "reason": "Keep prior reviewed action handling; share accepted-offer notification ownership with list/detail views.",
+      "evidence": [
+        "src/tools/driverOfferNotifications.test.ts",
+        "e2e/offer-order.spec.ts"
+      ]
+    },
+    "src/pages/Order/index.tsx": {
+      "baselineSha256": "966575e0df96d960727a065c1d5006ae9586e3f4b3f9b39aaa225f8f3bc2b84a",
+      "currentSha256": "31ee07f90458c809d1008925ddb96346b88f45e00b4b11f0bce869e5cac45177",
+      "reason": "Keep prior reviewed detail behavior; do not open a second acceptance modal after the same offer event has been displayed.",
+      "evidence": [
+        "src/tools/driverOfferNotifications.test.ts",
+        "e2e/offer-order.spec.ts"
+      ]
+    },
+    "src/state/orders/__tests__/refreshOrder.test.js": {
+      "baselineSha256": "ef83d8486a739d1390566cd2ab37d4c24538e98ca5a3a6acdacc9ace4d0b9b6f",
+      "currentSha256": "c433d1f07bdb45b928c4e5814923d2387436202abe6e91f1530569bc1731e856",
+      "reason": "Move import declarations before Jest mocks for import/first. Jest mock hoisting is retained; all existing assertions and action/reducer contracts unchanged.",
+      "evidence": [
+        "src/state/orders/__tests__/refreshOrder.test.js",
+        "src/security/toolchainPolicy.test.js"
+      ]
+    },
+    "src/tools/mapReachability.ts": {
+      "baselineSha256": "354fe592fd79ecde0ad9353bc4fbc8ee5d883b4598435f8f2149f161eb536a99",
+      "currentSha256": "3e1c9ef5eb9a35682037d59a14b26999dde2603c9f19cf2e53850ba320c868b0",
+      "reason": "Only the road-provider transport/cache changes: bounded LRU/TTLs, coalesced reads, finite HTTP/JSON deadlines and coordinate validation. Provider URL and best-effort reachability/generation policy preserved. isReachable and ensureReachablePoint are separately compared as unchanged handlers. No Taxi backend commands, graph/profit logic, booking coordinates or license rules changed.",
+      "evidence": [
+        "src/tools/mapReachability.test.ts",
+        "src/tools/useDemoOrderPoints.test.jsx",
+        "tools/test-road-cache-browser.cjs"
+      ]
+    },
+    "src/API/car.ts": {
+      "baselineSha256": "2d05e2a09ac39f41d9fec9ebdf8296a3d07cecdbd5fd5b7773b6021e43b27314",
+      "currentSha256": "abc578b4245b079b25485b9ae76a92c16e14008d9682f4abde36445de82ce947",
+      "reason": "Reject failed vehicle-list responses before replacing the cache.",
+      "evidence": [
+        "src/state/cars/lifecycle.test.js"
+      ]
+    },
+    "src/state/cars/actionCreators.ts": {
+      "baselineSha256": "b6d224853f7b779184f1b52b7fb1e8d24e86d9d3c00c46a8af85f076f1dc9a5c",
+      "currentSha256": "fcd0aaeaa032543ebdd2b3bbd41806084f7ef86c008b10ad3c529df1b6e37dc7",
+      "reason": "Reconcile vehicle membership and active-car selection with canonical reads; discard prior-session completions.",
+      "evidence": [
+        "src/state/cars/lifecycle.test.js"
+      ]
+    },
+    "src/state/cars/reducer.ts": {
+      "baselineSha256": "87682aa468bb838b1365ffa1c161e154012a76cacd47c211a0d7360f47c0111c",
+      "currentSha256": "76c31dc0387ed7a26c7100fc339385e3ad998b662f02fa1b01f3d80d6ab2d1bc",
+      "reason": "Reconcile vehicle membership and active-car selection with canonical reads; discard prior-session completions.",
+      "evidence": [
+        "src/state/cars/lifecycle.test.js"
+      ]
+    },
+    "src/state/cars/sagas.ts": {
+      "baselineSha256": "76f1b84f8fd79007d10c567aecbd84ed3ab988ce4b2045cd87c6e82fcbd1034f",
+      "currentSha256": "cde7d35720e1ddbec22017a30c16dec153738ae3dba05a28ef491af4e6c6e476",
+      "reason": "Reconcile vehicle membership and active-car selection with canonical reads; discard prior-session completions.",
+      "evidence": [
+        "src/state/cars/lifecycle.test.js"
+      ]
+    },
+    "src/state/cars/selectors.ts": {
+      "baselineSha256": "9eedb2ad43f4b285574df4d4687488b0dd104850498d490ff5a77bc962c2f47c",
+      "currentSha256": "87929cbfae248dba509cfa0bc737c9664bd6c23c62f2a107349b1b880ce4ede6",
+      "reason": "Reconcile vehicle membership and active-car selection with canonical reads; discard prior-session completions.",
+      "evidence": [
+        "src/state/cars/lifecycle.test.js"
+      ]
+    },
+    "src/state/geolocation/reducer.ts": {
+      "baselineSha256": "cc2108c259745e306472f2910f65ffd5ea8ca1385d3e5ae128ada59ac26706bb",
+      "currentSha256": "81f8e41d7a2bb05984b7e7067287bdf22cb8acd6747b52d78cb95f94a97c045f",
+      "reason": "Only publish recent accurate device fixes; clear failures and ignore obsolete acquisition results.",
+      "evidence": [
+        "src/state/geolocation/sagas.test.js",
+        "src/tools/locationFreshness.test.ts"
+      ]
+    },
+    "src/state/geolocation/sagas.ts": {
+      "baselineSha256": "d40c3ed94c3aff36d79fa8ddcdd8efbef89d8a57e40aec6bb95d39250a02c8d1",
+      "currentSha256": "e885a47208aab22bd1fdc7613cb58095a2bd1d853db3a4cbbf39b1c5471489ee",
+      "reason": "Only publish recent accurate device fixes; clear failures and ignore obsolete acquisition results.",
+      "evidence": [
+        "src/state/geolocation/sagas.test.js",
+        "src/tools/locationFreshness.test.ts"
+      ]
+    },
+    "src/state/geolocation/selectors.ts": {
+      "baselineSha256": "03eebfac3e876262e2b16b119e6fa0afbcb182196e6f30a2b55c82751dbfc4c3",
+      "currentSha256": "01787340324705a0150ad81877001b4c55f54d776753e0b382efbb7e0901d4cc",
+      "reason": "Only publish recent accurate device fixes; clear failures and ignore obsolete acquisition results.",
+      "evidence": [
+        "src/state/geolocation/sagas.test.js",
+        "src/tools/locationFreshness.test.ts"
+      ]
+    },
+    "src/state/rootReducer.ts": {
+      "baselineSha256": "edac5d9837a5487daa2d923af171011a6d8b3cb31f634f58ed72e16c670fae31",
+      "currentSha256": "756d84f54f1b0856354fbb7a861adbe6eaa6e04562ffcb61c6a467dd85c6bc76",
+      "reason": "Reset private Redux domains and restart their saga tasks at identity changes.",
+      "evidence": [
+        "src/state/sessionSupervisor.test.js",
+        "src/security/sessionIsolation.test.js"
+      ]
+    },
+    "src/state/rootSaga.ts": {
+      "baselineSha256": "22b07aeee02cd4e452b603a22a25b96e8f74ea959676ec38db81a06ba06db19e",
+      "currentSha256": "f780594cc217e6a3251f87626d55ba2116326d13e1961bc0d2504db7f1c2c2dd",
+      "reason": "Reset private Redux domains and restart their saga tasks at identity changes.",
+      "evidence": [
+        "src/state/sessionSupervisor.test.js",
+        "src/security/sessionIsolation.test.js"
+      ]
+    },
+    "src/state/user/helpers.ts": {
+      "baselineSha256": "f908f16e6fcf7ea790941e0633edb47c91409c37904b7f8d21e49287acfb5cd4",
+      "currentSha256": "0098755fa27783279ec4681a235785aa41cb0a4e0b7e8bc504295b7f25b7007d",
+      "reason": "Apply aggregate image limits before registration/profile upload.",
+      "evidence": [
+        "src/security/fileUpload.test.ts",
+        "src/API/upload.transport.test.js"
+      ]
+    },
+    "src/state/user/reducer.ts": {
+      "baselineSha256": "3cb1f7ff3b23b39b724d74b7f964bd87417d92eb3bb9b12cc646a82e48e8da7b",
+      "currentSha256": "b188e010fbf1a4322428056f2eea442547a36cb81577f803262d6b6eb7739964",
+      "reason": "Do not retain registration credentials in Redux response data.",
+      "evidence": [
+        "src/security/sessionIsolation.test.js"
+      ]
+    },
+    "src/tools/decisionLog.ts": {
+      "baselineSha256": "f0716fcc2824a8bbdf440eb6414c49ab4c8463098de6fc75e84cc372ef7f2b65",
+      "currentSha256": "c5a3eecba0c0dd5cc7d8680c287eefe617c4387c33910016a849e749fc022de5",
+      "reason": "Redact credential data at ingestion and final export, including persisted legacy strings.",
+      "evidence": [
+        "src/security/diagnosticRedaction.test.ts"
+      ]
+    },
+    "src/tools/flowLog.ts": {
+      "baselineSha256": "5c76e7922068a5c5c023dee29b7c35566e9f29501a1c64c96c64939d2790c2d6",
+      "currentSha256": "1a44d6800fc284f0613ae4023142e7b041fa8acf842581739b13eef97d5062ba",
+      "reason": "Redact credential data at ingestion and final export, including persisted legacy strings.",
+      "evidence": [
+        "src/security/diagnosticRedaction.test.ts"
+      ]
+    },
+    "src/tools/frontendLog.ts": {
+      "baselineSha256": "86e8808ac926b2c2af1044473608456454675a17ca853efc2a357ae0235547b7",
+      "currentSha256": "975c373c42d081469af76106a81275b3564f2609be29c5005bffb55324295c44",
+      "reason": "Redact credential data at ingestion and final export, including persisted legacy strings.",
+      "evidence": [
+        "src/security/diagnosticRedaction.test.ts"
+      ]
+    },
+    "src/tools/driverCapacity.test.ts": {
+      "baselineSha256": "02e75b686550ca35889a6ae133b3f283bcd75bf06e495e0e9740bc5870086ec3",
+      "currentSha256": "624c388c49896925d49dc8f8b3fa5fa8d9765ae6b292883e4c66f9781fb777fb",
+      "reason": "Reject unknown and malformed vehicle capacity without inventing seats.",
+      "evidence": [
+        "src/tools/driverCapacity.test.ts"
+      ]
+    },
+    "src/tools/driverCapacity.ts": {
+      "baselineSha256": "2967ecdbd84fe63e0c6d1fc2b6a06fbd04b42efde0c9d3e28e00133b245e1268",
+      "currentSha256": "645ac9d240de0522e73c75bd7eb30328ba462e95255e165042de648f90720d31",
+      "reason": "Unknown capacity is unavailable; reject fractional and malformed seats.",
+      "evidence": [
+        "src/tools/driverCapacity.test.ts"
+      ]
+    },
+    "src/tools/driverPosition.ts": {
+      "baselineSha256": "43c043b664e1e33d4d8ec1a224a518a3362fe1475df688fd79ef49a52dc40316",
+      "currentSha256": "e0da7f268077af0213f483f893333d3e58089c89a6b64dc07c425e11e867b40d",
+      "reason": "Expire and identity-scope parked/map hints; do not treat them as device measurements.",
+      "evidence": [
+        "src/tools/persistedMapHint.test.ts"
+      ]
+    },
+    "src/tools/emulatorMode.ts": {
+      "baselineSha256": "002a49992319e08bbb03620a8bb7994413ebbbb5ff4600519db8489073598f98",
+      "currentSha256": "abdd1f5af54d7423f6a9bc8f2d39d5ff1ad7145ad84e4a1a1f71401d66f0f553",
+      "reason": "Require isolated in-memory loopback test capability before accepting URL or persisted emulator flags.",
+      "evidence": [
+        "src/tools/emulatorProductionGate.test.ts"
+      ]
+    },
+    "src/tools/useDevicePosition.ts": {
+      "baselineSha256": null,
+      "currentSha256": "202618a8bad058372e50b5611c16f2919a9bd713c993c2acec6d2dde8d37524f",
+      "reason": "Share the acquired physical fix with the map and expire it without a later Redux/network event.",
+      "evidence": [
+        "src/tools/useDevicePosition.test.jsx"
+      ]
+    },
+    "src/security/diagnosticRedaction.ts": {
+      "baselineSha256": null,
+      "currentSha256": "ef73400e20362c0b074499fbcef8da71be0cf1c2683a046effe42ab60462a2c6",
+      "reason": "Redact every decoded layer before delimiters inside credentials can be reinterpreted.",
+      "evidence": [
+        "src/security/diagnosticRedaction.test.ts"
+      ]
+    },
+    "src/platform/adapters/LegacyRouteProvider.ts": {
+      "baselineSha256": "ba91acbc7ebb18e7cd47ae671fe2b33acdc12c4e06deeeb83ca2a2914803d125",
+      "currentSha256": "df99b3bfc8f7dcbb7157af02fcf572d07a95a15ac444fabdd50f51a04dd70694",
+      "reason": "Apply one finite deadline to the existing OSRM read including its JSON body; preserve provider fallback order.",
+      "evidence": [
+        "src/platform/adapters/__tests__/LegacyRouteProvider.test.js"
+      ]
+    },
+    "src/platform/adapters/__tests__/LegacyRouteProvider.test.js": {
+      "baselineSha256": "438005c1e0131d2dd46fd6d9e6dc5b884644cf9b45e44cf776ac8035eb91f5ee",
+      "currentSha256": "feb0a8043ade999a88185fbcee1b1d0216ca804b06d6b09d1b1684906c35ed50",
+      "reason": "Preserve prior provider controls and add regressions for stalled connection/body deadlines.",
+      "evidence": [
+        "src/platform/adapters/__tests__/LegacyRouteProvider.test.js"
+      ]
+    }
+  },
+  "exceptions": {
+    "src/state/orders/actionCreators.ts": "src/state/orders/actionCreators.ts",
+    "src/platform/adapters/FsmCommandStatusTransport.ts": "src/platform/adapters/FsmCommandStatusTransport.ts",
+    "src/platform/adapters/FsmDriverSnapshotTransport.ts": "src/platform/adapters/FsmDriverSnapshotTransport.ts",
+    "src/platform/adapters/FsmOrderSnapshotTransport.ts": "src/platform/adapters/FsmOrderSnapshotTransport.ts",
+    "src/platform/adapters/FsmTaxiCommandTransport.ts": "src/platform/adapters/FsmTaxiCommandTransport.ts",
+    "src/platform/adapters/LegacyBackendGateway.ts": "src/platform/adapters/LegacyBackendGateway.ts",
+    "src/platform/adapters/LegacyPassengerGateway.ts": "src/platform/adapters/LegacyPassengerGateway.ts",
+    "src/platform/adapters/__tests__/FsmCommandStatusTransport.test.js": "src/platform/adapters/__tests__/FsmCommandStatusTransport.test.js",
+    "src/platform/adapters/__tests__/LegacyPassengerGateway.test.js": "src/platform/adapters/__tests__/LegacyPassengerGateway.test.js",
+    "src/platform/platform-interface/surfaces/passenger/passengerActions.ts": "src/platform/platform-interface/surfaces/passenger/passengerActions.ts",
+    "src/tools/alongTheWayCandidate.test.ts": "src/tools/alongTheWayCandidate.test.ts",
+    "src/tools/apiMessages.ts": "src/tools/apiMessages.ts",
+    "src/tools/driverBoarding.ts": "src/tools/driverBoarding.ts",
+    "src/tools/driverOffer.ts": "src/tools/driverOffer.ts",
+    "src/types/types.ts :: unexpected schema change": "src/types/types.ts",
+    "src/config.ts :: unexpected change outside configuration loading": "src/config.ts",
+    "src/App.tsx": "src/App.tsx",
+    "src/API/order.ts :: _postDrive": "src/API/order.ts",
+    "src/API/order.ts :: _updateOrderCustomerPrice": "src/API/order.ts",
+    "src/API/order.ts :: _takeOrder": "src/API/order.ts",
+    "src/API/order.ts :: _sendOrderOffer": "src/API/order.ts",
+    "src/API/order.ts :: _participateVotingOrder": "src/API/order.ts",
+    "src/API/order.ts :: _setOrderState": "src/API/order.ts",
+    "src/pages/Passenger/VotingForm.tsx :: handleChooseCandidate": "src/pages/Passenger/VotingForm.tsx",
+    "src/components/PriceInput/index.tsx :: useMoneySegment": "src/components/PriceInput/index.tsx",
+    "src/components/PriceInput/index.tsx :: formatMoneyValue": "src/components/PriceInput/index.tsx",
+    "src/components/PriceInput/index.tsx :: normalizeCustomerPriceInput": "src/components/PriceInput/index.tsx",
+    "src/components/PriceInput/index.tsx :: normalizeMoneyNumber": "src/components/PriceInput/index.tsx",
+    "src/API/auth.ts": "src/API/auth.ts",
+    "src/platform/adapters/DriverCommandCompletionWaiter.ts": "src/platform/adapters/DriverCommandCompletionWaiter.ts",
+    "src/platform/adapters/DriverMapGateway.ts": "src/platform/adapters/DriverMapGateway.ts",
+    "src/tools/convert.ts": "src/tools/convert.ts",
+    "src/tools/parse.ts": "src/tools/parse.ts",
+    "src/tools/reliableTime.ts": "src/tools/reliableTime.ts",
+    "src/platform/adapters/__tests__/DriverCommandCompletionWaiter.test.js": "src/platform/adapters/__tests__/DriverCommandCompletionWaiter.test.js",
+    "src/platform/adapters/__tests__/DriverMapGateway.test.js": "src/platform/adapters/__tests__/DriverMapGateway.test.js",
+    "src/platform/adapters/__tests__/FsmDriverSnapshotTransport.test.js": "src/platform/adapters/__tests__/FsmDriverSnapshotTransport.test.js",
+    "src/platform/platform-interface/realtime/ReconnectingWebSocketClient.ts": "src/platform/platform-interface/realtime/ReconnectingWebSocketClient.ts",
+    "src/platform/platform-interface/__tests__/ReconnectingWebSocketClient.test.js": "src/platform/platform-interface/__tests__/ReconnectingWebSocketClient.test.js",
+    "src/API/index.ts :: notifyPosition": "src/API/index.ts",
+    "src/tools/order.ts :: updateCompletedOrderDuration": "src/tools/order.ts",
+    "src/tools/phoneUtils.ts :: normalizePhoneNumber": "src/tools/phoneUtils.ts",
+    "src/state/orders/__tests__/refreshOrder.test.js": "src/state/orders/__tests__/refreshOrder.test.js",
+    "src/tools/mapReachability.ts": "src/tools/mapReachability.ts",
+    "src/API/car.ts": "src/API/car.ts",
+    "src/state/cars/actionCreators.ts": "src/state/cars/actionCreators.ts",
+    "src/state/cars/reducer.ts": "src/state/cars/reducer.ts",
+    "src/state/cars/sagas.ts": "src/state/cars/sagas.ts",
+    "src/state/cars/selectors.ts": "src/state/cars/selectors.ts",
+    "src/state/geolocation/reducer.ts": "src/state/geolocation/reducer.ts",
+    "src/state/geolocation/sagas.ts": "src/state/geolocation/sagas.ts",
+    "src/state/geolocation/selectors.ts": "src/state/geolocation/selectors.ts",
+    "src/state/rootReducer.ts": "src/state/rootReducer.ts",
+    "src/state/rootSaga.ts": "src/state/rootSaga.ts",
+    "src/state/user/helpers.ts": "src/state/user/helpers.ts",
+    "src/state/user/reducer.ts": "src/state/user/reducer.ts",
+    "src/tools/decisionLog.ts": "src/tools/decisionLog.ts",
+    "src/tools/driverCapacity.test.ts": "src/tools/driverCapacity.test.ts",
+    "src/tools/driverPosition.ts": "src/tools/driverPosition.ts",
+    "src/tools/emulatorMode.ts": "src/tools/emulatorMode.ts",
+    "src/tools/flowLog.ts": "src/tools/flowLog.ts",
+    "src/tools/frontendLog.ts": "src/tools/frontendLog.ts",
+    "src/tools/driverCapacity.ts :: unexpected non-terminal change": "src/tools/driverCapacity.ts",
+    "src/API/index.ts :: _uploadFile": "src/API/index.ts",
+    "src/API/index.ts :: reviewed implementation changed": "src/API/index.ts",
+    "src/types/types.ts :: reviewed implementation changed": "src/types/types.ts",
+    "src/config.ts :: reviewed implementation changed": "src/config.ts",
+    "src/App.tsx :: reviewed implementation changed": "src/App.tsx",
+    "src/platform/adapters/LegacyBackendGateway.ts :: reviewed implementation changed": "src/platform/adapters/LegacyBackendGateway.ts",
+    "src/state/orders/sagas.ts :: reviewed implementation changed": "src/state/orders/sagas.ts",
+    "src/state/user/sagas.ts :: reviewed implementation changed": "src/state/user/sagas.ts",
+    "src/preBootstrap.ts :: reviewed implementation changed": "src/preBootstrap.ts",
+    "src/security/sessionTokens.ts :: reviewed implementation changed": "src/security/sessionTokens.ts",
+    "src/pages/Driver/index.tsx :: reviewed implementation changed": "src/pages/Driver/index.tsx",
+    "src/platform/adapters/LegacyRouteProvider.ts": "src/platform/adapters/LegacyRouteProvider.ts",
+    "src/API/index.ts :: makeRoutePoints": "src/API/index.ts",
+    "src/platform/adapters/__tests__/LegacyRouteProvider.test.js": "src/platform/adapters/__tests__/LegacyRouteProvider.test.js"
+  },
+  "lastReviewedRoadCache": "2026-11-04",
+  "lastFrontendRemediation": {
+    "scope": "frontend-only; existing API endpoints and user session; no backend writes or deployment acceptance",
+    "sourceBaseline": "existing local corrections plus November 7 frontend remediation"
+  }
+}

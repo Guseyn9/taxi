@@ -5,10 +5,12 @@ const noopServiceWorkerMiddleware = require('react-dev-utils/noopServiceWorkerMi
 const ignoredFiles = require('react-dev-utils/ignoredFiles');
 const redirectServedPath = require('react-dev-utils/redirectServedPathMiddleware');
 const paths = require('./paths');
+const createAccessPolicy = require('./devServerAccessPolicy');
 
-const host = process.env.HOST || '0.0.0.0';
+const host = process.env.HOST || '127.0.0.1';
 
 module.exports = function(proxy, allowedHost, port) {
+  const access = createAccessPolicy(host, allowedHost, port, process.env.HTTPS === 'true');
   return {
     // Enable gzip compression of generated files.
     compress: true,
@@ -47,10 +49,22 @@ module.exports = function(proxy, allowedHost, port) {
       disableDotRule: true,
       index: paths.publicUrlOrPath,
     },
-    allowedHosts: 'all',
+    allowedHosts: access.hostnames,
+    webSocketServer: {
+      type: 'ws',
+      options: {
+        // Verify before WDS parses Origin or accepts arbitrary IP literals.
+        verifyClient: ({ origin, req }) => access.isAllowedHost(req.headers.host) && access.isAllowedOrigin(origin),
+      },
+    },
     // `proxy` is run between `before` and `after` `webpack-dev-server` hooks
     proxy,
     setupMiddlewares(middlewares, server) {
+      middlewares.unshift((req, res, next) => {
+        if (access.isAllowedHost(req.headers.host)) return next();
+        res.statusCode = 403;
+        res.end('Invalid Host header');
+      });
       if (fs.existsSync(paths.proxySetup)) {
         // This registers user provided middleware for proxy reasons
         require(paths.proxySetup)(server.app);

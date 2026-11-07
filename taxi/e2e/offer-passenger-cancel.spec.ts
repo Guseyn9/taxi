@@ -1,3 +1,4 @@
+import { newAuthenticatedContext } from './fixtures/tabSession'
 /**
  * TEST-E2E-006 — А.1.5, отмена заказа пассажиром. Живой backend.
  *
@@ -152,7 +153,7 @@ function reportSweep(when: string, result: ISweepResult): void {
 
 /** Отдельная сессия пользователя — общих cookies/localStorage у ролей нет. */
 async function openSession(browser: Browser, storageState: string): Promise<BrowserContext> {
-  const context = await browser.newContext({
+  const context = await newAuthenticatedContext(browser, {
     ...devices['Desktop Chrome'],
     storageState,
     baseURL: appUrl(),

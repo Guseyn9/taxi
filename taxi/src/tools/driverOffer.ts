@@ -1077,36 +1077,25 @@ export function isStoredSimpleOrderMode(order: IOrder | null) {
   return getStoredChoiceOrderMode(order?.b_id) === 'order'
 }
 
+/** Server mode and service flags take precedence over browser draft history. */
+function authoritativeRequestMode(order: IOrder | null): 'order' | 'voting' | 'offer' | null {
+  if (!order) return null
+  const mode = getOrderMode(order)
+  if (mode === 'OFFER') return 'offer'
+  if (mode === 'VOTE' || mode === 'VOTING') return 'voting'
+  if (mode === 'ORDER' || mode === 'STANDARD' || mode === 'TAXI') return 'order'
+  const raw = order as any
+  const options = normalizeOfferObject(raw.b_options) as any
+  if (hasVotingService(order) || isTrueLike(raw.b_voting) || isTrueLike(options.b_voting) || isTrueLike(options.voting)) return 'voting'
+  // The Universal API invitation flag is not the public fare-offer mode.
+  if (isTrueLike(raw.b_only_offer)) return 'order'
+  if (raw.b_voting !== undefined && raw.b_voting !== null) return 'order'
+  return null
+}
+
 export function isVotingOrder(order: IOrder | null) {
-  if (!order)
-    return false
-
-  if (isStoredSimpleOrderMode(order))
-    return false
-
-  if (hasStoredVotingMode(order) || hasVotingService(order))
-    return true
-
-  const rawOrder = order as any
-  const options = normalizeOfferObject(rawOrder?.b_options) as any
-  const serviceText = JSON.stringify(rawOrder?.b_services ?? '').toLowerCase()
-  const rawText = [
-    rawOrder?.b_type,
-    rawOrder?.b_mode,
-    rawOrder?.mode,
-    rawOrder?.order_mode,
-    rawOrder?.b_order_mode,
-    rawOrder?.b_custom_comment,
-    rawOrder?.b_comment,
-    JSON.stringify(options),
-  ].filter(Boolean).join(' ').toLowerCase()
-
-  return isTrueLike(rawOrder?.b_voting) ||
-    isTrueLike(options?.b_voting) ||
-    isTrueLike(options?.voting) ||
-    serviceText.includes('voting') ||
-    rawText.includes('voting') ||
-    rawText.includes('голос')
+  const confirmed = authoritativeRequestMode(order)
+  return confirmed !== null ? confirmed === 'voting' : hasStoredVotingMode(order)
 }
 
 export function getIntercityLocationClassIds() {
@@ -1158,21 +1147,6 @@ export function isIntercityOrderLocationClass(locationClassId?: unknown) {
   return isIntercityLocationClass(locationClassId)
 }
 
-function hasIntercityLocationClass(order: IOrder | null) {
-  return isIntercityLocationClass(order?.b_location_class)
-}
-
-function hasIntercityCarClass(order: IOrder | null) {
-  if (!order?.b_car_class)
-    return false
-
-  const carClass = SITE_CONSTANTS.CAR_CLASSES[String(order.b_car_class)]
-  if (!carClass?.booking_location_classes?.length)
-    return false
-
-  return carClass.booking_location_classes.some(isIntercityLocationClass)
-}
-
 export function getOrderMode(order: IOrder | null) {
   const rawOrder = order as any
   const options = normalizeOfferObject(rawOrder?.b_options)
@@ -1189,65 +1163,9 @@ export function getOrderMode(order: IOrder | null) {
   )
 }
 
-function hasOfferMarkerComment(order: IOrder | null) {
-  const ids = getOfferResponseBookingCommentIds()
-  return !!ids.length && !!order?.b_comments?.some(id => ids.includes(String(id)))
-}
-
 export function isOfferOrder(order: IOrder | null) {
-  const voting = isVotingOrder(order)
-  if (voting)
-    return false
-
-  if (isStoredSimpleOrderMode(order))
-    return false
-
-  if (hasStoredOfferMode(order))
-    return true
-
-  // Old backend offer schema: passenger offer orders are created with b_cars_count=0.
-  // Keep this explicit marker so offer/voting UI and emulator do not treat the order
-  // as a normal direct performer order after active-order reloads.
-  if (String((order as any)?.b_cars_count) === '0')
-    return true
-
-  const mode = getOrderMode(order)
-  if (mode === ORDER_MODE_OFFER)
-    return true
-
-  const options = normalizeOfferObject(order?.b_options) as any
-
-  // Candidate/response comments can appear on ordinary city orders after the
-  // first driver response. Do not treat them as OFFER by themselves, otherwise
-  // a normal order switches to offer in the top plaque as soon as a driver
-  // appears. OFFER is detected by stored passenger mode, explicit order mode,
-  // intercity customer price, b_only_offer or explicit offer options.
-
-  if (
-    !voting &&
-    (options.customer_price !== undefined || options.customerPrice !== undefined) &&
-    (hasIntercityLocationClass(order) || hasIntercityCarClass(order))
-  )
-    return true
-
-  if ((order as any)?.b_only_offer === true || Number((order as any)?.b_only_offer) === 1)
-    return true
-
-  if (
-    options.offer_mode === true ||
-    options.driver_offer_mode === true ||
-    options.driver_offer === true ||
-    normalizeMode(options.offer_mode) === ORDER_MODE_OFFER ||
-    normalizeMode(options.driver_offer_mode) === ORDER_MODE_OFFER
-  )
-    return true
-
-  // Do not infer OFFER from candidate responses or generic candidateMode alone.
-  // In gruzvill normal city orders can get candidate
-  // records too, and the passenger plaque was incorrectly switching to Offer
-  // right after the first driver appeared. OFFER must be explicit: stored mode,
-  // order mode/options, intercity customer price, marker comment, or b_only_offer.
-  return false
+  const confirmed = authoritativeRequestMode(order)
+  return confirmed !== null ? confirmed === 'offer' : hasStoredOfferMode(order)
 }
 
 export function isChoiceOrder(order: IOrder | null) {

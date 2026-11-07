@@ -1,8 +1,8 @@
+import axios from 'axios'
+import {readZoneCatalog,saveZone} from './gateway'
 jest.mock('axios',()=>({__esModule:true,default:{get:jest.fn(),post:jest.fn()}}))
 jest.mock('../../config',()=>({__esModule:true,default:{API_URL:'https://test.invalid/api/v1'}}))
 jest.mock('../../tools/api',()=>({apiMethod:(method:any)=>(...args:any[])=>{const formData=new FormData();formData.append('token','test-session');formData.append('u_hash','test-hash');return method({formData},...args)}}))
-import axios from 'axios'
-import {readZoneCatalog,saveZone} from './gateway'
 const client=axios as any
 beforeEach(()=>jest.clearAllMocks())
 it('reads the existing polygon catalog with a bounded request',async()=>{

@@ -1,4 +1,4 @@
-@import "../../tools/mixins";
+@use "../../tools/mixins" as *;
 
 $low-profit-bg: #c19276;
 $low-profit-fg: #3e0c0c;

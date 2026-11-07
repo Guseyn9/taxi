@@ -96,9 +96,6 @@ function BoundaryButtons({
     })
   }
 
-  // A category is an override of a location-derived result, not the first step.
-  if (![from,to].some(point=>point && Number.isFinite(point.latitude) && Number.isFinite(point.longitude))) return null
-
   return (
     <div
       className={cn('boundary-buttons', {
@@ -117,6 +114,11 @@ function BoundaryButtons({
           [EBookingLocationKinds.Location]: t(TRANSLATION.BOOKING_LOCATION_CLASSES[id]),
         }[kind]
         const image={ [EBookingLocationKinds.City]:'city',[EBookingLocationKinds.Intercity]:'intercity',[EBookingLocationKinds.Location]:'regional' }[kind]
+        const shortLabel = {
+          [EBookingLocationKinds.City]: t('city'),
+          [EBookingLocationKinds.Intercity]: t('intercity'),
+          [EBookingLocationKinds.Location]: t(TRANSLATION.BOOKING_LOCATION_CLASSES[id]),
+        }[kind]
         return (
           <button
             type="button"
@@ -138,7 +140,7 @@ function BoundaryButtons({
               <img src={`/design-v2/categories/${image}-warm-v2.png`} alt="" width={40} height={40} decoding="async"/>
             </div>
             <BoundaryStatusIcon status={getStatus(id, selected)} />
-            <span className="boundary-buttons__text">{label}
+            <span className="boundary-buttons__text">{shortLabel}
             </span>
           </button>
         )

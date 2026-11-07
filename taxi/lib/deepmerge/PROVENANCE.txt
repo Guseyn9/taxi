@@ -1,0 +1,8 @@
+Based on deepmerge 4.3.1 (TehShrike/deepmerge, MIT).
+Source copied from the pre-existing lockfile-pinned npm package.
+Local change: mergeObject defines own enumerable data properties for both target and source keys, rather than invoking inherited setters through assignment.
+This prevents __proto__ data in either input from changing the result prototype.
+All public merge/array/customMerge/isMergeableObject behavior is retained.
+Local version 4.3.1-taxi.1 is not an upstream security release.
+Advisory: https://github.com/advisories/GHSA-gcqx-w48m-w2h4
+Regression: src/security/dependencyBoundaries.test.js

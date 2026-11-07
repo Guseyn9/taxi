@@ -24,6 +24,7 @@ interface IProps extends ConnectedProps<typeof connector> {
   language: ILanguage,
   configStatus: EStatuses,
   fields: TForm,
+  className?:string,
   onSubmit?: (values: any) => any,
   onClose?: () => any,
   onChange?: (fieldName: string, value: any) => any,
@@ -37,7 +38,7 @@ interface IProps extends ConnectedProps<typeof connector> {
   }
 }
 
-function JSONForm({
+export function JSONForm({
   configStatus,
   language,
   onSubmit,
@@ -47,6 +48,7 @@ function JSONForm({
   defaultValues = {},
   errors = {},
   fields,
+  className,
 }: IProps) {
 
   const [unfilteredValues, setValues] = useState(() => {
@@ -297,33 +299,10 @@ function JSONForm({
     setIsDirty(true)
     onChange && onChange(name, value)
 
-    // Добавляем дополнительную валидацию для номера телефона
-    if (name === 'u_phone' && value) {
-      // Получаем маску телефона из констант
-      const phoneMask = (window as any).data?.site_constants?.def_maska_tel?.value
-      if (phoneMask) {
-        // Извлекаем префикс из маски
-        const prefixMatch = phoneMask.match(/^\+?(\d+)/)
-        const prefix = prefixMatch ? prefixMatch[1] : ''
+    // Only the edited field loses its server error. Its schema validates on blur
+    // (and during corrections after the first blur), not while initially typing.
+    setFormErrors(previous => {const next={...previous};delete next[name];return next})
 
-        // Проверяем, начинается ли номер с правильного префикса
-        const digits = value.replace(/\D/g, '')
-        const prefixWithoutPlus = prefix.replace('+', '')
-
-        // Если номер не пустой и не начинается с правильного префикса, устанавливаем ошибку
-        if (digits.length > 0 && !digits.startsWith(prefixWithoutPlus)) {
-          setFormErrors({
-            ...formErrors,
-            [name]: t(TRANSLATION.PHONE_PATTERN_ERROR) + ' ' + phoneMask,
-          })
-        } else {
-          // Если префикс правильный или номер пустой, удаляем ошибку
-          const newErrors = { ...formErrors }
-          delete newErrors[name]
-          setFormErrors(newErrors)
-        }
-      }
-    }
   }, [values, formErrors])
 
   const variables = useMemo(() => ({
@@ -408,8 +387,8 @@ function JSONForm({
   }
 
   return configStatus === EStatuses.Success && (
-    <div style={{ position: 'relative', zIndex: 500 }}>
-      <form onSubmit={handleSubmit}>
+    <div className={className} style={{ position: 'relative', zIndex: 500 }}>
+      <form noValidate onSubmit={handleSubmit}>
         {form.map((formElement: TFormElement, i: number) => formElement.name ?
           <JSONFormElement
             key={i}

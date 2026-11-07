@@ -37,6 +37,7 @@ interface PassengerCommandFailedPayload {
 
 const MUTATION_ACTIONS = new Set<string>([
   PASSENGER_ACTIONS.CreateOrder,
+  PASSENGER_ACTIONS.ConfirmOrder,
   PASSENGER_ACTIONS.CancelOrder,
   PASSENGER_ACTIONS.SelectCandidate,
   PASSENGER_ACTIONS.ReleaseCandidate,
@@ -77,6 +78,10 @@ export class LegacyPassengerGateway {
       PASSENGER_ACTIONS.CancelOrder,
       args,
     )
+  }
+
+  confirmOrder(...args: Parameters<typeof backendGateway.confirmDrive>) {
+    return this.dispatch<Awaited<ReturnType<typeof backendGateway.confirmDrive>>>(PASSENGER_ACTIONS.ConfirmOrder, args)
   }
 
   selectCandidate(...args: Parameters<typeof backendGateway.chooseCandidate>) {
@@ -180,6 +185,8 @@ export class LegacyPassengerGateway {
     switch (actionType) {
       case PASSENGER_ACTIONS.CreateOrder:
         return backendGateway.postDrive(...args as Parameters<typeof backendGateway.postDrive>)
+      case PASSENGER_ACTIONS.ConfirmOrder:
+        return backendGateway.confirmDrive(...args as Parameters<typeof backendGateway.confirmDrive>)
       case PASSENGER_ACTIONS.CancelOrder:
         return backendGateway.cancelDrive(...args as Parameters<typeof backendGateway.cancelDrive>)
       case PASSENGER_ACTIONS.SelectCandidate:

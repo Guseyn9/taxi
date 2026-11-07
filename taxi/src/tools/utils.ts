@@ -689,12 +689,7 @@ export const mapBlockObject = (rawObject: TBlockObject) => {
   return object
 }
 
-export const getBase64 = (file: any) => new Promise((resolve, reject) => {
-  const reader = new FileReader()
-  reader.readAsDataURL(file)
-  reader.onload = () => resolve(reader.result)
-  reader.onerror = error => reject(error)
-})
+export { rasterFileBase64 as getBase64 } from '../security/fileUpload'
 
 export function formatCurrency(
   value: number,

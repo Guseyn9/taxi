@@ -6,21 +6,18 @@ import * as API from '../../API'
 import { user as userSelector } from '../user/selectors'
 import { ActionTypes } from './constants'
 import { carMutates as carMutatesSelector } from './selectors'
+import { getSessionRecoveryId } from '../../security/sessionTokens'
 
 export function* saga() {
-  const loadState: LoadState = {}
   yield all([
     concurrency({
       action: [
         ActionTypes.GET_USER_CARS_REQUEST,
-        ActionTypes.CREATE_USER_CAR_SUCCESS,
       ],
-      saga: (action: TAction) => getUserCarsSaga(action, loadState),
+      saga: getUserCarsSaga,
       parallelKey: 0,
       leading: ({ type }: TAction) =>
         type === ActionTypes.GET_USER_CARS_REQUEST || undefined,
-      latest: ({ type }: TAction) =>
-        type === ActionTypes.CREATE_USER_CAR_SUCCESS || undefined,
     }, {
       action: ActionTypes.END_MUTATION,
       saga: getCarSaga,
@@ -29,10 +26,6 @@ export function* saga() {
       latest: ({ payload }: TAction) => payload,
     }),
   ])
-}
-
-interface LoadState {
-  lastUserId?: IUser['u_id']
 }
 
 function* getCarSaga({ type, payload }: TAction) {
@@ -50,18 +43,16 @@ function* getCarSaga({ type, payload }: TAction) {
   }
 }
 
-function* getUserCarsSaga({ type }: TAction, loadState: LoadState) {
+export function* getUserCarsSaga({ type }: TAction) {
   const userId = (yield* select(userSelector))?.u_id
-  if (
-    type === ActionTypes.GET_USER_CARS_REQUEST &&
-    (!userId || userId === loadState.lastUserId)
-  )
-    return
+  if (!userId) return
+  const session = getSessionRecoveryId()
   try {
     const cars = yield* call(API.getUserCars)
+    if (getSessionRecoveryId() !== session || (yield* select(userSelector))?.u_id !== userId) return
     yield put({ type: ActionTypes.GET_USER_CARS_SUCCESS, payload: cars })
-    loadState.lastUserId = userId
   } catch (error) {
+    if (getSessionRecoveryId() !== session) return
     console.error(error)
     yield put({ type: ActionTypes.GET_USER_CARS_FAIL, payload: error })
   }

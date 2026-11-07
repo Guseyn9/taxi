@@ -1,8 +1,15 @@
 const fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypto'),parser=require('@babel/parser');
+const {assessReviewedBoundary,classifyBoundaryDifferences}=require('./lib/reviewed-boundary.cjs');
 const original=path.resolve(process.env.TAXI_BASELINE_DIR||'../taxi/taxi');const current=path.resolve('.');
 if(!fs.existsSync(path.join(original,'src/API'))){console.error('Set TAXI_BASELINE_DIR to the clean baseline taxi app directory before checking the backend boundary.');process.exit(2)}
 let files=0;const failures=[];const intentionalFrontendChanges=[];const intentionalHandlerChanges=[];
 const allowedCore=new Map([
+ ['src/state/clientOrder/util.ts','Recognize the service spelling PETTI as Petit; route, zone and seating rules unchanged'],
+ ['src/siteConstants.ts','Recognize PETTI when choosing the initial city class; configuration and manual selection unchanged'],
+ ['src/config.ts','Bound configuration bootstrap; expose failure/retry and ignore late responses; same service URL and configuration name'],
+ ['src/tools/addressBook.ts','Match personal history in French, Arabic and Tifinagh; retain the same storage key and payload'],
+ ['src/API/cacheVersion.ts','Bound the existing read-only configuration version request; URL and response field unchanged'],
+ ['src/tools/rawLog.ts','Batch local RAW persistence and flush on lifecycle/export; record schema and business commands unchanged'],
  ['src/tools/driverCapacity.ts','Release seats and reject taking terminal bookings; exact remaining source checked'],
  ['src/platform/platform-interface/surfaces/passenger/PassengerPresentation.ts','Terminal booking status precedes stale choice candidates; exact remaining source checked'],
  ['src/state/orders/constants.ts','Frontend-only bounded recent terminal history; no API schema change'],
@@ -49,6 +56,9 @@ function compare(dir){for(const entry of fs.readdirSync(path.join(original,dir),
 }}
 for(const dir of ['src/API','src/state','src/platform','src/tools','src/types','src/localization'])compare(dir);
 
+const classUtil='src/state/clientOrder/util.ts';
+if(fs.readFileSync(path.join(current,classUtil),'utf8').replace("    text.includes('petti') ||\n",'')!==fs.readFileSync(path.join(original,classUtil),'utf8'))failures.push(classUtil+' :: unexpected route-rule change');
+
 const pointTypes='src/types/types.ts';
 if(fs.readFileSync(path.join(current,pointTypes),'utf8').replace('  isCurrent?: boolean\n','')!==fs.readFileSync(path.join(original,pointTypes),'utf8'))failures.push(pointTypes+' :: unexpected schema change');
 
@@ -79,7 +89,12 @@ const withoutLocaleRestore=fs.readFileSync(path.join(current,localeReducer),'utf
  .replace("        .set('language', savedLanguage || state.get('language'))\n",'');
 if(withoutLocaleRestore.trimEnd()!==fs.readFileSync(path.join(original,localeReducer),'utf8').trimEnd())failures.push(localeReducer+' :: unexpected non-locale change');
 files++;if(!fs.readFileSync(path.join(original,'src/appCache.ts')).equals(fs.readFileSync(path.join(current,'src/appCache.ts'))))intentionalFrontendChanges.push({file:'src/appCache.ts',reason:allowedCore.get('src/appCache.ts')});
-for(const relative of ['src/siteConstants.ts','src/config.ts','src/App.tsx']){files++;const source=fs.readFileSync(path.join(original,relative),'utf8'),edited=fs.readFileSync(path.join(current,relative),'utf8');if(source!==edited){if(relative==='src/App.tsx'){
+for(const relative of ['src/siteConstants.ts','src/config.ts','src/App.tsx']){files++;const source=fs.readFileSync(path.join(original,relative),'utf8'),edited=fs.readFileSync(path.join(current,relative),'utf8');if(source!==edited){if(relative==='src/siteConstants.ts'){
+if(edited.replace("    text.includes('petti') ||\n",'')===source)intentionalFrontendChanges.push({file:relative,reason:allowedCore.get(relative)});else failures.push(relative+' :: unexpected class-default change');
+}else if(relative==='src/config.ts'){
+const withoutLoader=text=>parser.parse(text,{sourceType:'module',plugins:['typescript']}).program.body.filter(node=>!(node.type==='VariableDeclaration'&&node.declarations.some(item=>['applyConfigName','configLoadGeneration'].includes(item.id?.name))));
+if(normalized(withoutLoader(source))===normalized(withoutLoader(edited)))intentionalFrontendChanges.push({file:relative,reason:allowedCore.get(relative)});else failures.push(relative+' :: unexpected change outside configuration loading');
+}else if(relative==='src/App.tsx'){
 const withoutUi=edited.replace("import ConnectionBar from './design/reliability/ConnectionBar'\n",'').replace("        <ConnectionBar/>\n",'').replace("import { applyUiDocumentLanguage } from './design/ui-language'\nimport './design/rtl.css'\n",'').replace("import { subscribeSessionRevocation } from './security/sessionTokens'\nimport { ActionTypes as UserActionTypes } from './state/user/constants'\nimport { clearOrders } from './state/orders/actionCreators'\n",'').replace("  useEffect(() => { applyUiDocumentLanguage(language?.iso, document.documentElement) }, [language?.iso])\n",'').replace("  useEffect(() => subscribeSessionRevocation(() => {\n    store.dispatch({ type: UserActionTypes.LOGOUT_START })\n    store.dispatch(clearOrders())\n    store.dispatch({ type: UserActionTypes.LOGOUT_SUCCESS })\n  }), [])\n\n",'');
 if(withoutUi===source)intentionalFrontendChanges.push({file:relative,reason:allowedCore.get(relative)});else failures.push(relative);
 }else failures.push(relative);}}
@@ -90,6 +105,7 @@ const targets={
  'src/API/way.ts':['getAreasIdsBetweenPoints','getAreaFromXML'],
  'src/tools/order.ts':['getOrderDriveStartedAt','updateCompletedOrderDuration','candidateMode','estimateOrder','getProfitFactorsForCar','getOrderDisplayedPrice','estimateProfitByDisplayedPrice','estimateProfit','estimateProfitByDistance','rankProfit','getEstimatedProfit','computeProfitPercentiles','getProfitSortValue','sortOrdersByProfit','calculateDistance','geoDistanceMeters'],
  'src/tools/phoneUtils.ts':['normalizePhoneNumber','getPhoneMask','getPhonePrefix'],
+ 'src/tools/mapReachability.ts':['isReachable','ensureReachablePoint'],
  'src/Routes.tsx':['AppRoutesWrapper','HomePageRedirect','AppRoutes'],
  'src/pages/Passenger/VotingForm.tsx':['submit','handleChooseCandidate','handleConfirmCancelSelectedDriver','handleLockedCustomerPriceCommit','handleLockedCancelClick','handleLockedFinishClick','handleNewOrderClick','handleSavePhoneClick'],
  'src/components/PriceInput/index.tsx':['useMoneySegment','formatMoneyValue','normalizeCustomerPriceInput','normalizeMoneyNumber','makeEditablePriceItem'],
@@ -99,8 +115,15 @@ const targets={
 };
 function declarations(root){const result={};function walk(node){if(!node||typeof node!=='object')return;if(node.type==='FunctionDeclaration'&&node.id?.name)result[node.id.name]=node;if(node.type==='VariableDeclarator'&&node.id?.type==='Identifier')result[node.id.name]=node.init;for(const val of Object.values(node)){if(Array.isArray(val))val.forEach(walk);else if(val&&typeof val==='object')walk(val)}}walk(root);return result;}
 function normalized(node){return JSON.stringify(node,(key,value)=>['start','end','loc','extra','leadingComments','trailingComments','innerComments','comments','tokens'].includes(key)?undefined:value);}
-let handlers=0;for(const [file,names] of Object.entries(targets)){
+let handlers=0,unchangedHandlers=0;for(const [file,names] of Object.entries(targets)){
  const read=root=>declarations(parser.parse(fs.readFileSync(path.join(root,file),'utf8'),{sourceType:'module',plugins:['typescript','jsx']}));const a=read(original),b=read(current);
- for(const name of names){handlers++;if(!a[name]||!b[name]||normalized(a[name])!==normalized(b[name])){const key=`${file} :: ${name}`;if(allowedHandlers.has(key))intentionalHandlerChanges.push(key);else failures.push(key)}}
+ for(const name of names){handlers++;if(!a[name]||!b[name]||normalized(a[name])!==normalized(b[name])){const key=`${file} :: ${name}`;if(allowedHandlers.has(key))intentionalHandlerChanges.push(key);else failures.push(key)}else unchangedHandlers++}
 }
-const result={unchangedCoreFiles:files-intentionalFrontendChanges.length,unchangedBusinessHandlers:handlers-intentionalHandlerChanges.length,intentionalFrontendChanges,intentionalHandlerChanges,intentionalPresentationFiles:['src/Routes.tsx::UnavailableBase'],failures,ok:failures.length===0};fs.mkdirSync('design-review/shadcn',{recursive:true});fs.writeFileSync('design-review/shadcn/backend-boundary.json',JSON.stringify(result,null,2)+'\n');console.log(JSON.stringify(result));process.exit(result.ok?0:1);
+const manifestPath='tools/contracts/reviewed-integration-20261103.json';
+const manifest=JSON.parse(fs.readFileSync(manifestPath,'utf8'));
+const read=(root,file)=>fs.existsSync(path.join(root,file))?fs.readFileSync(path.join(root,file)):null;
+const review=assessReviewedBoundary(manifest,{readBaseline:file=>read(original,file),readCurrent:file=>read(current,file),hasEvidence:file=>fs.existsSync(path.join(current,file))});
+const differences=classifyBoundaryDifferences(failures,manifest,review);
+const designOnly=process.argv.includes('--design-only');
+const outstanding=designOnly?failures:[...differences.remaining,...review.errors];
+const result={boundaryScope:designOnly?'design-only':'reviewed-frontend-integration',reviewManifest:manifestPath,comparedCoreFiles:files,comparedBusinessHandlers:handlers,unchangedBusinessHandlers:unchangedHandlers,intentionalFrontendChanges,intentionalHandlerChanges,reviewedIntegrationFiles:review.validPaths.size,reviewedIntegrationDifferences:designOnly?[]:differences.reviewed,intentionalPresentationFiles:['src/Routes.tsx::UnavailableBase'],failures:outstanding,ok:outstanding.length===0};fs.mkdirSync('design-review/shadcn',{recursive:true});fs.writeFileSync('design-review/shadcn/backend-boundary.json',JSON.stringify(result,null,2)+'\n');console.log(JSON.stringify(result));process.exit(result.ok?0:1);

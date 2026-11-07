@@ -48,6 +48,7 @@ export interface CommandCompletionResult {
 }
 
 export interface DriverCommandCompletionWaiter {
+  readonly supportsInstanceRecovery?: boolean
   captureBaseline(orderId: IOrder['b_id']): CommandCompletionBaseline
   wait(request: CommandCompletionRequest): Promise<CommandCompletionResult>
   fail(instanceId: number, errorCode: string, message: string): void
@@ -64,6 +65,7 @@ interface PendingStatusCompletion {
 
 /** Normative TASK-CORE-001 completion by execution instanceId. */
 export class CommandStatusDriverCommandCompletionWaiter implements DriverCommandCompletionWaiter {
+  readonly supportsInstanceRecovery = true
   private readonly transport: CommandStatusTransport
   private readonly timeoutMs: number
   private readonly pollIntervalMs: number
@@ -142,6 +144,7 @@ export class CommandStatusDriverCommandCompletionWaiter implements DriverCommand
     if (this.pending.get(completion.request.instanceId) !== completion)
       return
 
+    let retryDelay = this.pollIntervalMs
     try {
       const result = await this.transport.getStatus(completion.request.instanceId)
       if (this.pending.get(completion.request.instanceId) !== completion)
@@ -167,6 +170,8 @@ export class CommandStatusDriverCommandCompletionWaiter implements DriverCommand
       if (this.pending.get(completion.request.instanceId) !== completion)
         return
       const normalized = normalizeBackendError(error)
+      const retryAfter = Number((normalized.details as { retryAfterMs?: unknown } | null)?.retryAfterMs)
+      if (Number.isFinite(retryAfter) && retryAfter > 0) retryDelay = Math.max(retryDelay, Math.min(60000, retryAfter))
       if (isTerminalStatusReadError(normalized)) {
         this.settle(completion, {
           status: COMMAND_COMPLETION_STATUSES.Failed,
@@ -185,7 +190,7 @@ export class CommandStatusDriverCommandCompletionWaiter implements DriverCommand
     completion.pollTimer = setTimeout(() => {
       completion.pollTimer = null
       void this.poll(completion)
-    }, this.pollIntervalMs)
+    }, retryDelay)
   }
 
   private settle(
@@ -206,7 +211,9 @@ export class CommandStatusDriverCommandCompletionWaiter implements DriverCommand
 }
 
 function isTerminalStatusReadError(error: BackendInteractionError): boolean {
-  return /^FSM_COMMAND_STATUS_HTTP_4\d\d$/.test(error.code) ||
+  // A timeout or rate limit says nothing about whether the mutation committed.
+  return /^FSM_COMMAND_STATUS_HTTP_4\d\d$/.test(error.code) &&
+    !['FSM_COMMAND_STATUS_HTTP_408', 'FSM_COMMAND_STATUS_HTTP_425', 'FSM_COMMAND_STATUS_HTTP_429'].includes(error.code) ||
     error.code === 'FSM_COMMAND_STATUS_PROTOCOL_ERROR'
 }
 

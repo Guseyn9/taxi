@@ -12,6 +12,21 @@ interface IOptions {
 }
 
 const FALLBACK_TRANSLATIONS: Record<string, Record<string, string>> = {
+  driver_action_result_pending:{ru:'Сначала проверьте результат предыдущего действия по заказу.',en:'Check the previous action result for this order first.',fr:'Vérifiez d’abord le résultat de l’action précédente pour cette commande.',ar:'تحقق أولاً من نتيجة الإجراء السابق لهذا الطلب.'},
+  driver_action_session_changed:{ru:'Аккаунт изменился. Обновите заказ в текущем аккаунте.',en:'Your account changed. Refresh the order in the current account.',fr:'Le compte a changé. Actualisez la commande dans le compte actuel.',ar:'تغيّر الحساب. حدّث الطلب في الحساب الحالي.'},
+  emulator_test_server_required:{ru:'Для серверного эмулятора нужны отдельный тестовый стенд и временные аккаунты.',en:'Server emulation requires an isolated test server and disposable accounts.',fr:'L’émulateur nécessite un serveur de test isolé et des comptes temporaires.',ar:'يتطلب المحاكي خادم اختبار معزولاً وحسابات مؤقتة.'},
+  emulator_local_demo:{ru:'Открыть демо без регистрации',en:'Try the demo without registration',fr:'Essayer la démo sans inscription',ar:'جرّب العرض دون تسجيل'},
+  voting_confirmation_status:{ru:'Поиск не подтверждён',en:'Search not confirmed',fr:'Recherche non confirmée',ar:'البحث غير مؤكد'},
+  voting_confirmation_pending:{ru:'Заказ создан, но поиск такси ещё не подтверждён. Повторите подтверждение этого заказа.',en:'Your order was created, but the taxi search is not confirmed. Confirm this order again.',fr:'La commande est créée, mais la recherche de taxi n’est pas confirmée. Confirmez cette commande.',ar:'تم إنشاء الطلب، لكن البحث عن سيارة لم يُؤكد بعد. أكّد هذا الطلب مجددًا.'},
+  voting_confirmation_retry:{ru:'Подтвердить поиск',en:'Confirm search',fr:'Confirmer la recherche',ar:'تأكيد البحث'},
+  driver_rating_label:{ru:'Рейтинг',en:'Rating',fr:'Note',ar:'التقييم'},
+  login:{en:'Email',ru:'Email',fr:'E-mail',ar:'البريد الإلكتروني'},
+  name:{en:'Name',ru:'Имя',fr:'Nom',ar:'الاسم'},
+  phone:{en:'Phone',ru:'Телефон',fr:'Téléphone',ar:'الهاتف'},
+  email_error:{en:'Enter a valid email address.',ru:'Укажите корректный email.',fr:'Saisissez une adresse e-mail valide.',ar:'أدخل بريداً إلكترونياً صالحاً.'},
+  phone_pattern_error:{en:'Check the country code and phone number.',ru:'Проверьте код страны и номер телефона.',fr:'Vérifiez le code pays et le numéro.',ar:'تحقق من رمز البلد ورقم الهاتف.'},
+  required_field:{en:'Complete this field.',ru:'Заполните это поле.',fr:'Remplissez ce champ.',ar:'أكمل هذا الحقل.'},
+  location_action:{en:'Location',ru:'Локация',fr:'Position',ar:'الموقع'},
   from:{ru:'Откуда',en:'From',fr:'Départ',ar:'من'},
   to:{ru:'Куда',en:'To',fr:'Destination',ar:'إلى'},
   cost:{ru:'Стоимость',en:'Cost',fr:'Prix',ar:'السعر'},

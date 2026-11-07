@@ -1,3 +1,37 @@
+# Current local acceptance (2026-11-03)
+
+The historical investigations below refer to older upstream code and the gruzvill server; they are not the current frontend contract.
+
+- Sign in through the header menu and the actual login form. Tokens live in sessionStorage per tab. Setup saves the real UI session in ignored, owner-only `.auth/*.session.json` files; each test context restores only its own origin and role. Playwright storageState alone is insufficient.
+- Current city coordinates are in Agadir. The disposable stand needs its explicitly synthetic city polygon; it is not an official licensing boundary.
+- Offer is explicit `b_options.offer_mode=OFFER`. A city/intercity class, price, or `b_cars_count=0` alone is not a request type. The server must persist this option. No silent fallback to an ordinary order.
+- Run with the isolated stand and explicit `REACT_APP_API_ROOT`, `REACT_APP_SERVICE_CONFIG`, `E2E_APP_URL` and API credentials. No production load. Legacy snapshot assertions below may need the confirmed server contract.
+- The browser acceptance during finalization is performed through CUA against the real local API. Unit/API checks and authored Playwright scenarios are separate evidence; do not report the whole historical E2E suite as run unless it actually passed.
+
+## Required configuration for a new run
+
+Use disposable accounts on an explicitly selected test API. There is no implicit production fallback.
+
+```dotenv
+E2E_API_BASE=http://127.0.0.1:57100/taxi/c/local/api/v1
+E2E_APP_URL=http://localhost:3000
+E2E_PASSENGER_PHONE=233555000111
+E2E_PICKUP_QUERY=<verified Agadir query>
+E2E_PICKUP_MATCH=<unique address suggestion text>
+E2E_DESTINATION_QUERY=<verified Agadir query>
+E2E_DESTINATION_MATCH=<unique address suggestion text>
+```
+
+Credentials remain in the ignored `.env.e2e.local` or secret variables. Query labels are not credentials. Verify that their selected coordinates are within the test tolerance of `PICKUP` and `DESTINATION` in `fixtures/driverUi.ts`; a plausible street name alone is insufficient. Different geocoder results require updating the fixture coordinates together. A previously selected address may be returned from personal history instead of the duplicate official suggestion; the test still verifies its actual coordinates independently. The CI workflows accept the four query fields through repository variables and the test phone through a secret.
+
+Playwright starts the frontend with API root and tenant derived from `E2E_API_BASE`. Setup checks the actual frontend API requests before entering any password. A reused frontend pointing at a different service fails setup. Driver scenarios use normal mode, without `driverEmulator=1`. Arrival has two explicit UI steps: depart, then arrive. The boarding PIN is read from the order response, never guessed from a vehicle ID or registration plate.
+
+Order and Vote buttons submit directly. Offer first opens a fare dialog; only its confirmation creates the booking. Preferences open through the visible button rather than a private swipe implementation. A configuration failure fails setup without repeated reloads.
+
+Verification on 3–4 November: all 21 browser tests passed on the isolated local PHP stand with zero retries (3 UI sign-ins and 18 scenarios). Standard, Voting and Offer complete through the driver UI; UI order creation is covered separately. The final report records 971 unit tests, TypeScript, lint errors and production build. This does not establish compatibility with production FSM or physical-device acceptance. Authentication steps and attachments are excluded from reports; text/errors/output are redacted before HTML/JSON. The CI privacy check also decodes the embedded HTML ZIP; only the sanitized HTML folder and results.json may be uploaded. Raw outputDir and .auth are private. Historical CI artifacts still need owner review.
+
+## Historical investigations (retained as evidence)
+
 # E2E-тесты ТДМ
 
 | Файл | Сценарий |

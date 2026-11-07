@@ -56,3 +56,39 @@ body .login-modal .sign-up-subform[data-registration-role=passenger] .login-form
  body .overlay__wrapper.login-modal-overlay{padding:12px}
  body .overlay__wrapper>.modal.login-modal{max-height:min(calc(100dvh - 24px),calc(var(--taxi-viewport-height,100dvh) - 24px))}
 }
+/* Secondary recovery action stays separate from the password value. */
+body .login-modal .auth-recovery-row{display:flex;justify-content:flex-end;margin:-4px 0 8px}
+body .login-modal .auth-recovery-link{width:auto;min-height:44px;padding:8px 0;background:none;border:0;color:var(--drive-red);font:600 13px/20px Manrope,sans-serif;text-align:end;cursor:pointer}
+body .login-modal .auth-recovery-link:disabled{color:var(--drive-muted);cursor:default}
+body .login-modal .auth-phone-field{min-width:0;display:grid;gap:8px;align-content:start}
+body .login-modal .auth-phone-country{display:grid;gap:6px;font:600 12px/18px Manrope,sans-serif;color:var(--drive-muted)}
+body .login-modal .auth-phone-country select{width:100%;min-width:0;min-height:44px;padding:8px 12px;border:1px solid var(--drive-line);border-radius:12px;background:var(--drive-canvas);color:var(--drive-black);font:500 14px/20px Manrope,sans-serif}
+body .login-modal .auth-phone-field .login-form__input{margin:0!important}
+body .login-modal .auth-channel-choice--unavailable{opacity:1;background:var(--drive-canvas);color:var(--drive-muted)}
+@media(min-width:600px){body .login-modal .sign-up-subform[data-registration-role=passenger] .auth-register-fields>.auth-phone-field{grid-column:1/-1;grid-template-columns:minmax(0,1fr) minmax(0,1fr)}}
+body .login-modal:has(.json-registration-form){width:min(100%,600px);max-width:600px;overflow-y:auto;overscroll-behavior:contain}
+body .login-modal .json-registration-form .element__text_input{min-height:48px;height:auto;font-size:16px;line-height:24px;padding:10px 12px}
+body .login-modal .json-registration-form .element__field{margin:0 0 12px}
+body .login-modal .json-registration-form .element__label{font-size:12px;line-height:18px;margin:0 0 6px}
+#root .login-modal .auth-password-toggle{background:transparent!important;background-image:none!important;color:var(--drive-muted)!important}
+#root .login-modal .auth-channel-options>legend.sr-only{position:absolute!important;width:1px!important;height:1px!important;padding:0!important;margin:-1px!important;overflow:hidden!important;clip-path:inset(50%)!important;white-space:nowrap!important}
+#root .login-modal .auth-phone-country>span{font:inherit}
+#root .login-modal .element__password{position:relative}
+#root .login-modal .element__password>input{padding-inline-end:52px}
+#root .login-modal .auth-json-password-toggle{position:absolute;inset-inline-end:4px;top:2px;display:grid;place-items:center;width:44px;height:44px;padding:8px;border:0;border-radius:10px;background:transparent;color:var(--drive-muted);cursor:pointer}
+#root .login-modal .auth-json-password-toggle:focus-visible{outline:2px solid var(--drive-red);outline-offset:-3px}
+/* Keep sign-in available when the keyboard or landscape viewport reduces height. */
+body .login-modal:has(.sign-in-subform){display:flex;flex-direction:column;overflow:hidden}
+body .login-modal:has(.sign-in-subform)>fieldset{display:contents}
+body .login-modal:has(.sign-in-subform) .login{display:flex;flex-direction:column;flex:1 1 auto;min-height:0;overflow:hidden}
+body .login-modal .sign-in-subform{display:flex;flex-direction:column;flex:1 1 auto;min-height:0;overflow:hidden}
+body .login-modal .auth-login-fields{flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain;scroll-padding-block:8px;padding-inline-end:4px}
+body .login-modal .auth-login-footer{flex:none;min-height:48px;margin-top:12px}
+body .login-modal .auth-login-footer>.login-modal_login-btn{width:100%;min-height:48px;margin:0}
+body .login-modal:has(.sign-in-subform)>details{display:none}
+@media(min-width:600px) and (max-height:500px){
+ body .login-modal:has(.sign-in-subform){width:min(100%,640px);max-width:640px}
+ body .login-modal .auth-login-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;align-content:start}
+ body .login-modal .auth-login-fields>.login-form__input{margin:0!important}
+ body .login-modal .auth-login-fields>:not(.login-form__input){grid-column:1/-1}
+}

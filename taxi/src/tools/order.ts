@@ -42,8 +42,8 @@ export function updateCompletedOrderDuration(order: IOrder): IOrder {
         },
       },
     }
-    const newPrice = calculateFinalPrice(order)
-    if (typeof newPrice === 'number')
+    const newPrice = calculateFinalPriceValue(order)
+    if (newPrice !== null)
       order.b_options!.pricingModel!.price = newPrice
   }
   return order
@@ -83,16 +83,8 @@ export const calculateFinalPriceFormula = (order: IOrder | null) => {
   return formula
 }
 
-export const calculateFinalPrice = (order: IOrder | null) => {
-  if (!order) {
-    return 'err'
-  }
-  if(!order.b_options?.pricingModel?.formula) {
-    return 'err'
-  }
-  if(order.b_options?.pricingModel?.formula === '-') {
-    return '-'
-  }
+export const calculateFinalPriceValue = (order: IOrder | null): number | null => {
+  if (!order?.b_options?.pricingModel?.formula || order.b_options.pricingModel.formula === '-') return null
   const formula = order.b_options.pricingModel.formula
   const options = {
     ...order.b_options.pricingModel.options,
@@ -100,9 +92,16 @@ export const calculateFinalPrice = (order: IOrder | null) => {
     // Preserve the legacy misspelled alias while accepting the documented name.
     submit_rice: order.b_options.submitPrice ?? order.b_options.pricingModel.options?.submit_rice,
   }
-  try { return Math.trunc(evaluateArithmetic(formula, options)).toString() }
-  catch { return 'err' }
+  // Keep the established tariff rounding; the server remains billing authority.
+  try { return Math.trunc(evaluateArithmetic(formula, options)) }
+  catch { return null }
+}
 
+/** Legacy presentation API retains its string and unavailable-tariff sentinels. */
+export const calculateFinalPrice = (order: IOrder | null): string => {
+  if (order?.b_options?.pricingModel?.formula === '-') return '-'
+  const value = calculateFinalPriceValue(order)
+  return value === null ? 'err' : String(value)
 }
 
 export function candidateMode(order?: IOrder): boolean {

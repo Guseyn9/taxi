@@ -59,6 +59,19 @@ describe('FsmDriverSnapshotTransport', () => {
   beforeEach(() => jest.useFakeTimers())
   afterEach(() => jest.useRealTimers())
 
+  it('ignores a future event type and still receives the next valid snapshot', () => {
+    const socket = createSocket(), listener = jest.fn()
+    const transport = new FsmDriverSnapshotTransport({ apiUrl: 'https://fsm.example.test', driverUserId: 205 }, {
+      fetch: jest.fn().mockResolvedValue(createResponse(DRIVER_SNAPSHOT)), socketFactory: () => socket,
+    })
+    const stop = transport.subscribeSnapshots(listener)
+    socket.onmessage({ data: JSON.stringify({ type: 'future.feature' }) })
+    expect(socket.close).not.toHaveBeenCalled(); expect(listener).not.toHaveBeenCalled()
+    socket.onmessage({ data: JSON.stringify({ type: 'snapshot', snapshot: DRIVER_SNAPSHOT }) })
+    expect(listener).toHaveBeenCalledTimes(1)
+    stop()
+  })
+
   it('loads Driver Snapshot and maps it to the current PI projection', async() => {
     const fetchRequest = jest.fn().mockResolvedValue(createResponse(DRIVER_SNAPSHOT))
     const transport = new FsmDriverSnapshotTransport({
