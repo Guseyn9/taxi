@@ -1,1 +1,9 @@
-.ride-connection{position:fixed;z-index:950;top:82px;right:16px;max-width:min(430px,calc(100vw - 32px));display:flex;align-items:center;gap:10px;padding:12px 14px;border:1px solid #edd8bd;border-radius:12px;background:#fff7ed;color:#713e12;font:500 12px/1.5 Manrope,sans-serif;box-shadow:0 3px 15px #1212120a}.ride-connection>svg{flex-shrink:0}.ride-connection button{display:flex;align-items:center;gap:5px;min-height:44px;flex-shrink:0;border:0;background:transparent;color:var(--drive-red,#b51218);font:700 12px Manrope,sans-serif}.ride-connection button:focus-visible{outline:2px solid var(--drive-red,#b51218);outline-offset:2px}.ride-connection button:disabled{opacity:.5}@media(max-width:599px){.ride-connection{top:70px;left:12px;right:12px;max-width:none;padding:9px 12px;font-size:11px}}
+#root .ride-connection{position:relative;flex:none;display:flex;align-items:center;gap:8px;box-sizing:border-box;width:100%;height:44px;min-height:44px;margin:0;padding:0 12px;border:0;border-bottom:1px solid #edd8bd;border-radius:0;background:#fff7ed;color:#713e12;font:500 12px/1.4 Manrope,sans-serif;box-shadow:none}
+#root .ride-connection>svg{flex:none}
+#root .ride-connection__text{min-width:0;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font:inherit;line-height:18px}
+#root .ride-connection button{display:flex;align-items:center;justify-content:center;gap:5px;flex:none;min-width:44px;height:44px;min-height:44px;margin:0;padding:0 6px;border:0;border-radius:0;background:transparent;color:var(--drive-red,#b51218);font:700 12px/18px Manrope,sans-serif;box-shadow:none}
+#root .ride-connection .ride-connection__dismiss{width:44px;padding:0}
+#root .ride-connection button:focus-visible{outline:2px solid var(--drive-red,#b51218);outline-offset:-3px}
+#root .ride-connection button:disabled{opacity:.5}
+#root .ride-connection[data-placement=auth]{position:fixed;z-index:950;top:82px;right:16px;width:min(430px,calc(100vw - 32px));border:1px solid #edd8bd;border-radius:10px}
+@media(max-width:899px){#root .ride-connection[data-placement=auth]{top:70px;inset-inline:12px;width:calc(100vw - 24px)}}

@@ -1,5 +1,6 @@
 /** Local visual acceptance only. Build with connect-src none; never publish. */
 import '../App.scss'
+import 'leaflet/dist/leaflet.css'
 import '../design/shadcn.generated.css'
 import '../design/rsale.css'
 import '../design/mobile.css'
@@ -28,7 +29,6 @@ import {MemoryRouter} from 'react-router-dom'
 import {HelmetProvider} from 'react-helmet-async'
 import runtimeStore from '../state'
 import Layout from '../components/Layout'
-import ConnectionBar from '../design/reliability/ConnectionBar'
 import {readHealthMiddleware} from '../design/reliability/readHealth'
 import {ActionTypes as OrdersActions} from '../state/orders/constants'
 import {EStatuses, EUserRoles} from '../types/types'
@@ -36,6 +36,8 @@ import {setLocalizationLanguageReader} from '../localization/runtime'
 import PassengerPhoneField from '../pages/Passenger/PassengerPhoneField'
 import {RideRequestActions} from '../design/RideRequestActions'
 import {bookingSubmissionError} from '../design/bookingSubmissionError'
+import {MapContainer} from 'react-leaflet'
+import RsaleBasemap from '../design/maps/RsaleBasemap'
 
 const language = {id:1, iso:'ru', native:'Русский'}
 const original = runtimeStore.getState()
@@ -48,7 +50,11 @@ function Fixture() {
   const [mode, setMode] = useState<'order'|'offer'|'vote'>('order')
   const [amount, setAmount] = useState('100'), [error, setError] = useState<string | null>(null)
   const [attempts, setAttempts] = useState(0), [reads, setReads] = useState(0), [uncertain, setUncertain] = useState(false)
-  return <><ConnectionBar/><Layout><div style={{padding:16,overflow:'auto',background:'#fff',height:'100%',color:'#222'}}>
+  if(new URLSearchParams(window.location.search).get('surface')==='driver-map')return <Layout><section className="driver" style={{display:'flex',flexDirection:'column',flex:1,minHeight:0}}>
+    <nav aria-label="Режим карты" style={{display:'flex',flex:'none',gap:8,padding:8,flexWrap:'wrap'}}><button>Кратко</button><button>Все</button><button>Карта</button><button onClick={()=>store.dispatch({type:OrdersActions.GET_ACTIVE_ORDERS_FAIL})}>Сбой обновления</button></nav>
+    <MapContainer className="map" center={[30.4206,-9.598]} zoom={10} zoomControl={false} style={{position:'relative',flex:1,width:'100%',minHeight:0}}><RsaleBasemap initialOverview/></MapContainer>
+  </section></Layout>
+  return <><Layout><div style={{padding:16,overflow:'auto',background:'#fff',height:'100%',color:'#222'}}>
     <h1 style={{fontSize:18}}>Приёмка замечаний Валентина</h1><p>Локальные ответы. Сеть запрещена CSP; реальных заказов нет.</p>
     <button onClick={() => store.dispatch({type:OrdersActions.GET_ACTIVE_ORDERS_FAIL})}>Показать сбой обновления</button>
     <div className="rs-ride-body"><PassengerPhoneField phone={phone} onChange={setPhone} iso="ru"/></div>

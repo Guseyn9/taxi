@@ -1,7 +1,7 @@
 import React,{act} from 'react'
 import {createRoot} from 'react-dom/client'
 import ConnectionBar,{refreshVisibleTrip} from './ConnectionBar'
-import {readHealthMiddleware} from './readHealth'
+import {readHealthMiddleware,readHealth} from './readHealth'
 import {EUserRoles} from '../../types/types'
 let mockState, mockDispatch=jest.fn()
 jest.mock('react-redux',()=>({useSelector:selector=>selector(mockState)}))
@@ -34,4 +34,23 @@ test('retry only requests reads, deduplicates a selected ID and never replays a 
  expect(mockDispatch.mock.calls.filter(([action])=>action.type==='orders/GET_ORDER_REQUEST')).toHaveLength(1)
  mockState.user.u_role=EUserRoles.Driver;mockDispatch.mockClear();refreshVisibleTrip()
  expect(mockDispatch.mock.calls.map(([action])=>action.type).some(type=>/CREATE|TAKE|SET_STATE/.test(type))).toBe(false)
+})
+test('dismissing the compact inline status preserves failure and does not reopen for repeated failures in the same outage',async()=>{
+ dispatch({type:'orders/GET_ACTIVE_ORDERS_FAIL'})
+ await act(async()=>root.render(<ConnectionBar/>))
+ expect(host.querySelector('aside').dataset.placement).toBe('inline')
+ const dismiss=host.querySelector('button[aria-label="Скрыть сообщение"]')
+ await act(async()=>dismiss.click())
+ expect(host.textContent).toBe('')
+ expect(readHealth().failed).toBe(true)
+ await act(async()=>dispatch({type:'orders/GET_ACTIVE_ORDERS_FAIL'}))
+ expect(host.textContent).toBe('')
+ await act(async()=>dispatch({type:'orders/GET_ACTIVE_ORDERS_SUCCESS'}))
+ await act(async()=>dispatch({type:'orders/GET_ACTIVE_ORDERS_FAIL'}))
+ expect(host.textContent).toContain('Не удалось обновить')
+})
+test('the global auth fallback does not duplicate a logged-in layout status',async()=>{
+ dispatch({type:'orders/GET_ACTIVE_ORDERS_FAIL'})
+ await act(async()=>root.render(<ConnectionBar authOnly/>))
+ expect(host.textContent).toBe('')
 })

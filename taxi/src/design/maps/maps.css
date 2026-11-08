@@ -42,5 +42,6 @@
 .test-map-area select{width:100%;min-height:44px;padding:8px;border:1px solid #ddd;border-radius:10px;background:white;color:#111}
 .map-route-feedback{position:absolute;top:64px;left:12px;right:12px;z-index:850;max-width:340px;padding:12px 14px;background:white;border:1px solid #c75750;border-radius:12px;color:#5d211f;font:14px/1.4 Manrope,sans-serif;box-shadow:0 4px 16px #0002}
 .map-route-feedback p{margin:0 0 8px}.map-route-feedback button{min-height:44px;padding:8px 16px;border:1px solid currentColor;border-radius:8px;background:white;color:inherit;font:inherit}.map-route-feedback button:focus-visible{outline:2px solid #a52c26;outline-offset:2px}
-@media(max-width:899px){#root .passenger .rs-map-controls .rs-map-zoom{display:none!important}#root .rs-map-center-actions{top:12px;left:12px}}
+@media(max-width:899px),(hover:none) and (pointer:coarse){#root .rs-map-controls .rs-map-zoom{display:none!important}}
+@media(max-width:899px){#root .rs-map-center-actions{top:12px;left:12px}}
 @media(min-width:900px){#root .passenger .rs-map-center-actions{left:auto;right:72px}}
