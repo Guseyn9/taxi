@@ -1,3 +1,4 @@
+import { fsmSessionHeaders, fsmSocketAuthMessage } from './fsmSessionAuth'
 import type { Unsubscribe } from '../interaction-contract'
 import {
   DomainApiSnapshotProvider,
@@ -27,6 +28,8 @@ export interface FsmOrderTransportConfig {
   readonly apiUrl: string
   readonly orderId: number | string
   readonly apiToken?: string
+  readonly useSessionAuth?: boolean
+  readonly useCoreOrderIds?: boolean
   readonly webSocketUrl?: string
   readonly webSocketTokenQueryParameter?: string
   readonly recoveryPollIntervalMs?: number
@@ -174,6 +177,10 @@ export class FsmOrderSnapshotTransport implements DomainSnapshotTransport {
       return () => undefined
     }
 
+    socket.onopen = () => {
+      if (!this.config.useSessionAuth) return
+      try { socket.send(fsmSocketAuthMessage()) } catch (error) { reportDisconnect(error); socket.close() }
+    }
     socket.onmessage = event => {
       try {
         const message = parseRealtimeMessage(event.data)
@@ -279,6 +286,8 @@ export class FsmOrderSnapshotTransport implements DomainSnapshotTransport {
 
   private queryUrl(): string {
     const entityId = encodeURIComponent(this.config.orderId)
+    if (this.config.useCoreOrderIds)
+      return `${trimTrailingSlash(this.config.apiUrl)}/api/taxi/core-orders/${entityId}`
     return `${trimTrailingSlash(this.config.apiUrl)}/api/realtime/snapshot/taxi/order/${entityId}`
   }
 
@@ -287,16 +296,18 @@ export class FsmOrderSnapshotTransport implements DomainSnapshotTransport {
       this.config.webSocketUrl ?? toWebSocketUrl(this.config.apiUrl),
     )
     const url = new URL(
-      `${baseUrl}/api/realtime/ws/taxi/order/${encodeURIComponent(this.config.orderId)}`,
+      `${baseUrl}/api/realtime/ws/taxi/${this.config.useCoreOrderIds ? 'core-order' : 'order'}/${encodeURIComponent(this.config.orderId)}`,
     )
-    if (this.config.apiToken && this.config.webSocketTokenQueryParameter)
+    if (!this.config.useSessionAuth && this.config.apiToken && this.config.webSocketTokenQueryParameter)
       url.searchParams.set(this.config.webSocketTokenQueryParameter, this.config.apiToken)
     return url.toString()
   }
 
   private httpHeaders(): HeadersInit {
     const headers: Record<string, string> = { Accept: 'application/json' }
-    if (this.config.apiToken)
+    if (this.config.useSessionAuth)
+      Object.assign(headers, fsmSessionHeaders())
+    else if (this.config.apiToken)
       headers.Authorization = `Bearer ${this.config.apiToken}`
     return headers
   }
@@ -313,6 +324,8 @@ export function createConfiguredFsmOrderSnapshotProvider(
   return new DomainApiSnapshotProvider(new FsmOrderSnapshotTransport({
     apiUrl,
     orderId,
+    useSessionAuth: true,
+    useCoreOrderIds: true,
     apiToken: env[FSM_ORDER_ENV.ApiToken]?.trim() || undefined,
     webSocketUrl: env[FSM_ORDER_ENV.WebSocketUrl]?.trim() || undefined,
     webSocketTokenQueryParameter:

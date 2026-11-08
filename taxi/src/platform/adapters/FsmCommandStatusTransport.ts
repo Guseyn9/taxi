@@ -1,3 +1,4 @@
+import { fsmSessionHeaders } from './fsmSessionAuth'
 import { BackendInteractionError } from './backendError'
 import { withHttpDeadline } from './httpDeadline'
 
@@ -26,6 +27,7 @@ export interface CommandStatusTransport {
 export interface FsmCommandStatusConfig {
   readonly apiUrl: string
   readonly apiToken?: string
+  readonly useSessionAuth?: boolean
 }
 
 export interface FsmCommandStatusDependencies {
@@ -92,7 +94,9 @@ export class FsmCommandStatusTransport implements CommandStatusTransport {
 
   private headers(): HeadersInit {
     const headers: Record<string, string> = { Accept: 'application/json' }
-    if (this.config.apiToken)
+    if (this.config.useSessionAuth)
+      Object.assign(headers, fsmSessionHeaders())
+    else if (this.config.apiToken)
       headers.Authorization = `Bearer ${this.config.apiToken}`
     return headers
   }
@@ -108,6 +112,7 @@ export function createConfiguredFsmCommandStatusTransport(
 
   return new FsmCommandStatusTransport({
     apiUrl,
+    useSessionAuth: true,
     apiToken: env[FSM_COMMAND_STATUS_ENV.ApiToken]?.trim() || undefined,
   })
 }

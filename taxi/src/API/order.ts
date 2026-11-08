@@ -37,6 +37,7 @@ import {
 } from '../tools/emulatorMode'
 import { setPassengerConfirmedChoice } from '../tools/driverOffer'
 import { recordOrderInteraction } from '../tools/orderInteractionLog'
+import { configuredFsmPassengerBridge, fsmPassengerEnabled } from '../platform/adapters/FsmPassengerBridge'
 
 function normalizeId(value: unknown) {
   if (value === null || value === undefined || value === '') return ''
@@ -160,6 +161,13 @@ async function _postDrive(
   const converted = reverseConvertOrder(orderData)
 
   const postDriveRequest = async() => {
+    if (fsmPassengerEnabled('order_registered')) {
+      const body = JSON.parse(String(makeDrivePostParams(formData, converted).get('data')))
+      const mode = data.b_voting ? 'VOTE' : data.b_options?.offer_mode === 'OFFER' ? 'OFFER' : 'DIRECT'
+      const id = await configuredFsmPassengerBridge().create(body, mode)
+      const created = await _getOrder({ formData: cloneFormData(formData) } as IApiMethodArguments, id).catch(() => null)
+      return { data: { data: { b_id: id, b_driver_code: created?.b_driver_code } } }
+    }
     const response = await axios.post(`${Config.API_URL}/drive`, makeDrivePostParams(formData, converted))
     if (response.data.status === 'error')
       throw response.data
@@ -192,6 +200,10 @@ const _confirmDrive = async(args: IApiMethodArguments, id: IOrder['b_id']) => {
   const before = await _getOrder({formData:cloneFormData(args.formData)} as IApiMethodArguments, id)
   if (before?.b_confirm_state === true) return {code:'200',status:'success',reconciled:true}
   if (before?.b_confirm_state !== false) throw new Error('Order confirmation state is unavailable')
+  if (fsmPassengerEnabled('vote_requested')) {
+    await configuredFsmPassengerBridge().command(String(id), 'vote_requested')
+    return {code:'200', status:'success'}
+  }
   const params = cloneFormData(args.formData)
   addToFormData(params, {action:EBookingActions.SetConfirmState})
   try {
@@ -216,6 +228,8 @@ const _cancelDrive = (
   id: IOrder['b_id'],
   reason?: IOrder['b_cancel_reason'],
 ) => {
+  if (fsmPassengerEnabled('cancel_requested') && userSelectors.user(store.getState())?.u_role === EUserRoles.Client)
+    return configuredFsmPassengerBridge().command(String(id), 'cancel_requested', { reason: reason ?? '' }).then(() => ({code:'200',status:'success'}))
   addToFormData(formData, {
     action: EBookingActions.SetCancelState,
     reason,
@@ -663,6 +677,16 @@ const _chooseCandidate = (
   const userID = userSelectors.user(store.getState())?.u_id
   if (!userID) return Promise.reject({ message: t(TRANSLATION.WRONG_USER_ROLE) })
 
+  if (fsmPassengerEnabled()) {
+    const mode = store.getState().orders.orders.get(id)?.value?.b_options?.offer_mode
+    const intent = mode === 'OFFER' ? 'offer_selected' : 'candidate_selected'
+    if (fsmPassengerEnabled(intent)) return configuredFsmPassengerBridge().command(String(id), intent, {driverUserId: user}).then(() => {
+      setPassengerConfirmedChoice(id, user)
+      notifyLocalDriverEmulatorChoice(id, user)
+      return {code:'200',status:'success'}
+    })
+  }
+
   addToFormData(formData, {
     action: EBookingActions.SetPerformer,
     performer: '1',
@@ -687,6 +711,9 @@ const _releaseCandidateChoice = (
 ): Promise<any> => {
   const userID = userSelectors.user(store.getState())?.u_id
   if (!userID) return Promise.reject({ message: t(TRANSLATION.WRONG_USER_ROLE) })
+
+  if (fsmPassengerEnabled('candidate_released'))
+    return configuredFsmPassengerBridge().command(String(id), 'candidate_released').then(() => ({code:'200',status:'success'}))
 
   addToFormData(formData, {
     action: EBookingActions.SetPerformer,

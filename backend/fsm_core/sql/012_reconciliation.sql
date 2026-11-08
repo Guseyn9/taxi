@@ -1,0 +1,3 @@
+SET @present := (SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='core_order_mapping' AND COLUMN_NAME='reconciled_at');
+SET @ddl := IF(@present=0,'ALTER TABLE core_order_mapping ADD COLUMN reconciled_at DATETIME NULL','SELECT 1');
+PREPARE stmt FROM @ddl; EXECUTE stmt; DEALLOCATE PREPARE stmt;

@@ -1,0 +1,16 @@
+name: taxi-fsm-sync
+services:
+  mysql:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: local-fsm-only
+      MYSQL_DATABASE: taxi_fsm
+    ports: ['127.0.0.1:13318:3306']
+    healthcheck:
+      test: [CMD, mysqladmin, ping, -h, 127.0.0.1, -plocal-fsm-only]
+      interval: 2s
+      timeout: 2s
+      retries: 60
+  redis:
+    image: redis:7-alpine
+    ports: ['127.0.0.1:16318:6379']

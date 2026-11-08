@@ -1,3 +1,4 @@
+import { fsmSessionHeaders, fsmSocketAuthMessage } from './fsmSessionAuth'
 import type { Unsubscribe } from '../interaction-contract'
 import {
   DomainApiSnapshotProvider,
@@ -20,6 +21,7 @@ import {
 import { BackendInteractionError } from './backendError'
 import { withHttpDeadline } from './httpDeadline'
 import { subscribeRecoveryPolling } from './recoveryPolling'
+import { convertOrder, convertDriver } from '../../tools/convert'
 
 export interface FsmDriverOrderCard {
   readonly orderId: number | string
@@ -30,6 +32,8 @@ export interface FsmDriverOrderCard {
   readonly description?: string | null
   readonly price?: unknown
   readonly availableActions?: readonly string[]
+  readonly booking?: Readonly<Record<string, unknown>>
+  readonly ownDriver?: Readonly<Record<string, unknown>>
 }
 
 export interface FsmDriverSnapshot {
@@ -50,6 +54,8 @@ export interface FsmDriverTransportConfig {
   readonly apiUrl: string
   readonly driverUserId: number | string
   readonly apiToken?: string
+  readonly useSessionAuth?: boolean
+  readonly useCoreOrderIds?: boolean
   readonly webSocketUrl?: string
   readonly webSocketTokenQueryParameter?: string
   readonly recoveryPollIntervalMs?: number
@@ -203,6 +209,10 @@ export class FsmDriverSnapshotTransport implements DomainSnapshotTransport {
       return () => undefined
     }
 
+    socket.onopen = () => {
+      if (!this.config.useSessionAuth) return
+      try { socket.send(fsmSocketAuthMessage()) } catch (error) { reportDisconnect(error); socket.close() }
+    }
     socket.onmessage = event => {
       try {
         const message = parseRealtimeMessage(event.data)
@@ -285,9 +295,9 @@ export class FsmDriverSnapshotTransport implements DomainSnapshotTransport {
     revision: number,
   ): PlatformSnapshotInput {
     const driverUserId = String(snapshot.driverUserId || this.config.driverUserId)
-    const readyOrders = mapOrderCards(snapshot.driver.readyOrders, driverUserId)
-    const activeOrders = mapOrderCards(snapshot.driver.activeOrders, driverUserId)
-    const historyOrders = mapOrderCards(snapshot.driver.historyOrders, driverUserId)
+    const readyOrders = mapOrderCards(snapshot.driver.readyOrders, driverUserId, this.config.useCoreOrderIds)
+    const activeOrders = mapOrderCards(snapshot.driver.activeOrders, driverUserId, this.config.useCoreOrderIds)
+    const historyOrders = mapOrderCards(snapshot.driver.historyOrders, driverUserId, this.config.useCoreOrderIds)
 
     return {
       revision,
@@ -299,7 +309,7 @@ export class FsmDriverSnapshotTransport implements DomainSnapshotTransport {
           activeOrders,
           historyOrders,
           currentTrip: snapshot.driver.currentTrip ?
-            mapOrderCard(snapshot.driver.currentTrip, driverUserId) :
+            mapOrderCard(snapshot.driver.currentTrip, driverUserId, this.config.useCoreOrderIds) :
             null,
         },
         domainDriver: {
@@ -316,6 +326,8 @@ export class FsmDriverSnapshotTransport implements DomainSnapshotTransport {
 
   private queryUrl(): string {
     const driverUserId = encodeURIComponent(String(this.config.driverUserId))
+    if (this.config.useCoreOrderIds)
+      return `${trimTrailingSlash(this.config.apiUrl)}/api/taxi/drivers/${driverUserId}`
     return `${trimTrailingSlash(this.config.apiUrl)}/api/realtime/snapshot/taxi/driver/${driverUserId}`
   }
 
@@ -326,14 +338,16 @@ export class FsmDriverSnapshotTransport implements DomainSnapshotTransport {
     const url = new URL(
       `${baseUrl}/api/realtime/ws/taxi/driver/${encodeURIComponent(String(this.config.driverUserId))}`,
     )
-    if (this.config.apiToken && this.config.webSocketTokenQueryParameter)
+    if (!this.config.useSessionAuth && this.config.apiToken && this.config.webSocketTokenQueryParameter)
       url.searchParams.set(this.config.webSocketTokenQueryParameter, this.config.apiToken)
     return url.toString()
   }
 
   private httpHeaders(): HeadersInit {
     const headers: Record<string, string> = { Accept: 'application/json' }
-    if (this.config.apiToken)
+    if (this.config.useSessionAuth)
+      Object.assign(headers, fsmSessionHeaders())
+    else if (this.config.apiToken)
       headers.Authorization = `Bearer ${this.config.apiToken}`
     return headers
   }
@@ -353,6 +367,8 @@ export function createConfiguredFsmDriverSnapshotProvider(
   return new DomainApiSnapshotProvider(new FsmDriverSnapshotTransport({
     apiUrl,
     driverUserId: resolvedDriverUserId,
+    useSessionAuth: true,
+    useCoreOrderIds: true,
     apiToken: env[FSM_DRIVER_ENV.ApiToken]?.trim() || undefined,
     webSocketUrl: env[FSM_DRIVER_ENV.WebSocketUrl]?.trim() || undefined,
     webSocketTokenQueryParameter:
@@ -366,14 +382,16 @@ export function createConfiguredFsmDriverSnapshotProvider(
 function mapOrderCards(
   cards: readonly FsmDriverOrderCard[] | undefined,
   driverUserId: string,
+  useCoreIds = false,
 ): readonly IOrder[] {
-  return (cards ?? []).map(card => mapOrderCard(card, driverUserId))
+  return (cards ?? []).map(card => mapOrderCard(card, driverUserId, useCoreIds))
 }
 
-function mapOrderCard(card: FsmDriverOrderCard, driverUserId: string): IOrder {
+function mapOrderCard(card: FsmDriverOrderCard, driverUserId: string, useCoreIds = false): IOrder {
   const price = getNumericPrice(card.price)
   return {
-    b_id: String(card.orderId),
+    ...(card.booking && typeof card.booking === 'object' ? convertOrder(card.booking) : {}),
+    b_id: String(useCoreIds ? card.coreOrderId ?? card.orderId : card.orderId),
     b_state: mapBookingState(card),
     b_cars_count: card.mode === 'OFFER' ? 0 : 1,
     b_options: {
@@ -387,6 +405,7 @@ function mapOrderCard(card: FsmDriverOrderCard, driverUserId: string): IOrder {
     b_price_estimate: price,
     b_voting: card.mode === 'VOTE',
     drivers: [{
+      ...(card.ownDriver ? convertDriver(card.ownDriver) : {}),
       u_id: driverUserId,
       c_state: mapDriverState(card.state),
     } as any],

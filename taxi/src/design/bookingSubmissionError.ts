@@ -35,16 +35,17 @@ export function bookingErrorCopy(iso?: string) {
 export function bookingSubmissionError(error: unknown, mode: 'order'|'offer'|'vote', iso?: string) {
   const copy = bookingErrorCopy(iso), value = error as any
   const message = String(value?.message || '').toLowerCase()
-  if (/unauthorized|auth failed/.test(message)) return copy.auth
+  if (/unauthorized|auth failed/.test(message) || ['FSM_COMMAND_HTTP_401','AUTHORIZATION_FAILED'].includes(value?.code)) return copy.auth
   if (/point from select field/.test(message)) return copy.point
   const details = value?.response?.data || value?.details || value
-  const rejected = details?.status === 'error' || value?.code === 'BACKEND_RESPONSE_ERROR' ||
+  const rejected = ['CORE_REJECTED','INVALID_PARAMETERS','INVALID_TRANSITION','FSM_COMMAND_HTTP_400','FSM_COMMAND_HTTP_403'].includes(value?.code) || details?.status === 'error' || value?.code === 'BACKEND_RESPONSE_ERROR' ||
     (details?.code != null && /^4\d\d$/.test(String(details.code)))
   if (isAmbiguousMutationError(error) || !rejected) return copy.unknown
   return mode === 'offer' ? copy.offer : copy.order
 }
 export function bookingSubmissionUnconfirmed(error: unknown): boolean {
   const value = error as any, message = String(value?.message || '').toLowerCase()
+  if (['CORE_REJECTED','INVALID_PARAMETERS','INVALID_TRANSITION','AUTHORIZATION_FAILED','FSM_COMMAND_HTTP_400','FSM_COMMAND_HTTP_401','FSM_COMMAND_HTTP_403'].includes(value?.code)) return false
   if (/unauthorized|auth failed|point from select field/.test(message)) return false
   const details = value?.response?.data || value?.details || value
   if (isAmbiguousMutationError(error)) return true

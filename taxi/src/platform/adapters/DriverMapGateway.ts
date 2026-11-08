@@ -226,7 +226,7 @@ export class DriverMapGateway {
   }
 
   private dispatch<TPayload>(type: string, payload: TPayload): Promise<void> {
-    const lifecycle = Boolean(this.commandTransport && isDriverLifecycleAction(type))
+    const lifecycle = this.canUseFsm(type)
     const orderId = lifecycle ? String((payload as unknown as DriverOrderActionPayload).orderId) : ''
     let scope: CommandRecoveryScope | null = null
     if (lifecycle) {
@@ -250,7 +250,7 @@ export class DriverMapGateway {
     }
     if (lifecycle) this.actionScopes.set(action.metadata!.correlationId!, scope)
     this.inFlight += 1
-    const result = this.commandTransport && isDriverLifecycleAction(type) ?
+    const result = lifecycle ?
       this.dispatchServerLifecycle(action, payload as unknown as DriverOrderActionPayload) :
       this.dispatchAndWaitForEvent<void>(action, this.successEventFor(type), () => undefined)
     return result.finally(() => {
@@ -384,7 +384,7 @@ export class DriverMapGateway {
       return
 
     try {
-      if (this.commandTransport && isDriverLifecycleAction(action.type)) {
+      if (this.commandTransport && this.canUseFsm(action.type)) {
         const payload = action.payload as DriverOrderActionPayload
         const commandPayload = action.type === DRIVER_MAP_ACTIONS.ConfirmBoarding ?
           { boardingCode: payload.boardingCode ?? '' } :
@@ -501,6 +501,10 @@ export class DriverMapGateway {
     }
   }
 
+  private canUseFsm(type: string): boolean {
+    return Boolean(this.commandTransport && isDriverLifecycleAction(type) && this.commandTransport.supports?.(serverIntentFor(type)) !== false)
+  }
+
   private publish<TPayload>(
     action: InteractionAction,
     type: string,
@@ -544,7 +548,7 @@ function createDefaultCompletionWaiter(
 }
 
 function serverIntentFor(actionType: string): string {
-  return actionType === DRIVER_MAP_ACTIONS.Cancel ? 'cancel_requested' : actionType
+  return actionType === DRIVER_MAP_ACTIONS.Cancel ? 'driver_cancel_requested' : actionType
 }
 
 function createCorrelationId(): string {

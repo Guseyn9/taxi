@@ -1,0 +1,465 @@
+{
+  "archive": "backend.zip",
+  "sha256": "de426a209746e02a793af702ad1ffd80ecf4f65f15b9d9d8ea724c4bc77a0dfa",
+  "planSource": "Ivan.zip:backend/docs/fsm-external-sync-plan.md",
+  "frontendBase": "bfc6cb1e929fe793dd7dd0acfc5936f52cb065f2",
+  "excluded": [
+    "Windows .venv",
+    "__pycache__",
+    "courier SQL data dump"
+  ],
+  "originalFiles": [
+    {
+      "path": "database/base_taxi_vote_schema.sql",
+      "sha256": "a8c254d09fe91ec037510a1334d3adcea1c5724988f530fbf3ac85ddec1edd36"
+    },
+    {
+      "path": "database/fsm_perform_action_reference.txt",
+      "sha256": "07b9999c7f234454462d07f05f33163205c253840d0d8f1922be65177d0a29ca"
+    },
+    {
+      "path": "docs/fsm-platform-lifecycle.md",
+      "sha256": "e316705ca21009a3673789796444034277c74fb8e90a3dc21423aa9ea1df1e63"
+    },
+    {
+      "path": "docs/fsm-platform-stage3.md",
+      "sha256": "328f8e488dc735d22d58c646de248ed23b6defcbc864a7ef3185b724824c0bb4"
+    },
+    {
+      "path": "docs/fsm-platform-stage4.md",
+      "sha256": "688040144e0536a6e8762f6b0168d786e32e2179164045cbaf0287b76aa600e9"
+    },
+    {
+      "path": "docs/universal-fsm-platform-specification.md",
+      "sha256": "96a6bf5f808994cf92153d7b5b54d1700ae154bfc2e946a7457cb58198f43e2f"
+    },
+    {
+      "path": "domains/courier/actions.py",
+      "sha256": "f15f20214ada54a5a3cd75f4adfe3b7000b72a98643236b03c526d547f64c348"
+    },
+    {
+      "path": "domains/courier/available_actions.py",
+      "sha256": "5b8836fc0ea907b2480f04336bd62c8d50bf9bea3a1538b3730af0bc65a27cc4"
+    },
+    {
+      "path": "domains/courier/context.py",
+      "sha256": "aa7aca919701acfb7080545b94cdc40c624ec52e3d80a2ca45b0c78b857872e2"
+    },
+    {
+      "path": "domains/courier/effects.py",
+      "sha256": "a024a6a143ef8891f4e69dde968ce5c0787981339a6b6682219dc6ca10de3e8b"
+    },
+    {
+      "path": "domains/courier/fsm_spec.py",
+      "sha256": "202fd988e9dc1939ada64c58a8c461ef6da10271cab5f84f59ae350159d7dde9"
+    },
+    {
+      "path": "domains/courier/guards.py",
+      "sha256": "8a59824b8db0f4399850e08112b5031543972883ad2a3ec3313a108e292747ee"
+    },
+    {
+      "path": "domains/courier/models.py",
+      "sha256": "28964b393b371b7adf18ffa2865df4bcb393c4f0404d73ab6a688d5b25d79535"
+    },
+    {
+      "path": "domains/courier/processes.py",
+      "sha256": "c9930394ccbf1bdddaef4367a95886f5e665b91712f492e92ce1c56b1cc5594b"
+    },
+    {
+      "path": "domains/courier/query_api.py",
+      "sha256": "fd1fa41122035dd744b98bb8866636238336ff5d88c4cf365eef6865c11f229b"
+    },
+    {
+      "path": "domains/courier/README.md",
+      "sha256": "63bf4e8d73fcabcddbb2d8326b62a86ac94aa0547e7ab3c725de8e81e68020dd"
+    },
+    {
+      "path": "domains/courier/repositories.py",
+      "sha256": "2628ff2ee045e18416dc16a63954c0990cd1bea9e0ddc931ffdf904464577999"
+    },
+    {
+      "path": "domains/courier/security.py",
+      "sha256": "98056c61e703e4094e024e8bd141f3738d94304c55dd5c248e1d90a747ee5be0"
+    },
+    {
+      "path": "domains/courier/sql/courier_fsm_seed.sql",
+      "sha256": "d9f57a1d12260f9b5a7656585ae9978b0b33ebd342252c8de3416a6779f26534"
+    },
+    {
+      "path": "domains/courier/__init__.py",
+      "sha256": "4f589bf1eb912a5d9dbf14733201bf9ed5f79089502967749b7bed95b9def57b"
+    },
+    {
+      "path": "domains/taxi/actions.py",
+      "sha256": "ce02af289fe21685ef9bd6d22f50495721ad27814c4862989cfa36d7f8dbf92b"
+    },
+    {
+      "path": "domains/taxi/available_actions.py",
+      "sha256": "31206f784043bf2016abf3ad3e97d18f81cf0aeee4f32dfcf36dd8c73be8f6cf"
+    },
+    {
+      "path": "domains/taxi/context.py",
+      "sha256": "eeffe5fbd4d183b8b78cdd1ba6c1a10036bcee1c4427958e3fa07d42963d0daf"
+    },
+    {
+      "path": "domains/taxi/core_adapter.py",
+      "sha256": "2687dccf5a30c5189cae0f3b8e3b41dd8b20f797d84c036a902c2433c9364c40"
+    },
+    {
+      "path": "domains/taxi/effects.py",
+      "sha256": "79534b402b27924e7551b20a03a142213199ab01c6dc3961ab72975d0b3d6b10"
+    },
+    {
+      "path": "domains/taxi/engine.py",
+      "sha256": "0beb25ba96eba954ef4a963c333a7cfb0f4a32f2026683b425e59ff518117443"
+    },
+    {
+      "path": "domains/taxi/fsm_spec.py",
+      "sha256": "5b123c3d9f50daa03df5ff1b1a07046dbba2c1b08177d63feedf78c093250c8e"
+    },
+    {
+      "path": "domains/taxi/guards.py",
+      "sha256": "e07002280eeef02866cd5f655d5054ffa14346b3d2ec909130e7d3fb054a45bb"
+    },
+    {
+      "path": "domains/taxi/intents.py",
+      "sha256": "e3678386f49c030f23f972e571b8727a9ad0b646ff3c1ae462cb92fb507a40a8"
+    },
+    {
+      "path": "domains/taxi/models.py",
+      "sha256": "6b84d11a665120b0f4b70bd0a211bbabad95184d5c4f6a02622a90e0449c209c"
+    },
+    {
+      "path": "domains/taxi/processes.py",
+      "sha256": "9b013f73b96833d8395f38deeba6e3d6513fdc6752b91c9c5e9b774862430a1b"
+    },
+    {
+      "path": "domains/taxi/query_api.py",
+      "sha256": "c1a08fefc1bb513fd8188b751f323f2104733b331287e26e59310f0b96962632"
+    },
+    {
+      "path": "domains/taxi/README.md",
+      "sha256": "96fcc23546c4dfd64503fbd27e1775d373cad36084377befdab90b727b92d71b"
+    },
+    {
+      "path": "domains/taxi/repositories.py",
+      "sha256": "5bea94ac89b584bbca4b1bb7bbb9f349c0e556943a002955ffc72c1a1f8f6020"
+    },
+    {
+      "path": "domains/taxi/security.py",
+      "sha256": "9c06b9826e406a558f800ddb71f0ec12f6a7dfcb507e9a46640e32bab8c533e8"
+    },
+    {
+      "path": "domains/taxi/sql/taxi_order_fsm_seed.sql",
+      "sha256": "a12a6de1b1a8e00a3be9e89890494a7885cef90b922f848987146e8cf11e5d42"
+    },
+    {
+      "path": "domains/taxi/__init__.py",
+      "sha256": "3ef417a656c08af4aa5b0e788219d2a1bb09b4f6981adfb986778a6ac48b6abf"
+    },
+    {
+      "path": "domains/__init__.py",
+      "sha256": "ab8ff743cdd293b42106bf529e07151538f22501873cb1c7ccfe184d859349d6"
+    },
+    {
+      "path": "frontend-contract/DriverMapGateway.ts",
+      "sha256": "a9f65b8907629782d8a4c597a68f5dc744141d43072991a893d05b4036a5e559"
+    },
+    {
+      "path": "frontend-contract/FsmOrderSnapshotTransport.ts",
+      "sha256": "7ba96ad5cc655c2b5b5ae96190dbccdb39f2c0bc5a75efc0d7b4f5f32763d822"
+    },
+    {
+      "path": "frontend-contract/PLATFORM_INTERFACE_RUNTIME.md",
+      "sha256": "ab309489296b0fd786969974d5b3bf8f0d0c043abfebafff354e59d1742467ef"
+    },
+    {
+      "path": "frontend-contract/TASK_PI_001_QUERY_REALTIME.md",
+      "sha256": "1f32c0eb623627f78389b7df97efb03160cab343990f4c357a025fc552b73a73"
+    },
+    {
+      "path": "fsm/errors.py",
+      "sha256": "b8b33b082a98ef9b626c1674244e3afed410b7fff2b1c84433d65ee474efc8dd"
+    },
+    {
+      "path": "fsm/procedure.py",
+      "sha256": "395bc9f79ca911c7136f65c81685dd7277445f3e115c602d1f545f65afaf6c52"
+    },
+    {
+      "path": "fsm/__init__.py",
+      "sha256": "beec8548c2d4ba245d4153de0172f776247c5de9d58164410a16b297f91f5b48"
+    },
+    {
+      "path": "fsm_api.py",
+      "sha256": "14a36bcc105265e0b219eabdd9306e625258ebaf142f4e40694f0fe7df62ef76"
+    },
+    {
+      "path": "fsm_core/command_api.py",
+      "sha256": "e1daf452b90d2695c9a0a91218d646364f92cee60b097625902eddcb0962f2be"
+    },
+    {
+      "path": "fsm_core/command_completion.py",
+      "sha256": "2fd5518fc3028b3924be812a1e88c0e5476e98088a5677e9e7754b51291f1340"
+    },
+    {
+      "path": "fsm_core/command_idempotency.py",
+      "sha256": "b15e2563a39cb7cee6a59f0a5e8729e69c038f1c3b20107c64656aa80574aaa2"
+    },
+    {
+      "path": "fsm_core/command_service.py",
+      "sha256": "7d5e5436b60d1c4e59f9afbb78645516205b90c45dfff95140c2a34f4d0d7865"
+    },
+    {
+      "path": "fsm_core/database.py",
+      "sha256": "2285cb50b0c39641263a9e5598dbf2d147259fdfbc94a218847b6531a0f1ce42"
+    },
+    {
+      "path": "fsm_core/engine.py",
+      "sha256": "400a9e1d7c7d1fa4c999c69ce79120b18271b61d92d23ffbb3e433f4f1cab3f5"
+    },
+    {
+      "path": "fsm_core/errors.py",
+      "sha256": "1940435db51eae9ed4a05604d92816147235e00aad34bc3eb5e94f7294e4a78e"
+    },
+    {
+      "path": "fsm_core/error_codes.py",
+      "sha256": "68662c4b36ded376d1bf7490dbc4e80803e376ebd8581b5fef8b6db833ad5bd1"
+    },
+    {
+      "path": "fsm_core/outbox.py",
+      "sha256": "72d4d238e9805df23665a1933e8fef8427882280dabdd8e7efa6e45c9f91a11d"
+    },
+    {
+      "path": "fsm_core/outbox_service.py",
+      "sha256": "6d854021ec82be9e21c4359ad2d43c85ab4f0e3d90c84269ea8675de26478649"
+    },
+    {
+      "path": "fsm_core/README.md",
+      "sha256": "4c59af78f3e07721a59e9cf7cd00c5b746653977e4d0eabcb166854c735ba552"
+    },
+    {
+      "path": "fsm_core/realtime.py",
+      "sha256": "bfa3e6bdfaf4c4d615c11bc665647ddff5d79f61953e729ee71912648d71c4dd"
+    },
+    {
+      "path": "fsm_core/realtime_api.py",
+      "sha256": "125dfcb64e819d6fb852a06d995f7b9e4fe188dc86a845ea574974bc19c260b9"
+    },
+    {
+      "path": "fsm_core/registry.py",
+      "sha256": "0ae9eeb2ed5ca64b276fdf84d1761b2923380d3a97b9f499a92b36d7e1cda2be"
+    },
+    {
+      "path": "fsm_core/repositories.py",
+      "sha256": "49718589d4b82a0db1715c3999aec54a0789cf4adcba6e9b9eb12d4f0d279594"
+    },
+    {
+      "path": "fsm_core/security.py",
+      "sha256": "fd546cef9981f91e68b4934e18bb94638539d11b1559a983644451057dde83bd"
+    },
+    {
+      "path": "fsm_core/serialization.py",
+      "sha256": "da6ddc1c7501eb507056f12a7531035dc593b4dfe1e4a0c552cfde4fe9776dd4"
+    },
+    {
+      "path": "fsm_core/snapshots.py",
+      "sha256": "989cebfc0860b144b238a50b86dbd3c3ddd342b7165475786159dc0d6ec768d1"
+    },
+    {
+      "path": "fsm_core/sql/002_fsm_instance_worker.sql",
+      "sha256": "b17068b02d6f1080b868d3877fe1543ff1a65de6a276a1f822df56adf67161e4"
+    },
+    {
+      "path": "fsm_core/sql/003_fsm_platform.sql",
+      "sha256": "2ef78de7ab0b4ad951bb4452bc49e217c0d2e544817b8a1258106c28f95c488c"
+    },
+    {
+      "path": "fsm_core/sql/004_scope_domain_transitions.sql",
+      "sha256": "9e65bb5b047a97457ecd20d1d58d49a0bbfadff3e1eb2030b10917f1f6cb987c"
+    },
+    {
+      "path": "fsm_core/sql/005_outbox_realtime.sql",
+      "sha256": "9e727054e498e2c7c9c518d71220feb06f8bfb69e299fab6aef011abcaa5e841"
+    },
+    {
+      "path": "fsm_core/sql/006_command_api.sql",
+      "sha256": "10068abe878d11bd6e0ffc7902b192df5b06985db5072a16e6754e30982419d3"
+    },
+    {
+      "path": "fsm_core/sql/007_add_status_to_command_idempotency.sql",
+      "sha256": "5ffd6c39d75ae08f84d4e96037b8d32b3926a61d595073a156008b0db1dc5889"
+    },
+    {
+      "path": "fsm_core/sql/008_outbox_command_completion.sql",
+      "sha256": "2ebda080a94a6db095614a07b9968f13e8abc08a7e029f0c1dfacc73ff826d89"
+    },
+    {
+      "path": "fsm_core/sql/install_fsm_platform.sql",
+      "sha256": "543891586904271cf0fbd65ef860ed2cb3fc95a84b259f7db93a3a46df377c9d"
+    },
+    {
+      "path": "fsm_core/timers.py",
+      "sha256": "3f7266f1dc70ab54749e471c4f011122561f6a8004fa22a88dd8fd38f34064d8"
+    },
+    {
+      "path": "fsm_core/transition_runner.py",
+      "sha256": "af73e72f5c319c9cb5458439f260906acde1d233e867f138a0039157f9121bac"
+    },
+    {
+      "path": "fsm_core/types.py",
+      "sha256": "e6433b7b608ab447bdc88298a498b05b1fa99a014ce74b2bd7fb27755fd20109"
+    },
+    {
+      "path": "fsm_core/workers.py",
+      "sha256": "ccb7baa2e1f40ad9f1e5a05784d47d898f0cab66fd5a09be3a6b938c8929d133"
+    },
+    {
+      "path": "fsm_core/worker_service.py",
+      "sha256": "eb5313abdc42c3a3cf487b7f5d0d8012de1a5077e2d264b513155f91f808ee54"
+    },
+    {
+      "path": "fsm_core/__init__.py",
+      "sha256": "4023715a147468ccfbdf5b842b7783e269183de59c7adca27ddb9b4cb4329092"
+    },
+    {
+      "path": "fsm_worker.py",
+      "sha256": "83fe976be8c6d682f1f8c173b88eb63197e44529eeffc46397cf98a918f899a2"
+    },
+    {
+      "path": "MANIFEST.sha256",
+      "sha256": "891aed7697e1e7067dc990fb658fcb93955083a1a638c2bda25119b3bb44d46c"
+    },
+    {
+      "path": "outbox_worker.py",
+      "sha256": "76688091f926272ae79e7dfa8ef9c3d1f6a027525ab24e2ebe7addc53c6c5173"
+    },
+    {
+      "path": "README.md",
+      "sha256": "0e569ecd8da5ad9a0123eebb0c93f9448f8f463344c1c9ba94aea20bf23f8f2b"
+    },
+    {
+      "path": "reference/driver-emulator/config.example.json",
+      "sha256": "cd86a4a44e601111b9b61233392fc6a5a22d80e2347f095525fad504518ed4b9"
+    },
+    {
+      "path": "reference/driver-emulator/package.json",
+      "sha256": "6f4554f6e98a55f4ccfb76c949072e11bc70cc01bf98eb882576c43cc89d161c"
+    },
+    {
+      "path": "reference/driver-emulator/README_RU.md",
+      "sha256": "00a95f90963c23e722523bda458aaae2f8e33b057fadae0bf72752da3aa4bfc8"
+    },
+    {
+      "path": "reference/driver-emulator/src/client-simulator.js",
+      "sha256": "d560bccabcdfb85fd19b3fd9e58735c7b462ce1a0dc4280c32a851e964950580"
+    },
+    {
+      "path": "reference/driver-emulator/src/common.js",
+      "sha256": "b0299ff31448f7610cb2fa8904e4ae6f994cee9ab4d461d55ae7f26f880c554d"
+    },
+    {
+      "path": "reference/driver-emulator/src/control-panel.js",
+      "sha256": "e17a99fd7d20382fd5dbc7c800f26f55b3dff2d651b96e36bc113452ecf6628e"
+    },
+    {
+      "path": "reference/driver-emulator/src/doctor.js",
+      "sha256": "a95eb45c4b3c0a5ba219bdc0a35b4e1ef4c82adf86d7e2e090665a5bce7a3030"
+    },
+    {
+      "path": "reference/driver-emulator/src/order-generator.js",
+      "sha256": "3fdba2fe5c3d7a96c03655a8fa62166bed7aaddb7bcb27c9475911ec91c889e6"
+    },
+    {
+      "path": "reference/driver-emulator/src/register-drivers.js",
+      "sha256": "56a692fd9532df2a47906ec442c1d70d538dac659f42f84a65548f1f02e33375"
+    },
+    {
+      "path": "reference/driver-emulator/src/scenario-runner.js",
+      "sha256": "4ada7cbaac543fadbdb4de845c87f5a280786688846ec091a4db9941c11e90c5"
+    },
+    {
+      "path": "reference/driver-emulator/src/scenarios/client-cancel-after-select.js",
+      "sha256": "538a3c76344b0511f752243e6ef59ad135407f8ad33f79c082a3ce40921e77a7"
+    },
+    {
+      "path": "reference/driver-emulator/src/scenarios/no-show.js",
+      "sha256": "34a4de43699b20bbe317391f03637877a40428186700518b14a30bef568fc5e5"
+    },
+    {
+      "path": "reference/driver-emulator/src/scenarios/vote-auto-select.js",
+      "sha256": "ecaae7d3e930452b27c8eb59403bd1647b7f9b2fe00109f37c0b704936bcb05c"
+    },
+    {
+      "path": "reference/driver-emulator/src/scenarios/vote-cancelled.js",
+      "sha256": "1cb61a04556e4238f745f2521737d78e08c555d21e01ebe5b4a11e832fd2768e"
+    },
+    {
+      "path": "reference/driver-emulator/src/scenarios/vote-new-round.js",
+      "sha256": "ca452c82513199ff9369bee5f3683e79871a0d8f70cb10183f8c896a34f25370"
+    },
+    {
+      "path": "reference/driver-emulator/src/scenarios/vote-not-selected.js",
+      "sha256": "6787acc0da353a9984efb31986fb84d8e2b35071c25f63d5e8ca5b6ad8ab1df3"
+    },
+    {
+      "path": "reference/driver-emulator/src/scenarios/vote-selected.js",
+      "sha256": "a7f2a2ebbb4b43af310410d380792108e63875406f09f747649ba1a2317e5271"
+    },
+    {
+      "path": "reference/driver-emulator/src/simulator.js",
+      "sha256": "46b8e8b5bb9c25b41e31b315ecc9e5a6dc56c195929e4ddb61ad7309ac44761d"
+    },
+    {
+      "path": "reference/vote-client-emulator-spec.json",
+      "sha256": "a7910bc23bea24aaeef9ed541affc3455bd8a06621f0c172511e19ad889ec844"
+    },
+    {
+      "path": "requirements.txt",
+      "sha256": "d75f24088548d424d3c13dea202d2b13db6352eb9a189ed596b9282ed3bc19df"
+    },
+    {
+      "path": "tests/integration/docker-compose.yml",
+      "sha256": "f70f33c4796dac7fb2988c17e9036a19389c4c8bfc2c2427e51710e0e98e10aa"
+    },
+    {
+      "path": "tests/integration/mysql_fixture.sql",
+      "sha256": "34fe9641f66077269501c4ae5d154f058458d61f1fa32203a020421070d5e76e"
+    },
+    {
+      "path": "tests/run_platform_integration.sh",
+      "sha256": "7161943c7487aa08b83f6ae982f1188500e5b0f3f54620c1732a6411229a4aad"
+    },
+    {
+      "path": "tests/test_command_api.py",
+      "sha256": "7358db37bd80ece08d2db5b0d6b539c441e1b79ae6afae0134af51ccbd9a1d7d"
+    },
+    {
+      "path": "tests/test_driver_cancel.py",
+      "sha256": "b92a409f0fb3a9b5cd8fe886e9f2043ff6b79580570cbe95c7535a4475d3d6b2"
+    },
+    {
+      "path": "tests/test_driver_cancel_failures.py",
+      "sha256": "68396530af5cd55357522a3dd7b29845c1eaceb7a540cdd943616037bd6632c6"
+    },
+    {
+      "path": "tests/test_driver_snapshot.py",
+      "sha256": "c73727f4019bb6f23ddc9245449741fc9d4d1ccf87fd5a7eb03b97cffb0f492c"
+    },
+    {
+      "path": "tests/test_fsm_platform_mysql_integration.py",
+      "sha256": "3b8366a39927c5062ca7666ab9aa89733ae5529c151b84522c9e72bb793a2643"
+    },
+    {
+      "path": "tests/test_fsm_platform_stage3.py",
+      "sha256": "605e1ec58b02c903863ab7917a53d0e58d0d9870e005d6c089d08d6e618a87a9"
+    },
+    {
+      "path": "tests/test_fsm_platform_stage4.py",
+      "sha256": "1dc353728b2e9dacc1a6d4ba1354380479afe1758ee15d0da035d8a5c61a627b"
+    },
+    {
+      "path": "tests/test_fsm_platform_stage5.py",
+      "sha256": "fced51f0cb41abbbd1b5e941452fd03c4ce0591d9b6aed57e4773652971d5bd3"
+    }
+  ]
+}

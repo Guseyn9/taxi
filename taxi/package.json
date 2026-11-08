@@ -137,7 +137,8 @@
     "typecheck": "tsc --noEmit",
     "check:frontend": "node tools/check-frontend.cjs",
     "check:entrypoints": "node tools/check-entrypoints.cjs",
-    "build:gruzvill": "node tools/build-gruzvill.cjs"
+    "build:gruzvill": "node tools/build-gruzvill.cjs",
+    "build:fsm": "node tools/build-fsm.cjs"
   },
   "browserslist": {
     "production": [

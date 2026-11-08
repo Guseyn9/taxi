@@ -1,3 +1,4 @@
+import { confirmFsmLogout } from '../../platform/adapters/fsmLogoutWarning'
 import {verifySession} from '../../design/reliability/sessionRecovery'
 import {markAuthRetry} from '../../design/reliability/readHealth'
 import { all, takeEvery, put } from 'redux-saga/effects'
@@ -186,6 +187,7 @@ function* registerSaga(data: TAction) {
 }
 
 export function* logoutSaga() {
+  if (!confirmFsmLogout()) return
   authenticationAttempt++
   const tokens = loadSessionTokens()
   yield put({ type: ActionTypes.LOGOUT_START })

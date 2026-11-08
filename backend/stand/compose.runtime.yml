@@ -1,0 +1,32 @@
+x-fsm: &fsm
+  image: taxi-fsm:integration-local
+  build: {context: ..}
+  env_file: ../.env
+  environment: &runtime-env
+    DB_HOST: mysql
+    DB_PORT: '3306'
+    FSM_REDIS_URL: redis://redis:6379/0
+    FSM_REALTIME_BACKEND: redis
+  depends_on:
+    mysql: {condition: service_healthy}
+    redis: {condition: service_started}
+  restart: unless-stopped
+services:
+  migrate:
+    <<: *fsm
+    command: [python, -m, tools.migrate]
+    restart: 'no'
+    profiles: [migration]
+  api:
+    <<: *fsm
+    ports: ['127.0.0.1:18089:8080']
+  worker:
+    <<: *fsm
+    command: [python, fsm_worker.py]
+  outbox:
+    <<: *fsm
+    command: [python, outbox_worker.py]
+  reconcile:
+    <<: *fsm
+    command: [python, reconcile_worker.py]
+    profiles: [reconcile]
