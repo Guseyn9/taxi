@@ -117,4 +117,21 @@ class CoreAuthenticationTests(unittest.TestCase):
                 with self.assertRaises(WebSocketDisconnect) as ctx: ws.receive_json()
                 self.assertEqual(ctx.exception.code,4401)
 
+class ProductionAuthenticationModeTests(unittest.TestCase):
+    def test_domain_responses_and_errors_are_not_cached(self):
+        from fsm_api import app
+        client = TestClient(app)  # No lifespan/DB required for these routes.
+        for path in ['/api/taxi/features', '/api/unknown-route']:
+            response = client.get(path)
+            self.assertEqual(response.headers.get('cache-control'), 'no-store')
+
+    def test_scope_principal_mode_is_restricted_to_explicit_tests(self):
+        import os
+        from unittest.mock import patch
+        from fsm_api import build_principal_provider
+        with patch.dict(os.environ, {'FSM_AUTH_MODE':'scope','FSM_ENV':'production'}):
+            with self.assertRaises(RuntimeError): build_principal_provider()
+        with patch.dict(os.environ, {'FSM_AUTH_MODE':'scope','FSM_ENV':'test'}):
+            self.assertEqual(type(build_principal_provider()).__name__,'ScopePrincipalProvider')
+
 if __name__=='__main__': unittest.main()

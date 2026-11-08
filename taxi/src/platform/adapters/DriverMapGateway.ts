@@ -1,3 +1,4 @@
+import { verifyFsmReconciliation } from './fsmReconciliation'
 import type {
   InteractionAction,
   InteractionEvent,
@@ -112,6 +113,7 @@ export class DriverMapGateway {
   private stopHandler: Unsubscribe | null = null
   private recoveryUserId: string | null = null
   private sendingOrders = new Set<string>()
+  private actionRoutes = new Map<string, boolean>()
   private actionScopes = new Map<string, CommandRecoveryScope | null>()
   readonly recovery: DriverCommandRecovery | null
 
@@ -130,6 +132,7 @@ export class DriverMapGateway {
       completionTimeoutMs,
     )
     const options = recoveryOptions === undefined ? process.env.REACT_APP_FSM_API_URL?.trim() ? {
+      verifyReconciliation: (command: {orderId: string}) => verifyFsmReconciliation(process.env.REACT_APP_FSM_API_URL!.trim(), command.orderId),
       scope: () => {
         const service = process.env.REACT_APP_FSM_API_URL?.trim().replace(/\/+$/, '')
         const sessionId = getSessionRecoveryId()
@@ -225,9 +228,17 @@ export class DriverMapGateway {
     return legacyRouteProvider.makeRoutePoints(from, to, wayGraph)
   }
 
-  private dispatch<TPayload>(type: string, payload: TPayload): Promise<void> {
-    const lifecycle = this.canUseFsm(type)
-    const orderId = lifecycle ? String((payload as unknown as DriverOrderActionPayload).orderId) : ''
+  private async dispatch<TPayload>(type: string, payload: TPayload): Promise<void> {
+    const lifecycleAction = isDriverLifecycleAction(type)
+    const orderId = lifecycleAction ? String((payload as unknown as DriverOrderActionPayload).orderId) : ''
+    const assertNoPending = () => {
+      if (!lifecycleAction) return
+      if (this.sendingOrders.has(orderId)) throw new BackendInteractionError('FSM_COMMAND_PENDING', 'This order already has an action in progress.')
+      this.recovery?.assertCanSend(orderId)
+    }
+    assertNoPending()
+    const lifecycle = this.canUseFsm(type) && (this.commandTransport?.resolveEnabled ? await this.commandTransport.resolveEnabled(serverIntentFor(type)) : true)
+    assertNoPending() // A command may have been accepted while reading rollout settings.
     let scope: CommandRecoveryScope | null = null
     if (lifecycle) {
       try {
@@ -248,6 +259,7 @@ export class DriverMapGateway {
         correlationId: createCorrelationId(),
       },
     }
+    this.actionRoutes.set(action.metadata!.correlationId!, lifecycle)
     if (lifecycle) this.actionScopes.set(action.metadata!.correlationId!, scope)
     this.inFlight += 1
     const result = lifecycle ?
@@ -255,6 +267,7 @@ export class DriverMapGateway {
       this.dispatchAndWaitForEvent<void>(action, this.successEventFor(type), () => undefined)
     return result.finally(() => {
       if (lifecycle) { this.sendingOrders.delete(orderId); this.actionScopes.delete(action.metadata!.correlationId!) }
+      this.actionRoutes.delete(action.metadata!.correlationId!)
       this.inFlight -= 1
       this.releaseIdleHandler()
     })
@@ -384,7 +397,10 @@ export class DriverMapGateway {
       return
 
     try {
-      if (this.commandTransport && this.canUseFsm(action.type)) {
+      const selectedRoute = this.actionRoutes.get(action.metadata?.correlationId || '')
+      const useFsm = selectedRoute ?? (this.canUseFsm(action.type) &&
+        (this.commandTransport?.resolveEnabled ? await this.commandTransport.resolveEnabled(serverIntentFor(action.type)) : true))
+      if (this.commandTransport && useFsm) {
         const payload = action.payload as DriverOrderActionPayload
         const commandPayload = action.type === DRIVER_MAP_ACTIONS.ConfirmBoarding ?
           { boardingCode: payload.boardingCode ?? '' } :

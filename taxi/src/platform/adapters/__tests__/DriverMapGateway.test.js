@@ -589,3 +589,28 @@ it('continues waiting for an accepted command after the map unmounts',async()=>{
  expect(waiter.wait).toHaveBeenCalledTimes(1);unmount();expect(waiter.cancelAll).not.toHaveBeenCalled()
  finish({status:'COMPLETED',instanceId:911});await expect(pending).resolves.toBeUndefined()
 })
+
+it('freezes the selected FSM path instead of falling back when rollout changes during dispatch',async()=>{
+ backendGateway.cancelDrive.mockClear()
+ const transport={supports:jest.fn().mockReturnValueOnce(true).mockReturnValue(false),resolveEnabled:jest.fn().mockResolvedValue(true),send:jest.fn().mockResolvedValue({accepted:true,duplicate:false,instanceId:301,status:'PENDING',intent:'driver_cancel_requested'})}
+ const waiter={captureBaseline:()=>({state:null}),wait:jest.fn().mockResolvedValue({status:'COMPLETED',instanceId:301}),fail:jest.fn(),cancelAll:jest.fn()}
+ const gateway=new DriverMapGateway(createRuntime(),transport,1000,waiter)
+ await gateway.cancel('42','reason')
+ expect(transport.supports).toHaveBeenCalledTimes(1)
+ expect(transport.send).toHaveBeenCalledTimes(1)
+ expect(backendGateway.cancelDrive).not.toHaveBeenCalled()
+})
+it('blocks a legacy route after disabling FSM while its receipt is still in flight',async()=>{
+ backendGateway.cancelDrive.mockClear()
+ let release
+ const transport={resolveEnabled:jest.fn().mockResolvedValue(true),send:jest.fn().mockImplementation(()=>new Promise(resolve=>{release=resolve}))}
+ const waiter={captureBaseline:()=>({state:null}),wait:jest.fn().mockResolvedValue({status:'COMPLETED',instanceId:302}),fail:jest.fn(),cancelAll:jest.fn()}
+ const gateway=new DriverMapGateway(createRuntime(),transport,1000,waiter)
+ const pending=gateway.start('42')
+ for(let i=0;i<15;i++)await Promise.resolve()
+ transport.resolveEnabled.mockResolvedValue(false)
+ await expect(gateway.cancel('42','reason')).rejects.toMatchObject({code:'FSM_COMMAND_PENDING'})
+ expect(backendGateway.cancelDrive).not.toHaveBeenCalled()
+ release({accepted:true,duplicate:false,instanceId:302,status:'PENDING',intent:'ride_started'})
+ await pending
+})

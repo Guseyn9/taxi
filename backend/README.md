@@ -47,6 +47,7 @@ FSM_EXTERNAL_SYNC_ENABLED=0 .venv/bin/python -m unittest discover -s tests -q
 HTTP: `X-Auth-Token` и `X-Auth-U-Hash` текущего пользователя. Пара проверяется через Core `/user/authorized`; браузерный общий API-ключ не нужен. JSON payload не принимает credentials.
 
 ```text
+GET  /api/taxi/features                        # public rollout policy, no-store
 POST /api/taxi/orders                          # create + Idempotency-Key
 POST /api/taxi/core-orders/{coreId}/commands   # пользовательский intent
 GET  /api/taxi/core-orders/{coreId}            # авторизованная проекция Core

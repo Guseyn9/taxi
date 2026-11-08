@@ -52,9 +52,9 @@ def build_principal_provider():
     api_keys = os.getenv("FSM_API_KEYS_JSON")
     if mode == "test-api-key" and os.getenv("FSM_ENV") == "test" and api_keys:
         return ApiKeyPrincipalProvider.from_json(api_keys)
-    if mode == "scope":
+    if mode == "scope" and os.getenv("FSM_ENV") == "test":
         return ScopePrincipalProvider()
-    raise RuntimeError("API-key identities are available only with FSM_ENV=test")
+    raise RuntimeError("Test identity providers require FSM_ENV=test")
 
 
 @asynccontextmanager
@@ -114,6 +114,14 @@ app.add_middleware(CORSMiddleware, allow_origins=[v.strip() for v in os.getenv("
 app.include_router(create_realtime_router())
 app.include_router(create_command_router())
 app.include_router(create_taxi_router())
+
+
+@app.middleware("http")
+async def prevent_domain_response_caching(request, call_next):
+    response = await call_next(request)
+    if request.url.path.startswith('/api/'):
+        response.headers['Cache-Control'] = 'no-store'
+    return response
 
 
 @app.get("/health")

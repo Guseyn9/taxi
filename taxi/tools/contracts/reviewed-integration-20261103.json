@@ -6,14 +6,15 @@
   "paths": {
     "src/API/order.ts": {
       "baselineSha256": "144d2b4cb314db4b469f26ef09023b36bd07f2e64cd63e068b4c30670a2f716b",
-      "currentSha256": "24928fd41d03d47b0efff49ad21d23ac08c2b83cbc17f861d0379784ccdcc487",
-      "reason": "Single creation, cents-preserving edits, persisted ETA, server PIN, lifecycle readback and confirmation recovery by existing ID. New option/PIN contract requires backend rollout. R14: Reject unconfirmed/error cancellation envelopes at the existing API boundary; no endpoint or payload changes. R16: Validate successful mutation envelopes for candidate, offer, waiting, rating and lifecycle paths; validate finite positive offer price and whole waiting seconds before requests. Same endpoints and payload fields; no automatic mutation replay. FSM integration 2026-11-08: Route only opted-in passenger create/confirm/cancel/select/release through durable FSM receipts; keep legacy path before dispatch for disabled intents; retain confirmed Core id on optional detail-read failure. No fallback after an uncertain FSM write.",
+      "currentSha256": "ab656547a01ecf9f5884f51a6403fc59c55dc8d75e32bc8e2bfa54dc59b2275c",
+      "reason": "Single creation, cents-preserving edits, persisted ETA, server PIN, lifecycle readback and confirmation recovery by existing ID. New option/PIN contract requires backend rollout. R14: Reject unconfirmed/error cancellation envelopes at the existing API boundary; no endpoint or payload changes. R16: Validate successful mutation envelopes for candidate, offer, waiting, rating and lifecycle paths; validate finite positive offer price and whole waiting seconds before requests. Same endpoints and payload fields; no automatic mutation replay. FSM integration 2026-11-08: Route only opted-in passenger create/confirm/cancel/select/release through durable FSM receipts; keep legacy path before dispatch for disabled intents; retain confirmed Core id on optional detail-read failure. No fallback after an uncertain FSM write. Runtime rollout/auth follow-up: Await runtime rollout resolution before selecting each passenger write path; pending FSM receipts retain their recovery route when disabled. Legacy requests and fields are preserved.",
       "evidence": [
         "src/API/legacyContract.test.js",
         "src/API/order.transport.test.js",
         "src/components/modals/__tests__/cancel-business-errors.test.jsx",
         "src/tools/mutationReadback.test.ts",
-        "src/platform/adapters/__tests__/fsmSessionIntegration.test.js"
+        "src/platform/adapters/__tests__/fsmSessionIntegration.test.js",
+        "src/platform/adapters/__tests__/fsmRolloutRecovery.test.js"
       ]
     },
     "src/API/index.ts": {
@@ -45,13 +46,14 @@
     },
     "src/App.tsx": {
       "baselineSha256": "1a2355ee3a7327b8cfac0ccd3eb889d3a88f89a34c7d8b626c14b40e566931d6",
-      "currentSha256": "e7f34927295de2450146863c0d9d31ed3b3362184194195ecb7e1561617bf730",
-      "reason": "Run native startup in effect, refresh on lifecycle recovery, bind providers to current session, avoid revocation echo. R19: Logged-in read-health notice moves into Layout flow; App renders only the compact sign-in recovery notice. No request, auth or order mutation changes.",
+      "currentSha256": "c416e5c59281c59c22c1ec34f60145cdec4a1cffa3d6ad93165e698e96e085e4",
+      "reason": "Run native startup in effect, refresh on lifecycle recovery, bind providers to current session, avoid revocation echo. R19: Logged-in read-health notice moves into Layout flow; App renders only the compact sign-in recovery notice. No request, auth or order mutation changes. Runtime rollout/auth follow-up: Respond to verified current-session FSM auth refusal by clearing user state and opening the existing login modal; do not issue Core logout. Old-session refusals are ignored.",
       "evidence": [
         "src/tools/nativeStartup.test.js",
         "src/security/sessionIsolation.test.js",
         "src/tools/orderWake.test.js",
-        "src/design/reliability/ConnectionBar.test.jsx"
+        "src/design/reliability/ConnectionBar.test.jsx",
+        "src/platform/adapters/__tests__/fsmRolloutRecovery.test.js"
       ]
     },
     "src/state/orders/actionCreators.ts": {
@@ -126,11 +128,12 @@
     },
     "src/tools/apiMessages.ts": {
       "baselineSha256": "2af42129f123187e0804c5658c7fa1a26caf100a60a44300f354a462baa6158e",
-      "currentSha256": "7301d9e4f81fd0ab6948464cc7d0038194d4393ae378012132c7b18a873d2d99",
-      "reason": "Retain API diagnostics policy and map pending-command/session-change errors to localized, actionable user text. FSM integration 2026-11-08: Present pending/quarantine and authorization errors using existing localized UI messages.",
+      "currentSha256": "33d0d57f575e8da1ba695c064f6f275a1e493b3a3f6421f08d2943e909df57c5",
+      "reason": "Retain API diagnostics policy and map pending-command/session-change errors to localized, actionable user text. FSM integration 2026-11-08: Present pending/quarantine and authorization errors using existing localized UI messages. Runtime rollout/auth follow-up: Explain pre-write policy failures and repeat sign-in using localized messages; no remote body shown.",
       "evidence": [
         "src/tools/apiMessages.test.js",
-        "src/platform/adapters/__tests__/fsmSessionIntegration.test.js"
+        "src/platform/adapters/__tests__/fsmSessionIntegration.test.js",
+        "src/platform/adapters/__tests__/fsmRolloutRecovery.test.js"
       ]
     },
     "src/tools/driverBoarding.ts": {
@@ -278,42 +281,46 @@
     },
     "src/platform/adapters/FsmCommandStatusTransport.ts": {
       "baselineSha256": "25240dbb49206fe5a0fa4dbd3d743387abef2c6d30b79c2905b43941c761bd00",
-      "currentSha256": "1c909c7fadd5fe9ba02204b0de49f610403f2aa05993a5b10791323c52eda87e",
-      "reason": "Bound HTTP reads and preserve Retry-After for transient status failures. FSM integration 2026-11-08: Use the current session pair on HTTP and first WebSocket message, Core-id routes and verified snapshot projection; retain deadline, revision and receipt behavior. No shared browser secret.",
+      "currentSha256": "41b47de4bc3b57ae23b8ed293636a90257a920c9a9fce8634b0b4d79f593e787",
+      "reason": "Bound HTTP reads and preserve Retry-After for transient status failures. FSM integration 2026-11-08: Use the current session pair on HTTP and first WebSocket message, Core-id routes and verified snapshot projection; retain deadline, revision and receipt behavior. No shared browser secret. Runtime rollout/auth follow-up: Track the request-time pair for HTTP/WS authentication refusal and test disabled-operation recovery; no mutation fallback after dispatch.",
       "evidence": [
         "src/platform/adapters/__tests__/FsmCommandStatusTransport.test.js",
         "src/platform/adapters/__tests__/httpDeadline.test.js",
-        "src/platform/adapters/__tests__/fsmSessionIntegration.test.js"
+        "src/platform/adapters/__tests__/fsmSessionIntegration.test.js",
+        "src/platform/adapters/__tests__/fsmRolloutRecovery.test.js"
       ]
     },
     "src/platform/adapters/FsmTaxiCommandTransport.ts": {
       "baselineSha256": "6edde027db16180bd1f3eec5c12ac1ff44850cab48863a6c7fbc301cd6cef5dc",
-      "currentSha256": "3f923ffe7b274c3f2660bfb66d04fbd3fce89b917e9c93542d6dd6f98f607f17",
-      "reason": "Finite acceptance/status HTTP and decoding; preserve URL, intent, payload, auth and command ID, no retry. FSM integration 2026-11-08: Use the current session pair on HTTP and first WebSocket message, Core-id routes and verified snapshot projection; retain deadline, revision and receipt behavior. No shared browser secret.",
+      "currentSha256": "7c7c3ee24d40ee4fce4c8077001dc4f35aae9cf259c0151ec902f44ff98d8ae9",
+      "reason": "Finite acceptance/status HTTP and decoding; preserve URL, intent, payload, auth and command ID, no retry. FSM integration 2026-11-08: Use the current session pair on HTTP and first WebSocket message, Core-id routes and verified snapshot projection; retain deadline, revision and receipt behavior. No shared browser secret. Runtime rollout/auth follow-up: Track the request-time pair for HTTP/WS authentication refusal and test disabled-operation recovery; no mutation fallback after dispatch.",
       "evidence": [
         "src/platform/adapters/__tests__/FsmTaxiCommandTransport.test.js",
         "src/platform/adapters/__tests__/httpDeadline.test.js",
-        "src/platform/adapters/__tests__/fsmSessionIntegration.test.js"
+        "src/platform/adapters/__tests__/fsmSessionIntegration.test.js",
+        "src/platform/adapters/__tests__/fsmRolloutRecovery.test.js"
       ]
     },
     "src/platform/adapters/FsmDriverSnapshotTransport.ts": {
       "baselineSha256": "88b2dc7db6b1dfb29d17088fe595dea993cf02b3c9d9726096b2a6b907ed1066",
-      "currentSha256": "e6059aea994e25d14659eb0390117d16682297a765eb25311f4f17eb98550ab9",
-      "reason": "Sequential bounded Query recovery, session identity priority, ignore unknown event types but reject malformed known snapshots. FSM integration 2026-11-08: Use the current session pair on HTTP and first WebSocket message, Core-id routes and verified snapshot projection; retain deadline, revision and receipt behavior. No shared browser secret.",
+      "currentSha256": "5185ae1fcf53ad2851faed6c47ea7e03bd8f15008b9d0f6cc70c8dbe541f6ecd",
+      "reason": "Sequential bounded Query recovery, session identity priority, ignore unknown event types but reject malformed known snapshots. FSM integration 2026-11-08: Use the current session pair on HTTP and first WebSocket message, Core-id routes and verified snapshot projection; retain deadline, revision and receipt behavior. No shared browser secret. Runtime rollout/auth follow-up: Track the request-time pair for HTTP/WS authentication refusal and test disabled-operation recovery; no mutation fallback after dispatch.",
       "evidence": [
         "src/platform/adapters/__tests__/FsmDriverSnapshotTransport.test.js",
         "src/platform/adapters/__tests__/httpDeadline.test.js",
-        "src/platform/adapters/__tests__/fsmSessionIntegration.test.js"
+        "src/platform/adapters/__tests__/fsmSessionIntegration.test.js",
+        "src/platform/adapters/__tests__/fsmRolloutRecovery.test.js"
       ]
     },
     "src/platform/adapters/FsmOrderSnapshotTransport.ts": {
       "baselineSha256": "69eb940253f2f72a8d43083ab26240079abcb21cd3d7723cb6db5e97c0922457",
-      "currentSha256": "7538cfe3ed8fa3868cc27effa2b8da54f10c7324d898c36ba7a4abc3d6a11419",
-      "reason": "Sequential bounded Query recovery; ignore future event types while preserving schema errors for known snapshot messages. FSM integration 2026-11-08: Use the current session pair on HTTP and first WebSocket message, Core-id routes and verified snapshot projection; retain deadline, revision and receipt behavior. No shared browser secret.",
+      "currentSha256": "c12d37a2a21b2ba1cd6c0f4eba182d76dd9624313a504572d0568e40c01b9080",
+      "reason": "Sequential bounded Query recovery; ignore future event types while preserving schema errors for known snapshot messages. FSM integration 2026-11-08: Use the current session pair on HTTP and first WebSocket message, Core-id routes and verified snapshot projection; retain deadline, revision and receipt behavior. No shared browser secret. Runtime rollout/auth follow-up: Track the request-time pair for HTTP/WS authentication refusal and test disabled-operation recovery; no mutation fallback after dispatch.",
       "evidence": [
         "src/platform/adapters/__tests__/FsmOrderSnapshotTransport.test.js",
         "src/platform/adapters/__tests__/httpDeadline.test.js",
-        "src/platform/adapters/__tests__/fsmSessionIntegration.test.js"
+        "src/platform/adapters/__tests__/fsmSessionIntegration.test.js",
+        "src/platform/adapters/__tests__/fsmRolloutRecovery.test.js"
       ]
     },
     "src/state/orders/sagas.ts": {
@@ -404,12 +411,14 @@
     },
     "src/platform/adapters/DriverMapGateway.ts": {
       "baselineSha256": "5a39912ed9d76bfb98a6edd9f9ed5eab6e04bf78e7cf2c17262e21368783301f",
-      "currentSha256": "7483426b79d1d3b2f84a218d317a97f6760b19cc02e54ab1cc7b7d043970e917",
-      "reason": "Persist accepted commands and gate pending orders; refuse FSM sends without the recovery login identity. Never replay a restored command. FSM integration 2026-11-08: Choose one lifecycle transport before sending based on per-intent support; use driver_cancel_requested, never passenger cancel. Preserve receipt recovery and never fallback on write errors.",
+      "currentSha256": "deeda01b1cd29f9378f34d7927c1d829d3391e64cd4442dc2bda5e9ae4fb319f",
+      "reason": "Persist accepted commands and gate pending orders; refuse FSM sends without the recovery login identity. Never replay a restored command. FSM integration 2026-11-08: Choose one lifecycle transport before sending based on per-intent support; use driver_cancel_requested, never passenger cancel. Preserve receipt recovery and never fallback on write errors. Runtime rollout/auth follow-up: Freeze the selected path per dispatch, check pending commands before/after async policy read and block legacy while an FSM receipt is in flight. Retain FAILED receipts with unknown Core outcome/divergence until an authenticated matching idle snapshot proves server reconciliation; never replay the original command during this check.",
       "evidence": [
         "src/platform/adapters/__tests__/DriverMapGateway.test.js",
         "tools/test-command-recovery-browser.cjs",
-        "src/platform/adapters/__tests__/fsmSessionIntegration.test.js"
+        "src/platform/adapters/__tests__/fsmSessionIntegration.test.js",
+        "src/platform/adapters/__tests__/fsmRolloutRecovery.test.js",
+        "src/platform/adapters/__tests__/DriverCommandRecovery.test.js"
       ]
     },
     "src/platform/platform-interface/realtime/ReconnectingWebSocketClient.ts": {
@@ -480,11 +489,12 @@
     },
     "src/platform/adapters/__tests__/DriverMapGateway.test.js": {
       "baselineSha256": "021d005be23f1df39fd202d5cd9437726069b2fab7d998373a52c8dd7832b9c3",
-      "currentSha256": "a5f5a249135fd58de83acfc267b7fc843479cb5c057c915bce12999bca56d0af",
-      "reason": "Recovery and missing-login regression tests; original lifecycle contracts retained. FSM integration 2026-11-08: Exercise canonical driver cancellation and disabled-intent legacy selection before dispatch.",
+      "currentSha256": "6f11e82f1d55f04c0ccfcdfd24a52b608ebb48d66907ae1b4c954cab54a1603d",
+      "reason": "Recovery and missing-login regression tests; original lifecycle contracts retained. FSM integration 2026-11-08: Exercise canonical driver cancellation and disabled-intent legacy selection before dispatch. Runtime rollout/auth follow-up: Track the request-time pair for HTTP/WS authentication refusal and test disabled-operation recovery; no mutation fallback after dispatch.",
       "evidence": [
         "src/platform/adapters/__tests__/DriverMapGateway.test.js",
-        "src/platform/adapters/__tests__/fsmSessionIntegration.test.js"
+        "src/platform/adapters/__tests__/fsmSessionIntegration.test.js",
+        "src/platform/adapters/__tests__/fsmRolloutRecovery.test.js"
       ]
     },
     "src/platform/adapters/__tests__/FsmDriverSnapshotTransport.test.js": {
@@ -513,11 +523,12 @@
     },
     "src/platform/adapters/DriverCommandRecovery.ts": {
       "baselineSha256": null,
-      "currentSha256": "01a6c9851781dd51a784101f905e2207e427da5d69f6ee3449246811b87811ce",
-      "reason": "Tab-session journal stores no credentials, PIN or command body; status-only recovery, bounded validated input and exact owner/service/login isolation.",
+      "currentSha256": "9294239f68676e49fa6e0bf2e188856a6a86abcb44a8e0ea9cc1f9fc6dc1962b",
+      "reason": "Tab-session journal stores no credentials, PIN or command body; status-only recovery, bounded validated input and exact owner/service/login isolation. Retain FAILED receipts with unknown Core outcome/divergence until an authenticated matching idle snapshot proves server reconciliation; never replay the original command during this check.",
       "evidence": [
         "src/platform/adapters/__tests__/DriverCommandRecovery.test.js",
-        "tools/test-command-recovery-browser.cjs"
+        "tools/test-command-recovery-browser.cjs",
+        "src/platform/adapters/__tests__/fsmRolloutRecovery.test.js"
       ]
     },
     "src/security/sessionTokens.ts": {
@@ -531,12 +542,13 @@
     },
     "src/localization/index.ts": {
       "baselineSha256": "7c149da56433970b312de35c89f2c23593889b1cc8478f3b3bbba229571bc032",
-      "currentSha256": "815a4f3d46cba775c1cb63a6b616f0d344cc254254e12761ff17c6e1d17de5fb",
-      "reason": "Service DB translations still take precedence; add offline fallback copy for pending commands and account changes. R14: Localize audited map controls, preserve script-specific fallbacks and keep service text precedence. R16: Add localized disclosure of existing final whole-amount policy; service text still has precedence. R16: Localized actionable partial-save and unconfirmed-car messages.",
+      "currentSha256": "41feb760cce2e159c47f1b5f4ead35f31c1577f0482104e23f9a1dafd09ccd63",
+      "reason": "Service DB translations still take precedence; add offline fallback copy for pending commands and account changes. R14: Localize audited map controls, preserve script-specific fallbacks and keep service text precedence. R16: Add localized disclosure of existing final whole-amount policy; service text still has precedence. R16: Localized actionable partial-save and unconfirmed-car messages. Runtime rollout/auth follow-up: Add four-locale packaged fallback text for rollout read failure and repeat sign-in; service translations retain priority.",
       "evidence": [
         "src/localization/locale.test.js",
         "src/tools/apiMessages.test.js",
-        "src/components/modals/__tests__/profile-save.test.jsx"
+        "src/components/modals/__tests__/profile-save.test.jsx",
+        "src/platform/adapters/__tests__/fsmRolloutRecovery.test.js"
       ]
     },
     "src/components/DriverCommandRecoveryNotice/index.tsx": {
@@ -946,32 +958,36 @@
     },
     "src/platform/adapters/FsmPassengerBridge.ts": {
       "baselineSha256": null,
-      "currentSha256": "222367953562d42a84cca071bd78a8676a4fd59f811d5ee4058322dca9253ca9",
-      "reason": "New opt-in FSM adapter/helper: session-scoped receipts, no optimistic completion or replay after unknown writes; operation gates and explicit logout warning. Our existing authentication is retained.",
+      "currentSha256": "49df3d1e57d5d64baea22fa0064e4daf54d3a478b74e39814f2c410f3d189576",
+      "reason": "New opt-in FSM adapter/helper: session-scoped receipts, no optimistic completion or replay after unknown writes; operation gates and explicit logout warning. Our existing authentication is retained. Runtime rollout/auth follow-up: Recover lost receipts by GET before replay; mark attempted writes and keep unknown receipts through runtime disable. Clear unsent policy failures without claiming an uncertain booking. Retain FAILED receipts with unknown Core outcome/divergence until an authenticated matching idle snapshot proves server reconciliation; never replay the original command during this check.",
       "evidence": [
         "src/platform/adapters/__tests__/fsmSessionIntegration.test.js",
         "src/platform/adapters/__tests__/fsmIntentGate.test.js",
-        "src/state/user/logout.test.js"
+        "src/state/user/logout.test.js",
+        "src/platform/adapters/__tests__/fsmRolloutRecovery.test.js",
+        "src/platform/adapters/__tests__/DriverCommandRecovery.test.js"
       ]
     },
     "src/platform/adapters/fsmIntentGate.ts": {
       "baselineSha256": null,
-      "currentSha256": "3d5448472e1f9bbd5291cf006538ae9a44da86ef7a0e5510008a539e2844cfcd",
-      "reason": "New opt-in FSM adapter/helper: session-scoped receipts, no optimistic completion or replay after unknown writes; operation gates and explicit logout warning. Our existing authentication is retained.",
+      "currentSha256": "3b3732fd79a2a526cae2fff164b7eb5a3511128cbe72b82759c2fcfea36da84d",
+      "reason": "New opt-in FSM adapter/helper: session-scoped receipts, no optimistic completion or replay after unknown writes; operation gates and explicit logout warning. Our existing authentication is retained. Runtime rollout/auth follow-up: Fresh no-store unauthenticated read of bounded canonical rollout intents; malformed/unavailable policy blocks writes, resolved disabled policy can select legacy only before dispatch.",
       "evidence": [
         "src/platform/adapters/__tests__/fsmSessionIntegration.test.js",
         "src/platform/adapters/__tests__/fsmIntentGate.test.js",
-        "src/state/user/logout.test.js"
+        "src/state/user/logout.test.js",
+        "src/platform/adapters/__tests__/fsmRolloutRecovery.test.js"
       ]
     },
     "src/platform/adapters/fsmSessionAuth.ts": {
       "baselineSha256": null,
-      "currentSha256": "0d06a4dd8f55458d69e2722a4b29307a80a962cb355bd6842ddd9cada8493541",
-      "reason": "New opt-in FSM adapter/helper: session-scoped receipts, no optimistic completion or replay after unknown writes; operation gates and explicit logout warning. Our existing authentication is retained.",
+      "currentSha256": "d227e577e2dfbb1f03e2efb485463e6cd938c689c2a91112ed02a84409b8f3aa",
+      "reason": "New opt-in FSM adapter/helper: session-scoped receipts, no optimistic completion or replay after unknown writes; operation gates and explicit logout warning. Our existing authentication is retained. Runtime rollout/auth follow-up: On 401/4401 or definitive Core authorization failure require new login only for the exact pair sent. Never revoke a newer session on a delayed refusal, or revoke on 403/503/network loss.",
       "evidence": [
         "src/platform/adapters/__tests__/fsmSessionIntegration.test.js",
         "src/platform/adapters/__tests__/fsmIntentGate.test.js",
-        "src/state/user/logout.test.js"
+        "src/state/user/logout.test.js",
+        "src/platform/adapters/__tests__/fsmRolloutRecovery.test.js"
       ]
     },
     "src/platform/adapters/fsmLogoutWarning.ts": {
@@ -982,6 +998,15 @@
         "src/platform/adapters/__tests__/fsmSessionIntegration.test.js",
         "src/platform/adapters/__tests__/fsmIntentGate.test.js",
         "src/state/user/logout.test.js"
+      ]
+    },
+    "src/platform/adapters/fsmReconciliation.ts": {
+      "baselineSha256": null,
+      "currentSha256": "f982a7a0fe31c708f9046aec8698e19cfc22a6a5d54d68c66e46b77362e5c2a5",
+      "reason": "Verify quarantine resolution only through fresh authenticated matching-order snapshot with sync=idle and confirmed Core mapping; no mutation or replay. Failed reads preserve blocking receipt.",
+      "evidence": [
+        "src/platform/adapters/__tests__/fsmRolloutRecovery.test.js",
+        "src/platform/adapters/__tests__/DriverCommandRecovery.test.js"
       ]
     }
   },

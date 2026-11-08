@@ -1,11 +1,12 @@
-import { fsmSessionHeaders } from './fsmSessionAuth'
+import { fsmSessionHeaders, handleFsmAuthenticationFailure } from './fsmSessionAuth'
 import type { InteractionMetadata } from '../interaction-contract'
 import { BackendInteractionError } from './backendError'
 import { withHttpDeadline } from './httpDeadline'
-import { fsmIntentEnabled } from './fsmIntentGate'
+import { fsmIntentEnabled, resolveFsmIntent } from './fsmIntentGate'
 
 export interface TaxiCommandTransport {
   supports?(intent: string): boolean
+  resolveEnabled?(intent: string): Promise<boolean>
   send(
     orderId: number | string,
     intent: string,
@@ -68,12 +69,16 @@ export class FsmTaxiCommandTransport implements TaxiCommandTransport {
     payload: Readonly<Record<string, unknown>> = {},
     metadata?: InteractionMetadata,
   ): Promise<FsmCommandAccepted> {
-    if (!this.supports(intent)) throw new BackendInteractionError('FSM_INTENT_DISABLED', 'This operation is not enabled in the FSM profile')
+    if (!await this.resolveEnabled(intent)) throw new BackendInteractionError('FSM_INTENT_DISABLED', 'This operation is not enabled in the FSM profile')
     return withHttpDeadline(
       signal => this.sendBeforeDeadline(orderId, intent, payload, metadata, signal),
       this.config.acceptanceTimeoutMs,
       'FSM_COMMAND_ACCEPT_TIMEOUT',
     )
+  }
+
+  async resolveEnabled(intent: string): Promise<boolean> {
+    return !this.config.useIntentGate || resolveFsmIntent(intent, this.config.apiUrl, this.fetchRequest)
   }
 
   supports(intent: string): boolean {
@@ -93,6 +98,7 @@ export class FsmTaxiCommandTransport implements TaxiCommandTransport {
 
     const commandId = this.createId()
     const correlationId = metadata?.correlationId || commandId
+    const sentHeaders = this.headers(commandId)
     const response = await this.fetchRequest(
       this.config.useCoreOrderIds ?
         `${trimTrailingSlash(this.config.apiUrl)}/api/taxi/core-orders/${encodeURIComponent(normalizedOrderId)}/commands` :
@@ -100,7 +106,7 @@ export class FsmTaxiCommandTransport implements TaxiCommandTransport {
       {
         method: 'POST',
         signal,
-        headers: this.headers(commandId),
+        headers: sentHeaders,
         body: JSON.stringify({
           schemaVersion: '1.0',
           commandId,
@@ -110,6 +116,7 @@ export class FsmTaxiCommandTransport implements TaxiCommandTransport {
         }),
       },
     )
+    handleFsmAuthenticationFailure(response.status, sentHeaders)
     const details = await readResponseDetails(response)
     if (!response.ok) {
       throw new BackendInteractionError(

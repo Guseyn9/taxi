@@ -126,6 +126,8 @@ export const getApiErrorMessage = (
   response: any,
   options: { context?: 'car-registration' | 'car-profile' | 'driver-order' } = {},
 ) => {
+  if (['FSM_FEATURE_FLAGS_UNAVAILABLE','FSM_INTENT_DISABLED'].includes(response?.code)) return t('fsm_rollout_unavailable')
+  if (/^FSM_.*HTTP_401$/.test(response?.code || '') || response?.code === 'AUTHORIZATION_FAILED') return t('fsm_sign_in_required')
   if (['FSM_COMMAND_PENDING','FSM_COMMAND_RECOVERY_REQUIRED','FSM_COMMAND_RECOVERY_LIMIT','FSM_COMMAND_HTTP_409','ENTITY_SYNC_IN_PROGRESS','CORE_OUTCOME_UNKNOWN','CORE_FSM_DIVERGENCE'].includes(response?.code))
     return t('driver_action_result_pending')
   if (['FSM_COMMAND_HTTP_403','AUTHORIZATION_FAILED'].includes(response?.code)) return t(TRANSLATION.WRONG_USER_ROLE)

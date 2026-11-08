@@ -2,7 +2,10 @@ x-fsm: &fsm
   image: taxi-fsm:integration-local
   build: {context: ..}
   env_file: ../.env
+  volumes:
+    - ${FSM_FEATURES_DIR:-./features}:/run/fsm-policy:ro
   environment: &runtime-env
+    FSM_FEATURES_FILE: /run/fsm-policy/rollout.json
     DB_HOST: mysql
     DB_PORT: '3306'
     FSM_REDIS_URL: redis://redis:6379/0

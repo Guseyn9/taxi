@@ -1,4 +1,4 @@
-import { fsmSessionHeaders } from './fsmSessionAuth'
+import { fsmSessionHeaders, handleFsmAuthenticationFailure } from './fsmSessionAuth'
 import { BackendInteractionError } from './backendError'
 import { withHttpDeadline } from './httpDeadline'
 
@@ -74,10 +74,12 @@ export class FsmCommandStatusTransport implements CommandStatusTransport {
     if (!Number.isInteger(instanceId) || instanceId <= 0)
       throw new Error('FSM command instanceId must be a positive integer')
 
+    const sentHeaders = this.headers()
     const response = await this.fetchRequest(
       `${trimTrailingSlash(this.config.apiUrl)}/api/commands/${instanceId}`,
-      { method: 'GET', headers: this.headers(), signal },
+      { method: 'GET', headers: sentHeaders, signal },
     )
+    handleFsmAuthenticationFailure(response.status, sentHeaders)
     const details = await readResponseDetails(response)
     if (!response.ok) {
       const retryHeader = response.headers?.get?.('Retry-After')
@@ -89,7 +91,9 @@ export class FsmCommandStatusTransport implements CommandStatusTransport {
       )
     }
 
-    return validateCommandStatus(details, instanceId)
+    const result = validateCommandStatus(details, instanceId)
+    if (result.status === 'FAILED' && result.errorCode === 'AUTHORIZATION_FAILED') handleFsmAuthenticationFailure(401, sentHeaders)
+    return result
   }
 
   private headers(): HeadersInit {

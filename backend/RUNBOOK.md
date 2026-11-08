@@ -65,13 +65,20 @@ python -m tools.resolve_mismatch --id 123 --apply # явное исправле�
 ```sh
 REACT_APP_FSM_API_URL=https://your-reviewed-fsm-host.example \
 REACT_APP_FSM_PASSENGER_ENABLED=true \
-REACT_APP_FSM_ENABLED_INTENTS=driver_cancel_requested \
 node tools/build-fsm.cjs
 ```
 
 Профиль сам включает `REACT_APP_FSM_COMMAND_STATUS_ENABLED=true`. `REACT_APP_FSM_ENABLED_INTENTS` — CSV канонических intents: не задано — все поддерживаемые; пусто или `none` — ни одного. Для пассажирской части нужен отдельный `FSM_PASSENGER_ENABLED`. Пара берётся из текущего sessionStorage нашего приложения при каждом запросе; чужой модуль авторизации и старое localStorage из Иванова frontend не копировались.
 
-Порядок canary: driver cancel → arrive/start/finish → passenger select/release/cancel → create DIRECT/VOTE/OFFER. Сначала завершить pending-команды, затем менять профиль. Переключённая операция имеет только один write-путь; fallback на legacy после ошибки отправки запрещён. Возврат legacy выполняется новой сборкой с нужными flags. Runtime переключатель без frontend-релиза в этой версии не сделан.
+Порядок canary: driver cancel → arrive/start/finish → passenger select/release/cancel → create DIRECT/VOTE/OFFER. CSV `REACT_APP_FSM_ENABLED_INTENTS` задаёт верхнюю границу операций в сборке; для всех поддерживаемых операций оставьте его незаданным. Обычная сборка продолжает держать FSM выключенным.
+
+`build:fsm` включает runtime-политику: перед выбором пути выполняется свежий GET `/api/taxi/features` (`no-store`, без токенов). Backend читает `FSM_FEATURES_FILE` при каждом запросе; файл JSON вида `{"schemaVersion":1,"enabledIntents":["driver_cancel_requested"]}` можно атомарно заменить без перезапуска и frontend-релиза. CSV `FSM_ENABLED_INTENTS` служит альтернативой без файла, но требует перезапуска процесса при изменении. По умолчанию список пустой — новые операции идут legacy.
+
+Compose монтирует **каталог** `stand/features` в `/run/fsm-policy`; это позволяет увидеть атомарную замену `rollout.json`. Для production задайте отдельный `FSM_FEATURES_DIR` с публичной политикой. Не монтируйте отдельный файл через bind, иначе после rename контейнер может остаться на старом inode. Значения — только известные canonical intents; неизвестный intent, отсутствующий/повреждённый файл или недоступный endpoint блокируют новый write, не выбирают legacy автоматически.
+
+Отключение операции влияет на новые отправки. Принятые/неподтверждённые команды, включая FAILED с CORE_OUTCOME_UNKNOWN/CORE_FSM_DIVERGENCE, продолжают проверяться по instanceId или GET by-key; наличие такой команды запрещает переход на legacy до подтверждённого terminal результата. После operator repair браузер проверяет свежий snapshot с совпадающим id и sync=idle, затем снимает блокировку; исходная команда не повторяется, её FAILED receipt остаётся неизменным. Выбранный путь фиксируется на время dispatch, повторного write через другой транспорт после ошибки нет. Runtime policy управляет rollout frontend, не заменяет серверную авторизацию и не отменяет уже принятые команды.
+
+HTTP 401, WS 4401 и подтверждённый command FAILED/AUTHORIZATION_FAILED вызывают повторный вход только если отказ относится к **той же** паре, которая была отправлена. 403/503 и сетевые закрытия не удаляют сессию. Обработка не отправляет Core `/logout`; запоздалый отказ старой пары не затрагивает новый вход. После нового входа надо проверить заказы перед повторной отправкой. Ответы `/api/*`, включая ошибки, получают `Cache-Control: no-store`, чтобы проверка состояния не использовала кэшированную проекцию.
 
 Перед production отключением legacy остаются server acceptance на согласованном tenant, проверка реальных устройств и условия системных таймеров. Кэш/браузерные ошибки не доказывают, что Core не выполнил запись.
 

@@ -11,6 +11,7 @@ execFileSync(process.execPath, [path.join(__dirname, 'build-release.cjs')], {
     REACT_APP_SERVICE_CONFIG: process.env.REACT_APP_SERVICE_CONFIG || 'gruzvill',
     REACT_APP_ALLOWED_SERVICE_CONFIGS: process.env.REACT_APP_ALLOWED_SERVICE_CONFIGS || 'gruzvill',
     REACT_APP_FSM_COMMAND_STATUS_ENABLED: 'true',
+    REACT_APP_FSM_RUNTIME_FLAGS_ENABLED: 'true',
     REACT_APP_FSM_API_TOKEN: '',
   },
 });

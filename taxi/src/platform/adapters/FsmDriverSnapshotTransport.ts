@@ -1,4 +1,4 @@
-import { fsmSessionHeaders, fsmSocketAuthMessage } from './fsmSessionAuth'
+import { fsmSessionHeaders, fsmSocketAuthMessage, handleFsmAuthenticationFailure, handleFsmSocketClose } from './fsmSessionAuth'
 import type { Unsubscribe } from '../interaction-contract'
 import {
   DomainApiSnapshotProvider,
@@ -171,11 +171,13 @@ export class FsmDriverSnapshotTransport implements DomainSnapshotTransport {
   }
 
   private async fetchSnapshotBeforeDeadline(signal?: AbortSignal): Promise<FsmDriverSnapshot> {
+    const sentHeaders = this.httpHeaders()
     const response = await this.fetchRequest(this.queryUrl(), {
       method: 'GET',
       signal,
-      headers: this.httpHeaders(),
+      headers: sentHeaders,
     })
+    handleFsmAuthenticationFailure(response.status, sentHeaders)
     if (!response.ok) {
       const details = await readResponseDetails(response)
       throw new BackendInteractionError(
@@ -195,6 +197,7 @@ export class FsmDriverSnapshotTransport implements DomainSnapshotTransport {
     let socket: RealtimeSocket
     let stopped = false
     let disconnectReported = false
+    let sentAuth: string | null = null
     const reportDisconnect = (error?: unknown) => {
       if (stopped || disconnectReported)
         return
@@ -211,7 +214,7 @@ export class FsmDriverSnapshotTransport implements DomainSnapshotTransport {
 
     socket.onopen = () => {
       if (!this.config.useSessionAuth) return
-      try { socket.send(fsmSocketAuthMessage()) } catch (error) { reportDisconnect(error); socket.close() }
+      try { sentAuth = fsmSocketAuthMessage(); socket.send(sentAuth) } catch (error) { reportDisconnect(error); socket.close() }
     }
     socket.onmessage = event => {
       try {
@@ -235,7 +238,7 @@ export class FsmDriverSnapshotTransport implements DomainSnapshotTransport {
       }
     }
     socket.onerror = error => reportDisconnect(error)
-    socket.onclose = event => reportDisconnect(event)
+    socket.onclose = event => { handleFsmSocketClose(event, sentAuth); reportDisconnect(event) }
 
     return () => {
       if (stopped)

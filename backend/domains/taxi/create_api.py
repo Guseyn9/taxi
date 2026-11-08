@@ -50,6 +50,16 @@ def create_order(session, command_service, principal, body, key):
 def create_taxi_router():
     router = APIRouter(prefix='/api/taxi', tags=['taxi'])
 
+    @router.get('/features')
+    async def features():
+        from fastapi.responses import JSONResponse
+        from fsm_core.feature_flags import read_feature_flags
+        try:
+            config = await asyncio.to_thread(read_feature_flags)
+            return JSONResponse(config, headers={'Cache-Control': 'no-store'})
+        except (OSError, ValueError, TypeError):
+            return JSONResponse({'errorCode': 'FSM_FEATURE_FLAGS_UNAVAILABLE'}, status_code=503, headers={'Cache-Control': 'no-store'})
+
     def core_client(request):
         return request.app.state.core_client
 
