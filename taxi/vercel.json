@@ -3,13 +3,90 @@
   "installCommand": "npm ci --legacy-peer-deps",
   "outputDirectory": "build",
   "framework": null,
-  "rewrites": [{"source": "/(.*)", "destination": "/index.html"}],
+  "redirects": [
+    {"source": "/review/frontend-audit-r16/driver-order", "destination": "/driver-order", "permanent": false}
+  ],
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ],
   "headers": [
-    {"source": "/(.*)", "headers": [{"key": "X-Content-Type-Options", "value": "nosniff"}, {"key": "Referrer-Policy", "value": "strict-origin-when-cross-origin"}]},
-    {"source": "/static/(.*)", "headers": [{"key": "Cache-Control", "value": "public,max-age=31536000,immutable"}]},
-    {"source": "/mock/(.*)", "headers": [{"key": "Cache-Control", "value": "public,max-age=0,must-revalidate"}]},
-    {"source": "/qa/(.*)", "headers": [{"key": "Content-Security-Policy", "value": "connect-src 'none'; form-action 'none'"}]},
-    {"source": "/index.html", "headers": [{"key": "Cache-Control", "value": "no-cache"}]},
-    {"source": "/design-v2/vehicles/(.*)", "headers": [{"key": "Cache-Control", "value": "public,max-age=31536000,immutable"}]}
+    {
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "Referrer-Policy",
+          "value": "strict-origin-when-cross-origin"
+        },
+        {
+          "key": "X-Frame-Options",
+          "value": "SAMEORIGIN"
+        },
+        {
+          "key": "Content-Security-Policy",
+          "value": "base-uri 'self'; object-src 'none'; frame-ancestors 'self'; form-action 'self'"
+        }
+      ]
+    },
+    {
+      "source": "/static/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public,max-age=31536000,immutable"
+        }
+      ]
+    },
+    {
+      "source": "/mock/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public,max-age=0,must-revalidate"
+        }
+      ]
+    },
+    {
+      "source": "/qa/(.*)",
+      "headers": [
+        {
+          "key": "Content-Security-Policy",
+          "value": "base-uri 'self'; object-src 'none'; frame-ancestors 'self'; connect-src 'none'; form-action 'none'"
+        }
+      ]
+    },
+    {
+      "source": "/qa/zones/(.*)",
+      "headers": [
+        {
+          "key": "Content-Security-Policy",
+          "value": "base-uri 'self'; object-src 'none'; frame-ancestors 'self'; connect-src 'self' https://tiles.openfreemap.org; form-action 'none'"
+        }
+      ]
+    },
+    {
+      "source": "/index.html",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-cache"
+        }
+      ]
+    },
+    {
+      "source": "/design-v2/vehicles/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public,max-age=31536000,immutable"
+        }
+      ]
+    }
   ]
 }

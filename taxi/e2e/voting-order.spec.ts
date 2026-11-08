@@ -1,3 +1,5 @@
+import { finishJourneyThroughUi } from './fixtures/finishJourney'
+import { newAuthenticatedContext } from './fixtures/tabSession'
 /**
  * TEST-E2E-003 — А.1.2, голосование. Живой backend.
  *
@@ -64,6 +66,7 @@ import {
   PICKUP,
   STATE_NAMES,
   clickPrimaryAction,
+  departAndArrive,
   confirmActionResult,
   expectUiDriverState,
   openBoardingForm,
@@ -134,7 +137,7 @@ function reportSweep(when: string, result: ISweepResult): void {
  * с разными storageState: общих cookies и localStorage у ролей нет.
  */
 async function openSession(browser: Browser, storageState: string): Promise<BrowserContext> {
-  const context = await browser.newContext({
+  const context = await newAuthenticatedContext(browser, {
     ...devices['Desktop Chrome'],
     storageState,
     baseURL: appUrl(),
@@ -218,7 +221,7 @@ test.afterEach(async({}, testInfo) => {
   while (createdOrders.length) {
     const orderId = createdOrders.pop() as string
     try {
-      await cancelOrder(passenger, orderId)
+      if (Number((await readOrder(passenger, orderId)).b_state) !== 4) await cancelOrder(passenger, orderId)
     } catch (error) {
       console.error(
         `E2E CLEANUP FAILED: orderId=${orderId} — заказ остался на бэкенде, ` +
@@ -284,7 +287,7 @@ async function respondToVoting(role: IRole, orderId: string): Promise<void> {
   await confirmActionResult(role.page, 'success', `${role.title}: приложение подтвердило отклик`)
 }
 
-test('А.1.2 — голосование: от создания заказа до начала поездки', async() => {
+test('А.1.2 — голосование: от создания заказа до завершения поездки', async({}, testInfo) => {
   // ШАГ 1. Предусловие: у пассажира есть голосовой заказ, общий для обоих
   // водителей и с ожиданием из доверенного окна.
   const orderId = await createVotingOrder(passenger, {
@@ -398,7 +401,7 @@ test('А.1.2 — голосование: от создания заказа до
   await openDriverMap(driver1.page)
   await expectUiDriverState(
     driver1.page, DRIVER_STATE.Performer, 'карта водителя показывает принятый заказ')
-  await clickPrimaryAction(driver1.page)
+  await departAndArrive(driver1.page)
   await expectBackendState(orderId, driver1, DRIVER_STATE.Arrived, 'бэкенд перевёл заказ в Arrived')
   await expectUiDriverState(driver1.page, DRIVER_STATE.Arrived, 'карта показывает прибытие')
   await expectPassengerDriverState(
@@ -408,7 +411,7 @@ test('А.1.2 — голосование: от создания заказа до
   // Arrived → Started проходит через код посадки: это часть его контракта, а не
   // обход (TEST-E2E-001, pages/Driver/Map.tsx). Код настоящий, водительский.
   await openBoardingForm(driver1.page)
-  await submitBoardingCode(driver1.page, boardingCodeOf(driver1.car))
+  await submitBoardingCode(driver1.page, boardingCodeOf(await readOrder(passenger, orderId)))
   await expectBackendState(orderId, driver1, DRIVER_STATE.Started, 'бэкенд перевёл заказ в Started')
   await expectUiDriverState(driver1.page, DRIVER_STATE.Started, 'карта показывает начатую поездку')
   await expectPassengerDriverState(
@@ -426,4 +429,6 @@ test('А.1.2 — голосование: от создания заказа до
     driverStateOf(started, driver1.session.userId),
     'выбранный водитель находится именно в Started',
   ).toBe(DRIVER_STATE.Started)
+  await finishJourneyThroughUi(driver1.page, passengerPage, driver1.session, orderId, testInfo)
+
 })

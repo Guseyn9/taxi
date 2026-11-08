@@ -156,11 +156,12 @@ export function resolveAvailableClasses(facts: OrderFormFacts, routeFacts = reso
   const selectedClass = SITE_CONSTANTS.CAR_CLASSES[facts.carClass] ?? null
   const selectedClassAllowed = Boolean(
     selectedClass &&
+    availableClasses.some(item => String(item.id) === String(facts.carClass)) &&
     routeFacts.effectiveLocationClass &&
     carClassSupportsLocationClass(selectedClass, routeFacts.effectiveLocationClass) &&
     carClassAllowedForRoute(selectedClass, facts.fromPolygons, facts.toPolygons, facts.from, facts.to),
   )
-  const fallbackClassId = firstItem(new Set(availableClasses.map(({ id }) => id))) ?? SITE_CONSTANTS.DEFAULT_CAR_CLASS
+  const fallbackClassId = firstItem(new Set(availableClasses.map(({ id }) => id))) ?? null
 
   return {
     availableClasses,

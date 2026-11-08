@@ -427,7 +427,7 @@ function OrderCard({
       )}
 
       <div className="status-card__comments">
-        <p>{formatCommentWithEmoji(order.b_comments)?.map(({ src }) => <img src={src} />)}</p>
+        <p>{formatCommentWithEmoji(order.b_comments)?.map(({ src }, index) => <img key={`${src}:${index}`} src={src} alt="" />)}</p>
         {
           !(order.b_comments?.includes('97') || order.b_comments?.includes('98')) &&
             <span className='status-card__seats'>

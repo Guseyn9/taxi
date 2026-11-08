@@ -1,4 +1,16 @@
 /* One useful compact sheet, one preferences view. The map owns the remaining area. */
+/* Restore the original compact selector above the sheet: only the active label expands. */
+#root .passenger__form-container>.boundary-buttons--compact{display:flex;align-items:center;align-self:flex-start;flex:none;gap:6px;width:max-content;max-width:calc(100% - 32px);height:44px;margin:0 16px;padding:0;overflow:visible;pointer-events:auto}
+#root .passenger__form-container:has(>.boundary-buttons--compact)>.passenger__draggable{flex:1 1 auto!important;min-height:0}
+#root .passenger__form-container>.boundary-buttons--compact .boundary-buttons__item{display:flex;flex:0 0 44px;align-items:center;justify-content:flex-start;flex-direction:row!important;gap:0;width:44px;min-width:44px;max-width:44px!important;height:44px!important;min-height:44px;padding:0!important;border:1px solid var(--drive-line);border-radius:14px;background:var(--drive-cream,#fff8f3);color:var(--drive-wine);overflow:visible}
+#root .passenger__form-container>.boundary-buttons--compact .boundary-buttons__item--active{flex:0 1 auto;width:auto;max-width:calc(100% - 100px)!important;border-color:var(--drive-red);background:var(--drive-red);color:#fff}
+#root .passenger__form-container>.boundary-buttons--compact .boundary-buttons__icon{display:grid;place-items:center;flex:0 0 24px;width:24px;min-width:24px;height:24px;margin:0 9px}
+#root .passenger__form-container>.boundary-buttons--compact .boundary-buttons__icon svg{display:block;width:22px;height:22px}
+#root .passenger__form-container>.boundary-buttons--compact .boundary-buttons__text{display:none!important;min-width:0;margin:0 10px 0 0;color:inherit;font-size:12px;line-height:18px;font-weight:650;overflow:hidden;text-overflow:ellipsis}
+#root .passenger__form-container>.boundary-buttons--compact .boundary-buttons__item--active .boundary-buttons__text{display:block!important}
+#root .passenger__form-container>.boundary-buttons--compact .boundary-buttons__status{top:-5px;right:auto;inset-inline-end:0}
+#root .passenger__form-container>.boundary-buttons--compact .boundary-buttons__item:focus-visible{outline:2px solid var(--drive-red);outline-offset:3px}
+[dir=rtl] #root .passenger__form-container>.boundary-buttons--compact .boundary-buttons__text{margin:0 0 0 10px}
 #root .passenger-voting-form .rs-booking-preferences{display:grid;gap:12px;margin:0 0 12px}
 #root .rs-booking-preferences .boundary-buttons{display:flex!important;position:static;width:100%;height:auto;gap:6px;margin:0;padding:0;background:none}
 #root .rs-booking-preferences .boundary-buttons__item{flex:1;min-width:0;min-height:48px;height:auto!important;padding:8px!important;flex-direction:row!important;gap:6px}
@@ -54,6 +66,13 @@
  #root .passenger:not(.passenger--picking-location) .rs-map-center-actions{left:12px!important;right:auto!important;width:calc(100vw - var(--landscape-form-width) - 88px);max-width:280px}
  #root .passenger .passenger-voice{left:12px!important;right:auto!important;max-width:calc(100vw - var(--landscape-form-width) - 32px)}
  #root .passenger .passenger-voice__toggle{white-space:normal;text-align:start}
+ #root .passenger-voting-form[data-locked=false][data-options-view=false] .rs-booking-actions{display:grid;grid-template-columns:minmax(0,1fr) 44px;gap:8px}
+ #root .passenger-voting-form[data-locked=false][data-options-view=false] .rs-booking-blocked{grid-column:1;grid-row:1;align-self:center}
+ #root .passenger-voting-form[data-locked=false][data-options-view=false] .rs-booking-actions__help{position:static!important;display:flex!important;grid-column:2;grid-row:1;width:44px;height:44px;padding:12px;font-size:0;gap:0}
+ #root .passenger-voting-form[data-locked=false][data-options-view=false] .rs-booking-actions__help span{display:none}
+ #root .passenger-voting-form[data-locked=false][data-options-view=false] .rs-booking-actions__list{grid-column:1/3}
+ #root .passenger-voting-form[data-locked=false][data-options-view=false] .rs-booking-action__detail{display:none}
+ #root .passenger-voting-form[data-locked=false][data-options-view=false] .rs-booking-action__submit{height:64px!important;min-height:64px!important}
 }
 @media(min-width:500px) and (max-width:699px) and (max-height:500px){
  #root .passenger-voting-form[data-locked=false][data-options-view=false] .rs-options-toggle{font-size:0;gap:0;min-width:44px}
@@ -98,4 +117,36 @@
    removing the duplicate cards keeps the entire address/options row visible. */
 @media(max-width:599px) and (max-height:650px) and (orientation:portrait){
  #root .passenger-voting-form[data-locked=false][data-options-view=false] .passenger-voting-form__car-class{display:none!important}
+ #root .passenger__form-container[data-sheet-collapsed=false]:has(.passenger-voting-form[data-locked=false][data-options-view=false]){max-height:calc(100% - 48px)!important}
+ #root .passenger__form-container[data-sheet-collapsed=false] .passenger__draggable:has(.passenger-voting-form[data-locked=false][data-options-view=false]){max-height:calc(var(--taxi-viewport-height,100dvh) - 108px)!important}
+ #root .passenger__form-container[data-sheet-collapsed=true] .passenger__draggable:has(.passenger-voting-form[data-locked=false][data-options-view=false]){max-height:calc(var(--taxi-viewport-height,100dvh)*.64)!important}
+ #root .passenger:has(.passenger__form-container[data-sheet-collapsed=false] .passenger-voting-form[data-locked=false][data-options-view=false]) :is(.rs-map-center-actions,.passenger-voice){display:none!important}
+ #root .passenger-voting-form[data-locked=false][data-options-view=false] .rs-booking-action__detail{display:none}
+ #root .passenger-voting-form[data-locked=false][data-options-view=false] .rs-booking-action__submit{min-height:64px!important;height:auto!important;padding:8px 4px!important;gap:6px!important}
 }
+/* Configuration may provide more than two classes. Keep one reachable row. */
+#root .car-class-slider[data-class-count] .car-class-slider__options{display:grid;grid-auto-flow:column;grid-template-columns:none;grid-auto-columns:minmax(150px,calc((100% - 10px)/2));overflow-x:auto;overscroll-behavior-x:contain;scroll-snap-type:x proximity;scroll-padding-inline:2px;padding:2px;scrollbar-width:thin}
+#root .car-class-slider[data-class-count="1"] .car-class-slider__options{grid-auto-columns:100%}
+#root .car-class-slider[data-class-count] .car-class-slider__options>li{scroll-snap-align:start}
+#root .car-class-slider[data-class-count] .car-class-slider__slide:focus-visible{outline:2px solid var(--drive-red);outline-offset:-5px}
+#root .rs-booking-blocked{margin:0;padding:8px 10px;border:1px solid var(--drive-wine-line);border-radius:10px;color:var(--drive-on-wine);font:500 12px/18px Manrope,sans-serif}
+/* A compact sheet keeps descriptions in the help dialog, not above the map. */
+#root .passenger__form-container[data-sheet-collapsed=true] .passenger-voting-form[data-locked=false][data-options-view=false] .rs-booking-actions__help{position:absolute;inset-inline-end:0;bottom:calc(100% + 8px);width:44px;height:44px;padding:12px;font-size:0;border:0}
+#root .passenger__form-container[data-sheet-collapsed=true] .rs-booking-actions{position:relative}
+#root .passenger__form-container[data-sheet-collapsed=true] .passenger-voting-form[data-locked=false][data-options-view=false] .rs-booking-action__submit{flex-direction:row;flex-wrap:wrap;gap:6px;height:auto;min-height:52px;padding:8px}
+#root .passenger__form-container[data-sheet-collapsed=true] .rs-booking-action__submit span{width:auto;flex:0 1 auto;font-size:12px;line-height:16px}
+#root .passenger__form-container[data-sheet-collapsed=true] .rs-booking-action__detail{display:none}
+#root .passenger__form-container[data-sheet-collapsed=true] .passenger-voting-form[data-locked=false][data-options-view=false] .passenger-voting-form__location-wrapper .input__header{display:flex}
+#root .rs-ride-body>.rs-phone-field .passenger-voting-form__phone-save-button,#root .rs-ride-body>.rs-phone-field .passenger-voting-form__phone-save-button:hover{background:var(--drive-red)!important;color:var(--drive-white)!important;border:1px solid var(--drive-red)!important;opacity:1}
+#root .rs-ride-body>.rs-phone-field .passenger-voting-form__phone-save-button:disabled{background:var(--drive-line)!important;color:var(--drive-muted)!important;border-color:var(--drive-line)!important;opacity:1;cursor:default}
+#root .rs-ride-body>.rs-phone-field .input__error{color:var(--drive-on-wine);font-weight:600}
+#root .passenger__form-container[data-sheet-collapsed=true] .passenger-voting-form[data-locked=false][data-options-view=false] .input__wrapper{min-height:48px!important}
+#root .passenger__form-container[data-sheet-collapsed=true] .passenger-voting-form[data-locked=false][data-options-view=false] .rs-booking-actions__help{display:none}
+#root .map-container__center-marker{width:36px!important;height:36px!important;transform:translate(-50%,-50%)!important}
+#root .rs-nearby-supply{display:flex;flex-wrap:wrap;gap:6px 16px;color:var(--drive-on-wine-muted);font:500 11px/18px Manrope,sans-serif}
+#root .rs-nearby-supply>span{display:inline-flex;align-items:center;gap:5px}
+#root .rs-nearby-supply svg{flex:none}
+#root .passenger__form-container .passenger-sheet-handle{height:44px!important;min-height:44px!important}
+#root .passenger__form-container[data-sheet-collapsed=true] .passenger-voting-form[data-locked=false][data-options-view=false] .passenger-voting-form__group{gap:8px!important}
+/* No supply endpoint is connected; keep the short viewport for actionable fields. */
+@media(max-height:650px){#root .passenger-voting-form[data-locked=false][data-options-view=false] .rs-nearby-supply{display:none}}

@@ -1,3 +1,4 @@
+import { parseSafeSandboxSettings } from '../../security/sandboxSettings'
 const copy = {
   en: { open: 'Open JSON', save: 'Save', refresh: 'Refresh preview', invalid: 'Could not open these settings. Choose a valid JSON object.', readError: 'Could not read the file.' },
   ru: { open: 'Открыть JSON', save: 'Сохранить', refresh: 'Обновить просмотр', invalid: 'Не удалось открыть настройки. Выберите корректный JSON-объект.', readError: 'Не удалось прочитать файл.' },
@@ -9,8 +10,5 @@ export function sandboxCopy(iso?: string) {
   return value.includes('arab') ? copy.ar : copy[value.split('-')[0] as keyof typeof copy] || copy.en
 }
 export function parseSandboxSettings(value: string): Record<string, any> | null {
-  try {
-    const parsed = JSON.parse(value)
-    return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : null
-  } catch { return null }
+  return parseSafeSandboxSettings(value)
 }

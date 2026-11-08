@@ -5,3 +5,11 @@ build
 .env*
 e2e
 *.log
+
+# Local diagnostics and working artifacts are never deployment inputs.
+design-review
+output
+tmp
+artifacts
+**/*.log
+.DS_Store

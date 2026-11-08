@@ -1,7 +1,8 @@
 import React, { useMemo } from 'react'
 import { connect, ConnectedProps } from 'react-redux'
 import { useLocation } from 'react-router-dom'
-import { EStatuses } from '../../../types/types'
+import { EStatuses, EUserRoles } from '../../../types/types'
+import {authRoleForPath} from './authRole'
 import { IRootState } from '../../../state'
 import {
   userSelectors,
@@ -52,7 +53,7 @@ function LoginModal({
       label: t(item.label),
     }))
 
-  const RegisterComponent = location.pathname.includes('/driver-order') ?
+  const RegisterComponent = authRoleForPath(location.pathname) === EUserRoles.Driver ?
     RegisterJSON :
     RegisterForm
   return (

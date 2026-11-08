@@ -6,6 +6,7 @@ type TApiErrorRule = {
 }
 
 export const API_ERROR_MESSAGE_TABLE: TApiErrorRule[] = [
+  {apiCodes:['wrong driver code','booking with empty driver code'], translation:TRANSLATION.WRONG_BOARDING_CODE},
   {
     apiCodes: ['car not found', 'no car', 'car missing', 'used_car_not_found', 'not_linked_car'],
     translation: 'driver_status_need_car',
@@ -78,7 +79,8 @@ const getApiText = (response: any) => [
   response?.data?.error,
   response?.data?.info,
   response?.data?.detail,
-  stringifyApiValue(response),
+  response?.details?.message,
+  typeof response === 'string' ? response : '',
 ]
   .filter(Boolean)
   .join(' ')
@@ -124,6 +126,9 @@ export const getApiErrorMessage = (
   response: any,
   options: { context?: 'car-registration' | 'car-profile' | 'driver-order' } = {},
 ) => {
+  if (['FSM_COMMAND_PENDING','FSM_COMMAND_RECOVERY_REQUIRED','FSM_COMMAND_RECOVERY_LIMIT'].includes(response?.code))
+    return t('driver_action_result_pending')
+  if (response?.code === 'FSM_COMMAND_SESSION_CHANGED') return t('driver_action_session_changed')
   const rule = findApiErrorRule(response)
   const message = rule ? t(rule.translation) : ''
   const fallbackCode = rule?.apiCodes[0] || ''

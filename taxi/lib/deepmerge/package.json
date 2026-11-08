@@ -1,0 +1,11 @@
+{
+  "name": "deepmerge",
+  "version": "4.3.1-taxi.1",
+  "description": "Local deepmerge 4.3.1 fork with own-property writes for GHSA-gcqx-w48m-w2h4",
+  "main": "index.js",
+  "types": "index.d.ts",
+  "license": "MIT",
+  "dependencies": {
+    "is-mergeable-object": "1.1.0"
+  }
+}

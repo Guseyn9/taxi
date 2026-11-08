@@ -93,7 +93,10 @@ const _getUserCars = (
   { formData }: IApiMethodArguments,
 ): Promise<any> => {
   return axios.post(`${Config.API_URL}/user/authorized/car`, formData)
-    .then(res => Object.values(res?.data?.data?.car || {}))
+    .then(res => {
+      if (String(res?.data?.code) !== '200' || res?.data?.status === 'error') throw new Error('Vehicle list could not be refreshed')
+      return Object.values(res?.data?.data?.car || {}).map(convertCar)
+    })
 }
 export const getUserCars = apiMethod<typeof _getUserCars>(_getUserCars)
 

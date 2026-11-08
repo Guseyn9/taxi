@@ -345,3 +345,23 @@ describe('CommandStatusDriverCommandCompletionWaiter', () => {
     })
   })
 })
+
+it.each([408, 425, 429])('keeps a command pending after temporary HTTP %s status reads', async code => {
+  jest.useFakeTimers()
+  try {
+    const transport={getStatus:jest.fn().mockRejectedValueOnce(new BackendInteractionError(`FSM_COMMAND_STATUS_HTTP_${code}`,'Retry',{retryAfterMs:500})).mockResolvedValueOnce({instanceId:909,status:'COMPLETED'})}
+    const waiter=new CommandStatusDriverCommandCompletionWaiter(transport,2000,100)
+    const pending=waiter.wait({actionType:'driver.order.start',orderId:'42',instanceId:909,baseline:waiter.captureBaseline('42')})
+    for(let i=0;i<12;i++)await Promise.resolve()
+    jest.advanceTimersByTime(499);expect(transport.getStatus).toHaveBeenCalledTimes(1)
+    jest.advanceTimersByTime(1);for(let i=0;i<12;i++)await Promise.resolve()
+    await expect(pending).resolves.toEqual({status:'COMPLETED',instanceId:909})
+  } finally {jest.useRealTimers()}
+})
+it('observes a completion that arrived between baseline capture and subscription',async()=>{
+ const runtime=createRuntime();runtime.setSnapshot(driverSnapshot('order_driver_arrived'))
+ const waiter=new SnapshotDriverCommandCompletionWaiter(runtime,1000),command=request(waiter,910)
+ runtime.setSnapshot(driverSnapshot('order_in_ride'))
+ await expect(waiter.wait(command)).resolves.toEqual({status:'COMPLETED',instanceId:910})
+ expect(runtime.listenerCount()).toBe(0)
+})

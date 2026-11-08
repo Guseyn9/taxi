@@ -23,7 +23,7 @@ it('retains existing trips when the car is full but rejects new customers that d
 })
 it('does not collapse different request types or turn missing profit into zero',()=>{
  expect(driverOrderMode({...order('a',1),b_voting:true})).toBe('voting')
- expect(driverOrderMode({...order('b',1),b_cars_count:0})).toBe('offer')
+ expect(driverOrderMode({...order('b',1),b_cars_count:1,b_options:{offer_mode:'OFFER'}})).toBe('offer')
  expect(driverOrderMode(order('c',1))).toBe('order')
  expect(signedProfit(undefined,'MAD','en')).toBe('—')
  expect(signedProfit(-3,'MAD','en')).toContain('3')

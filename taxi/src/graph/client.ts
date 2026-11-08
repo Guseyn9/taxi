@@ -35,13 +35,22 @@ export function loadRoadArea(): Promise<PreparedArea> {
             reject(error);
             return;
         }
-        const timeout = setTimeout(() => { worker.terminate(); reject(new Error('Road graph loading timed out')); }, 30000);
-        const finish = () => { clearTimeout(timeout); worker.terminate(); };
+        let settled = false;
+        const finish = () => {
+            settled = true;
+            clearTimeout(timeout);
+            worker.onmessage = null;
+            worker.onerror = null;
+            worker.onmessageerror = null;
+            worker.terminate();
+        };
+        const fail = (error: Error) => { if (!settled) { finish(); reject(error); } };
+        const timeout = setTimeout(() => fail(new Error('Road graph loading timed out')), 30000);
         worker.onmessage = (event: MessageEvent<GraphLoadResult & {
             id: number;
             error?: string;
         }>) => {
-            if (event.data.id !== 1)
+            if (settled || event.data.id !== 1)
                 return;
             if (event.data.error) {
                 finish();
@@ -61,9 +70,10 @@ export function loadRoadArea(): Promise<PreparedArea> {
                 reject(error);
             }
         };
-        worker.onerror = (event) => { finish(); reject(new Error(`Road graph worker failed: ${event.message || 'load error'}`)); };
-        worker.onmessageerror = () => { finish(); reject(new Error('Invalid road graph worker message')); };
-        worker.postMessage({ id: 1 });
+        worker.onerror = (event) => fail(new Error(`Road graph worker failed: ${event.message || 'load error'}`));
+        worker.onmessageerror = () => fail(new Error('Invalid road graph worker message'));
+        try { worker.postMessage({ id: 1 }); }
+        catch (error) { fail(error instanceof Error ? error : new Error('Road graph worker message failed')); }
     }).then(value => { loaded = value; return value; }).catch(error => { update({ status: 'error', error: error instanceof Error ? error.message : 'Road graph unavailable' }); throw error; }).finally(() => { pending = undefined; });
     return pending;
 }

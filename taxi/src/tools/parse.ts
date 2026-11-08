@@ -1,4 +1,5 @@
 import moment from 'moment'
+import { parseApiBoolean } from './boolean'
 import { objectFromEntries } from './compat'
 import {
   ICity,
@@ -27,13 +28,13 @@ export function parseMoneyModes(modes: string) {
   return modes.split(';').reduce((sum: TMoneyModes, item) => {
     const [main, submodes] = item.split('=')
     const [key, value] = main.split('-')
-    if (value) sum[key] = Boolean(parseInt(value))
+    if (value) sum[key] = parseApiBoolean(value)
 
     if (submodes) {
       sum[key] = {}
       submodes.split(',').forEach(i => {
         const [k, v] = i.split('-');
-        (sum[key] as any)[k] = Boolean(parseInt(v))
+        (sum[key] as any)[k] = parseApiBoolean(v)
       })
     }
 

@@ -1,0 +1,23 @@
+{
+  "scope": "Zone editor frontend only; no shared backend writes",
+  "fixed": [
+    "HTTP CSP blocked the map source",
+    "Map click overwrote invalid JSON text",
+    "Whitespace coordinates became geographic zero"
+  ],
+  "unitTests": 1057,
+  "unitSuites": 192,
+  "viewports": [
+    {
+      "width": 390,
+      "height": 844
+    },
+    {
+      "width": 1280,
+      "height": 1000
+    }
+  ],
+  "complexPolygonVertices": 200,
+  "sharedBackendAccepted": false,
+  "realDevicesTested": false
+}

@@ -1,11 +1,11 @@
 import React,{act} from 'react'
 import {createRoot} from 'react-dom/client'
-jest.mock('../platform/adapters/LegacyPassengerGateway',()=>({passengerGateway:{getOrder:jest.fn()}}))
-jest.mock('../tools/driverOffer',()=>({isOfferOrder:o=>o.mode==='offer',setStoredChoiceOrderMode:jest.fn()}))
 import {usePendingOffer} from './usePendingOffer'
 import {markPendingOffer,pendingOffer} from './pendingOffer'
 import {passengerGateway} from '../platform/adapters/LegacyPassengerGateway'
 import {setStoredChoiceOrderMode} from '../tools/driverOffer'
+jest.mock('../platform/adapters/LegacyPassengerGateway',()=>({passengerGateway:{getOrder:jest.fn()}}))
+jest.mock('../tools/driverOffer',()=>({isOfferOrder:o=>o.mode==='offer',setStoredChoiceOrderMode:jest.fn()}))
 let root,host
 function View({done}){const pending=usePendingOffer('u','A',done);return <p>{pending?'unconfirmed':'confirmed'}</p>}
 beforeEach(()=>{jest.useFakeTimers();global.IS_REACT_ACT_ENVIRONMENT=true;host=document.createElement('div');root=createRoot(host);markPendingOffer('u','A')})

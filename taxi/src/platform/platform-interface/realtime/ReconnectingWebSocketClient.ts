@@ -112,7 +112,8 @@ export class ReconnectingWebSocketClient {
     const scheduleReconnect = () => {
       if (revision !== this.connectionRevision || this.reconnectTimer)
         return
-      const delay = Math.min(this.maxDelayMs, this.initialDelayMs * (2 ** this.attempt))
+      const cap = Math.min(this.maxDelayMs, this.initialDelayMs * (2 ** Math.min(this.attempt, 30)))
+      const delay = Math.round(cap * (0.5 + Math.random() * 0.5))
       this.attempt += 1
       this.reconnectTimer = setTimeout(open, delay)
     }

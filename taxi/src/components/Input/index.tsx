@@ -1,4 +1,6 @@
 import { Input as ShadcnInput } from '../ui/input'
+import { validateUploadBatch } from '../../security/fileUpload'
+import FilePreview from '../FilePreview'
 import React, { useMemo, useState, useRef, useEffect } from 'react'
 import './styles.scss'
 import InputMask from '@mona-health/react-input-mask'
@@ -197,6 +199,7 @@ export default function Input({
   const [isDisabled, setIsDisabled] = useState<boolean>(Boolean(inputProps.disabled))
   const [isDefaultValueUsed, setIsDefaultValueUsed] = useState(false)
   const [files, setFiles] = useState<File[]>([])
+  const [uploadError, setUploadError] = useState('')
 
   const prevValue = useRef<string>('')
   const [bufferedValue, setRawBufferedValue] = useState<string | undefined>()
@@ -216,6 +219,9 @@ export default function Input({
 
   const addImageToRaw = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
+      try { validateUploadBatch(files.concat(Array.from(e.target.files))) }
+      catch (error) { setUploadError((error as Error).message); e.target.value = ''; return }
+      setUploadError('')
       setFiles(files.concat(Array.from(e.target.files)))
       onChange && onChange(files.concat(Array.from(e.target.files)))
     }
@@ -357,13 +363,14 @@ export default function Input({
             ref={mergedRef}
             inputMode="decimal"
             {...inputProps as InputMaskProps}
-            mask={replaceAllString(SITE_CONSTANTS.DEFAULT_PHONE_MASK, '_', '9')}
+            mask={(inputProps as InputMaskProps).mask || replaceAllString(SITE_CONSTANTS.DEFAULT_PHONE_MASK, '_', '9')}
             {...properties}
           />
         )
       case EInputTypes.File:
         return (
           <div className="input-file">
+            {uploadError && <div role="alert">{uploadError}</div>}
             {defaultFiles.map((file: any, index: number) => {
               return (
                 <div
@@ -384,7 +391,7 @@ export default function Input({
                   removeImg(file)
                 }}
               >
-                <img src={URL.createObjectURL(file)}></img>
+                <FilePreview file={file}/>
               </div>,
             )}
             <label className="input-file-add">

@@ -1,0 +1,6 @@
+$tone: #a90000;
+.sassCard {
+  color: $tone;
+  border-radius: 16px;
+  .nested { font-weight: 700; }
+}

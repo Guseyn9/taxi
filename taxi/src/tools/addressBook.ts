@@ -1,14 +1,15 @@
 import { IAddressPoint, ISuggestion, ESuggestionType } from '../types/types'
 import { getItem, setItem } from './localStorage'
 import { shortenAddress } from './utils'
+import { privateDataScope } from '../security/sessionLifecycle'
 
-const PERSONAL_ADDRESS_BOOK_KEY = 'taxi.personalAddressBook.v1'
+const personalAddressBookKey = () => `taxi.personalAddressBook.v2.${privateDataScope()}`
 const MAX_PERSONAL_ADDRESSES = 30
 
 const normalizeText = (value: unknown) => String(value || '')
   .toLowerCase()
   .replace(/ё/g, 'е')
-  .replace(/[^0-9a-zа-яё]+/gi, ' ')
+  .replace(/[^0-9a-zа-яё\u00c0-\u024f\u0600-\u06ff\u2d30-\u2d7f]+/gi, ' ')
   .replace(/\s+/g, ' ')
   .trim()
 
@@ -30,12 +31,12 @@ const isFilledPoint = (point?: IAddressPoint | null): point is IAddressPoint =>
   )
 
 const readPersonalAddressBook = (): IAddressPoint[] => {
-  const value = getItem<IAddressPoint[]>(PERSONAL_ADDRESS_BOOK_KEY, [])
+  const value = getItem<IAddressPoint[]>(personalAddressBookKey(), [])
   return Array.isArray(value) ? value.filter(isFilledPoint) : []
 }
 
 const writePersonalAddressBook = (items: IAddressPoint[]) => {
-  setItem(PERSONAL_ADDRESS_BOOK_KEY, items.slice(0, MAX_PERSONAL_ADDRESSES))
+  setItem(personalAddressBookKey(), items.slice(0, MAX_PERSONAL_ADDRESSES))
 }
 
 export const rememberPersonalAddress = (point?: IAddressPoint | null) => {

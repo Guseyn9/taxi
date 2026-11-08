@@ -1,0 +1,765 @@
+{
+  "date": "2026-11-07",
+  "release": "taxi-morocco-20261107-r16",
+  "auditHead": "00f2192b65be5482e457f09fa5d5c64447666feb",
+  "sourceParentCommit": "c5917e49bb543ed852d6531ad1b8bb784c682001",
+  "sourceCommit": "e6149dc993c3e186da3b3824478eff2d4d8f4159",
+  "scope": "Frontend implementation and executable local regressions against Valentin stages 01-50. Backend, authenticated cross-role E2E, physical devices and tenant editorial acceptance remain separate.",
+  "verdict": "Known actionable frontend code findings closed; full cross-layer audit and pilot acceptance remain open.",
+  "tests": 1265,
+  "suites": 223,
+  "stages": [
+    {
+      "stage": 1,
+      "topic": "Инвентаризация",
+      "frontendStatus": "inventory-reconciled",
+      "currentResolution": "Карта исходников и audit baseline сверены; документация не объявлена тестом.",
+      "regressionEvidence": [],
+      "externalAcceptance": "Нет самостоятельного дефекта."
+    },
+    {
+      "stage": 2,
+      "topic": "API и маршруты",
+      "frontendStatus": "code-and-local-regressions-closed",
+      "currentResolution": "Единые route helpers, реальные границы графа, finite/zero coordinates и bounded OSRM.",
+      "regressionEvidence": [
+        "src/API/way.coverage.test.js",
+        "src/tools/roadRoute.test.ts",
+        "src/platform/adapters/__tests__/LegacyRouteProvider.test.js",
+        "src/tools/mapReachability.test.ts"
+      ],
+      "externalAcceptance": "Provider SLA, серверные права и маршруты вне договорённого покрытия."
+    },
+    {
+      "stage": 3,
+      "topic": "Формы пассажира",
+      "frontendStatus": "code-and-local-regressions-closed",
+      "currentResolution": "FORM-01–08: finite coordinates; актуальная schema; checkbox/file validation; пустая доступность класса; partial config merge; очистка адресных данных.",
+      "regressionEvidence": [
+        "src/components/JSONForm/JSONFormElement.test.js",
+        "src/state/clientOrder/__tests__/orderFormResolvers.test.js",
+        "src/tools/siteConstants/formConfig.test.ts",
+        "src/design/useAddressSearch.test.js",
+        "src/security/sessionIsolation.test.js",
+        "src/security/sessionTokens.test.js",
+        "src/state/sessionSupervisor.test.js",
+        "src/state/user/logout.test.js"
+      ],
+      "externalAcceptance": "Реальный submit по tenant constraints и качество геокодера."
+    },
+    {
+      "stage": 4,
+      "topic": "Формы и действия водителя",
+      "frontendStatus": "code-and-local-regressions-closed",
+      "currentResolution": "Offer price/ETA и waiting seconds валидируются; отказ оффера подтверждается сервером до local projection; partial profile save явно показан и повтор заблокирован; dl_id обязателен. DRV-FORM-02 относится к закомментированному полю Document type.",
+      "regressionEvidence": [
+        "src/components/modals/__tests__/profile-save.test.jsx",
+        "src/tools/confirmedOfferDecline.test.ts",
+        "src/API/order.transport.test.js",
+        "src/state/cars/lifecycle.test.js"
+      ],
+      "externalAcceptance": "Onboarding/approval, предел цены/ожидания по контракту; атомарность нескольких серверных записей."
+    },
+    {
+      "stage": 5,
+      "topic": "Переходы и модальные окна",
+      "frontendStatus": "code-and-local-regressions-closed",
+      "currentResolution": "Навигация и закрытие окон после подтверждения; отказ сохраняет данные/выбор; pending и очередь ошибок.",
+      "regressionEvidence": [
+        "src/API/order.transport.test.js",
+        "src/components/modals/__tests__/cancel-business-errors.test.jsx",
+        "src/state/modals/messageQueue.test.ts",
+        "src/tools/alongTheWayPickup.test.ts"
+      ],
+      "externalAcceptance": "Реальные ответы двух ролей."
+    },
+    {
+      "stage": 6,
+      "topic": "Redux/Saga ownership",
+      "frontendStatus": "code-and-local-regressions-closed",
+      "currentResolution": "Redux/Saga ownership и mutation readback; WATCH_ORDER возобновляется после success/failure.",
+      "regressionEvidence": [
+        "src/state/orders/__tests__/readyOrdersPolling.test.js",
+        "src/platform/adapters/__tests__/httpDeadline.test.js",
+        "src/state/orders/__tests__/refreshOrder.test.js",
+        "src/API/order.transport.test.js",
+        "src/components/modals/__tests__/cancel-business-errors.test.jsx",
+        "src/state/modals/messageQueue.test.ts",
+        "src/tools/alongTheWayPickup.test.ts"
+      ],
+      "externalAcceptance": "Конкурентные серверные команды."
+    },
+    {
+      "stage": 7,
+      "topic": "Platform Interface / FSM",
+      "frontendStatus": "code-and-local-regressions-closed",
+      "currentResolution": "Legacy/FSM границы сохранены, таймауты и command recovery покрыты. FSM в выпуске выключен.",
+      "regressionEvidence": [
+        "src/platform/adapters/__tests__/DriverCommandRecovery.test.js",
+        "src/platform/adapters/__tests__/FsmTaxiCommandTransport.test.js",
+        "src/platform/adapters/__tests__/PassengerChannelBoundary.test.js",
+        "src/platform/platform-interface/__tests__/PlatformInterfaceIntegration.test.js"
+      ],
+      "externalAcceptance": "Совместимый авторизованный FSM backend."
+    },
+    {
+      "stage": 8,
+      "topic": "Сборка и интеграции",
+      "frontendStatus": "code-and-local-regressions-closed",
+      "currentResolution": "Production build без подмены timestamp, canonical entrypoints и одинаковые хэши повторной сборки.",
+      "regressionEvidence": [
+        "src/security/developmentTools.test.ts",
+        "src/tools/emulatorProductionGate.test.ts",
+        "src/security/reportPrivacy.test.js",
+        "src/security/auditPolicy.test.js"
+      ],
+      "externalAcceptance": "Native integrations/provider availability."
+    },
+    {
+      "stage": 9,
+      "topic": "Тесты и pilot gates",
+      "frontendStatus": "code-and-local-regressions-closed",
+      "currentResolution": "Свежий полный Jest/TypeScript/build и браузерные frontend fixtures.",
+      "regressionEvidence": [
+        "src/components/JSONForm/JSONFormElement.test.js",
+        "src/state/clientOrder/__tests__/orderFormResolvers.test.js",
+        "src/tools/siteConstants/formConfig.test.ts",
+        "src/design/useAddressSearch.test.js",
+        "src/API/order.transport.test.js",
+        "src/components/modals/__tests__/cancel-business-errors.test.jsx",
+        "src/state/modals/messageQueue.test.ts",
+        "src/tools/alongTheWayPickup.test.ts"
+      ],
+      "externalAcceptance": "Stable authenticated E2E на тестовых аккаунтах и физические устройства."
+    },
+    {
+      "stage": 10,
+      "topic": "Реестр 68 замечаний",
+      "frontendStatus": "inventory-reconciled",
+      "currentResolution": "Исторический реестр 68 сохранён. Его разделённые frontend/backend обязанности сверены с тематическими gates ниже; 68 не названы 68 новыми тестами.",
+      "regressionEvidence": [
+        "src/security/clientEnvironment.test.js",
+        "src/security/sessionIsolation.test.js",
+        "src/security/diagnosticRedaction.test.ts",
+        "src/security/authCallback.test.ts",
+        "src/security/arithmetic.test.js",
+        "src/siteConstants.pricing.test.ts",
+        "src/design/fareDisplay.test.js",
+        "src/components/modals/__tests__/rating-submit.test.js",
+        "src/tools/orderDecisionMatrix.test.ts",
+        "src/platform/adapters/__tests__/DriverBoardingCommandPath.test.js",
+        "src/tools/driverSelfCancel.test.ts",
+        "src/design/restoreTrip.test.js"
+      ],
+      "externalAcceptance": "Оставшиеся backendRemaining и contract-dependent frontend follow-up из исторического реестра."
+    },
+    {
+      "stage": 11,
+      "topic": "API reachability / FSM",
+      "frontendStatus": "code-and-local-regressions-closed",
+      "currentResolution": "Reachability, deadlines, disable unsupported paths и PIN acknowledgement; неиспользуемый HTTP helper не назван живой утечкой.",
+      "regressionEvidence": [
+        "src/platform/adapters/__tests__/DriverCommandRecovery.test.js",
+        "src/platform/adapters/__tests__/FsmTaxiCommandTransport.test.js",
+        "src/platform/adapters/__tests__/PassengerChannelBoundary.test.js",
+        "src/platform/platform-interface/__tests__/PlatformInterfaceIntegration.test.js",
+        "src/API/way.coverage.test.js",
+        "src/tools/roadRoute.test.ts",
+        "src/platform/adapters/__tests__/LegacyRouteProvider.test.js",
+        "src/tools/mapReachability.test.ts"
+      ],
+      "externalAcceptance": "Серверная авторизация и PIN."
+    },
+    {
+      "stage": 12,
+      "topic": "Passenger action contract",
+      "frontendStatus": "code-and-local-regressions-closed",
+      "currentResolution": "Passenger action delegation и negative mutation envelopes закреплены тестами.",
+      "regressionEvidence": [
+        "src/platform/adapters/__tests__/DriverCommandRecovery.test.js",
+        "src/platform/adapters/__tests__/FsmTaxiCommandTransport.test.js",
+        "src/platform/adapters/__tests__/PassengerChannelBoundary.test.js",
+        "src/platform/platform-interface/__tests__/PlatformInterfaceIntegration.test.js",
+        "src/API/order.transport.test.js",
+        "src/components/modals/__tests__/cancel-business-errors.test.jsx",
+        "src/state/modals/messageQueue.test.ts",
+        "src/tools/alongTheWayPickup.test.ts"
+      ],
+      "externalAcceptance": "Серверная реализация action contract."
+    },
+    {
+      "stage": 13,
+      "topic": "Passenger feature flags",
+      "frontendStatus": "code-and-local-regressions-closed",
+      "currentResolution": "Feature flags и Passenger channel boundary проверены; включение FSM не используется как доказательство API.",
+      "regressionEvidence": [
+        "src/platform/adapters/__tests__/DriverCommandRecovery.test.js",
+        "src/platform/adapters/__tests__/FsmTaxiCommandTransport.test.js",
+        "src/platform/adapters/__tests__/PassengerChannelBoundary.test.js",
+        "src/platform/platform-interface/__tests__/PlatformInterfaceIntegration.test.js"
+      ],
+      "externalAcceptance": "Совместимый Command API до включения."
+    },
+    {
+      "stage": 14,
+      "topic": "Chat / SOS / Rating",
+      "frontendStatus": "code-and-local-regressions-closed",
+      "currentResolution": "Chat send tracking, SOS error handling и рейтинг без ложного success.",
+      "regressionEvidence": [
+        "src/platform/adapters/__tests__/LegacyChatGateway.test.js",
+        "src/components/Chat/sendTracker.test.ts",
+        "src/tools/__tests__/passengerSos.test.js",
+        "src/components/modals/__tests__/rating-submit.test.js"
+      ],
+      "externalAcceptance": "Доставка, права и persistence/readback."
+    },
+    {
+      "stage": 15,
+      "topic": "Покрытие Chat / SOS / Rating",
+      "frontendStatus": "code-and-local-regressions-closed",
+      "currentResolution": "Chat/SOS/Rating suites реально выполнены.",
+      "regressionEvidence": [
+        "src/platform/adapters/__tests__/LegacyChatGateway.test.js",
+        "src/components/Chat/sendTracker.test.ts",
+        "src/tools/__tests__/passengerSos.test.js",
+        "src/components/modals/__tests__/rating-submit.test.js"
+      ],
+      "externalAcceptance": "Живая парная сессия."
+    },
+    {
+      "stage": 16,
+      "topic": "Passenger mutations",
+      "frontendStatus": "code-and-local-regressions-closed",
+      "currentResolution": "Единый success validator для прямых мутаций заказов; code404 без status:error отвергается.",
+      "regressionEvidence": [
+        "src/API/order.transport.test.js",
+        "src/components/modals/__tests__/cancel-business-errors.test.jsx",
+        "src/state/modals/messageQueue.test.ts",
+        "src/tools/alongTheWayPickup.test.ts"
+      ],
+      "externalAcceptance": "Серверная идемпотентность."
+    },
+    {
+      "stage": 17,
+      "topic": "Кандидаты / fallback",
+      "frontendStatus": "code-and-local-regressions-closed",
+      "currentResolution": "Candidate choice только после success; offer validation/recovery и пустые классы не маскируются fallback.",
+      "regressionEvidence": [
+        "src/components/modals/__tests__/profile-save.test.jsx",
+        "src/tools/confirmedOfferDecline.test.ts",
+        "src/API/order.transport.test.js",
+        "src/state/cars/lifecycle.test.js",
+        "src/components/JSONForm/JSONFormElement.test.js",
+        "src/state/clientOrder/__tests__/orderFormResolvers.test.js",
+        "src/tools/siteConstants/formConfig.test.ts",
+        "src/design/useAddressSearch.test.js"
+      ],
+      "externalAcceptance": "Canonical Offer и candidate readback сервера."
+    },
+    {
+      "stage": 18,
+      "topic": "Локальный lifecycle заказа",
+      "frontendStatus": "code-and-local-regressions-closed",
+      "currentResolution": "Local reload/terminal state/boarding projection и восстановление проверены.",
+      "regressionEvidence": [
+        "src/tools/orderDecisionMatrix.test.ts",
+        "src/platform/adapters/__tests__/DriverBoardingCommandPath.test.js",
+        "src/tools/driverSelfCancel.test.ts",
+        "src/design/restoreTrip.test.js",
+        "src/security/sessionIsolation.test.js",
+        "src/security/sessionTokens.test.js",
+        "src/state/sessionSupervisor.test.js",
+        "src/state/user/logout.test.js"
+      ],
+      "externalAcceptance": "Настоящий reload активной поездки."
+    },
+    {
+      "stage": 19,
+      "topic": "Lifecycle end-to-end",
+      "frontendStatus": "code-and-local-regressions-closed",
+      "currentResolution": "Frontend lifecycle contract и orchestration покрыты исполняемыми regression.",
+      "regressionEvidence": [
+        "src/tools/orderDecisionMatrix.test.ts",
+        "src/platform/adapters/__tests__/DriverBoardingCommandPath.test.js",
+        "src/tools/driverSelfCancel.test.ts",
+        "src/design/restoreTrip.test.js",
+        "src/platform/adapters/__tests__/DriverCommandRecovery.test.js",
+        "src/platform/adapters/__tests__/FsmTaxiCommandTransport.test.js",
+        "src/platform/adapters/__tests__/PassengerChannelBoundary.test.js",
+        "src/platform/platform-interface/__tests__/PlatformInterfaceIntegration.test.js"
+      ],
+      "externalAcceptance": "Полный Standard/Voting/Offer E2E с сервером остаётся внешним gate."
+    },
+    {
+      "stage": 20,
+      "topic": "История / рейтинг",
+      "frontendStatus": "code-and-local-regressions-closed",
+      "currentResolution": "Passenger history и RatingModal; точные дроби и валюта заказа вместо глобальной.",
+      "regressionEvidence": [
+        "src/security/arithmetic.test.js",
+        "src/siteConstants.pricing.test.ts",
+        "src/design/fareDisplay.test.js",
+        "src/components/modals/__tests__/rating-submit.test.js",
+        "src/platform/adapters/__tests__/LegacyChatGateway.test.js",
+        "src/components/Chat/sendTracker.test.ts",
+        "src/tools/__tests__/passengerSos.test.js",
+        "src/components/PassengerHistory/index.test.jsx"
+      ],
+      "externalAcceptance": "Сохранение рейтинга/архива сервером."
+    },
+    {
+      "stage": 21,
+      "topic": "Passenger reload / isolation",
+      "frontendStatus": "code-and-local-regressions-closed",
+      "currentResolution": "Session fencing, logout teardown и persisted personal state проверены.",
+      "regressionEvidence": [
+        "src/security/sessionIsolation.test.js",
+        "src/security/sessionTokens.test.js",
+        "src/state/sessionSupervisor.test.js",
+        "src/state/user/logout.test.js"
+      ],
+      "externalAcceptance": "Два настоящих аккаунта и server revocation."
+    },
+    {
+      "stage": 22,
+      "topic": "Driver reload / recovery",
+      "frontendStatus": "code-and-local-regressions-closed",
+      "currentResolution": "Driver recovery, read deadlines и pending/readback проверены.",
+      "regressionEvidence": [
+        "src/tools/orderDecisionMatrix.test.ts",
+        "src/platform/adapters/__tests__/DriverBoardingCommandPath.test.js",
+        "src/tools/driverSelfCancel.test.ts",
+        "src/design/restoreTrip.test.js",
+        "src/state/orders/__tests__/readyOrdersPolling.test.js",
+        "src/platform/adapters/__tests__/httpDeadline.test.js",
+        "src/state/orders/__tests__/refreshOrder.test.js"
+      ],
+      "externalAcceptance": "Реальная поездка после reconnect."
+    },
+    {
+      "stage": 23,
+      "topic": "Cross-role synchronization",
+      "frontendStatus": "code-and-local-regressions-closed",
+      "currentResolution": "Frontend snapshot/realtime reconciliation и смена сессии покрыты локально.",
+      "regressionEvidence": [
+        "src/platform/adapters/__tests__/DriverCommandRecovery.test.js",
+        "src/platform/adapters/__tests__/FsmTaxiCommandTransport.test.js",
+        "src/platform/adapters/__tests__/PassengerChannelBoundary.test.js",
+        "src/platform/platform-interface/__tests__/PlatformInterfaceIntegration.test.js",
+        "src/security/sessionIsolation.test.js",
+        "src/security/sessionTokens.test.js",
+        "src/state/sessionSupervisor.test.js",
+        "src/state/user/logout.test.js"
+      ],
+      "externalAcceptance": "Passenger↔Driver два устройства/аккаунта."
+    },
+    {
+      "stage": 24,
+      "topic": "Terminal / concurrency",
+      "frontendStatus": "code-and-local-regressions-closed",
+      "currentResolution": "Terminal projections после подтверждения, ошибки и readback; локальные guards от повторного клика.",
+      "regressionEvidence": [
+        "src/tools/orderDecisionMatrix.test.ts",
+        "src/platform/adapters/__tests__/DriverBoardingCommandPath.test.js",
+        "src/tools/driverSelfCancel.test.ts",
+        "src/design/restoreTrip.test.js",
+        "src/API/order.transport.test.js",
+        "src/components/modals/__tests__/cancel-business-errors.test.jsx",
+        "src/state/modals/messageQueue.test.ts",
+        "src/tools/alongTheWayPickup.test.ts"
+      ],
+      "externalAcceptance": "Idempotency/concurrency enforcement на сервере."
+    },
+    {
+      "stage": 25,
+      "topic": "Timeout / recovery",
+      "frontendStatus": "code-and-local-regressions-closed",
+      "currentResolution": "Bounded reads/OSRM, no-overlap polling, retry/readback без автоматического повтора команд.",
+      "regressionEvidence": [
+        "src/API/way.coverage.test.js",
+        "src/tools/roadRoute.test.ts",
+        "src/platform/adapters/__tests__/LegacyRouteProvider.test.js",
+        "src/tools/mapReachability.test.ts",
+        "src/state/orders/__tests__/readyOrdersPolling.test.js",
+        "src/platform/adapters/__tests__/httpDeadline.test.js",
+        "src/state/orders/__tests__/refreshOrder.test.js"
+      ],
+      "externalAcceptance": "Разбор ambiguous write сервером."
+    },
+    {
+      "stage": 26,
+      "topic": "Auth / secrets",
+      "frontendStatus": "code-and-local-regressions-closed",
+      "currentResolution": "Client secrets/diagnostic redaction/session vault; auth source проверен тестами.",
+      "regressionEvidence": [
+        "src/security/clientEnvironment.test.js",
+        "src/security/sessionIsolation.test.js",
+        "src/security/diagnosticRedaction.test.ts",
+        "src/security/authCallback.test.ts"
+      ],
+      "externalAcceptance": "ACL, hash replay/expiry, историческая ротация и серверный WebSocket auth."
+    },
+    {
+      "stage": 27,
+      "topic": "Uploads / user content",
+      "frontendStatus": "code-and-local-regressions-closed",
+      "currentResolution": "Client upload limits, confirmed IDs, безопасные previews/HTML и bounded import.",
+      "regressionEvidence": [
+        "src/security/fileUpload.test.ts",
+        "src/API/upload.transport.test.js",
+        "src/security/html.test.jsx",
+        "src/security/sandboxSettings.test.tsx"
+      ],
+      "externalAcceptance": "MIME/storage/download ACL на сервере."
+    },
+    {
+      "stage": 28,
+      "topic": "Зависимости",
+      "frontendStatus": "code-and-local-regressions-closed",
+      "currentResolution": "Зависимости обновлены; npm audit: 0 advisories на 07.11.2026; lockfile и regressions.",
+      "regressionEvidence": [
+        "src/security/clientEnvironment.test.js",
+        "src/security/sessionIsolation.test.js",
+        "src/security/diagnosticRedaction.test.ts",
+        "src/security/authCallback.test.ts"
+      ],
+      "externalAcceptance": "Будущие advisories требуют нового сканирования."
+    },
+    {
+      "stage": 29,
+      "topic": "Production delivery",
+      "frontendStatus": "code-and-local-regressions-closed",
+      "currentResolution": "Production delivery: точный source SHA, asset digests и публичные заголовки; smoke UI.",
+      "regressionEvidence": [
+        "src/security/developmentTools.test.ts",
+        "src/tools/emulatorProductionGate.test.ts",
+        "src/security/reportPrivacy.test.js",
+        "src/security/auditPolicy.test.js"
+      ],
+      "externalAcceptance": "Приёмка такси как целого сервиса."
+    },
+    {
+      "stage": 30,
+      "topic": "Artifacts / emulator / CI",
+      "frontendStatus": "code-and-local-regressions-closed",
+      "currentResolution": "Production test controls изолированы; bundle/public assets проверены; report privacy gates.",
+      "regressionEvidence": [
+        "src/security/developmentTools.test.ts",
+        "src/tools/emulatorProductionGate.test.ts",
+        "src/security/reportPrivacy.test.js",
+        "src/security/auditPolicy.test.js"
+      ],
+      "externalAcceptance": "Ротация ранее опубликованных секретов и удалённые исторические traces."
+    },
+    {
+      "stage": 31,
+      "topic": "Executable baseline",
+      "frontendStatus": "code-and-local-regressions-closed",
+      "currentResolution": "Чистый commit, свежие raw logs Jest/typecheck/lint/build/entrypoints.",
+      "regressionEvidence": [
+        "src/API/order.transport.test.js",
+        "src/components/modals/__tests__/cancel-business-errors.test.jsx",
+        "src/state/modals/messageQueue.test.ts",
+        "src/tools/alongTheWayPickup.test.ts",
+        "src/security/arithmetic.test.js",
+        "src/siteConstants.pricing.test.ts",
+        "src/design/fareDisplay.test.js",
+        "src/components/modals/__tests__/rating-submit.test.js"
+      ],
+      "externalAcceptance": "Исторические E2E flaky cases не названы новым live прогоном."
+    },
+    {
+      "stage": 32,
+      "topic": "PIN / Offer",
+      "frontendStatus": "code-and-local-regressions-closed",
+      "currentResolution": "Frontend PIN shape/acknowledgement, along-the-way последовательность; Offer aliases и validation.",
+      "regressionEvidence": [
+        "src/tools/orderDecisionMatrix.test.ts",
+        "src/platform/adapters/__tests__/DriverBoardingCommandPath.test.js",
+        "src/tools/driverSelfCancel.test.ts",
+        "src/design/restoreTrip.test.js",
+        "src/components/modals/__tests__/profile-save.test.jsx",
+        "src/tools/confirmedOfferDecline.test.ts",
+        "src/API/order.transport.test.js",
+        "src/state/cars/lifecycle.test.js"
+      ],
+      "externalAcceptance": "Неверный/чужой/replayed PIN, canonical Offer и server authority — открытые P0 pilot gates."
+    },
+    {
+      "stage": 33,
+      "topic": "Цена / валюта",
+      "frontendStatus": "code-and-local-regressions-closed",
+      "currentResolution": "PRICE-33-02/05: RatingModal использует b_currency, точные операнды/группировку; единый набор options/aliases; финальная truncation сохранена и объяснена. Default per-km 2,5.",
+      "regressionEvidence": [
+        "src/security/arithmetic.test.js",
+        "src/siteConstants.pricing.test.ts",
+        "src/design/fareDisplay.test.js",
+        "src/components/modals/__tests__/rating-submit.test.js"
+      ],
+      "externalAcceptance": "Тенант MAD/+212 и quote/settlement/rounding contract."
+    },
+    {
+      "stage": 34,
+      "topic": "Lifecycle / transports",
+      "frontendStatus": "code-and-local-regressions-closed",
+      "currentResolution": "Legacy/FSM transport ownership явно сохранён и покрыт contract tests; незавершённая серверная миграция не эмулируется UI.",
+      "regressionEvidence": [
+        "src/platform/adapters/__tests__/DriverCommandRecovery.test.js",
+        "src/platform/adapters/__tests__/FsmTaxiCommandTransport.test.js",
+        "src/platform/adapters/__tests__/PassengerChannelBoundary.test.js",
+        "src/platform/platform-interface/__tests__/PlatformInterfaceIntegration.test.js",
+        "src/tools/orderDecisionMatrix.test.ts",
+        "src/platform/adapters/__tests__/DriverBoardingCommandPath.test.js",
+        "src/tools/driverSelfCancel.test.ts",
+        "src/design/restoreTrip.test.js"
+      ],
+      "externalAcceptance": "Совместимые transports/rollout на сервере."
+    },
+    {
+      "stage": 35,
+      "topic": "Business errors",
+      "frontendStatus": "code-and-local-regressions-closed",
+      "currentResolution": "Business error/empty envelope больше не считаются success: order/car mutations и profile responses.",
+      "regressionEvidence": [
+        "src/API/order.transport.test.js",
+        "src/components/modals/__tests__/cancel-business-errors.test.jsx",
+        "src/state/modals/messageQueue.test.ts",
+        "src/tools/alongTheWayPickup.test.ts",
+        "src/components/modals/__tests__/profile-save.test.jsx",
+        "src/tools/confirmedOfferDecline.test.ts",
+        "src/state/cars/lifecycle.test.js"
+      ],
+      "externalAcceptance": "Фактический формат/семантика опубликованного API."
+    },
+    {
+      "stage": 36,
+      "topic": "Direct API mutations",
+      "frontendStatus": "code-and-local-regressions-closed",
+      "currentResolution": "Direct order mutation API использует строгий success boundary; endpoints/payload schema сохранены.",
+      "regressionEvidence": [
+        "src/API/order.transport.test.js",
+        "src/components/modals/__tests__/cancel-business-errors.test.jsx",
+        "src/state/modals/messageQueue.test.ts",
+        "src/tools/alongTheWayPickup.test.ts",
+        "src/components/modals/__tests__/profile-save.test.jsx",
+        "src/tools/confirmedOfferDecline.test.ts",
+        "src/state/cars/lifecycle.test.js"
+      ],
+      "externalAcceptance": "Серверные операции и transition contract."
+    },
+    {
+      "stage": 37,
+      "topic": "Ошибка → UI",
+      "frontendStatus": "code-and-local-regressions-closed",
+      "currentResolution": "Take/arrive/PIN, cancel, decline и error queue сохраняют правдивый UI до acknowledgement.",
+      "regressionEvidence": [
+        "src/API/order.transport.test.js",
+        "src/components/modals/__tests__/cancel-business-errors.test.jsx",
+        "src/state/modals/messageQueue.test.ts",
+        "src/tools/alongTheWayPickup.test.ts",
+        "src/components/modals/__tests__/profile-save.test.jsx",
+        "src/tools/confirmedOfferDecline.test.ts",
+        "src/state/cars/lifecycle.test.js"
+      ],
+      "externalAcceptance": "Реальная cross-role приёмка."
+    },
+    {
+      "stage": 38,
+      "topic": "Polling / stale data",
+      "frontendStatus": "code-and-local-regressions-closed",
+      "currentResolution": "WATCH_ORDER не застревает после success/failure; recovery polling сообщает stale/error через connection bar и очищается при unsubscribe.",
+      "regressionEvidence": [
+        "src/state/orders/__tests__/readyOrdersPolling.test.js",
+        "src/platform/adapters/__tests__/httpDeadline.test.js",
+        "src/state/orders/__tests__/refreshOrder.test.js"
+      ],
+      "externalAcceptance": "Серверные гонки и два браузера."
+    },
+    {
+      "stage": 39,
+      "topic": "Session / account isolation",
+      "frontendStatus": "code-and-local-regressions-closed",
+      "currentResolution": "Session/account isolation, очистка domains и fence старых ответов.",
+      "regressionEvidence": [
+        "src/security/sessionIsolation.test.js",
+        "src/security/sessionTokens.test.js",
+        "src/state/sessionSupervisor.test.js",
+        "src/state/user/logout.test.js"
+      ],
+      "externalAcceptance": "Server session expiry/replay/revocation."
+    },
+    {
+      "stage": 40,
+      "topic": "Активная машина / capacity",
+      "frontendStatus": "code-and-local-regressions-closed",
+      "currentResolution": "Primary/driven car, capacity, car mutation readback и profile partial save.",
+      "regressionEvidence": [
+        "src/components/modals/__tests__/profile-save.test.jsx",
+        "src/tools/confirmedOfferDecline.test.ts",
+        "src/API/order.transport.test.js",
+        "src/state/cars/lifecycle.test.js"
+      ],
+      "externalAcceptance": "Серверное назначение/approval машины."
+    },
+    {
+      "stage": 41,
+      "topic": "GPS acquisition / publisher",
+      "frontendStatus": "code-and-local-regressions-closed",
+      "currentResolution": "Fresh GPS acquisition/publisher/resume, stale fix rejection и timestamp normalization.",
+      "regressionEvidence": [
+        "src/tools/useDevicePosition.test.jsx",
+        "src/state/geolocation/sagas.test.js",
+        "src/tools/locationFreshness.test.ts",
+        "src/tools/liveDriverLocations.test.ts"
+      ],
+      "externalAcceptance": "Реальные permissions/background GPS на iOS/Android."
+    },
+    {
+      "stage": 42,
+      "topic": "Location / dispatch",
+      "frontendStatus": "code-and-local-regressions-closed",
+      "currentResolution": "Frontend publisher/read projection и guards свежести реализованы/проверены.",
+      "regressionEvidence": [
+        "src/tools/useDevicePosition.test.jsx",
+        "src/state/geolocation/sagas.test.js",
+        "src/tools/locationFreshness.test.ts",
+        "src/tools/liveDriverLocations.test.ts"
+      ],
+      "externalAcceptance": "Persistence/readback/expiry/identity/dispatch на сервере."
+    },
+    {
+      "stage": 43,
+      "topic": "Test coverage",
+      "frontendStatus": "code-and-local-regressions-closed",
+      "currentResolution": "Тесты выполнены заново; новые probes стали regression для цены, форм, partial save и polling.",
+      "regressionEvidence": [
+        "src/security/arithmetic.test.js",
+        "src/siteConstants.pricing.test.ts",
+        "src/design/fareDisplay.test.js",
+        "src/components/modals/__tests__/rating-submit.test.js",
+        "src/components/JSONForm/JSONFormElement.test.js",
+        "src/state/clientOrder/__tests__/orderFormResolvers.test.js",
+        "src/tools/siteConstants/formConfig.test.ts",
+        "src/design/useAddressSearch.test.js",
+        "src/state/orders/__tests__/readyOrdersPolling.test.js",
+        "src/platform/adapters/__tests__/httpDeadline.test.js",
+        "src/state/orders/__tests__/refreshOrder.test.js",
+        "src/components/modals/__tests__/profile-save.test.jsx",
+        "src/tools/confirmedOfferDecline.test.ts",
+        "src/API/order.transport.test.js",
+        "src/state/cars/lifecycle.test.js"
+      ],
+      "externalAcceptance": "Наличие unit не заменяет live E2E."
+    },
+    {
+      "stage": 44,
+      "topic": "Формула / eval",
+      "frontendStatus": "code-and-local-regressions-closed",
+      "currentResolution": "eval удалён; bounded allowlist arithmetic parser, hostile-input tests всех вычислительных consumers.",
+      "regressionEvidence": [
+        "src/security/arithmetic.test.js",
+        "src/siteConstants.pricing.test.ts",
+        "src/design/fareDisplay.test.js",
+        "src/components/modals/__tests__/rating-submit.test.js"
+      ],
+      "externalAcceptance": "Серверная корректность формулы/расчётов."
+    },
+    {
+      "stage": 45,
+      "topic": "Config / HTML",
+      "frontendStatus": "code-and-local-regressions-closed",
+      "currentResolution": "Validated tenant JSON/allowlist, DOMPurify и безопасный Sandbox/import; partial config сохраняет defaults.",
+      "regressionEvidence": [
+        "src/security/tenantDictionary.test.ts",
+        "src/security/html.test.jsx",
+        "src/security/sandboxSettings.test.tsx",
+        "src/components/JSONForm/JSONFormElement.test.js",
+        "src/state/clientOrder/__tests__/orderFormResolvers.test.js",
+        "src/tools/siteConstants/formConfig.test.ts",
+        "src/design/useAddressSearch.test.js"
+      ],
+      "externalAcceptance": "Права на публикацию tenant data."
+    },
+    {
+      "stage": 46,
+      "topic": "Support navigation",
+      "frontendStatus": "code-and-local-regressions-closed",
+      "currentResolution": "Support scheme allowlist, opener isolation и hostile URL tests.",
+      "regressionEvidence": [
+        "src/security/clientEnvironment.test.js",
+        "src/security/sessionIsolation.test.js",
+        "src/security/diagnosticRedaction.test.ts",
+        "src/security/authCallback.test.ts",
+        "src/security/supportUrl.test.ts"
+      ],
+      "externalAcceptance": "Права tenant owner на изменение support."
+    },
+    {
+      "stage": 47,
+      "topic": "Double decode / Saga",
+      "frontendStatus": "code-and-local-regressions-closed",
+      "currentResolution": "Повторное decode удалено; malformed query и startup/root Saga resilience tests выполнены.",
+      "regressionEvidence": [
+        "src/security/clientEnvironment.test.js",
+        "src/security/sessionIsolation.test.js",
+        "src/security/diagnosticRedaction.test.ts",
+        "src/security/authCallback.test.ts",
+        "src/state/startupCallbackResilience.test.js"
+      ],
+      "externalAcceptance": "OAuth state/replay/одноразовый обмен; OAuth выключен."
+    },
+    {
+      "stage": 48,
+      "topic": "Emulator override",
+      "frontendStatus": "code-and-local-regressions-closed",
+      "currentResolution": "Production test menu/emulator исключены из обычного UI; loopback guard и clear-on-session-change.",
+      "regressionEvidence": [
+        "src/security/developmentTools.test.ts",
+        "src/tools/emulatorProductionGate.test.ts",
+        "src/security/reportPrivacy.test.js",
+        "src/security/auditPolicy.test.js",
+        "src/security/sessionIsolation.test.js",
+        "src/security/sessionTokens.test.js",
+        "src/state/sessionSupervisor.test.js",
+        "src/state/user/logout.test.js"
+      ],
+      "externalAcceptance": "Backend negative/ACL tests."
+    },
+    {
+      "stage": 49,
+      "topic": "Diagnostic URL export",
+      "frontendStatus": "code-and-local-regressions-closed",
+      "currentResolution": "Encoded URL credentials и diagnostic exports редактируются, sentinel tests выполнены.",
+      "regressionEvidence": [
+        "src/security/clientEnvironment.test.js",
+        "src/security/sessionIsolation.test.js",
+        "src/security/diagnosticRedaction.test.ts",
+        "src/security/authCallback.test.ts"
+      ],
+      "externalAcceptance": "Внешние исторические копии/traces."
+    },
+    {
+      "stage": 50,
+      "topic": "Completeness / matrix",
+      "frontendStatus": "inventory-reconciled",
+      "currentResolution": "Матрица 01–50 сверена с нынешним кодом, named regressions и разделением внешней приёмки; сама комплектность не доказательство работы.",
+      "regressionEvidence": [
+        "src/security/arithmetic.test.js",
+        "src/siteConstants.pricing.test.ts",
+        "src/design/fareDisplay.test.js",
+        "src/components/modals/__tests__/rating-submit.test.js",
+        "src/API/order.transport.test.js",
+        "src/components/modals/__tests__/cancel-business-errors.test.jsx",
+        "src/state/modals/messageQueue.test.ts",
+        "src/tools/alongTheWayPickup.test.ts",
+        "src/state/orders/__tests__/readyOrdersPolling.test.js",
+        "src/platform/adapters/__tests__/httpDeadline.test.js",
+        "src/state/orders/__tests__/refreshOrder.test.js"
+      ],
+      "externalAcceptance": "Pilot go/no-go и server/integration gate остаются открыты."
+    }
+  ],
+  "backendWritesPerformed": false,
+  "liveAuthenticatedAcceptance": false,
+  "physicalDeviceAcceptance": false
+}

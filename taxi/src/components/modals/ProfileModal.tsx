@@ -1,4 +1,5 @@
-import React, { useCallback, useState, useEffect, useMemo } from 'react'
+import { validateUploadBatch } from '../../security/fileUpload'
+import React, { useCallback, useState, useEffect, useMemo, useRef } from 'react'
 import { connect, ConnectedProps } from 'react-redux'
 import { objectFromEntries } from '../../tools/compat'
 import {
@@ -30,6 +31,7 @@ import {
 } from '../../tools/driverStatus'
 import { t, TRANSLATION } from '../../localization'
 import { getApiErrorMessage } from '../../tools/apiMessages'
+import { assertSuccessfulMutationResponse } from '../../platform/adapters/backendError'
 import JSONForm from '../JSONForm'
 import { TForm } from '../JSONForm/types'
 import DriverStatusAvatar from '../DriverStatusAvatar'
@@ -212,7 +214,7 @@ const connector = connect(mapStateToProps, mapDispatchToProps)
 
 interface IProps extends ConnectedProps<typeof connector> {}
 
-function ProfileModalContent({
+export function ProfileModalContent({
   tokens,
   user,
   car,
@@ -285,6 +287,9 @@ function ProfileModalContent({
   , [isValuesLoaded, user, car, passportPhoto, driverLicensePhoto])
 
   const [ isSubmittingForm, setIsSubmittingForm ] = useState(false)
+  const saveProgress = useRef({ pending: false, blocked: false, carAttempted: false, carConfirmed: false })
+  const [saveBlocked, setSaveBlocked] = useState(false)
+  useEffect(() => { if (!isOpen) { setSaveBlocked(false); saveProgress.current.blocked = false } }, [isOpen])
   const [ errors, setErrors ] = useState<Record<string, any>>({})
 
   const handleChange = useCallback((name: string, value: any) => {
@@ -295,6 +300,26 @@ function ProfileModalContent({
   }, [errors])
 
   async function handleSubmitForm(formValues: TFormValues) {
+    if (saveProgress.current.pending || saveProgress.current.blocked) return
+    saveProgress.current = { pending: true, blocked: false, carAttempted: false, carConfirmed: false }
+    setIsSubmittingForm(true)
+    try {
+      await submitProfile(formValues)
+    } catch (error: any) {
+      const progress = saveProgress.current
+      if (progress.carAttempted) {
+        progress.blocked = true
+        setSaveBlocked(true)
+        getUserCars()
+        updateUser()
+      }
+      setMessageModal({ isOpen: true, status: EStatuses.Fail,
+        message: progress.carAttempted ? t(progress.carConfirmed ? 'profile_partial_save' : 'profile_car_unconfirmed') : getApiErrorMessage({ message: error?.message || 'Profile save was not confirmed; refresh before retrying' }),
+      })
+    } finally { saveProgress.current.pending = false; setIsSubmittingForm(false) }
+  }
+
+  async function submitProfile(formValues: TFormValues) {
     if (isDeepEqual(formValues, defaultValues)) return
 
     const {
@@ -347,6 +372,7 @@ function ProfileModalContent({
           }
           throw new Error(response?.message)
         }
+        assertSuccessfulMutationResponse(response)
         updateUser()
         setMessageModal({
           isOpen: true,
@@ -377,8 +403,10 @@ function ProfileModalContent({
       u_details,
       getProfileDetailsForCompare(defaultFormValues.u_details),
     )
+    validateUploadBatch([passport_photo ?? [], driver_license_photo ?? []].flatMap(list => list.filter(item => !item[0]).map(item => item[1])))
 
     if (car && carFields && hasCarChanges) {
+      saveProgress.current.carAttempted = true
       const res = await editCar(
         car.c_id,
         carFields as any,
@@ -398,7 +426,9 @@ function ProfileModalContent({
         setIsSubmittingForm(false)
         return
       }
+      saveProgress.current.carConfirmed = true
     } else if (!car && carFields && hasCarChanges) {
+      saveProgress.current.carAttempted = true
       const res = await createUserCar(carFields)
       if (String(res.code) !== '200' && !isNoChangesApiMessage(res.message)) {
         setErrors({
@@ -415,7 +445,7 @@ function ProfileModalContent({
         setIsSubmittingForm(false)
         return
       }
-      getUserCars()
+      saveProgress.current.carConfirmed = true
     }
 
     const imagesKeys = ['passport_photo', 'driver_license_photo']
@@ -423,6 +453,7 @@ function ProfileModalContent({
     const imagesMap: Record<string, any> = {}
 
     try {
+      validateUploadBatch(images.flatMap((list: [any, File][]) => list.filter(item => !item[0]).map(item => item[1])))
       await Promise.all(images.map((imageList: [any, File][], i) => {
         const key: string = imagesKeys[i]
         if (!imagesMap[key]) imagesMap[key] = []
@@ -440,7 +471,8 @@ function ProfileModalContent({
                 token: tokens?.token,
                 u_hash: tokens?.u_hash,
               }).then(res => {
-                if (res?.dl_id) imagesMap[key].push(res.dl_id)
+                if (!res?.dl_id) throw new Error('Required image upload failed')
+                imagesMap[key].push(res.dl_id)
               }),
             ),
         )
@@ -467,6 +499,7 @@ function ProfileModalContent({
           if (isNoChangesApiMessage(response?.message)) return
           throw new Error(response?.message)
         }
+        assertSuccessfulMutationResponse(response)
         updateUser()
         setMessageModal({
           isOpen: true,
@@ -476,11 +509,7 @@ function ProfileModalContent({
       } catch (error: any) {
         if (isNoChangesApiMessage(error?.message)) return
 
-        setMessageModal({
-          isOpen: true,
-          status: EStatuses.Fail,
-          message: getApiErrorMessage({ message: error?.message || 'profile update failed' }),
-        })
+        throw error
       }
     }
 
@@ -552,6 +581,8 @@ function ProfileModalContent({
       >
         <fieldset>
           <legend>{t(TRANSLATION.PROFILE)}</legend>
+          {saveBlocked && <p role="alert">{t(saveProgress.current.carConfirmed ? 'profile_partial_save' : 'profile_car_unconfirmed')}</p>}
+          {car && <p className="profile-modal__car-target">{t('Editing vehicle')}: {car.registration_plate || car.c_id}. {t('Select the active vehicle on the driver screen')}.</p>}
           <div className="avatar">
             {isValuesLoaded ?
               (
@@ -578,7 +609,7 @@ function ProfileModalContent({
                   <input
                     onChange={onChangeAvatar}
                     type="file"
-                    accept="image/*"
+                    accept="image/png,image/jpeg"
                     aria-label={photoLabel}
                     className="avatar_input"
                   />
@@ -619,7 +650,7 @@ function ProfileModalContent({
           {isValuesLoaded && (
             <JSONForm
               defaultValues={defaultValues}
-              fields={fields}
+              fields={saveBlocked ? fields.map(field => field.type === 'submit' ? { ...field, disabled: true } : field) : fields}
               onSubmit={handleSubmitForm}
               onClose={() => setProfileModal({ ...defaultProfileModal })}
               onChange={handleChange}

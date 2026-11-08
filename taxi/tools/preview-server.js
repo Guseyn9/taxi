@@ -1,5 +1,5 @@
 const http=require('http'),fs=require('fs'),path=require('path'),zlib=require('zlib');
-const types={'.html':'text/html; charset=utf-8','.js':'application/javascript','.mjs':'application/javascript','.css':'text/css','.json':'application/json','.svg':'image/svg+xml','.png':'image/png','.jpg':'image/jpeg','.woff2':'font/woff2','.ico':'image/x-icon'};
+const types={'.html':'text/html; charset=utf-8','.js':'application/javascript','.mjs':'application/javascript','.css':'text/css','.json':'application/json','.svg':'image/svg+xml','.png':'image/png','.jpg':'image/jpeg','.woff2':'font/woff2','.ico':'image/x-icon','.pdf':'application/pdf'};
 function createPreviewServer(root=path.resolve(__dirname,'..')){
  let graphZip;
  return http.createServer(async(req,res)=>{

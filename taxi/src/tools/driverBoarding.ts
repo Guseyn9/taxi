@@ -14,7 +14,11 @@
  */
 
 import { IOrder } from '../types/types'
-import { DRIVER_DOOR_NUMBER_PATTERN, normalizeDriverDoorNumber } from './driverDoorNumber'
+// The Universal API generateDriverCode alphabet includes an asterisk.
+export const BOARDING_CODE_PATTERN = /^[a-z0-9*]{1,32}$/i
+export function normalizeBoardingCode(value: unknown): string {
+  return String(value ?? '').trim().replace(/[ -]/g,'').toLowerCase().replace(/[doqil]/g, letter => ({d:'a',o:'0',q:'0',i:'1',l:'1'}[letter]!))
+}
 
 /**
  * Код посадки, введённый водителем, сверяется с кодом заказа локально — до
@@ -22,13 +26,13 @@ import { DRIVER_DOOR_NUMBER_PATTERN, normalizeDriverDoorNumber } from './driverD
  * принимаем любой корректный по форме код: проверять его будет бэкенд.
  */
 export function isBoardingCodeAccepted(expected: unknown, entered: unknown): boolean {
-  const expectedCode = normalizeDriverDoorNumber(expected)
-  const enteredCode = normalizeDriverDoorNumber(entered)
+  const expectedCode = normalizeBoardingCode(expected)
+  const enteredCode = normalizeBoardingCode(entered)
 
-  if (!DRIVER_DOOR_NUMBER_PATTERN.test(enteredCode))
+  if (!BOARDING_CODE_PATTERN.test(enteredCode))
     return false
 
-  return !DRIVER_DOOR_NUMBER_PATTERN.test(expectedCode) || enteredCode === expectedCode
+  return !BOARDING_CODE_PATTERN.test(expectedCode) || enteredCode === expectedCode
 }
 
 export interface IConfirmDriverBoardingOptions {

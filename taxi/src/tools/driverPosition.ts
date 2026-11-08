@@ -1,3 +1,4 @@
+import { createMapHint, readMapHint } from './persistedMapHint'
 /**
  * Shared "where is the driver right now" channel.
  *
@@ -51,6 +52,7 @@ let currentDriverPosition: TDriverPosition | null = null
 let parkedDriverPosition: TDriverPosition | null = null
 let parkedDriverPositionLoaded = false
 let parkedDriverPositionWrittenAt = 0
+let parkedDriverHint: ReturnType<typeof createMapHint> | null = null
 
 function loadParkedDriverPosition(): TDriverPosition | null {
   if (typeof window === 'undefined')
@@ -58,9 +60,8 @@ function loadParkedDriverPosition(): TDriverPosition | null {
 
   try {
     const parsed = JSON.parse(window.localStorage.getItem(DRIVER_PARKED_POSITION_KEY) || 'null')
-    const latitude = Number(parsed?.latitude)
-    const longitude = Number(parsed?.longitude)
-    return Number.isFinite(latitude) && Number.isFinite(longitude) ? [latitude, longitude] : null
+    parkedDriverHint = parsed
+    return readMapHint(parsed)
   } catch {
     return null
   }
@@ -73,6 +74,7 @@ export function getDriverParkedPosition(): TDriverPosition | null {
     parkedDriverPosition = loadParkedDriverPosition()
   }
 
+  parkedDriverPosition = readMapHint(parkedDriverHint)
   return parkedDriverPosition
 }
 
@@ -90,6 +92,7 @@ export function rememberDriverParkedPosition(
 
   parkedDriverPositionLoaded = true
   parkedDriverPosition = [position[0], position[1]]
+  parkedDriverHint = createMapHint(position[0],position[1])
 
   if (typeof window === 'undefined')
     return
@@ -100,11 +103,7 @@ export function rememberDriverParkedPosition(
 
   parkedDriverPositionWrittenAt = now
   try {
-    window.localStorage.setItem(DRIVER_PARKED_POSITION_KEY, JSON.stringify({
-      latitude: position[0],
-      longitude: position[1],
-      timestamp: now,
-    }))
+    window.localStorage.setItem(DRIVER_PARKED_POSITION_KEY, JSON.stringify(parkedDriverHint))
   } catch {
     // ignore storage errors
   }
@@ -117,6 +116,7 @@ export function rememberDriverParkedPosition(
 export function clearDriverParkedPosition() {
   parkedDriverPositionLoaded = true
   parkedDriverPosition = null
+  parkedDriverHint = null
   parkedDriverPositionWrittenAt = 0
   // Живую точку тоже забываем: иначе «где водитель» ответила бы координатой из
   // прошлого прогона (карта, если открыта, тут же опубликует настоящую).

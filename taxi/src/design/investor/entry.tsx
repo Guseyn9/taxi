@@ -12,4 +12,4 @@ import '../drive-v2/tokens.css'
 import './theme.css'
 
 // Separate entry point: no Redux store, authentication, order gateway or backend bootstrap.
-createRoot(document.getElementById('root')!).render(new URLSearchParams(location.search).get('view')==='driver'?<DriverShowcase/>:<Showcase/>)
+createRoot(document.getElementById('root')!).render(new URLSearchParams(window.location.search).get('view')==='driver'?<DriverShowcase/>:<Showcase/>)

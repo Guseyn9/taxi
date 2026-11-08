@@ -101,6 +101,7 @@ export function isPetitCarClass(carClass?: Partial<ICarClass> | null) {
   ].map(value => String(value ?? '').trim().toLowerCase()).join(' ')
 
   return text.includes('petit') ||
+    text.includes('petti') ||
     text.includes('петит') ||
     text.includes('econom') ||
     text.includes('эконом') ||

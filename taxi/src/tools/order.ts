@@ -42,67 +42,54 @@ export function updateCompletedOrderDuration(order: IOrder): IOrder {
         },
       },
     }
-    const newPrice = calculateFinalPrice(order)
-    if (typeof newPrice === 'number')
+    const newPrice = calculateFinalPriceValue(order)
+    if (newPrice !== null)
       order.b_options!.pricingModel!.price = newPrice
   }
   return order
 }
 
-export const calculateFinalPriceFormula = (order: IOrder | null) => {
-  if (!order) {
-    return 'err'
-  }
-  if (!order?.b_options?.pricingModel?.formula) {
-    return 'err'
-  }
-  let formula = order.b_options?.pricingModel?.formula
-  if (formula === '-') return '-'
-  let options = order.b_options?.pricingModel?.options || {}
-
-  // pick up submitPrice from b_options
-  options = {
+function pricingOptions(order: IOrder): Record<string, unknown> {
+  const options = order.b_options?.pricingModel?.options || {}
+  return {
     ...options,
-    ...{
-      submit_price: order.b_options?.submitPrice ?? options.submit_price,
-      distance: order.b_options?.pricingModel?.calculationType === 'incomplete'? '?' : order.b_options?.pricingModel?.options?.distance,
-      duration:  order.b_options?.pricingModel?.calculationType === 'incomplete' && order.b_options?.pricingModel?.options?.duration === 0? '?' : order.b_options?.pricingModel?.options?.duration,
-    },
+    submit_price: order.b_options?.submitPrice ?? options.submit_price,
+    // Retain the legacy alias in both the display and numeric paths.
+    submit_rice: order.b_options?.submitPrice ?? options.submit_rice,
   }
-  try { formula = displayArithmetic(formula, options) } catch { return 'err' }
-
-  const timeRatioMatch = (formula || 'error_0x02').match(/\(([^)]+)\)\*(\d+(?:\.\d+)?)/)
-  if (timeRatioMatch) {
-    const coefficient = parseFloat(timeRatioMatch[2])
-    if (coefficient === 1) {
-      // If coefficient is 1, remove parentheses and multiplication
-      formula = (formula || 'error_0x03').replace(/\(([^)]+)\)\*\d+(?:\.\d+)?/, '$1')
-    }
-  }
-
-  return formula
 }
 
-export const calculateFinalPrice = (order: IOrder | null) => {
-  if (!order) {
-    return 'err'
+export const calculateFinalPriceFormula = (order: IOrder | null) => {
+  const model = order?.b_options?.pricingModel
+  if (!order || !model?.formula) return 'err'
+  if (model.formula === '-') return '-'
+  const options = pricingOptions(order)
+  const displayOptions = { ...options }
+  if (model.calculationType === 'incomplete') {
+    displayOptions.distance = '?'
+    if (model.options?.duration === 0) displayOptions.duration = '?'
   }
-  if(!order.b_options?.pricingModel?.formula) {
-    return 'err'
-  }
-  if(order.b_options?.pricingModel?.formula === '-') {
-    return '-'
-  }
-  const formula = order.b_options.pricingModel.formula
-  const options = {
-    ...order.b_options.pricingModel.options,
-    submit_price: order.b_options.submitPrice ?? order.b_options.pricingModel.options?.submit_price,
-    // Preserve the legacy misspelled alias while accepting the documented name.
-    submit_rice: order.b_options.submitPrice ?? order.b_options.pricingModel.options?.submit_rice,
-  }
-  try { return Math.trunc(evaluateArithmetic(formula, options)).toString() }
-  catch { return 'err' }
+  // Keep grouping exactly as supplied; removing a *1 group can change precedence.
+  try { return displayArithmetic(model.formula, displayOptions) } catch { return 'err' }
+}
 
+export const calculateRawFinalPriceValue = (order: IOrder | null): number | null => {
+  if (!order?.b_options?.pricingModel?.formula || order.b_options.pricingModel.formula === '-') return null
+  try { return evaluateArithmetic(order.b_options.pricingModel.formula, pricingOptions(order)) }
+  catch { return null }
+}
+
+export const calculateFinalPriceValue = (order: IOrder | null): number | null => {
+  const raw = calculateRawFinalPriceValue(order)
+  // Preserve the established final-amount policy, without truncating operands.
+  return raw === null ? null : Math.trunc(raw)
+}
+
+/** Legacy presentation API retains its string and unavailable-tariff sentinels. */
+export const calculateFinalPrice = (order: IOrder | null): string => {
+  if (order?.b_options?.pricingModel?.formula === '-') return '-'
+  const value = calculateFinalPriceValue(order)
+  return value === null ? 'err' : String(value)
 }
 
 export function candidateMode(order?: IOrder): boolean {

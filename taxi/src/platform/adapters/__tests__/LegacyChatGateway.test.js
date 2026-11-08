@@ -1,7 +1,7 @@
-jest.mock('../LegacyBackendGateway',()=>({backendGateway:{getUser:jest.fn()}}))
-jest.mock('../../platform-interface/realtime',()=>({ReconnectingWebSocketClient:jest.fn()}))
 import {LegacyChatGateway} from '../LegacyChatGateway'
 import {ReconnectingWebSocketClient} from '../../platform-interface/realtime'
+jest.mock('../LegacyBackendGateway',()=>({backendGateway:{getUser:jest.fn()}}))
+jest.mock('../../platform-interface/realtime',()=>({ReconnectingWebSocketClient:jest.fn()}))
 test('connection-state UI does not change the chat protocol or replay messages',()=>{
  const send=jest.fn(()=>true),stop=jest.fn();let handlers
  ReconnectingWebSocketClient.mockImplementation(()=>({connect:jest.fn((url,value)=>{expect(url).toBe('wss://chat.itest24.com:7007');handlers=value;return stop}),send}))

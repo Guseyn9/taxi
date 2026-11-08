@@ -1,6 +1,6 @@
 import { indexedGraphCache } from './cache';
 import { loadPreparedGraph } from './loader';
-const worker = self as unknown as {
+const worker = globalThis as unknown as {
     onmessage: (event: MessageEvent) => void;
     postMessage: (data: unknown, transfer?: Transferable[]) => void;
 };

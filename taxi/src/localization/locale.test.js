@@ -1,8 +1,8 @@
 import {setLocalizationLanguageReader} from './runtime'
-jest.mock('../state',()=>({__esModule:true,default:{getState:()=>({})}}))
-jest.mock('../state/config',()=>({configSelectors:{language:jest.fn()}}))
 import {configSelectors} from '../state/config'
 import {t} from './index'
+jest.mock('../state',()=>({__esModule:true,default:{getState:()=>({})}}))
+jest.mock('../state/config',()=>({configSelectors:{language:jest.fn()}}))
 setLocalizationLanguageReader(()=>configSelectors.language())
 const prior=window.data
 afterEach(()=>{window.data=prior})
@@ -37,4 +37,33 @@ it('booking state descriptions supplied by the service also keep priority',()=>{
  configSelectors.language.mockReturnValue({id:1,iso:'ru'})
  window.data={booking_driver_states:{1:{ru:'DB considering'}}}
  expect(t('booking_driver_states.1')).toBe('DB considering')
+})
+
+it('new controls and errors use database text without a rebuild, including the original Vote key',()=>{
+ const {bookingReadinessCopy}=require('../design/bookingReadiness')
+ const {authCopy}=require('../components/modals/LoginModal/authCopy')
+ const {zoneCheckCopy}=require('../design/reliability/zoneCheck')
+ const {journeyCopy}=require('../design/journeyCopy')
+ configSelectors.language.mockReturnValue({id:1,iso:'ru'})
+ window.data={lang_vls:{location_action:{1:'DB location'},booking_readiness_phone:{1:'DB phone'},auth_ui_country:{1:'DB country'},zone_check_error:{1:'DB zone error'},vote:{1:'DB vote'}}}
+ expect(t('location_action')).toBe('DB location')
+ expect(bookingReadinessCopy('ru').phone).toBe('DB phone')
+ expect(authCopy('ru').country).toBe('DB country')
+ expect(zoneCheckCopy('ru').error).toBe('DB zone error')
+ expect(journeyCopy('ru').vote).toBe('DB vote')
+})
+
+it('map controls use bundled Russian and Arabic labels when service translations are absent',()=>{
+ window.data={lang_vls:{}}
+ configSelectors.language.mockReturnValue({id:1,iso:'ru'});expect(t('location_action')).toBe('Локация');expect(t('map_expand')).toBe('Развернуть карту')
+ configSelectors.language.mockReturnValue({id:9,iso:'ar-Arab'});expect(t('location_action')).toBe('الموقع');expect(t('map_expand')).toBe('توسيع الخريطة')
+ configSelectors.language.mockReturnValue({id:6,iso:'ary-Latn'});expect(t('map_expand')).toBe('Kebber lkharita')
+})
+
+it.each(['ru','en','es','fr','ary-Arab','ary-Latn','zgh-Tfng','zgh-Latn','ar-Arab'])('keeps tenant text precedence and script direction for %s',iso=>{
+ const {isRideRtl}=require('../design/copy')
+ configSelectors.language.mockReturnValue({id:42,iso})
+ window.data={lang_vls:{location_action:{42:'tenant-'+iso}}}
+ expect(t('location_action')).toBe('tenant-'+iso)
+ expect(isRideRtl(iso)).toBe(['ary-Arab','ar-Arab'].includes(iso))
 })

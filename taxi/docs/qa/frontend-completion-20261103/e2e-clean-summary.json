@@ -1,0 +1,181 @@
+{
+  "scope": "Fresh isolated local PHP stand; not production FSM acceptance",
+  "stats": {
+    "startTime": "2026-11-04T09:16:23.125Z",
+    "duration": 321763.285,
+    "expected": 21,
+    "skipped": 0,
+    "unexpected": 0,
+    "flaky": 0
+  },
+  "tests": [
+    {
+      "title": "водитель входит через форму приложения",
+      "project": "setup",
+      "expectedStatus": "passed",
+      "status": "passed",
+      "retry": 0,
+      "duration": 2213
+    },
+    {
+      "title": "пассажир входит через форму приложения",
+      "project": "setup",
+      "expectedStatus": "passed",
+      "status": "passed",
+      "retry": 0,
+      "duration": 2054
+    },
+    {
+      "title": "второй водитель входит через форму приложения",
+      "project": "setup",
+      "expectedStatus": "passed",
+      "status": "passed",
+      "retry": 0,
+      "duration": 1977
+    },
+    {
+      "title": "A: правильный код переводит заказ и интерфейс в Started",
+      "project": "driver-boarding",
+      "expectedStatus": "passed",
+      "status": "passed",
+      "retry": 0,
+      "duration": 5313
+    },
+    {
+      "title": "B: некорректный код не переводит заказ в Started",
+      "project": "driver-boarding",
+      "expectedStatus": "passed",
+      "status": "passed",
+      "retry": 0,
+      "duration": 4869
+    },
+    {
+      "title": "C: двойное подтверждение не ломает состояние заказа",
+      "project": "driver-boarding",
+      "expectedStatus": "passed",
+      "status": "passed",
+      "retry": 0,
+      "duration": 5157
+    },
+    {
+      "title": "D: после перезагрузки страница остаётся в Started",
+      "project": "driver-boarding",
+      "expectedStatus": "passed",
+      "status": "passed",
+      "retry": 0,
+      "duration": 6195
+    },
+    {
+      "title": "А.1.1 — стандартный вызов: от создания заказа до завершения поездки",
+      "project": "standard-order",
+      "expectedStatus": "passed",
+      "status": "passed",
+      "retry": 0,
+      "duration": 27563
+    },
+    {
+      "title": "А.1.2 — голосование: от создания заказа до завершения поездки",
+      "project": "voting-order",
+      "expectedStatus": "passed",
+      "status": "passed",
+      "retry": 0,
+      "duration": 32538
+    },
+    {
+      "title": "А.1.3 — предложение: от создания заказа до завершения поездки",
+      "project": "offer-order",
+      "expectedStatus": "passed",
+      "status": "passed",
+      "retry": 0,
+      "duration": 32499
+    },
+    {
+      "title": "А.1.4 — отказ выбранного водителя: заказ не уезжает в поездку и возвращается в поиск",
+      "project": "offer-driver-decline",
+      "expectedStatus": "passed",
+      "status": "passed",
+      "retry": 0,
+      "duration": 17753
+    },
+    {
+      "title": "А.1.5 — отмена заказа пассажиром: заказ не уезжает в поездку и не возвращается в поиск",
+      "project": "offer-passenger-cancel",
+      "expectedStatus": "passed",
+      "status": "passed",
+      "retry": 0,
+      "duration": 11053
+    },
+    {
+      "title": "А.1.6 — Passenger SOS после Started: причина, подтверждение, отмена поездки",
+      "project": "passenger-sos",
+      "expectedStatus": "passed",
+      "status": "passed",
+      "retry": 0,
+      "duration": 21541
+    },
+    {
+      "title": "А.1.6 (Driver) — Alarm водителя остаётся прежним AlarmModal, Passenger SOS не затронут",
+      "project": "passenger-sos",
+      "expectedStatus": "passed",
+      "status": "passed",
+      "retry": 0,
+      "duration": 5492
+    },
+    {
+      "title": "008-A Standard: форма → POST /drive → обычный заказ → заказ в UI",
+      "project": "passenger-order-creation",
+      "expectedStatus": "passed",
+      "status": "passed",
+      "retry": 0,
+      "duration": 6372
+    },
+    {
+      "title": "008-B Voting: форма → POST /drive (голосование) → backend подтверждает Voting → заказ в UI",
+      "project": "passenger-order-creation",
+      "expectedStatus": "passed",
+      "status": "passed",
+      "retry": 0,
+      "duration": 6197
+    },
+    {
+      "title": "008-C Offer: форма → цена → POST /drive → контракт Offer на backend → заказ в UI",
+      "project": "passenger-order-creation",
+      "expectedStatus": "passed",
+      "status": "passed",
+      "retry": 0,
+      "duration": 5434
+    },
+    {
+      "title": "пассажир отменяет Standard до назначения водителя через UI",
+      "project": "standard-order-cancel-before-assignment",
+      "expectedStatus": "passed",
+      "status": "passed",
+      "retry": 0,
+      "duration": 6383
+    },
+    {
+      "title": "TEST-E2E-009 — Standard: форма пассажира → карточка водителя → принятие → Arrived → Started на одном b_id",
+      "project": "passenger-driver-flow",
+      "expectedStatus": "passed",
+      "status": "passed",
+      "retry": 0,
+      "duration": 22269
+    },
+    {
+      "title": "штатное завершение: Started → Finished через кнопку карты водителя",
+      "project": "trip-finish",
+      "expectedStatus": "passed",
+      "status": "passed",
+      "retry": 0,
+      "duration": 24653
+    },
+    {
+      "title": "прерывание до точки назначения: Started → Canceled через UI водителя с причиной",
+      "project": "trip-interruption",
+      "expectedStatus": "passed",
+      "status": "passed",
+      "retry": 0,
+      "duration": 58931
+    }
+  ]
+}

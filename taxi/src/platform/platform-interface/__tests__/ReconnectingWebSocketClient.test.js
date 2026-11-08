@@ -13,8 +13,8 @@ function createSocket() {
 }
 
 describe('ReconnectingWebSocketClient', () => {
-  beforeEach(() => jest.useFakeTimers())
-  afterEach(() => jest.useRealTimers())
+  beforeEach(() => { jest.useFakeTimers(); jest.spyOn(Math, 'random').mockReturnValue(1) })
+  afterEach(() => { jest.useRealTimers(); jest.restoreAllMocks() })
 
   it('delivers messages, reconnects after close and resends the open handshake', () => {
     const sockets = []
@@ -69,6 +69,19 @@ describe('ReconnectingWebSocketClient', () => {
     jest.advanceTimersByTime(500)
 
     expect(factory).toHaveBeenCalledTimes(1)
+  })
+
+  it('spreads reconnects across clients while respecting the delay ceiling', () => {
+    const sockets = [[], []], factories = sockets.map(list => jest.fn(() => { const socket = createSocket(); list.push(socket); return socket }))
+    const clients = factories.map(factory => new ReconnectingWebSocketClient(factory, { initialDelayMs: 100, maxDelayMs: 100 }))
+    const stops = clients.map(client => client.connect('wss://example.test', { onMessage: jest.fn() }))
+    Math.random.mockReturnValueOnce(0).mockReturnValueOnce(1)
+    sockets.forEach(list => list[0].onclose({}))
+    jest.advanceTimersByTime(50)
+    expect(factories[0]).toHaveBeenCalledTimes(2); expect(factories[1]).toHaveBeenCalledTimes(1)
+    jest.advanceTimersByTime(50)
+    expect(factories[1]).toHaveBeenCalledTimes(2)
+    stops.forEach(stop => stop())
   })
 })
 it('times out a hung connection, notifies close immediately and cancels all timers on stop',()=>{

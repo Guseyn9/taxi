@@ -61,6 +61,34 @@ function createResponse(body, status = 200) {
   }
 }
 
+it('persists acceptance before notifying the UI and recovers by status lookup without another POST',async()=>{
+ sessionStorage.clear()
+ const owner={userId:'1420',service:'https://test.invalid',sessionId:'test-login'}
+ const runtime=createRuntime(),transport={send:jest.fn().mockResolvedValue({accepted:true,duplicate:false,instanceId:912,status:'PENDING',intent:'ride_started'})}
+ const waiter=new CommandStatusDriverCommandCompletionWaiter({getStatus:()=>new Promise(()=>{})},60000,100)
+ const gateway=new DriverMapGateway(runtime,transport,1000,waiter,{scope:()=>owner,storage:sessionStorage})
+ const unmount=gateway.mount(),events=[]
+ gateway.subscribe(event=>{if(event.type===DRIVER_MAP_EVENTS.CommandAccepted)expect(JSON.parse(sessionStorage.getItem('taxi.driver.pending-commands.v1')).commands[0].instanceId).toBe(912)})
+ const pending=gateway.start('42').catch(()=>{})
+ await expect(gateway.start('42')).rejects.toMatchObject({code:'FSM_COMMAND_PENDING'})
+ for(let i=0;i<12;i++)await Promise.resolve()
+ expect(transport.send).toHaveBeenCalledTimes(1)
+ unmount();waiter.cancelAll();await pending
+ const restoredRuntime=createRuntime(),status=jest.fn().mockResolvedValue({instanceId:912,status:'COMPLETED'})
+ const restored=new DriverMapGateway(restoredRuntime,transport,1000,new CommandStatusDriverCommandCompletionWaiter({getStatus:status},1000,100),{scope:()=>owner,storage:sessionStorage})
+ restored.subscribe(event=>events.push(event));restored.setRecoveryIdentity(owner.userId)
+ for(let i=0;i<12;i++)await Promise.resolve()
+ expect(status).toHaveBeenCalledWith(912);expect(transport.send).toHaveBeenCalledTimes(1)
+ expect(events.map(e=>e.type)).toEqual([DRIVER_MAP_EVENTS.RecoveryChecked])
+ expect(sessionStorage.getItem('taxi.driver.pending-commands.v1')).toBeNull()
+})
+it('does not send a recoverable command without a bound login',async()=>{
+ const transport={send:jest.fn()},waiter={supportsInstanceRecovery:true,captureBaseline:()=>({state:null}),wait:jest.fn(),cancelAll:jest.fn()}
+ const gateway=new DriverMapGateway(createRuntime(),transport,1000,waiter,{scope:()=>null})
+ await expect(gateway.start('42')).rejects.toMatchObject({code:'FSM_COMMAND_SESSION_CHANGED'})
+ expect(transport.send).not.toHaveBeenCalled()
+})
+
 describe('DriverMapGateway', () => {
   beforeEach(() => jest.clearAllMocks())
 
@@ -530,4 +558,25 @@ describe('DriverMapGateway', () => {
 
     expect(completed).toBe(false)
   })
+})
+
+it('bounds a lost map event even when dispatch resolves and never repeats the action', async()=>{
+ jest.useFakeTimers()
+ try{
+  const runtime=createRuntime();runtime.dispatch=jest.fn().mockResolvedValue(undefined)
+  const gateway=new DriverMapGateway(runtime,null,25)
+  const pending=gateway.openCard('42');const rejected=expect(pending).rejects.toEqual(expect.objectContaining({code:'DRIVER_EVENT_TIMEOUT'}))
+  await Promise.resolve();jest.advanceTimersByTime(25);await rejected
+  expect(runtime.dispatch).toHaveBeenCalledTimes(1)
+ }finally{jest.useRealTimers()}
+})
+it('continues waiting for an accepted command after the map unmounts',async()=>{
+ const runtime=createRuntime();let finish
+ const waiter={captureBaseline:jest.fn(()=>({state:null})),wait:jest.fn(()=>new Promise(resolve=>{finish=resolve})),fail:jest.fn(),cancelAll:jest.fn()}
+ const transport={send:jest.fn().mockResolvedValue({accepted:true,duplicate:false,instanceId:911,status:'PENDING',intent:'ride_started'})}
+ const gateway=new DriverMapGateway(runtime,transport,1000,waiter),unmount=gateway.mount()
+ const pending=gateway.start('42')
+ for(let i=0;i<12;i++)await Promise.resolve()
+ expect(waiter.wait).toHaveBeenCalledTimes(1);unmount();expect(waiter.cancelAll).not.toHaveBeenCalled()
+ finish({status:'COMPLETED',instanceId:911});await expect(pending).resolves.toBeUndefined()
 })

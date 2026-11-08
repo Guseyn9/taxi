@@ -1,14 +1,14 @@
 // Слой API тянет за собой локализацию и корневую сагу (циклический импорт), а
 // здесь проверяется только связка «действие → редьюсер».
-jest.mock('../../../API', () => ({}))
-jest.mock('../selectors', () => ({ order: () => null }))
-jest.mock('../../geolocation/actionCreators', () => ({ watch: () => ({}), activateSending: () => ({}) }))
-
 import reducer from '../reducer'
 import { ActionTypes } from '../constants'
 import { ActionTypes as OrderActionTypes } from '../../order/constants'
 import { refreshOrder } from '../actionCreators'
 import { getOrder } from '../../order/actionCreators'
+
+jest.mock('../../../API', () => ({}))
+jest.mock('../selectors', () => ({ order: () => null }))
+jest.mock('../../geolocation/actionCreators', () => ({ watch: () => ({}), activateSending: () => ({}) }))
 
 const ORDER_ID = '1509-2'
 const DRIVER_ID = 'driver-1'

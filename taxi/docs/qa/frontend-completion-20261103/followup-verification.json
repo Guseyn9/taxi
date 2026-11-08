@@ -1,0 +1,30 @@
+{
+  "unit": {
+    "passed": 1038,
+    "suites": 189,
+    "ratingChecks": 8,
+    "newRegressionChecks": 6
+  },
+  "browser": {
+    "passed": 21,
+    "flaky": 0,
+    "retries": 0
+  },
+  "offerConsecutivePasses": 3,
+  "acceptedCommandProtocolCases": 7,
+  "physicalDevices": false,
+  "productionFsmAccepted": false,
+  "publishedThisFollowup": false,
+  "typecheck": "passed",
+  "productionBuild": "passed",
+  "boundary": true,
+  "reportSha256": "64f4ae9a8b0a895bd9c6de9502a1c69ee2d5d68e90f6c54a198a0ee78f65553e",
+  "assetManifestSha256": "c291331c1a21e6cfc2e78d96872ebcf8453b23d2004276c31f3027323edea597",
+  "toolchainFollowup": "toolchain-verification.json",
+  "latestStyleFollowup": "style-pipeline-verification.json",
+  "driverMapReliability": "driver-map-verification.json",
+  "latestRoadCacheFollowup": "road-cache-verification.json",
+  "latestPdf": "pdf-verification.json",
+  "latestRatingFollowup": "rating-verification.json",
+  "latestEntrypointsFollowup": "entrypoints-verification.json"
+}

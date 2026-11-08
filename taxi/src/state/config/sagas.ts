@@ -1,5 +1,6 @@
 import { all, takeEvery, put } from 'redux-saga/effects'
-import { call } from '../../tools/sagaUtils'
+import { call, select } from '../../tools/sagaUtils'
+import { userSelectors } from '../user'
 import * as API from '../../API'
 import { TAction } from '../../types'
 import Config from '../../config'
@@ -44,9 +45,11 @@ function* setConfigLoadedSaga() {
   yield put({ type: ActionTypes.SET_CONFIG_SUCCESS })
 }
 
-function* setLanguageSaga(data: TAction) {
+export function* setLanguageSaga(data: TAction) {
   yield put({ type: ActionTypes.SET_LANGUAGE, payload: data.payload })
   setCookie('user_lang', data.payload.iso)
+
+  if (!(yield* select(userSelectors.user))) return
 
   try {
     yield* call(API.editUser, { u_lang: data.payload.id })

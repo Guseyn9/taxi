@@ -159,6 +159,13 @@ body .overlay__wrapper>.modal.rating-modal{padding-top:150px!important}
  #root .passenger-voting-form__location-wrapper .input__buttons{top:10px}
 }
 body .overlay__wrapper>.modal.rating-modal{background-image:url('/design-v2/journey.svg')!important;background-position:center 24px!important;background-size:130px!important;background-repeat:no-repeat!important}
+/* Keep the review action visible in short landscape; decoration is secondary. */
+@media(max-height:500px){
+ body .overlay__wrapper>.modal.rating-modal{padding:20px!important;background-image:none!important}
+ body .overlay__wrapper>.rating-modal fieldset legend{margin-bottom:12px}
+ body .overlay__wrapper>.rating-modal h3{margin-bottom:8px}
+ body .overlay__wrapper>.rating-modal .rating p{margin:4px 0 12px}
+}
 html[dir=rtl] #root .rs-ride-heading{background-position:left center}
 /* Header language selection is independent of the navigation drawer. */
 #root .header-language{position:relative;flex:0 0 auto}

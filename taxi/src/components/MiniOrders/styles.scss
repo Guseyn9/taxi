@@ -1,4 +1,4 @@
-@import '../../tools/mixins';
+@use '../../tools/mixins' as *;
 
 .mini-orders {
   display: flex;

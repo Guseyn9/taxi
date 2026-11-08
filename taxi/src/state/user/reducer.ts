@@ -80,7 +80,7 @@ export default function reducer(state = new record(), action: TAction) {
       return state
         .set('status', EStatuses.Success)
         .set('message', TRANSLATION.REGISTER_SUCCESS)
-        .set('response', payload)
+        .set('response', { u_id: payload?.u_id, email_status: payload?.email_status })
     case ActionTypes.REGISTER_FAIL:
       return state
         .set('status', EStatuses.Fail)
@@ -123,7 +123,7 @@ export default function reducer(state = new record(), action: TAction) {
       return state
         .set('status', EStatuses.Success)
         .set('message', TRANSLATION.REGISTER_SUCCESS)
-        .set('response', payload)
+        .set('response', { u_id: payload?.u_id, email_status: payload?.email_status })
         .set('whatsappSignUpData', null)
     case ActionTypes.WHATSAPP_SIGNUP_FAIL:
       return state

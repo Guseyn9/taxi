@@ -1,4 +1,5 @@
 import React from 'react'
+import { isSafeSandboxBlock } from '../../security/sandboxSettings'
 import Button from '../Button'
 import HTML from '../HTML'
 import BigTruckServices from '../BigTruckServices'
@@ -22,6 +23,7 @@ interface IProps {
 const fieldNameRequired = ['BigTruckServices']
 
 function Block({ form, values, type, fieldName, fieldValue, ...rawProps }: IProps) {
+  if (!isSafeSandboxBlock({ type, fieldName, fieldValue, ...rawProps })) return <ErrorBlock text="Invalid block configuration"/>
   if (type && fieldNameRequired.includes(type) && !fieldName) return <ErrorBlock text="fieldName отсутствует"/>
 
   const props = mapBlockObject(rawProps)

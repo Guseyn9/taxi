@@ -16,3 +16,9 @@ test('incompatible ready orders are hidden but missing metadata is not treated a
  expect(orderMatchesCar({b_car_class:1},{cc_id:'1'})).toBe(true)
  expect(orderMatchesCar({},{})).toBe(true)
 })
+test('unrestricted class 0 requests stay visible to concrete cars without weakening explicit class matching',()=>{
+ expect(orderMatchesCar({b_car_class:0},{cc_id:'1'})).toBe(true)
+ expect(orderMatchesCar({b_car_class:'0'},{cc_id:'2'})).toBe(true)
+ expect(orderMatchesCar({b_car_class:'1'},{cc_id:0})).toBe(false)
+ expect(orderMatchesCar({b_car_class:'GRAND'},{cc_id:'PETIT'})).toBe(false)
+})

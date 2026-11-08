@@ -1,7 +1,9 @@
 import {useDriverDepartures,driverJourneyCopy} from '../../tools/driverPickupJourney'
+import {claimDriverOfferNotification} from '../../tools/driverOfferNotifications'
 import {displayFare,orderCurrency} from '../../design/reliability/rideData'
 import {cardPresentation} from '../../design/reliability/cardPresentation'
 import {displayAddress} from '../../design/addressPresentation'
+import { sameUser } from '../../tools/identity'
 import { useBoardingGate } from '../../pilot/BoardingGate'
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { connect, ConnectedProps } from 'react-redux'
@@ -92,8 +94,8 @@ import Button from '../Button'
 import Input, { EInputTypes } from '../Input'
 import { Loader } from '../loader/Loader'
 import { getStableRemainingLifetimeSeconds } from '../../tools/reliableTime'
-import { DRIVER_DOOR_NUMBER_PATTERN, getDriverDoorNumber, normalizeDriverDoorNumber } from '../../tools/driverDoorNumber'
-import { confirmDriverBoarding, isBoardingCodeAccepted } from '../../tools/driverBoarding'
+import { getDriverDoorNumber } from '../../tools/driverDoorNumber'
+import { BOARDING_CODE_PATTERN, normalizeBoardingCode, confirmDriverBoarding, isBoardingCodeAccepted } from '../../tools/driverBoarding'
 import { getEmulatorCaseName, isAnyBrowserEmulatorOrder } from '../../tools/emulatorMode'
 import { getOrderIdText } from '../../tools/orderId'
 import '../Card/styles.scss'
@@ -297,9 +299,9 @@ function getVotingCloseMessage(order: IOrder | null, userId?: string) {
   if (!order)
     return ''
 
-  const currentDriver = order.drivers?.find(driver => driver.u_id === userId)
+  const currentDriver = order.drivers?.find(driver => sameUser(driver.u_id, userId))
   const anotherDriverStarted = order.drivers?.some(driver =>
-    driver.u_id !== userId &&
+    !sameUser(driver.u_id, userId) &&
     [
       EBookingDriverState.Started,
       EBookingDriverState.Finished,
@@ -876,36 +878,8 @@ function CardModalContent({
   })
   const offerEtaValue = watch('offerEta') || t(TRANSLATION.DRIVER_OFFER_ETA_15)
 
-  useEffect(() => {
-    if (!active || !user?.u_id)
-      return
+  // Passenger PIN is entered by the driver; never prefill a vehicle number.
 
-    // Свой номер подставляется только в ПУСТОЕ поле. Прежнее условие — «значение
-    // не является кодом» — перетирало набранное водителем: эффект перезапускается
-    // на каждом обновлении заказа (опрос раз в 5 с), и недобранный или намеренно
-    // другой код молча заменялся готовым, прямо под руками у водителя.
-    if (normalizeDriverDoorNumber(getValues('votingNumber')) !== '')
-      return
-
-    let cancelled = false
-
-    backendGateway.getUserCar(user.u_id)
-      .then(car => {
-        if (cancelled)
-          return
-
-        const doorNumber = getDriverDoorNumber(userAsDriver, car)
-        // Между запросом машины и ответом водитель мог начать набирать код —
-        // проверяем ещё раз, чтобы не перебить ввод ответом на свой же запрос.
-        if (doorNumber && normalizeDriverDoorNumber(getValues('votingNumber')) === '')
-          setValue('votingNumber', doorNumber, { shouldValidate: false })
-      })
-      .catch(error => console.error(error))
-
-    return () => {
-      cancelled = true
-    }
-  }, [active, orderId, user?.u_id, userAsDriver?.c_id, getValues, setValue])
 
   const votingParticipationByState = Boolean(
     isVotingMode &&
@@ -1077,7 +1051,7 @@ function CardModalContent({
     if (offerEvent === 'accepted') {
       setHandledOfferEvent(offerEvent)
       setLocalDriverOffer(currentDriverOffer ? { ...currentDriverOffer, status: 'accepted' } : null)
-      setMessageModal({
+      if (claimDriverOfferNotification(orderId,user?.u_id,'accepted')) setMessageModal({
         isOpen: true,
         status: EStatuses.Success,
         message: [t(TRANSLATION.DRIVER_OFFER_ACCEPTED), getOrderIdText(orderId, activeOrderIds)]
@@ -1189,7 +1163,8 @@ function CardModalContent({
       return
     }
 
-    await takeOrder(orderId, { ...getValues() })
+    const { performers_price, offerEta } = getValues()
+    await takeOrder(orderId, { performers_price, offerEta })
     navigate(PLATFORM_ROUTES.DriverOrders, { query: { tab: EDriverTabs.Map } })
     closeModal()
   })
@@ -1237,7 +1212,6 @@ function CardModalContent({
   const confirmClientSelectedOffer = () => orderMutation(async() => {
     const values = getValues()
     await backendGateway.takeOrder(orderId, {
-      votingNumber: values.votingNumber,
       performers_price: currentDriverOffer?.price ?? values.performers_price,
     }, false)
     const nextResponse = updateDriverOfferClientResponseStatus(orderId, user?.u_id, 'driver_confirmed')
@@ -1362,19 +1336,11 @@ function CardModalContent({
     if (boardingPendingRef.current)
       return
 
-    const enteredCode = normalizeDriverDoorNumber(votingNumber)
+    const enteredCode = normalizeBoardingCode(votingNumber)
     boardingPendingRef.current = true
     setBoardingPending(true)
-    let expectedCode = normalizeDriverDoorNumber(order?.b_driver_code)
-    try {
-      if (!expectedCode) expectedCode = getDriverDoorNumber(userAsDriver, await backendGateway.getUserCar(user!.u_id))
-    } catch {
-      boardingPendingRef.current = false
-      setBoardingPending(false)
-      setMessageModal({ isOpen: true, message: t(TRANSLATION.ERROR), status: EStatuses.Fail })
-      return
-    }
-    if (!expectedCode || !isBoardingCodeAccepted(expectedCode, enteredCode)) {
+    const expectedCode = order?.b_driver_code
+    if (!isBoardingCodeAccepted(expectedCode, enteredCode)) {
       boardingPendingRef.current = false
       setBoardingPending(false)
       setMessageModal({ isOpen: true, message: t(TRANSLATION.WRONG_BOARDING_CODE), status: EStatuses.Fail })
@@ -1673,6 +1639,8 @@ function CardModalContent({
                 valueAsNumber: true,
               }),
               type: 'number',
+              inputMode: 'decimal',
+              step: '0.01',
               min: 0,
               defaultValue: getOfferDesiredPrice(order, paymentAmount),
               // Контракт для E2E (А.1.3): цену предложения водитель вводит сам,
@@ -1750,17 +1718,18 @@ function CardModalContent({
                 ...register('votingNumber', {
                   required: t(TRANSLATION.REQUIRED_FIELD),
                   pattern: {
-                    value: DRIVER_DOOR_NUMBER_PATTERN,
-                    message: t(TRANSLATION.DRIVE_NUMBER_HINT),
+                    value: BOARDING_CODE_PATTERN,
+                    message: t(TRANSLATION.WRONG_BOARDING_CODE),
                   },
                   onChange: event => {
-                    event.target.value = normalizeDriverDoorNumber(event.target.value)
+                    event.target.value = normalizeBoardingCode(event.target.value)
                   },
                 }),
                 type: 'text',
-                inputMode: 'numeric',
-                pattern: '[0-9]*',
-                maxLength: 4,
+                inputMode: 'text',
+                maxLength: 32,
+                autoCapitalize: 'none',
+                spellCheck: false,
                 autoComplete: 'off',
                 'data-testid': 'driver-boarding-code-input',
               } as React.ComponentProps<'input'>}
@@ -1901,6 +1870,8 @@ function CardModalContent({
                 valueAsNumber: true,
               }),
               type: 'number',
+              inputMode: 'decimal',
+              step: '0.01',
               min: 0,
             }}
             error={errors?.performers_price?.message}

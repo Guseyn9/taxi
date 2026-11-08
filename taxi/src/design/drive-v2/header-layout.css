@@ -1,5 +1,8 @@
 /* inDrive reference: a single account entry in the menu and quiet utility
    controls. The grid replaces the overlapping absolute brand positioning. */
+/* The menu and its backdrop cover the connection status, below modal dialogs. */
+#root .header.header--menu-open{z-index:1000!important}
+#root .layout:has(.header--menu-open){z-index:1000}
 #root .header {
   display:grid;grid-template-columns:44px minmax(0,1fr) auto;align-items:center;
   --drive-header-size:64px;

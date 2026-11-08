@@ -1,3 +1,4 @@
+import {serviceText} from '../serviceText'
 import type { IAddressPoint } from '../../types/types'
 import type { ZoneCheckStatus } from '../../state/clientOrder/constants'
 
@@ -25,7 +26,7 @@ export function retryZonePoint(point: IAddressPoint) {
   return { ...point, isCurrent: false, resolveAddress: false }
 }
 
-export function zoneCheckCopy(iso = 'en') {
+function fallbackCopy(iso = 'en') {
   if (iso.startsWith('ru')) return {
     from: 'Зона подачи', to: 'Зона назначения', checking: 'Проверяем зону…',
     error: 'Не удалось проверить зону. Проверьте связь и повторите.', retry: 'Повторить',
@@ -47,3 +48,5 @@ export function zoneCheckCopy(iso = 'en') {
     blocked: 'Wait for both address zones to be checked. If a check fails, retry it.',
   }
 }
+
+export function zoneCheckCopy(iso='en') {return serviceText(fallbackCopy(iso),'zone_check')}

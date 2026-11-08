@@ -1,5 +1,6 @@
 export const PASSENGER_ACTIONS = {
   CreateOrder: 'order_create',
+  ConfirmOrder: 'order_confirm',
   CancelOrder: 'order_cancel_by_client',
   SelectCandidate: 'order_select_candidate',
   AcceptOffer: 'order_select_offer',

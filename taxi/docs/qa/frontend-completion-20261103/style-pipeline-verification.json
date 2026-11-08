@@ -1,0 +1,51 @@
+{
+  "unit": {
+    "passed": 971,
+    "suites": 187
+  },
+  "browser": {
+    "passed": 21,
+    "setup": 3,
+    "scenarios": 18,
+    "retries": 0
+  },
+  "stylePipeline": {
+    "palettes": 2,
+    "iconsPerPalette": 15,
+    "modes": [
+      "development",
+      "production"
+    ],
+    "computedPropertiesMatchBaseline": true,
+    "unchangedSassCssFiles": 8,
+    "sourceMapEscapesRejected": 2,
+    "adjacentMapPreserved": true,
+    "cssSize": {
+      "before": {
+        "cssFiles": 5,
+        "rawBytes": 631694,
+        "gzipBytes": 99175
+      },
+      "after": {
+        "cssFiles": 5,
+        "rawBytes": 570369,
+        "gzipBytes": 90714
+      }
+    },
+    "ciCodePrepared": true,
+    "actualActionsRun": false
+  },
+  "npmAudit": {
+    "info": 0,
+    "low": 9,
+    "moderate": 50,
+    "high": 8,
+    "critical": 0,
+    "total": 67
+  },
+  "responsiveStates": 25,
+  "productionBuild": "passed",
+  "typecheck": "passed",
+  "lintErrors": 0,
+  "published": false
+}

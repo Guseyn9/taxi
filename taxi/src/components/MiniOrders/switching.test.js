@@ -1,5 +1,8 @@
 import React, {act} from 'react'
 import {createRoot} from 'react-dom/client'
+import {MiniOrders} from './index'
+import {EBookingDriverState} from '../../types/types'
+import {driverMapGateway} from '../../platform/adapters/DriverMapGateway'
 jest.mock('react-redux', () => ({connect: () => Component => Component}))
 jest.mock('../../state/user', () => ({userSelectors:{}}))
 jest.mock('../../state/orders', () => ({ordersSelectors: {}, ordersActionCreators: {}}))
@@ -21,9 +24,6 @@ jest.mock('../../platform/adapters/LegacyBackendGateway', () => ({backendGateway
 jest.mock('../../platform/adapters/DriverMapGateway', () => ({driverMapGateway: {finish: jest.fn().mockResolvedValue({})}}))
 jest.mock('../Chat/Toggler', () => ({__esModule: true, default: () => <button>Chat</button>}))
 jest.mock('../CarClassBadge', () => ({__esModule: true, default: () => <span>PETIT</span>, getRequiredCarClassKind: () => 'petit'}))
-import {MiniOrders} from './index'
-import {EBookingDriverState} from '../../types/types'
-import {driverMapGateway} from '../../platform/adapters/DriverMapGateway'
 let host, root
 beforeEach(() => {
  global.IS_REACT_ACT_ENVIRONMENT = true
@@ -81,4 +81,15 @@ it('keeps three simultaneous orders reachable after polling and switches by exac
  await act(async()=>root.render(<MiniOrders {...p} activeOrders={[...p.activeOrders]} selectedOrder="C"/>))
  expect(host.querySelectorAll('.mini-orders__card')).toHaveLength(3)
  expect(host.querySelectorAll('.mini-orders__select-target')[2].getAttribute('aria-pressed')).toBe('true')
+})
+it('does not announce driver search or a timer before server confirmation',async()=>{
+ const order={b_id:'A',b_voting:true,b_confirm_state:false,drivers:[],b_max_waiting:900}
+ const p=props({activeOrders:[order],uiConfig:{state:'SEARCHING',legacy:false,timerKind:'search'}})
+ await act(async()=>root.render(<MiniOrders {...p}/>))
+ expect(host.querySelector('.mini-orders__status').textContent).toBe('voting_confirmation_status')
+ expect(host.querySelector('.mini-orders__select-target').getAttribute('aria-label')).toContain('voting_confirmation_status')
+ expect(host.querySelector('.mini-orders__metric--primary').textContent).toBe('voting_confirmation_retry')
+ expect(host.querySelector('.mini-orders__metric--time')).toBeNull()
+ await act(async()=>root.render(<MiniOrders {...p} activeOrders={[{...order,b_confirm_state:true}]}/>))
+ expect(host.querySelector('.mini-orders__status').textContent).not.toBe('voting_confirmation_status')
 })

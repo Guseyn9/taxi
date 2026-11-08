@@ -1,0 +1,566 @@
+{
+  "date": "2026-11-04T11:36:43.194860+01:00",
+  "scope": "ARCH-06 only; local frontend, no backend changes or publication",
+  "status": "closed on frontend",
+  "retiredFileCount": 52,
+  "retiredBytes": 144254,
+  "retiredFiles": [
+    {
+      "file": "src/lib/react-dev-utils/FileSizeReporter.js",
+      "canonical": "lib/react-dev-utils/FileSizeReporter.js",
+      "sha256": "568c01fc8f4ff70373f7438c8eafab4411ba669b2a145a1fa1598c247b2d982c",
+      "canonicalSha256": "568c01fc8f4ff70373f7438c8eafab4411ba669b2a145a1fa1598c247b2d982c",
+      "bytes": 4613,
+      "reachable": false
+    },
+    {
+      "file": "src/lib/react-dev-utils/ForkTsCheckerWebpackPlugin.js",
+      "canonical": "lib/react-dev-utils/ForkTsCheckerWebpackPlugin.js",
+      "sha256": "6ad449b215248b9a78d77dd99ef96200083d9fe912fb0725d83108c8b5a0a839",
+      "canonicalSha256": "6ad449b215248b9a78d77dd99ef96200083d9fe912fb0725d83108c8b5a0a839",
+      "bytes": 321,
+      "reachable": false
+    },
+    {
+      "file": "src/lib/react-dev-utils/InlineChunkHtmlPlugin.js",
+      "canonical": "lib/react-dev-utils/InlineChunkHtmlPlugin.js",
+      "sha256": "74a98f7344ceed3da4c8982be4b6f68eb438ce7de19883e0d2f16248ff4254f1",
+      "canonicalSha256": "74a98f7344ceed3da4c8982be4b6f68eb438ce7de19883e0d2f16248ff4254f1",
+      "bytes": 1921,
+      "reachable": false
+    },
+    {
+      "file": "src/lib/react-dev-utils/InterpolateHtmlPlugin.js",
+      "canonical": "lib/react-dev-utils/InterpolateHtmlPlugin.js",
+      "sha256": "2bfb57d66742e89fc4935b9472a6221751f27d9133264e0d0785db36552e80e4",
+      "canonicalSha256": "2bfb57d66742e89fc4935b9472a6221751f27d9133264e0d0785db36552e80e4",
+      "bytes": 1445,
+      "reachable": false
+    },
+    {
+      "file": "src/lib/react-dev-utils/LICENSE",
+      "canonical": "lib/react-dev-utils/LICENSE",
+      "sha256": "f657f99d3fb9647db92628e96007aabb46e5f04f33e49999075aab8e250ca7ce",
+      "canonicalSha256": "f657f99d3fb9647db92628e96007aabb46e5f04f33e49999075aab8e250ca7ce",
+      "bytes": 1080,
+      "reachable": false
+    },
+    {
+      "file": "src/lib/react-dev-utils/ModuleNotFoundPlugin.js",
+      "canonical": "lib/react-dev-utils/ModuleNotFoundPlugin.js",
+      "sha256": "b55e44655f0d36df91cd5fefb4f2381dd74538ef7a3d70e805529a327bfdc2b1",
+      "canonicalSha256": "b55e44655f0d36df91cd5fefb4f2381dd74538ef7a3d70e805529a327bfdc2b1",
+      "bytes": 4315,
+      "reachable": false
+    },
+    {
+      "file": "src/lib/react-dev-utils/ModuleScopePlugin.js",
+      "canonical": "lib/react-dev-utils/ModuleScopePlugin.js",
+      "sha256": "a2fd7903c5a139a0f70d99c2d30de0f273c97a795ec6343d1352a253291b5503",
+      "canonicalSha256": "a2fd7903c5a139a0f70d99c2d30de0f273c97a795ec6343d1352a253291b5503",
+      "bytes": 3197,
+      "reachable": false
+    },
+    {
+      "file": "src/lib/react-dev-utils/README.md",
+      "canonical": "lib/react-dev-utils/README.md",
+      "sha256": "7ba842e5ad484bf4243cf304c16ce3b209d9e758cb5859ea66b1b106084da0d9",
+      "canonicalSha256": "7ba842e5ad484bf4243cf304c16ce3b209d9e758cb5859ea66b1b106084da0d9",
+      "bytes": 15128,
+      "reachable": false
+    },
+    {
+      "file": "src/lib/react-dev-utils/WatchMissingNodeModulesPlugin.js",
+      "canonical": "lib/react-dev-utils/WatchMissingNodeModulesPlugin.js",
+      "sha256": "11545a1a3b263a2c5faaf801a42297d9ab6061118d6aec8cccd5949dc297d4be",
+      "canonicalSha256": "11545a1a3b263a2c5faaf801a42297d9ab6061118d6aec8cccd5949dc297d4be",
+      "bytes": 1101,
+      "reachable": false
+    },
+    {
+      "file": "src/lib/react-dev-utils/WebpackDevServerUtils.js",
+      "canonical": "lib/react-dev-utils/WebpackDevServerUtils.js",
+      "sha256": "89904421638191c49cf575a1fcd5db9d7eeb55d614429693554eeb9c0a18c27b",
+      "canonicalSha256": "89904421638191c49cf575a1fcd5db9d7eeb55d614429693554eeb9c0a18c27b",
+      "bytes": 15215,
+      "reachable": false
+    },
+    {
+      "file": "src/lib/react-dev-utils/browsersHelper.js",
+      "canonical": "lib/react-dev-utils/browsersHelper.js",
+      "sha256": "e31c89125f50a25a684823195a360caa84d5e33e4af9beec5afdb6ac22eac11c",
+      "canonicalSha256": "e31c89125f50a25a684823195a360caa84d5e33e4af9beec5afdb6ac22eac11c",
+      "bytes": 2517,
+      "reachable": false
+    },
+    {
+      "file": "src/lib/react-dev-utils/chalk.js",
+      "canonical": "lib/react-dev-utils/chalk.js",
+      "sha256": "9a06c89a6670241a4cf10fc97144566ea5ef64934abd2ff088b704100b9f5716",
+      "canonicalSha256": "9a06c89a6670241a4cf10fc97144566ea5ef64934abd2ff088b704100b9f5716",
+      "bytes": 254,
+      "reachable": false
+    },
+    {
+      "file": "src/lib/react-dev-utils/checkRequiredFiles.js",
+      "canonical": "lib/react-dev-utils/checkRequiredFiles.js",
+      "sha256": "2b9528fd8e91b073a98fcd87cd8e013abdb0df2e86d2407fa2e39875e2345b34",
+      "canonicalSha256": "2b9528fd8e91b073a98fcd87cd8e013abdb0df2e86d2407fa2e39875e2345b34",
+      "bytes": 856,
+      "reachable": false
+    },
+    {
+      "file": "src/lib/react-dev-utils/clearConsole.js",
+      "canonical": "lib/react-dev-utils/clearConsole.js",
+      "sha256": "13435f396a539bd73f6ea5be6b798e6628060171be61c239cbbd3dd0727e36a2",
+      "canonicalSha256": "13435f396a539bd73f6ea5be6b798e6628060171be61c239cbbd3dd0727e36a2",
+      "bytes": 365,
+      "reachable": false
+    },
+    {
+      "file": "src/lib/react-dev-utils/crossSpawn.js",
+      "canonical": "lib/react-dev-utils/crossSpawn.js",
+      "sha256": "8cba45594b0045842e2a0fa23d01573347a9d4d5fab3427864d512cef1c7384c",
+      "canonicalSha256": "8cba45594b0045842e2a0fa23d01573347a9d4d5fab3427864d512cef1c7384c",
+      "bytes": 270,
+      "reachable": false
+    },
+    {
+      "file": "src/lib/react-dev-utils/errorOverlayMiddleware.js",
+      "canonical": "lib/react-dev-utils/errorOverlayMiddleware.js",
+      "sha256": "ca5a8342f1f327dc2d638e31575545c97198db232e72fd87707bba1b593f302a",
+      "canonicalSha256": "ca5a8342f1f327dc2d638e31575545c97198db232e72fd87707bba1b593f302a",
+      "bytes": 732,
+      "reachable": false
+    },
+    {
+      "file": "src/lib/react-dev-utils/eslintFormatter.js",
+      "canonical": "lib/react-dev-utils/eslintFormatter.js",
+      "sha256": "28a2b1c3d24a1ab0e753e870f09c14735216e4e76a605674f35c94c673b85665",
+      "canonicalSha256": "28a2b1c3d24a1ab0e753e870f09c14735216e4e76a605674f35c94c673b85665",
+      "bytes": 2401,
+      "reachable": false
+    },
+    {
+      "file": "src/lib/react-dev-utils/evalSourceMapMiddleware.js",
+      "canonical": "lib/react-dev-utils/evalSourceMapMiddleware.js",
+      "sha256": "b359de1b63793ca0086d0a0703dce349d9d6884de0ceae99d0d90dcc0eae2eaa",
+      "canonicalSha256": "b359de1b63793ca0086d0a0703dce349d9d6884de0ceae99d0d90dcc0eae2eaa",
+      "bytes": 1485,
+      "reachable": false
+    },
+    {
+      "file": "src/lib/react-dev-utils/formatWebpackMessages.js",
+      "canonical": "lib/react-dev-utils/formatWebpackMessages.js",
+      "sha256": "2f636b9e06347b34d9ecfaa9a428c365f08723e4aecd42b7c01056390943d611",
+      "canonicalSha256": "2f636b9e06347b34d9ecfaa9a428c365f08723e4aecd42b7c01056390943d611",
+      "bytes": 3934,
+      "reachable": false
+    },
+    {
+      "file": "src/lib/react-dev-utils/getCSSModuleLocalIdent.js",
+      "canonical": "lib/react-dev-utils/getCSSModuleLocalIdent.js",
+      "sha256": "0810f452d1d23294dbf8fb3defe10382c4459b9c5ac8474459308b05b3ecb6d6",
+      "canonicalSha256": "0810f452d1d23294dbf8fb3defe10382c4459b9c5ac8474459308b05b3ecb6d6",
+      "bytes": 1216,
+      "reachable": false
+    },
+    {
+      "file": "src/lib/react-dev-utils/getCacheIdentifier.js",
+      "canonical": "lib/react-dev-utils/getCacheIdentifier.js",
+      "sha256": "619b64f54fcc922d8477dfa308c6d337f727081e458b5f87f87b60f73ea66d05",
+      "canonicalSha256": "619b64f54fcc922d8477dfa308c6d337f727081e458b5f87f87b60f73ea66d05",
+      "bytes": 584,
+      "reachable": false
+    },
+    {
+      "file": "src/lib/react-dev-utils/getProcessForPort.js",
+      "canonical": "lib/react-dev-utils/getProcessForPort.js",
+      "sha256": "b78c0f1285e3bb4d5626e02c467df23572dbc7b411c80480722b12fb5f57d1eb",
+      "canonicalSha256": "b78c0f1285e3bb4d5626e02c467df23572dbc7b411c80480722b12fb5f57d1eb",
+      "bytes": 1960,
+      "reachable": false
+    },
+    {
+      "file": "src/lib/react-dev-utils/getPublicUrlOrPath.js",
+      "canonical": "lib/react-dev-utils/getPublicUrlOrPath.js",
+      "sha256": "ef9d2b061dd9c0dc90d35a3707bb23503d55b5dce08a341ca07d20c62904663c",
+      "canonicalSha256": "ef9d2b061dd9c0dc90d35a3707bb23503d55b5dce08a341ca07d20c62904663c",
+      "bytes": 2069,
+      "reachable": false
+    },
+    {
+      "file": "src/lib/react-dev-utils/globby.js",
+      "canonical": "lib/react-dev-utils/globby.js",
+      "sha256": "b00b7479f51eb10db3ebeeb2ce93d44feed46d2c814b3b137e14b11f60eb3ee4",
+      "canonicalSha256": "b00b7479f51eb10db3ebeeb2ce93d44feed46d2c814b3b137e14b11f60eb3ee4",
+      "bytes": 257,
+      "reachable": false
+    },
+    {
+      "file": "src/lib/react-dev-utils/ignoredFiles.js",
+      "canonical": "lib/react-dev-utils/ignoredFiles.js",
+      "sha256": "9dd414ba4c0e9a4fe661188f78dde5ba57104adf3ff3c0399a0a4f659ac56a79",
+      "canonicalSha256": "9dd414ba4c0e9a4fe661188f78dde5ba57104adf3ff3c0399a0a4f659ac56a79",
+      "bytes": 467,
+      "reachable": false
+    },
+    {
+      "file": "src/lib/react-dev-utils/immer.js",
+      "canonical": "lib/react-dev-utils/immer.js",
+      "sha256": "b3b8e2a3cee0c39f3d12b2daeff0b2a6a33c5c644cbca4d98c26e8ab3fdf9ce1",
+      "canonicalSha256": "b3b8e2a3cee0c39f3d12b2daeff0b2a6a33c5c644cbca4d98c26e8ab3fdf9ce1",
+      "bytes": 254,
+      "reachable": false
+    },
+    {
+      "file": "src/lib/react-dev-utils/inquirer.js",
+      "canonical": "lib/react-dev-utils/inquirer.js",
+      "sha256": "e225358bf20cc63e2645d170c0774f0af8288d02f7037cd666908d41adcca0fc",
+      "canonicalSha256": "e225358bf20cc63e2645d170c0774f0af8288d02f7037cd666908d41adcca0fc",
+      "bytes": 263,
+      "reachable": false
+    },
+    {
+      "file": "src/lib/react-dev-utils/launchEditor.js",
+      "canonical": "lib/react-dev-utils/launchEditor.js",
+      "sha256": "97779b7375cbd1813b2ce088ed6b31a791083dc32dd5c653ddcfba4d3e15ec34",
+      "canonicalSha256": "97779b7375cbd1813b2ce088ed6b31a791083dc32dd5c653ddcfba4d3e15ec34",
+      "bytes": 19473,
+      "reachable": false
+    },
+    {
+      "file": "src/lib/react-dev-utils/launchEditorEndpoint.js",
+      "canonical": "lib/react-dev-utils/launchEditorEndpoint.js",
+      "sha256": "3fe464d175446ebd777a10fa2455a8773c711a15ad7d9330196b486855c0f871",
+      "canonicalSha256": "3fe464d175446ebd777a10fa2455a8773c711a15ad7d9330196b486855c0f871",
+      "bytes": 330,
+      "reachable": false
+    },
+    {
+      "file": "src/lib/react-dev-utils/noopServiceWorkerMiddleware.js",
+      "canonical": "lib/react-dev-utils/noopServiceWorkerMiddleware.js",
+      "sha256": "f8bb453c8aff99f4cf6d9b2430c95deba72ce207f6e2883100592d1c69954faf",
+      "canonicalSha256": "f8bb453c8aff99f4cf6d9b2430c95deba72ce207f6e2883100592d1c69954faf",
+      "bytes": 1354,
+      "reachable": false
+    },
+    {
+      "file": "src/lib/react-dev-utils/openBrowser.js",
+      "canonical": "lib/react-dev-utils/openBrowser.js",
+      "sha256": "f08718de01cb76455d4f54cf9ad1b232ec2db551941cd9a9aae4617db8d0175c",
+      "canonicalSha256": "f08718de01cb76455d4f54cf9ad1b232ec2db551941cd9a9aae4617db8d0175c",
+      "bytes": 4414,
+      "reachable": false
+    },
+    {
+      "file": "src/lib/react-dev-utils/openChrome.applescript",
+      "canonical": "lib/react-dev-utils/openChrome.applescript",
+      "sha256": "71fa7162a8531eeaaa25429e3f91596f64ed752b9835c2dfb50e53dbb2f6c0eb",
+      "canonicalSha256": "71fa7162a8531eeaaa25429e3f91596f64ed752b9835c2dfb50e53dbb2f6c0eb",
+      "bytes": 2657,
+      "reachable": false
+    },
+    {
+      "file": "src/lib/react-dev-utils/package.json",
+      "canonical": "lib/react-dev-utils/package.json",
+      "sha256": "7eb4c100ce974f9a3b61e6aaf2c464f71f94d74877a1b10ec8630ce9f08d9ce3",
+      "canonicalSha256": "58efdc1f01c2b46da31309237c9d8af5d4e6ebef6a639bce7516f6b503f95c8a",
+      "bytes": 2328,
+      "reachable": false
+    },
+    {
+      "file": "src/lib/react-dev-utils/printBuildError.js",
+      "canonical": "lib/react-dev-utils/printBuildError.js",
+      "sha256": "c9aa743cb7d6159b84a7bd270414d474a51e1fbe1c183e4b19d22df9d27f6722",
+      "canonicalSha256": "c9aa743cb7d6159b84a7bd270414d474a51e1fbe1c183e4b19d22df9d27f6722",
+      "bytes": 1231,
+      "reachable": false
+    },
+    {
+      "file": "src/lib/react-dev-utils/printHostingInstructions.js",
+      "canonical": "lib/react-dev-utils/printHostingInstructions.js",
+      "sha256": "74bed4e340f9a888425a22cb63b77ad253619bfd8c87ef7dd430820fadddd8aa",
+      "canonicalSha256": "74bed4e340f9a888425a22cb63b77ad253619bfd8c87ef7dd430820fadddd8aa",
+      "bytes": 3696,
+      "reachable": false
+    },
+    {
+      "file": "src/lib/react-dev-utils/redirectServedPathMiddleware.js",
+      "canonical": "lib/react-dev-utils/redirectServedPathMiddleware.js",
+      "sha256": "77356394f084e7714e4ab79e84a8651a9f06ff5def44597ba0b36e987476f276",
+      "canonicalSha256": "77356394f084e7714e4ab79e84a8651a9f06ff5def44597ba0b36e987476f276",
+      "bytes": 741,
+      "reachable": false
+    },
+    {
+      "file": "src/lib/react-dev-utils/typescriptFormatter.js",
+      "canonical": "lib/react-dev-utils/typescriptFormatter.js",
+      "sha256": "870a986cbb14699e2c95bb8afe91e21e32acf0f00416e6fd29ec5e3cc615fb81",
+      "canonicalSha256": "870a986cbb14699e2c95bb8afe91e21e32acf0f00416e6fd29ec5e3cc615fb81",
+      "bytes": 1276,
+      "reachable": false
+    },
+    {
+      "file": "src/lib/react-dev-utils/webpackHotDevClient.js",
+      "canonical": "lib/react-dev-utils/webpackHotDevClient.js",
+      "sha256": "40e7e4cbc00fdb5f978cabb7282cef637e8147b9abcc17e94003f8f04492946f",
+      "canonicalSha256": "40e7e4cbc00fdb5f978cabb7282cef637e8147b9abcc17e94003f8f04492946f",
+      "bytes": 8007,
+      "reachable": false
+    },
+    {
+      "file": "src/lib/react-leaflet-fullscreen-plugin/Control.FullScreen.css",
+      "canonical": "lib/react-leaflet-fullscreen-plugin/Control.FullScreen.css",
+      "sha256": "45300b9c737be8f277d91271da6c60832f9152df5321157e99f3cb48b6c8ef90",
+      "canonicalSha256": "45300b9c737be8f277d91271da6c60832f9152df5321157e99f3cb48b6c8ef90",
+      "bytes": 849,
+      "reachable": false
+    },
+    {
+      "file": "src/lib/react-leaflet-fullscreen-plugin/FullscreenComponent.js",
+      "canonical": "lib/react-leaflet-fullscreen-plugin/FullscreenComponent.js",
+      "sha256": "c5da67e3fc9c0929db45cf189b6bf5b7bad3483d62b8658675887c1fff6c4a4d",
+      "canonicalSha256": "c5da67e3fc9c0929db45cf189b6bf5b7bad3483d62b8658675887c1fff6c4a4d",
+      "bytes": 951,
+      "reachable": false
+    },
+    {
+      "file": "src/lib/react-leaflet-fullscreen-plugin/LICENSE",
+      "canonical": "lib/react-leaflet-fullscreen-plugin/LICENSE",
+      "sha256": "1146d24f29fc16542e1feb8c7300de1b4b2f2ec772e704af9d31cb08ddbc6885",
+      "canonicalSha256": "1146d24f29fc16542e1feb8c7300de1b4b2f2ec772e704af9d31cb08ddbc6885",
+      "bytes": 1110,
+      "reachable": false
+    },
+    {
+      "file": "src/lib/react-leaflet-fullscreen-plugin/README.md",
+      "canonical": "lib/react-leaflet-fullscreen-plugin/README.md",
+      "sha256": "1c2ee341c686925880d3cff440af94ec5723fd1ea04d3366a133d83ba0a7f7ee",
+      "canonicalSha256": "1c2ee341c686925880d3cff440af94ec5723fd1ea04d3366a133d83ba0a7f7ee",
+      "bytes": 3062,
+      "reachable": false
+    },
+    {
+      "file": "src/lib/react-leaflet-fullscreen-plugin/icon-fullscreen-2x.png",
+      "canonical": "lib/react-leaflet-fullscreen-plugin/icon-fullscreen-2x.png",
+      "sha256": "0c21498604db3386a5a7ebfdea3df190eee24db8d1a923b49f727e5eca346977",
+      "canonicalSha256": "0c21498604db3386a5a7ebfdea3df190eee24db8d1a923b49f727e5eca346977",
+      "bytes": 215,
+      "reachable": false
+    },
+    {
+      "file": "src/lib/react-leaflet-fullscreen-plugin/icon-fullscreen.png",
+      "canonical": "lib/react-leaflet-fullscreen-plugin/icon-fullscreen.png",
+      "sha256": "2393c0cda898be7a3ac7b3fdec5bd3303c6125a240effe7f35756f58e853c489",
+      "canonicalSha256": "2393c0cda898be7a3ac7b3fdec5bd3303c6125a240effe7f35756f58e853c489",
+      "bytes": 139,
+      "reachable": false
+    },
+    {
+      "file": "src/lib/react-leaflet-fullscreen-plugin/package.json",
+      "canonical": "lib/react-leaflet-fullscreen-plugin/package.json",
+      "sha256": "1a3c576f824903ecf27a5185243f9b68683ef7a000ba90aed22b33b08b61a644",
+      "canonicalSha256": "1a3c576f824903ecf27a5185243f9b68683ef7a000ba90aed22b33b08b61a644",
+      "bytes": 1110,
+      "reachable": false
+    },
+    {
+      "file": "scripts/scripts/build.js",
+      "canonical": "scripts/build.js",
+      "sha256": "18af9b009004b027b61aa32479dbc21a8e980f700a85040209124681b5ce4fbd",
+      "canonicalSha256": "18af9b009004b027b61aa32479dbc21a8e980f700a85040209124681b5ce4fbd",
+      "bytes": 7704,
+      "reachable": false
+    },
+    {
+      "file": "scripts/scripts/start.js",
+      "canonical": "scripts/start.js",
+      "sha256": "da35abccf4bcac016071ebcb08f66278a693a286100e4e6927a965b019d40e5c",
+      "canonicalSha256": "94e060506f1b7ea846d1418a561efff779166136d2c0bcda09a042a2e14c34de",
+      "bytes": 4897,
+      "reachable": false
+    },
+    {
+      "file": "scripts/scripts/test.js",
+      "canonical": "scripts/test.js",
+      "sha256": "a18a07029552edd869ec2ff01f927bb66b4a3cc3890ba6a66b1e30c478b39191",
+      "canonicalSha256": "a18a07029552edd869ec2ff01f927bb66b4a3cc3890ba6a66b1e30c478b39191",
+      "bytes": 1342,
+      "reachable": false
+    },
+    {
+      "file": "src/tsconfig.json",
+      "canonical": "tsconfig.json",
+      "sha256": "f4d1c49de9024797830f806baefc2f4fa7acd1f46e985e1d42f5563d375e349c",
+      "canonicalSha256": "3d6b7a6a962715184af8d7c64346849f43fa66c708d7bc40565c4396ffe1a756",
+      "bytes": 756,
+      "reachable": false
+    },
+    {
+      "file": "scripts/tsconfig.json",
+      "canonical": "tsconfig.json",
+      "sha256": "f4d1c49de9024797830f806baefc2f4fa7acd1f46e985e1d42f5563d375e349c",
+      "canonicalSha256": "3d6b7a6a962715184af8d7c64346849f43fa66c708d7bc40565c4396ffe1a756",
+      "bytes": 756,
+      "reachable": false
+    },
+    {
+      "file": "public/tsconfig.json",
+      "canonical": "tsconfig.json",
+      "sha256": "f4d1c49de9024797830f806baefc2f4fa7acd1f46e985e1d42f5563d375e349c",
+      "canonicalSha256": "3d6b7a6a962715184af8d7c64346849f43fa66c708d7bc40565c4396ffe1a756",
+      "bytes": 756,
+      "reachable": false
+    },
+    {
+      "file": "package_fixed.json",
+      "canonical": "package.json",
+      "sha256": "12a5df48d96a4d742b7e9a8befd8a3c495a6eb364166d163b89ec4faa5f0e1b1",
+      "canonicalSha256": "f8f97768c53c9206134962a3a71219bc37d1a9a695bd33adcc30f36d71c3a690",
+      "bytes": 6880,
+      "reachable": false
+    }
+  ],
+  "backupVerifiedBySha256": true,
+  "staticBefore": {
+    "parsedFiles": 1232,
+    "roots": 269,
+    "reachableFiles": 774,
+    "incomingReferences": 0,
+    "reachableRetired": 0
+  },
+  "staticAfter": {
+    "parsedFiles": 1195,
+    "roots": 270,
+    "reachableFiles": 775,
+    "incomingReferences": 0,
+    "unresolvedLocalReferences": 0,
+    "reachableParseErrors": 0
+  },
+  "retainedCompatibilityEntryPoints": 9,
+  "dynamicLoadsReviewed": [
+    {
+      "file": "src/components/Icon/index.tsx",
+      "line": 23
+    },
+    {
+      "file": "src/components/Icon/index.tsx",
+      "line": 25
+    },
+    {
+      "file": "src/security/clientEnvironment.test.js",
+      "line": 11
+    },
+    {
+      "file": "scripts/build.js",
+      "line": 95
+    },
+    {
+      "file": "scripts/start.js",
+      "line": 119
+    },
+    {
+      "file": "scripts/start.js",
+      "line": 141
+    },
+    {
+      "file": "config/modules.js",
+      "line": 124
+    },
+    {
+      "file": "config/modules.js",
+      "line": 131
+    },
+    {
+      "file": "config/paths.js",
+      "line": 20
+    },
+    {
+      "file": "config/webpack.config.js",
+      "line": 28
+    },
+    {
+      "file": "config/webpack.config.js",
+      "line": 129
+    },
+    {
+      "file": "config/webpackDevServer.config.js",
+      "line": 70
+    },
+    {
+      "file": "lib/react-dev-utils/getProcessForPort.js",
+      "line": 37
+    }
+  ],
+  "dynamicLoadReview": "SVG palettes, canonical package/tsconfig/proxy paths, Sass loader, installed TypeScript and local process package identification; no retired paths",
+  "negativeControls": [
+    {
+      "name": "public tsconfig reappears",
+      "rejected": true,
+      "failures": 1
+    },
+    {
+      "name": "vendored library copied into src",
+      "rejected": true,
+      "failures": 1
+    },
+    {
+      "name": "compatibility shim forks logic",
+      "rejected": true,
+      "failures": 1
+    },
+    {
+      "name": "command points to nested script",
+      "rejected": true,
+      "failures": 1
+    },
+    {
+      "name": "runtime entrypoint missing",
+      "rejected": true,
+      "failures": 1
+    }
+  ],
+  "unit": {
+    "passed": 1038,
+    "suites": 189
+  },
+  "browser": {
+    "passed": 21,
+    "retries": 0,
+    "flaky": 0,
+    "gpsSimulated": true,
+    "mapTilesStubbed": true,
+    "isolatedLocalPhp": true
+  },
+  "typecheck": "passed",
+  "lintErrors": 0,
+  "existingLintConsoleWarnings": 3,
+  "productionAppBuild": "passed",
+  "styleBrowserChecks": {
+    "development": "passed",
+    "production": "passed",
+    "palettes": 2,
+    "iconsPerPalette": 15,
+    "pageErrors": 0,
+    "failedRequests": 0
+  },
+  "appCssByteIdentical": true,
+  "boundary": {
+    "ok": true,
+    "files": 268,
+    "handlers": 71
+  },
+  "ci": "workflow updated locally, not run on GitHub",
+  "productionAcceptance": false,
+  "publishedThisFollowup": false,
+  "sourceSha256": {
+    "tools/check-entrypoints.cjs": "221cdef5c1dee0d51d79bfd831f7fa8037c9bae78da0014fbfe2d1b417c66a37",
+    "pre-build.js": "320a37205b23382eef84668679c86a9452ea3fe25e2a2ee0f83b83b3a065e1f7",
+    "package.json": "aeed99802e5f9f3356356d22ea231758468e8b92ed607dd2db110e77a688983d",
+    "tools/check-frontend.cjs": "04752c3978285e4db58959826ef86a9ec9ab98f3a460214a11ac784c96161cfe",
+    "docs/architecture/entrypoints.md": "1466be7bdc502ac524d74ad4ae152321839a1c2db1d4ad70ddef0f60bc1d92cd"
+  },
+  "releaseBuild": "passed",
+  "releaseCssByteIdentical": true
+}

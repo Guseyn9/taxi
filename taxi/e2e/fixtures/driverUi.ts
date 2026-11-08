@@ -16,22 +16,18 @@ export const DRIVER_STORAGE = path.resolve(__dirname, '../.auth/driver.json')
 /** Сессия второго водителя — отдельный файл, общих cookies/localStorage у ролей нет. */
 export const DRIVER2_STORAGE = path.resolve(__dirname, '../.auth/driver2.json')
 
-/** Точка подачи и назначения тестового заказа. Ростов-на-Дону, как у эмулятора. */
-export const PICKUP = { latitude: 47.2216, longitude: 39.6343 }
-export const DESTINATION = { latitude: 47.2239, longitude: 39.6366 }
+/** Короткий маршрут в Агадире. Стенд должен содержать тестовый городской полигон. */
+export const PICKUP = { latitude: 30.4206, longitude: -9.598 }
+export const DESTINATION = { latitude: 30.4242, longitude: -9.596 }
 
-/**
- * driverEmulator=1 — штатный переключатель самого приложения
- * (tools/emulatorMode.ts): без него список заказов водителя принудительно пуст.
- * Это режим приложения, а не мок API.
- */
-export const DRIVER_PAGE = '/driver-order?tab=map&driverEmulator=1'
+/** Обычный рабочий режим: доступность заказов не зависит от эмулятора. */
+export const DRIVER_PAGE = '/driver-order?tab=map'
 /**
  * Вкладка «Все». Значение именно `detailed`: вкладок у водителя три —
  * map/lite/detailed (EDriverTabs в pages/Driver/index.tsx), и при неизвестном
  * значении не отрисовывается ни один список заказов.
  */
-export const DRIVER_LIST_PAGE = '/driver-order?tab=detailed&driverEmulator=1'
+export const DRIVER_LIST_PAGE = '/driver-order?tab=detailed'
 
 const primaryAction = (page: Page) => page.getByTestId('driver-map-primary-action')
 
@@ -80,7 +76,7 @@ export async function measureUiStateDelay(page: Page, state: number, timeout: nu
 
 /** Карточка конкретного заказа в списке водителя. */
 export const orderCard = (page: Page, orderId: string) =>
-  page.locator(`[data-testid="driver-order-card"][data-order-id="${orderId}"]`)
+  page.locator(`.driver-orders:not(.driver-orders--history) [data-testid="driver-order-card"][data-order-id="${orderId}"]`)
 
 /**
  * Открыть список заказов водителя и дождаться в нём конкретного заказа — БЕЗ
@@ -278,26 +274,29 @@ export async function clickPrimaryAction(page: Page): Promise<void> {
   await button.click()
 }
 
+/** Depart is local intent; Arrived requires a second explicit, server-confirmed action. */
+export async function departAndArrive(page: Page): Promise<void> {
+  const button = primaryAction(page).first()
+  await expect(button, 'новый заказ готов к выезду').toHaveAttribute('data-pickup-stage', 'depart')
+  await button.click()
+  await expect(button, 'выезд не подменяет прибытие').toHaveAttribute('data-pickup-stage', 'arrive')
+  await expect(button, 'прибытие доступно только у места посадки').toBeEnabled()
+  await button.click()
+  await expect(button, 'прибытие подтверждено сервером').toHaveAttribute('data-pickup-stage', 'board')
+  await expect(button).toHaveAttribute('data-driver-state', String(DRIVER_STATE.Arrived))
+}
+
 /**
- * Открыть форму кода посадки: на карте это «Код посадки» → карточка заказа, а в
- * карточке голосовой заказ сначала просит отметить прибытие к пассажиру.
+ * Открыть форму после уже подтверждённого прибытия. Карточка получает свой
+ * снимок заказа асинхронно: ждём PIN, не отправляем прибытие повторно из её
+ * промежуточного состояния. Само прибытие проверяет departAndArrive и каждый
+ * вызывающий сценарий независимо читает состояние backend.
  */
 export async function openBoardingForm(page: Page): Promise<void> {
+  await expect(primaryAction(page).first()).toHaveAttribute('data-pickup-stage', 'board')
+  await expect(primaryAction(page).first()).toHaveAttribute('data-driver-state', String(DRIVER_STATE.Arrived))
   await clickPrimaryAction(page)
-
-  const arrived = page.getByTestId('driver-voting-arrived')
   const input = page.getByTestId('driver-boarding-code-input')
-
-  await expect
-    .poll(async() => (await input.count()) > 0 || (await arrived.count()) > 0,
-      { message: 'карточка голосового заказа открылась', timeout: 90_000 })
-    .toBe(true)
-
-  if (await input.count() === 0) {
-    await expect(arrived).toBeEnabled({ timeout: 60_000 })
-    await arrived.click()
-  }
-
   await expect(input, 'появилось поле кода посадки').toBeVisible({ timeout: 90_000 })
 }
 
@@ -379,10 +378,9 @@ export async function isOrderCancelAvailable(page: Page): Promise<boolean> {
  * Водитель отказывается от назначенного заказа — два клика, как это делает
  * человек: сначала действие, затем подтверждение в окне.
  *
- * Endpoint отмены из теста не вызывается. Важно: приложение отправляет запрос
- * БЕЗ `await` и уходит со страницы независимо от результата
- * (`components/modals/DriverCancelModal.tsx`), поэтому факт клика ничего не
- * доказывает — результат обязан подтверждаться чтением состояния заказа.
+ * Endpoint отмены из теста не вызывается. Окно ждёт подтверждения через
+ * driverMapGateway; ошибка оставляет его открытым. Результат дополнительно
+ * подтверждается независимым чтением состояния заказа.
  */
 export async function declineAssignedOrder(page: Page): Promise<void> {
   const open = orderCancelOpenButton(page)

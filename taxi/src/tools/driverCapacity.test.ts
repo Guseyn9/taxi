@@ -49,6 +49,11 @@ describe('getCarCapacity', () => {
     expect(getCarCapacity(car())).toBe(DEFAULT_CAR_SEATS)
     expect(getCarCapacity(null)).toBe(DEFAULT_CAR_SEATS)
   })
+  it('never assumes seats for missing, fractional or nonnumeric capacity', () => {
+    for (const value of [true, [], {}, ' ', 2.5, -1, NaN]) expect(getCarCapacity(car(value as any))).toBe(0)
+    expect(canDriverTakeOrderBySeats(order('new', 1), getCarCapacity(null), DRIVER_ID)).toBe(false)
+    expect(canDriverTakeOrderBySeats(order('own', 1, EBookingDriverState.Started), 0, DRIVER_ID)).toBe(true)
+  })
 
 })
 

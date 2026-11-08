@@ -1,4 +1,4 @@
-@import "../../tools/mixins.scss";
+@use "../../tools/mixins.scss" as *;
 
 .driver {
   &-tabs {
@@ -1084,4 +1084,14 @@
     min-width: 128px;
     min-height: 142px !important;
   }
+}
+
+.driver-vehicle-picker {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+  margin: 10px auto; padding: 12px; max-width: 960px;
+  background: #fff; border: 1px solid #e4d6cf; border-radius: 14px;
+  label { display: flex; gap: 8px; align-items: center; min-width: 0; }
+  select, button { min-height: 44px; padding: 8px 12px; border: 1px solid #d4c6bf; border-radius: 10px; }
+  button:disabled { opacity: .55; }
+  p { flex-basis: 100%; margin: 0; }
 }

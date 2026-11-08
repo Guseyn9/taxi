@@ -22,7 +22,10 @@ export function orderMatchesCar(order:any,car:any):boolean {
   const required=order?.b_car_class ?? order?.b_car_class_id ?? order?.cc_id
   const actual=car?.cc_id ?? car?.c_class_id ?? car?.car_class_id
   // Missing metadata is not evidence of incompatibility. The backend still validates taking.
-  return required==null || required==='' || actual==null || actual==='' || String(required)===String(actual)
+  // Legacy API reserves 0 for an unrestricted request (the service's “Any”
+  // class). It is not a specific vehicle class, and /drive/now returns it to
+  // drivers of concrete classes. A driver's own class 0 is not a wildcard.
+  return required==null || required==='' || String(required)==='0' || actual==null || actual==='' || String(required)===String(actual)
 }
 const messages={
   ru:{offerMode:'Сервер не сохранил тип «Своя цена». Созданный заказ отменён. Используйте обычный заказ или выбор водителя.',offerUnverified:'Заказ создан, но тип «Своя цена» не подтверждён сервером. Не отправляйте повторно: проверьте текущий заказ или отмените его.',offerPrice:'Укажите цену предложения больше нуля.',fixedOffer:'Цена предложения зафиксирована при отправке. Выберите предложение водителя; изменение этой суммы здесь недоступно.',config:'Настройки сервера не соответствуют Марокко. Валюта и формат телефона показаны как на сервере; перед пилотом их должен настроить разработчик.'},

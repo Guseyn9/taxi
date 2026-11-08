@@ -1,7 +1,7 @@
-jest.mock('axios', () => ({ __esModule: true, default: { get: jest.fn() } }))
-jest.mock('../config', () => ({ __esModule: true, default: { API_URL: 'https://test.invalid/api/v1' } }))
 import axios from 'axios'
 import { getPolygonsIdsOnPoint, ZONE_LOOKUP_TIMEOUT_MS } from './polygon'
+jest.mock('axios', () => ({ __esModule: true, default: { get: jest.fn() } }))
+jest.mock('../config', () => ({ __esModule: true, default: { API_URL: 'https://test.invalid/api/v1' } }))
 const get = axios.get as any
 const response = (polygons: unknown) => ({ data: { code: '200', status: 'success', data: { data: { map_place_polygons: polygons } } } })
 beforeEach(() => get.mockReset())

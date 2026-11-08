@@ -1,6 +1,17 @@
-import { confirmDriverBoarding, isBoardingCodeAccepted } from './driverBoarding'
+import { confirmDriverBoarding, isBoardingCodeAccepted, normalizeBoardingCode } from './driverBoarding'
 
 describe('isBoardingCodeAccepted', () => {
+  it('accepts the backend alphabet including * and its documented ambiguous letters', () => {
+    expect(isBoardingCodeAccepted('a*01', 'D*Ol')).toBe(true)
+    expect(isBoardingCodeAccepted('*', '*')).toBe(true)
+    expect(isBoardingCodeAccepted('a*01', 'a001')).toBe(false)
+    expect(isBoardingCodeAccepted(undefined, '*9')).toBe(true)
+  })
+  it('does not silently turn an overlong code into a valid prefix', () => {
+    const prefix = 'a'.repeat(32)
+    expect(normalizeBoardingCode(prefix + 'b')).toHaveLength(33)
+    expect(isBoardingCodeAccepted(prefix, prefix + 'b')).toBe(false)
+  })
   it('rejects 000 when the boarding code is 111 in normal mode', () => {
     window.localStorage.clear()
     expect(isBoardingCodeAccepted('111', '000')).toBe(false)
@@ -20,7 +31,9 @@ describe('isBoardingCodeAccepted', () => {
 
   it('без кода в заказе проверку формы оставляет за собой, а сверку — за бэкендом', () => {
     expect(isBoardingCodeAccepted(undefined, '1234')).toBe(true)
-    expect(isBoardingCodeAccepted(undefined, '12')).toBe(false)
+    expect(isBoardingCodeAccepted(undefined, '12')).toBe(true)
+    expect(isBoardingCodeAccepted('4', '4')).toBe(true)
+    expect(isBoardingCodeAccepted('a0', 'dO')).toBe(true)
   })
 
 })

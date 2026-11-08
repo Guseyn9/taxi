@@ -1,3 +1,4 @@
+import { getEmulatorTestRuntime, requireEmulatorAccounts } from './testRuntime'
 /* Browser-only driver emulator for gruzvill.
  * It does not use localhost/node panel, so it works from Vercel links too.
  */
@@ -71,7 +72,6 @@ type BrowserEmulatorOptions = {
   onUpdate: (snapshot: BrowserEmulatorSnapshot) => void
 }
 
-const API_BASE = 'https://ibronevik.ru/taxi/c/gruzvill/api/v1'
 const POLL_INTERVAL_MS = 3000
 const REMOTE_LOCATION_INTERVAL_MS = 5000
 const LOCATION_ERROR_LOG_INTERVAL_MS = 12000
@@ -103,56 +103,6 @@ const ACTIONS = {
   SET_START_STATE: 'set_start_state',
   SET_COMPLETE_STATE: 'set_complete_state',
   SET_CANCEL_STATE: 'set_cancel_state',
-}
-
-const DRIVERS = [
-  {
-    name: 'Gruzvill Driver 1',
-    login: 'gmailgtest1@gmail.com',
-    password: '12345678',
-    type: 'e-mail',
-    location: { latitude: 47.221, longitude: 39.633 },
-    priceDelta: [-40, 20],
-    etaOptions: ['Буду через 5 минут', 'Буду через 8 минут', 'Буду через 10 минут'],
-    commentOptions: ['Еду напрямую', 'Свободен рядом', 'Могу быстро подъехать'],
-  },
-  {
-    name: 'Gruzvill Driver 2',
-    login: 'gmailgtest2@gmail.com',
-    password: '12345678',
-    type: 'e-mail',
-    location: { latitude: 47.22235, longitude: 39.6352 },
-    priceDelta: [-20, 45],
-    etaOptions: ['Буду через 10 минут', 'Буду через 12 минут', 'Буду через 15 минут'],
-    commentOptions: ['Есть кондиционер', 'Еду без остановок', 'Могу забрать быстро'],
-  },
-  {
-    name: 'Gruzvill Driver 3',
-    login: 'gmailgtest3@gmail.com',
-    password: '12345678',
-    type: 'e-mail',
-    location: { latitude: 47.21985, longitude: 39.6316 },
-    priceDelta: [0, 70],
-    etaOptions: ['Буду через 8 минут', 'Буду через 15 минут', 'Буду через 20 минут'],
-    commentOptions: ['Большой багажник', 'Аккуратная поездка', 'Подъеду к точке'],
-  },
-  {
-    name: 'Gruzvill Driver 4',
-    login: 'gmailgtest4@gmail.com',
-    password: '12345678',
-    type: 'e-mail',
-    location: { latitude: 47.2231, longitude: 39.6323 },
-    priceDelta: [-60, 10],
-    etaOptions: ['Буду через 12 минут', 'Буду через 20 минут', 'Буду через 25 минут'],
-    commentOptions: ['Буду аккуратно', 'Знаю маршрут', 'Могу подождать'],
-  },
-]
-
-const MANAGER = {
-  enabled: true,
-  login: 'ibucnev15@gmail.com',
-  password: 'X7/m&33v0O',
-  type: 'e-mail',
 }
 
 const DEFAULT_OFFER = {
@@ -242,7 +192,7 @@ async function parseResponse(response: Response, url: string) {
 }
 
 async function apiPost(endpoint: string, fields: any) {
-  const url = `${API_BASE}${endpoint}`
+  const url = `${getEmulatorTestRuntime().apiUrl}${endpoint}`
   const response = await fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
@@ -812,7 +762,6 @@ export class BrowserDriverEmulator {
   private bots: BotState[] = []
   private timer: number | null = null
   private initPromise: Promise<void> | null = null
-  private managerSession: Promise<Session | null> | null = null
   private busy = false
   private emitTimer: number | null = null
   private localChoices = new Map<string, string>()
@@ -945,6 +894,7 @@ export class BrowserDriverEmulator {
   }
 
   async check() {
+    requireEmulatorAccounts(this instanceof BrowserDriverEmulator ? 'drivers' : 'clients')
     this.log('Проверяю водителей прямо в браузере, без localhost...')
     await this.initBots()
     const ready = this.bots.filter(bot => !bot.disabled && bot.session && bot.car).length
@@ -952,6 +902,7 @@ export class BrowserDriverEmulator {
   }
 
   async start() {
+    requireEmulatorAccounts(this instanceof BrowserDriverEmulator ? 'drivers' : 'clients')
     if (this.running) return
     this.running = true
     this.emitNow()
@@ -986,7 +937,7 @@ export class BrowserDriverEmulator {
 
   private async initBotsInner() {
     if (this.bots.length) return
-    this.bots = DRIVERS.map((driver, index) => ({
+    this.bots = requireEmulatorAccounts('drivers').map((driver, index) => ({
       driver,
       index,
       name: driver.name || driver.login,
@@ -1006,15 +957,15 @@ export class BrowserDriverEmulator {
     try {
       bot.session = await loginSession(bot.driver, bot.name)
       bot.user = bot.session.user
+      if (Number(bot.user?.u_role) !== 2) throw new Error('Driver test account required')
       await this.loadAuthorizedUser(bot).catch(() => null)
       await this.loadCar(bot)
-      await this.tryManagerApprove(bot).catch(error => this.log(`[${bot.name}] approval skipped: ${stringifyError(error)}`))
       await this.loadAuthorizedUser(bot).catch(() => null)
       await this.loadCar(bot).catch(() => null)
       const userState = getUserCheckState(bot.user)
       const carState = getCarCheckState(bot.car)
       if (!isApproved(userState) || (carState !== null && !isApproved(carState))) {
-        this.log(`[${bot.name}] внимание: подтверждение не видно (user=${userState ?? 'unknown'}, car=${carState ?? 'unknown'}), пробую всё равно`)
+        throw new Error('Test driver and vehicle must be approved by the backend administrator')
       }
       await this.activateCar(bot)
       await this.setOnline(bot)
@@ -1029,32 +980,6 @@ export class BrowserDriverEmulator {
     } catch (error) {
       bot.disabled = true
       this.log(`[${bot.name}] не готов: ${stringifyError(error)}`)
-    }
-  }
-
-  private async getManagerSession() {
-    if (!MANAGER.enabled) return null
-    if (!this.managerSession) {
-      this.managerSession = loginSession(MANAGER, 'manager').catch(error => {
-        this.log(`[manager] вход не удался: ${stringifyError(error)}`)
-        return null
-      })
-    }
-    return this.managerSession
-  }
-
-  private async tryManagerApprove(bot: BotState) {
-    const manager = await this.getManagerSession()
-    if (!manager || !bot.user?.u_id) return
-    const userPayloads = [{ u_check_state: 2, u_active: 1 }, { check_state: 2, u_active: 1 }]
-    for (const data of userPayloads) {
-      await apiPost('/user', { token: manager.token, u_hash: manager.u_hash, u_id: bot.user.u_id, data: JSON.stringify(data) }).catch(() => null)
-    }
-    if (bot.car?.c_id) {
-      const carPayloads = [{ c_check_state: 2 }, { check_state: 2 }]
-      for (const data of carPayloads) {
-        await apiPost(`/car/${bot.car.c_id}`, { token: manager.token, u_hash: manager.u_hash, data: JSON.stringify(data) }).catch(() => null)
-      }
     }
   }
 
@@ -1171,36 +1096,8 @@ export class BrowserDriverEmulator {
   }
 
   private async updateCarClassForOrder(bot: BotState, order: any) {
-    if (!bot.car?.c_id) return false
-    const targetClassId = getOrderRequiredClassId(order)
-    if (!targetClassId) return false
-    const current = getCurrentCarClassId(bot.car)
-    if (current && String(current) === String(targetClassId)) return true
-    const payload = getEditableCarPayload(bot.car, targetClassId)
-    const sessions: Array<{ label: string, session: Session }> = []
-    const manager = await this.getManagerSession()
-    if (manager) sessions.push({ label: 'manager', session: manager })
-    if (bot.session) sessions.push({ label: 'driver', session: bot.session })
-    for (const item of sessions) {
-      try {
-        const response = await apiPost(`/car/${bot.car.c_id}`, { token: item.session.token, u_hash: item.session.u_hash, data: JSON.stringify(payload) })
-        if (!isBackendError(response)) {
-          this.log(`[${bot.name}] class ${current || '?'} -> ${targetClassId} (${item.label})`)
-          bot.car = {
-            ...(bot.car || {}),
-            cc_id: String(targetClassId),
-            c_class_id: String(targetClassId),
-            car_class_id: String(targetClassId),
-          }
-          await this.loadCar(bot).catch(() => null)
-          await this.activateCar(bot).catch(() => null)
-          return String(getCurrentCarClassId(bot.car)) === String(targetClassId)
-        }
-      } catch {
-        // keep trying next session
-      }
-    }
-    return false
+    const required = getOrderRequiredClassId(order)
+    return !required || String(getCurrentCarClassId(bot.car)) === String(required)
   }
 
   private async ensureCarClassForOrder(bot: BotState, order: any) {
@@ -1742,16 +1639,8 @@ function makeClientRunId() {
   return `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`.replace(/[^a-z0-9]/gi, '').slice(0, 18)
 }
 
-function getStoredClientAccounts() {
-  if (typeof window === 'undefined') return []
-  const stored = safeJsonParse<any[]>(window.localStorage.getItem(CLIENT_EMULATOR_STORAGE_KEY), [])
-  return Array.isArray(stored) ? stored.filter(item => item?.login && item?.password) : []
-}
-
-function saveStoredClientAccounts(accounts: any[]) {
-  if (typeof window === 'undefined') return
-  window.localStorage.setItem(CLIENT_EMULATOR_STORAGE_KEY, JSON.stringify(accounts))
-}
+function getStoredClientAccounts() { return requireEmulatorAccounts('clients') }
+function saveStoredClientAccounts(_accounts: any[]) { /* Never persist credentials. */ }
 
 function readClientOrderOwnerMap(): Record<string, string> {
   if (typeof window === 'undefined') return {}
@@ -1799,22 +1688,6 @@ function makeUniqueClientEmail(index = 0) {
   const runId = makeClientRunId()
   const padded = String((Number(index) % 100) + 1).padStart(2, '0')
   return `gruzvill.client.${runId}.${padded}@ibronevik.ru`
-}
-
-function createGeneratedClientAccounts(count = CLIENT_ACCOUNTS_COUNT) {
-  const runId = makeClientRunId()
-  return Array.from({ length: count }).map((_, index) => {
-    const n = index + 1
-    const padded = String(n).padStart(2, '0')
-    return {
-      name: `Gruzvill Client ${padded}`,
-      login: `gruzvill.client.${runId}.${padded}@ibronevik.ru`,
-      email: `gruzvill.client.${runId}.${padded}@ibronevik.ru`,
-      phone: makeUniqueClientPhone(index),
-      password: '12345678',
-      type: 'e-mail',
-    }
-  })
 }
 
 function formatApiDatetime(offsetMinutes = 2) {
@@ -2218,7 +2091,7 @@ async function buildGeneratedPassengerOrder(origin: Point, alongTheWay = false) 
 }
 
 async function apiPostForm(endpoint: string, fields: any) {
-  const url = `${API_BASE}${endpoint}`
+  const url = `${getEmulatorTestRuntime().apiUrl}${endpoint}`
   const formData = new FormData()
   Object.entries(fields || {}).forEach(([key, value]) => {
     if (value === undefined || value === null || value === '') return
@@ -2279,17 +2152,7 @@ function isAccountAlreadyExistsError(error: any) {
   return text.includes('busy user data') || text.includes('duplicate') || text.includes('already') || text.includes('существ')
 }
 
-async function registerClientAccount(account: any) {
-  const response = await apiPostForm('/register', {
-    u_name: account.name || 'Gruzvill Client',
-    u_phone: account.phone || '+70000000000',
-    u_email: account.email || account.login,
-    u_role: '1',
-    data: JSON.stringify({ password: account.password || '12345678' }),
-  })
-  if (isBackendError(response)) throw new Error(normalizeErrorMessage(response) || 'client register failed')
-  return response
-}
+
 
 async function postPassengerOrder(session: Session, payload: any) {
   return apiPost('/drive', {
@@ -2402,6 +2265,7 @@ export class BrowserClientOrderEmulator {
   }
 
   async check() {
+    requireEmulatorAccounts(this instanceof BrowserDriverEmulator ? 'drivers' : 'clients')
     this.log('Проверяю клиентские аккаунты и геолокацию для генерации заказов...')
     const origin = await this.resolveLocalOrigin()
     this.log(origin ? `Геолокация эмулятора: ${formatEmulatorPoint(origin)}` : 'Геолокация не получена. Разрешите доступ к местоположению в браузере.')
@@ -2411,6 +2275,7 @@ export class BrowserClientOrderEmulator {
   }
 
   async start() {
+    requireEmulatorAccounts(this instanceof BrowserDriverEmulator ? 'drivers' : 'clients')
     if (this.running) return
 
     // Важно: не включаем режим clients до получения гео и очистки старых ID.
@@ -2584,12 +2449,7 @@ export class BrowserClientOrderEmulator {
 
   private async initClientsInner() {
     if (this.clients.length) return
-    let accounts = getStoredClientAccounts()
-    if (!accounts.length) {
-      accounts = createGeneratedClientAccounts(CLIENT_ACCOUNTS_COUNT)
-      saveStoredClientAccounts(accounts)
-      this.log(`Создал локальный список клиентов: ${accounts.length}`)
-    }
+    const accounts = getStoredClientAccounts()
 
     this.clients = accounts.map((account, index) => ({
       account,
@@ -2604,7 +2464,7 @@ export class BrowserClientOrderEmulator {
     try {
       client.session = await this.loginOrRegisterClient(client.account, client.name, client.index)
       const role = getSessionRole(client.session)
-      if (role !== null && role !== 1) throw new Error(`wrong user role: ${role}`)
+      if (role !== 1) throw new Error(`wrong user role: ${role}`)
       saveEmulatedClientIdentity({
         userId: client.session.user?.u_id,
         login: client.account.login || client.account.email,
@@ -2622,49 +2482,8 @@ export class BrowserClientOrderEmulator {
     saveStoredClientAccounts(this.clients.map(client => client.account))
   }
 
-  private async loginOrRegisterClient(account: any, label: string, index = 0) {
-    try {
-      return await loginSession(account, label)
-    } catch (error) {
-      if (!isWrongLoginError(error) && !normalizeErrorMessage(error).toLowerCase().includes('auth failed')) throw error
-
-      let registered = false
-      let lastError: any = null
-      for (let attempt = 0; attempt < 5 && !registered; attempt += 1) {
-        try {
-          await registerClientAccount(account)
-          registered = true
-          this.log(`[${label}] клиент зарегистрирован${attempt ? ` (попытка ${attempt + 1})` : ''}`)
-        } catch (registerError) {
-          lastError = registerError
-          if (isPhoneTakenError(registerError)) {
-            account.phone = makeUniqueClientPhone(index)
-            this.log(`[${label}] телефон занят, пробую другой номер: ${account.phone}`)
-            continue
-          }
-          if (isEmailTakenError(registerError)) {
-            const email = makeUniqueClientEmail(index)
-            account.login = email
-            account.email = email
-            this.log(`[${label}] e-mail занят, пробую другой адрес: ${email}`)
-            continue
-          }
-          if (isAccountAlreadyExistsError(registerError)) {
-            this.log(`[${label}] клиент уже был зарегистрирован, пробую войти`)
-            break
-          }
-          throw registerError
-        }
-      }
-
-      if (!registered && lastError && !isAccountAlreadyExistsError(lastError))
-        throw lastError
-
-      // Телефон/почта могли смениться при перегенерации — сохраняем обновлённый список,
-      // чтобы при следующем запуске не повторять занятые значения.
-      this.persistClientAccounts()
-      return loginSession(account, label)
-    }
+  private async loginOrRegisterClient(account: any, label: string, _index = 0) {
+    return loginSession(account, label)
   }
 
   private getNextClient() {

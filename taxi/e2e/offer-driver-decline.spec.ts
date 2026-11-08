@@ -1,3 +1,4 @@
+import { newAuthenticatedContext } from './fixtures/tabSession'
 /**
  * TEST-E2E-005 — А.1.4, отказ выбранного водителя. Живой backend.
  *
@@ -70,7 +71,7 @@ import { appUrl, driver2Account, driverAccount, passengerAccount } from './fixtu
 import { stubMapTiles } from './fixtures/appShell'
 import {
   DRIVER_STATE,
-  INTERCITY_LOCATION_CLASS,
+  CITY_LOCATION_CLASS,
   cancelOrder,
   cancelTestOrders,
   createOfferOrder,
@@ -169,7 +170,7 @@ function reportSweep(when: string, result: ISweepResult): void {
  * с разными storageState: общих cookies и localStorage у ролей нет.
  */
 async function openSession(browser: Browser, storageState: string): Promise<BrowserContext> {
-  const context = await browser.newContext({
+  const context = await newAuthenticatedContext(browser, {
     ...devices['Desktop Chrome'],
     storageState,
     baseURL: appUrl(),
@@ -347,7 +348,7 @@ test('А.1.4 — отказ выбранного водителя: заказ н
   const created = await readOrder(passenger, orderId)
   expect(created.b_id, 'заказ создан и читается с бэкенда').toBe(orderId)
   expect(isOfferOrderSnapshot(created), 'заказ опознаётся приложением как «Предложение»').toBe(true)
-  expect(String(created.b_location_class), 'класс поездки межгородний').toBe(INTERCITY_LOCATION_CLASS)
+  expect(String(created.b_location_class), 'Offer на коротком городском маршруте').toBe(CITY_LOCATION_CLASS)
   expect(customerPriceOf(created), 'у заказа есть цена заказчика').toBe(150)
   expect(String(created.b_voting ?? '0'), 'заказ НЕ голосовой — это другой режим').toBe('0')
   expect(Number(created.b_state), 'заказ активен и ждёт водителей').toBe(ORDER_STATE.Processing)

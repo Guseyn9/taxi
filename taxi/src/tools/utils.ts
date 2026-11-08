@@ -385,6 +385,8 @@ export function getPhoneNumberError(
     return required ? t(TRANSLATION.REQUIRED_FIELD) : null
   if (phone < 10 ** (minPhoneLength - 1) || phone >= 10 ** maxPhoneLength)
     return t(TRANSLATION.PHONE_PATTERN_ERROR)
+  if (!Number.isSafeInteger(phone))
+    return t(TRANSLATION.PHONE_PATTERN_ERROR)
   return null
 }
 
@@ -689,12 +691,7 @@ export const mapBlockObject = (rawObject: TBlockObject) => {
   return object
 }
 
-export const getBase64 = (file: any) => new Promise((resolve, reject) => {
-  const reader = new FileReader()
-  reader.readAsDataURL(file)
-  reader.onload = () => resolve(reader.result)
-  reader.onerror = error => reject(error)
-})
+export { rasterFileBase64 as getBase64 } from '../security/fileUpload'
 
 export function formatCurrency(
   value: number,

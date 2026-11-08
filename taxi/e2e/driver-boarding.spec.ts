@@ -11,7 +11,8 @@
  * НЕЗАВИСИМАЯ проверка состояния заказа (§19).
  */
 
-import { expect, test } from '@playwright/test'
+import { expect } from '@playwright/test'
+import { test } from './fixtures/tabSession'
 import { driverAccount, passengerAccount } from './fixtures/accounts'
 import { expectAppBooted } from './fixtures/appShell'
 import {
@@ -35,13 +36,17 @@ import {
   PICKUP,
   boardingCodeInput,
   clickPrimaryAction,
+  departAndArrive,
   expectUiDriverState,
   isBoardingFormVisible,
   measureUiStateDelay,
   openBoardingForm,
   openDriverMap,
   submitBoardingCode,
+  watchOrderActions,
+  messageModalStatus,
 } from './fixtures/driverUi'
+import {slowPassengerNetwork} from './fixtures/passengerUi'
 
 /**
  * Бюджет на локальную синхронизацию после успешного подтверждения. Заведомо
@@ -53,20 +58,17 @@ const UI_SYNC_BUDGET_MS = 1500
 
 interface IPreparedOrder {
   readonly orderId: string
-  readonly boardingCode: string
 }
 
 let driver: ISession
 let passenger: ISession
 let car: ICar
-let boardingCode: string
 const createdOrders: string[] = []
 
 test.beforeAll(async() => {
   driver = await login(driverAccount(), 'водитель')
   passenger = await login(passengerAccount(), 'пассажир')
   car = await getDriverCar(driver)
-  boardingCode = boardingCodeOf(car)
   await goOnline(driver, car, PICKUP)
 })
 
@@ -128,7 +130,7 @@ async function prepareVotingOrder(label: string): Promise<IPreparedOrder> {
     label,
   })
   createdOrders.push(orderId)
-  return { orderId, boardingCode }
+  return { orderId }
 }
 
 /** Состояние заказа на бэкенде — независимая от UI проверка (§13). */
@@ -147,7 +149,7 @@ async function expectBackendState(orderId: string, state: number, message: strin
  * действием пассажира.
  */
 async function driveToBoarding(page: import('@playwright/test').Page, orderId: string): Promise<void> {
-  await page.goto(`/driver-order/${orderId}?driverEmulator=1`)
+  await page.goto(`/driver-order/${orderId}`)
   // Без этой проверки сбой загрузки конфигурации приложения выглядит как
   // «кнопка отклика не появилась»: на экране «Database is unavailable» её и
   // правда нет. См. e2e/fixtures/appShell.ts.
@@ -168,7 +170,7 @@ async function driveToBoarding(page: import('@playwright/test').Page, orderId: s
   await expectUiDriverState(page, DRIVER_STATE.Performer, 'карта показывает принятый заказ')
 
   // STEP 4 — «Поехал» и «Приехал» кликами.
-  await clickPrimaryAction(page)
+  await departAndArrive(page)
   await expectBackendState(orderId, DRIVER_STATE.Arrived, 'водитель выехал/прибыл')
   await expectUiDriverState(page, DRIVER_STATE.Arrived, 'карта показывает прибытие')
 }
@@ -188,7 +190,12 @@ test.describe('TEST-E2E-001 — посадка по коду в голосово
 
     // STEP 5-6 — форма кода посадки и настоящий код водителя.
     await openBoardingForm(page)
-    await submitBoardingCode(page, boardingCode)
+    const actions=watchOrderActions(page)
+    await submitBoardingCode(page, boardingCodeOf(await readOrder(passenger, orderId)))
+    // The UI budget starts after the successful server acknowledgement, not
+    // before a potentially slow network round trip.
+    await expect.poll(()=>actions.of(orderId,'set_start_state').some(item=>item.status==='success')).toBe(true)
+    actions.dispose()
 
     // STEP 9 — то, ради чего тест написан. Замер обязателен: дефект был не в том,
     // что интерфейс НИКОГДА не догонит бэкенд, а в том, что он догонял его только
@@ -207,9 +214,14 @@ test.describe('TEST-E2E-001 — посадка по коду в голосово
     await driveToBoarding(page, orderId)
 
     await openBoardingForm(page)
-    // Код заведомо неверной формы: приложение отклоняет его само и до бэкенда
-    // команда не доходит.
-    await submitBoardingCode(page, '12')
+    const correct=boardingCodeOf(await readOrder(passenger,orderId))
+    const actions=watchOrderActions(page)
+    await submitBoardingCode(page, correct==='9'?'8':'9')
+    await expect.poll(async()=>
+      (await page.getByRole('alert').count())>0 || await messageModalStatus(page)==='fail',
+    {message:'неверный код показан ошибкой'}).toBe(true)
+    expect(actions.of(orderId,'set_start_state'), 'локально отклонённый код не начинает поездку').toHaveLength(0)
+    actions.dispose()
 
     expect(await backendState(orderId), 'заказ не ушёл в Started').not.toBe(DRIVER_STATE.Started)
     await expect(boardingCodeInput(page), 'карточка осталась в режиме посадки').toBeVisible()
@@ -222,14 +234,19 @@ test.describe('TEST-E2E-001 — посадка по коду в голосово
 
     await openBoardingForm(page)
     const input = boardingCodeInput(page)
-    await input.fill(boardingCode)
+    await input.fill(boardingCodeOf(await readOrder(passenger, orderId)))
 
     const confirm = page.getByTestId('driver-boarding-confirm')
-    // Два клика подряд, без ожидания результата первого.
-    await confirm.click()
-    await confirm.click({ force: true }).catch(() => undefined)
+    const actions=watchOrderActions(page)
+    const restoreNetwork=await slowPassengerNetwork(page,1_500)
+    try {
+      await confirm.click()
+      await confirm.click({force:true})
+    } finally {await restoreNetwork()}
 
     await expectBackendState(orderId, DRIVER_STATE.Started, 'заказ ровно один раз ушёл в Started')
+    expect(actions.of(orderId,'set_start_state'), 'двойной клик отправил одну команду Start').toHaveLength(1)
+    actions.dispose()
     await expectUiDriverState(page, DRIVER_STATE.Started, 'интерфейс показывает Started')
   })
 
@@ -238,7 +255,7 @@ test.describe('TEST-E2E-001 — посадка по коду в голосово
     await driveToBoarding(page, orderId)
 
     await openBoardingForm(page)
-    await submitBoardingCode(page, boardingCode)
+    await submitBoardingCode(page, boardingCodeOf(await readOrder(passenger, orderId)))
     await expectBackendState(orderId, DRIVER_STATE.Started, 'бэкенд перевёл заказ в Started')
 
     await page.goto(DRIVER_PAGE)

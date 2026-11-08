@@ -1,4 +1,5 @@
 import React, { useMemo } from 'react'
+import { supportHref } from '../../security/supportUrl'
 import { connect, ConnectedProps } from 'react-redux'
 import cn from 'classnames'
 import { IRootState } from '../../state'
@@ -13,6 +14,7 @@ type TVariant = 'fail' | 'success' | 'warning'
 
 const mapStateToProps = (state: IRootState) => ({
   isOpen: modalsSelectors.isMessageModalOpen(state),
+  messageId: modalsSelectors.messageModalID(state),
   message: modalsSelectors.messageModalMessage(state),
   status: modalsSelectors.messageModalStatus(state),
 })
@@ -82,11 +84,12 @@ function SupportIcon() {
 
 const MessageModal: React.FC<IProps> = ({
   isOpen,
+  messageId,
   message,
   status,
   setMessageModal,
 }) => {
-  const closeModal = () => setMessageModal({ ...defaultMessageModal })
+  const closeModal = () => setMessageModal({ ...defaultMessageModal, id: messageId })
   const variant: TVariant = status === EStatuses.Success ?
     'success' :
     status === EStatuses.Warning ? 'warning' : 'fail'
@@ -129,11 +132,9 @@ const MessageModal: React.FC<IProps> = ({
   const handleSupportAction = () => {
     if (!supportLink) return
 
-    const supportText = String(supportLink)
-    const href = supportText.includes('@') && !supportText.startsWith('mailto:') ?
-      `mailto:${supportText}` :
-      supportText
-    window.open(href, '_blank')
+    const href = supportHref(supportLink)
+    if (!href) return
+    window.open(href, '_blank', 'noopener,noreferrer')
   }
 
   return (

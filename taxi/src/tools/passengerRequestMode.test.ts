@@ -3,7 +3,7 @@ import {IOrder} from '../types/types'
 
 const standard={b_id:'standard',b_cars_count:1} as IOrder
 const vote={b_id:'vote',b_voting:true,b_cars_count:1} as IOrder
-const offer={b_id:'offer',b_cars_count:0} as IOrder
+const offer={b_id:'offer',b_cars_count:1,b_options:{offer_mode:'OFFER'}} as IOrder
 
 it('switches existing bookings independently of an Offer draft and keeps all three modes',()=>{
   const modes=[standard,vote,offer,standard].map(order=>passengerRequestMode({order,selectedMode:'offer',draft:{isOffer:true}}))

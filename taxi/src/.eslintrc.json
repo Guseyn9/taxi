@@ -45,5 +45,13 @@
     "no-trailing-spaces": "warn",
     "comma-dangle": ["warn", "always-multiline"],
     "operator-linebreak": ["warn", "after"]
-  }
+  },
+  "overrides": [
+    {
+      "files": ["tools/useDemoOrderPoints.ts"],
+      "rules": {
+        "react-hooks/exhaustive-deps": "error"
+      }
+    }
+  ]
 }

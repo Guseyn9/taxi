@@ -28,36 +28,29 @@ export const getPhonePrefix = (): string => {
  * Replaces the original prefix with +11
  */
 export const normalizePhoneNumber = (phone: string, isRegistration: boolean = false, isDriver: boolean = false): string => {
-  console.log('Normalize phone number input:', { phone, isRegistration, isDriver })
   const prefix = getPhonePrefix()
-  console.log('Phone prefix from mask:', prefix)
   if (!prefix) return phone
 
   // Удаляем все нецифровые символы (включая скобки, если они были введены)
   const digits = phone.replace(/\D/g, '')
-  console.log('Digits only:', digits)
   
   // Проверяем начало номера с префикса (с + или без)
   // Скобки и другие символы форматирования игнорируются
   const prefixWithoutPlus = prefix.replace('+', '')
-  console.log('Prefix without plus:', prefixWithoutPlus)
   
   if (isDriver) {
     // Для водителя всегда заменяем префикс на +11, если номер начинается с префикса маски
     if (digits.startsWith(prefixWithoutPlus)) {
       const result = '+11' + digits.slice(prefixWithoutPlus.length)
-      console.log('Normalized for driver:', result)
       return result
     }
     // При входе водителя заменяем +11 на префикс из маски
     if (!isRegistration && digits.startsWith('11')) {
       const result = prefix + digits.slice(2)
-      console.log('Normalized for driver login:', result)
       return result
     }
   }
   
-  console.log('Phone number unchanged:', phone)
   return phone
 }
 

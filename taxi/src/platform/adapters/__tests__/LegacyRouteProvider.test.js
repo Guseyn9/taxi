@@ -30,19 +30,33 @@ describe('LegacyRouteProvider', () => {
 
   it('uses the local road graph before the OSRM fallback', async() => {
     backendGateway.makeRoutePoints.mockRejectedValueOnce(new Error('offline'))
-    const startNode = { id: 1, latitude: 55.71, longitude: 37.51 }
-    const endNode = { id: 2, latitude: 55.79, longitude: 37.59 }
+    const startNode = { id: 1, latitude: 55.7, longitude: 37.5 }
+    const endNode = { id: 2, latitude: 55.8, longitude: 37.6 }
     const wayGraph = {
       findClosestNode: jest.fn()
         .mockReturnValueOnce([startNode, 10])
         .mockReturnValueOnce([endNode, 10]),
-      findShortestPath: jest.fn().mockReturnValue([[startNode, endNode], 5000]),
+      findShortestPath: jest.fn().mockReturnValue([[startNode, endNode], 15000]),
     }
 
     const route = await new LegacyRouteProvider().makeRoutePoints(FROM, TO, wayGraph)
 
-    expect(route.distance).toBe(5)
+    expect(route.distance).toBe(15)
     expect(route.points).toHaveLength(4)
     expect(global.fetch).not.toHaveBeenCalled()
+  })
+
+  it.each(['connection', 'body'])('bounds the OSRM fallback %s without leaving the caller waiting', async phase => {
+    jest.useFakeTimers()
+    backendGateway.makeRoutePoints.mockRejectedValueOnce(new Error('not configured'))
+    global.fetch.mockImplementation(() => phase === 'body' ? Promise.resolve({ ok: true, json: () => new Promise(() => {}) }) : new Promise(() => {}))
+    const log = jest.spyOn(console, 'error').mockImplementation(() => {})
+    try {
+      const result = new LegacyRouteProvider().makeRoutePoints(FROM, TO)
+      const assertion = expect(result).rejects.toThrow('Route by roads is not available')
+      await jest.advanceTimersByTimeAsync(10001)
+      await assertion
+      expect(global.fetch.mock.calls[0][1].signal.aborted).toBe(true)
+    } finally { jest.useRealTimers(); log.mockRestore() }
   })
 })

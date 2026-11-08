@@ -5,6 +5,7 @@ import { BrowserDriverEmulator, BrowserClientOrderEmulator, BrowserEmulatorSnaps
 import emulationModeExactIcon from '../../assets/images/emulationModeExactIcon.png'
 import { t } from '../../localization'
 import { isBrowserEmulatorRunning } from '../../tools/emulatorMode'
+import { emulatorTestReady } from './testRuntime'
 import {
   emitDriverRouteEmulatorCommand,
   subscribeDriverRouteEmulatorNotification,
@@ -120,7 +121,7 @@ function DriverEmulatorPanel({ isOpen, autoStart, mode = 'drivers', onStatusChan
   }
 
   React.useEffect(() => {
-    const shouldRestore = isBrowserEmulatorRunning(mode)
+    const shouldRestore = emulatorTestReady(mode) && isBrowserEmulatorRunning(mode)
     const emulator = shouldRestore ? getEmulator() : emulatorRef.current
 
     if (!emulator) {
@@ -221,10 +222,16 @@ function DriverEmulatorPanel({ isOpen, autoStart, mode = 'drivers', onStatusChan
         </div>
 
         <div className="driver-emulator-panel__actions">
-          <button type="button" onClick={() => runAction('start')} disabled={loading || running}>{t('emulator_start')}</button>
+          <button type="button" onClick={() => runAction('start')} disabled={loading || running || !emulatorTestReady(mode)}>{t('emulator_start')}</button>
           <button type="button" onClick={() => runAction('stop')} disabled={loading || !running} className="driver-emulator-panel__actions-gray">{t('emulator_stop')}</button>
-          <button type="button" onClick={() => runAction('check')} disabled={loading} className="driver-emulator-panel__actions-muted">{t('emulator_check')}</button>
+          <button type="button" onClick={() => runAction('check')} disabled={loading || !emulatorTestReady(mode)} className="driver-emulator-panel__actions-muted">{t('emulator_check')}</button>
         </div>
+        {!emulatorTestReady(mode) && <p role="status">
+          {t('emulator_test_server_required', { fallback: 'Server emulation requires an isolated test server and disposable accounts.' })}
+          {' '}<a href={`/investor/index.html?view=${mode === 'drivers' ? 'passenger' : 'driver'}`}>
+            {t('emulator_local_demo', { fallback: 'Try the local demo without registration' })}
+          </a>
+        </p>}
 
         <div className="driver-emulator-panel__route-tools">
           <div className="driver-emulator-panel__route-tools-title">{t('emulator_route_tools_title')}</div>

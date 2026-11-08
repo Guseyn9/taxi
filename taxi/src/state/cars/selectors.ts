@@ -25,8 +25,7 @@ export const userPrimaryCar = (state: IRootState) => {
 }
 
 /**
- * Машина, за рулём которой водитель сейчас находится. Если бекенд не отметил
- * ни одну машину как ведомую, берём первую машину водителя.
+ * Only a backend-confirmed driven car is active; list order is not activation.
  */
 export const userDrivenCar = (state: IRootState) => {
   const ids = userCarsIds(state)
@@ -38,7 +37,7 @@ export const userDrivenCar = (state: IRootState) => {
   const drivenId = userID == null ?
     undefined :
     ids.find(id => String(carsMap.get(id)?.value?.u_d_id) === String(userID))
-  const id = drivenId ?? ids.get(0, null)
+  const id = drivenId ?? null
 
   return id == null ? null : carsMap.get(id)?.value
 }

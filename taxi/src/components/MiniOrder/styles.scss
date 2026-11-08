@@ -1,4 +1,4 @@
-@import "../../tools/mixins.scss";
+@use "../../tools/mixins.scss" as *;
 
 .mini-order {
   display: inline-flex;

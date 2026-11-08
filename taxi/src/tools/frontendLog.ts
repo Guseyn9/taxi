@@ -1,3 +1,4 @@
+import { redactDiagnosticText, isCredentialKey, redactDiagnostics } from '../security/diagnosticRedaction'
 import { MAX_FLOW_STEPS, clearFlowLog, getFlowLogSnapshot, validatePassengerLifecycleFlow, validateReviewFlow, validateSuccessfulVotingTrip } from './flowLog'
 import { MAX_RAW_RECORDS, clearRawLog, getRawLogSnapshot, setupRawLifecycleLogging, writeRawLog } from './rawLog'
 import { MAX_DECISION_RECORDS, clearDecisionLog, getDecisionLogSnapshot } from './decisionLog'
@@ -52,7 +53,7 @@ function sanitize(value: any, depth = 0): JsonLike {
 
   const type = typeof value
   if (type === 'string')
-    return value.length > MAX_STRING_LENGTH ? `${value.slice(0, MAX_STRING_LENGTH)}...` : value
+    return redactDiagnosticText(value).slice(0, MAX_STRING_LENGTH)
 
   if (type === 'number')
     return Number.isFinite(value) ? value : null
@@ -74,6 +75,7 @@ function sanitize(value: any, depth = 0): JsonLike {
     const output: { [key: string]: JsonLike } = {}
     Object.keys(value).slice(0, MAX_ARRAY_ITEMS).forEach(key => {
       const lower = key.toLowerCase()
+      if (isCredentialKey(key)) { output[key] = '[hidden]'; return }
       if (
         lower.includes('password') ||
         lower.includes('token') ||
@@ -303,6 +305,9 @@ function clearFrontendLog() {
   pendingStorageFlush = true
   flushFrontendLogStorage()
 }
+export function clearPrivateDiagnosticLogs() {
+  clearFrontendLog();clearRawLog();clearFlowLog();clearDecisionLog()
+}
 
 async function copyText(text: string) {
   if (!isBrowser()) return false
@@ -388,7 +393,7 @@ export async function copyAndClearInterfaceLog(extraSnapshot?: any) {
     latestSnapshots: sanitize(snapshots),
     entries,
   }
-  const text = JSON.stringify(data, null, 2)
+  const text = JSON.stringify(redactDiagnostics(data), null, 2)
   const exported = await exportLogText(text, 'interface')
 
   if (exported.downloaded || exported.copied) {
@@ -419,7 +424,7 @@ export async function copyAndClearFlowDebugLog(extraSnapshot?: any) {
     reviewFlowCheck: validateReviewFlow(flow),
     votingFlowCheck: validateSuccessfulVotingTrip(flow),
   }
-  const text = JSON.stringify(data, null, 2)
+  const text = JSON.stringify(redactDiagnostics(data), null, 2)
   const exported = await exportLogText(text, 'flow')
 
   if (exported.downloaded || exported.copied) {
@@ -454,7 +459,7 @@ export async function copyAndClearRawLog(extraSnapshot?: any) {
     attachedInterfaceEntries: getCachedEntries(),
     attachedInterfaceSnapshots: getCachedSnapshots(),
   }
-  const text = JSON.stringify(data, null, 2)
+  const text = JSON.stringify(redactDiagnostics(data), null, 2)
   const exported = await exportLogText(text, 'raw')
 
   if (exported.downloaded || exported.copied) {
@@ -486,7 +491,7 @@ export async function copyAndClearDecisionLog(extraSnapshot?: any) {
     legacyInterpretation: getLegacyInterpretationManifest(),
     currentSnapshot: sanitize(extraSnapshot),
   }
-  const text = JSON.stringify(data, null, 2)
+  const text = JSON.stringify(redactDiagnostics(data), null, 2)
   const exported = await exportLogText(text, 'decision')
 
   if (exported.downloaded || exported.copied) {
@@ -578,7 +583,7 @@ export async function copyAndClearAllLogs(extraSnapshot?: any) {
     },
   }
 
-  const text = JSON.stringify(data, null, 2)
+  const text = JSON.stringify(redactDiagnostics(data), null, 2)
   const exported = await exportLogText(text, 'all')
 
   if (exported.downloaded || exported.copied) {
@@ -618,7 +623,7 @@ export async function copyAndClearFrontendLog(extraSnapshot?: any) {
     reviewFlowCheck: validateReviewFlow(flow),
     votingFlowCheck: validateSuccessfulVotingTrip(flow),
   }
-  const text = JSON.stringify(data, null, 2)
+  const text = JSON.stringify(redactDiagnostics(data), null, 2)
   const exported = await exportLogText(text, 'frontend-full')
 
   if (exported.downloaded || exported.copied) {

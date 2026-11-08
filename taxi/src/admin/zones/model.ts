@@ -9,6 +9,13 @@ export interface Zone {
   [key: string]: unknown
 }
 export type ZoneKind = 'polygon' | 'circle'
+/** Blank text is missing input, never a geographic zero. */
+export function zoneNumber(value:unknown):number|null {
+  if(typeof value!=='number'&&typeof value!=='string')return null
+  if(typeof value==='string'&&!value.trim())return null
+  const result=Number(value)
+  return Number.isFinite(result)?result:null
+}
 export function coordinate(value: unknown): value is Coordinate {
   return Array.isArray(value) && value.length === 2 && value.every(v => typeof v === 'number' && Number.isFinite(v)) && Math.abs(value[0]) <= 90 && Math.abs(value[1]) <= 180
 }
@@ -39,8 +46,8 @@ export function validateZone(zone: Zone,kind: ZoneKind): string | null {
   if(kind==='polygon') {
     if(!Array.isArray(zone.coordinates)||zone.coordinates.length!==1||!validRing(zone.coordinates[0])) return 'polygon'
   } else {
-    const {lat,lng,radius}=zone.json||{}
-    if(!coordinate([Number(lat),Number(lng)])||lat==null||lat===''||lng==null||lng===''||!Number.isFinite(Number(radius))||Number(radius)<=0) return 'circle'
+    const lat=zoneNumber(zone.json?.lat),lng=zoneNumber(zone.json?.lng),radius=zoneNumber(zone.json?.radius)
+    if(lat===null||lng===null||radius===null||!coordinate([lat,lng])||radius<=0) return 'circle'
   }
   return null
 }
@@ -51,7 +58,7 @@ export function zonePayload(zone: Zone,kind: ZoneKind): Zone {
   const payload: Zone={var:zone.var,...Object.fromEntries(zoneLocales.map(locale=>[locale,String(zone[locale]||'')]))}
   if(zone.id) payload.id=zone.id
   if(kind==='polygon'){payload.coordinates=zone.coordinates;payload.json=zone.json||{}}
-  else payload.json={...zone.json,lat:Number(zone.json?.lat),lng:Number(zone.json?.lng),radius:Number(zone.json?.radius)}
+  else payload.json={...zone.json,lat:zoneNumber(zone.json?.lat),lng:zoneNumber(zone.json?.lng),radius:zoneNumber(zone.json?.radius)}
   return payload
 }
 export function readZones(value: unknown): Zone[] {

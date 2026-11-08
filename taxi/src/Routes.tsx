@@ -11,6 +11,7 @@ import { EStatuses, EUserRoles, IUser } from './types/types'
 import { userSelectors } from './state/user'
 import Sandbox from './pages/Sandbox'
 import PageSection from './components/PageSection'
+import {LegacyReviewDriverRoute} from './design/legacyReviewRoute'
 import {
   PLATFORM_ROUTES,
   platformInterface,
@@ -26,6 +27,7 @@ const mapStateToProps = (state: IRootState) => ({
   status: configSelectors.status(state),
   user: userSelectors.user(state),
   language: configSelectors.language(state),
+  generation: state.sessionGeneration,
 })
 
 const connector = connect(mapStateToProps)
@@ -34,12 +36,12 @@ interface IProps extends ConnectedProps<typeof connector> {
 
 }
 
-const AppRoutesWrapper: React.FC<IProps> = ({ status, user, language }) => {
+const AppRoutesWrapper: React.FC<IProps> = ({ status, user, language, generation }) => {
   usePlatformNavigationBridge()
   const languageIso = language?.iso
 
   return status === EStatuses.Success ?
-    <Suspense fallback={<UnavailableBase status={EStatuses.Loading}/>}><AppRoutes user={user} languageIso={languageIso}/></Suspense> :
+    <Suspense fallback={<UnavailableBase status={EStatuses.Loading}/>}><AppRoutes key={generation} user={user} languageIso={languageIso}/></Suspense> :
     <UnavailableBase status={status}/>
 }
 
@@ -111,6 +113,7 @@ const AppRoutes = ({ user, languageIso }: {user: IUser | null, languageIso?: str
     user?.u_role === EUserRoles.Driver ? PLATFORM_ROUTES.DriverOrders : PLATFORM_ROUTES.PassengerOrder
 
   return <Routes>
+    <Route path="/review/frontend-audit-r16/driver-order" element={<LegacyReviewDriverRoute/>}/>
     <Route
       path="/*"
       element={<>

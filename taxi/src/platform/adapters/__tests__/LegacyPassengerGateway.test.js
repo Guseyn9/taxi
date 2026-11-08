@@ -13,6 +13,7 @@ jest.mock('../../../API', () => ({
   getCar: jest.fn(),
   getCars: jest.fn(),
   postDrive: jest.fn().mockResolvedValue({ b_id: '42' }),
+  confirmDrive: jest.fn(),
   cancelDrive: jest.fn().mockResolvedValue({ status: 'ok' }),
   chooseCandidate: jest.fn(),
   releaseCandidateChoice: jest.fn(),
@@ -24,6 +25,7 @@ jest.mock('../../../API', () => ({
 jest.mock('../../platform-interface', () => ({
   PASSENGER_ACTIONS: {
     CreateOrder: 'order_create',
+    ConfirmOrder: 'order_confirm',
     CancelOrder: 'order_cancel_by_client',
     SelectCandidate: 'order_select_candidate',
     ReleaseCandidate: 'order_release_candidate',
@@ -113,4 +115,18 @@ describe('LegacyPassengerGateway', () => {
 
     expect(API.setOrderState).toHaveBeenCalledWith('42', 6)
   })
+})
+test('confirmation recovery dispatches the existing booking ID through PI once',async()=>{
+ const runtime=createRuntime(),gateway=new LegacyPassengerGateway(runtime)
+ API.confirmDrive.mockResolvedValueOnce({code:'200',status:'success'})
+ await expect(gateway.confirmOrder('42')).resolves.toMatchObject({status:'success'})
+ expect(runtime.actions[0]).toMatchObject({type:'order_confirm',payload:{args:['42']}})
+ expect(API.confirmDrive).toHaveBeenCalledWith('42')
+})
+test('PI confirmation propagates refusal without reporting a completed command',async()=>{
+ const runtime=createRuntime(),gateway=new LegacyPassengerGateway(runtime),events=[]
+ runtime.subscribe(event=>events.push(event))
+ API.confirmDrive.mockRejectedValueOnce(new Error('unconfirmed'))
+ await expect(gateway.confirmOrder('42')).rejects.toThrow('unconfirmed')
+ expect(events.some(event=>event.type===PASSENGER_EVENTS.CommandCompleted)).toBe(false)
 })

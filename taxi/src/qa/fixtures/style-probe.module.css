@@ -1,0 +1,5 @@
+.moduleCard {
+  color: rgb(169, 0, 0);
+  border: 2px solid currentColor;
+  padding: 12px;
+}

@@ -45,6 +45,14 @@ export function getKindFromClassId(classId?: unknown): CarClassBadgeKind | null 
   return null
 }
 
+/** Booking artwork follows the class card's existing fallback; this does not classify a real driver's car. */
+export function getClassArtworkKind(classId?: unknown): CarClassBadgeKind {
+  if (classId === null || classId === undefined || classId === '' || String(classId) === '0')
+    return 'petit'
+
+  return getKindFromClassId(classId) || 'grand'
+}
+
 export function getRequiredCarClassKind(order?: IOrder | null): CarClassBadgeKind {
   if (!order)
     return 'petit'

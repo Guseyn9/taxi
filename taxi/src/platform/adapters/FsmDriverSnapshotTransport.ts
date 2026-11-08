@@ -18,6 +18,8 @@ import {
   IUser,
 } from '../../types/types'
 import { BackendInteractionError } from './backendError'
+import { withHttpDeadline } from './httpDeadline'
+import { subscribeRecoveryPolling } from './recoveryPolling'
 
 export interface FsmDriverOrderCard {
   readonly orderId: number | string
@@ -123,20 +125,11 @@ export class FsmDriverSnapshotTransport implements DomainSnapshotTransport {
   subscribeSnapshots(listener: (snapshot: PlatformSnapshotInput) => void): Unsubscribe {
     const stopRealtime = this.realtimeTransport.subscribeSnapshots(listener)
     const pollIntervalMs = this.config.recoveryPollIntervalMs ?? 5000
-    let pollTimer: ReturnType<typeof setInterval> | null = null
-    if (pollIntervalMs > 0) {
-      pollTimer = setInterval(() => {
-        void this.loadPollingSnapshot().then(snapshot => {
-          if (snapshot)
-            listener(snapshot)
-        }).catch(() => undefined)
-      }, pollIntervalMs)
-    }
+    const stopRecovery = subscribeRecoveryPolling(() => this.loadPollingSnapshot(), listener, pollIntervalMs)
 
     return () => {
       stopRealtime()
-      if (pollTimer)
-        clearInterval(pollTimer)
+      stopRecovery()
     }
   }
 
@@ -167,9 +160,14 @@ export class FsmDriverSnapshotTransport implements DomainSnapshotTransport {
     }
   }
 
-  private async fetchSnapshot(): Promise<FsmDriverSnapshot> {
+  private fetchSnapshot(): Promise<FsmDriverSnapshot> {
+    return withHttpDeadline(signal => this.fetchSnapshotBeforeDeadline(signal), 15000, 'FSM_DRIVER_QUERY_TIMEOUT')
+  }
+
+  private async fetchSnapshotBeforeDeadline(signal?: AbortSignal): Promise<FsmDriverSnapshot> {
     const response = await this.fetchRequest(this.queryUrl(), {
       method: 'GET',
+      signal,
       headers: this.httpHeaders(),
     })
     if (!response.ok) {
@@ -210,10 +208,8 @@ export class FsmDriverSnapshotTransport implements DomainSnapshotTransport {
         const message = parseRealtimeMessage(event.data)
         if (message.type === 'ping')
           return
-        if (
-          (message.type === 'snapshot' || message.type === 'entity.updated') &&
-          message.snapshot
-        ) {
+        if (message.type === 'snapshot' || message.type === 'entity.updated') {
+          if (!message.snapshot) throw new BackendInteractionError('FSM_DRIVER_REALTIME_PROTOCOL_ERROR', 'Snapshot payload is missing')
           const snapshot = this.acceptSnapshot(message.snapshot)
           if (snapshot) {
             this.realtimeEpoch += 1
@@ -221,11 +217,9 @@ export class FsmDriverSnapshotTransport implements DomainSnapshotTransport {
           }
           return
         }
-        throw new BackendInteractionError(
-          'FSM_DRIVER_REALTIME_PROTOCOL_ERROR',
-          `Unsupported FSM Driver realtime message: ${String(message.type || 'unknown')}`,
-          message,
-        )
+        // Forward-compatible event types do not tear down a healthy connection.
+        // Query recovery remains responsible for authoritative state.
+        return
       } catch (error) {
         reportDisconnect(error)
       }
@@ -350,8 +344,9 @@ export function createConfiguredFsmDriverSnapshotProvider(
   env: Readonly<Record<string, string | undefined>> = process.env,
 ) {
   const apiUrl = env[FSM_DRIVER_ENV.ApiUrl]?.trim()
-  const resolvedDriverUserId = env[FSM_DRIVER_ENV.DriverUserId]?.trim() ||
-    String(driverUserId ?? '').trim()
+  // The signed-in identity always wins; env is only a fallback for standalone fixtures.
+  const resolvedDriverUserId = String(driverUserId ?? '').trim() ||
+    env[FSM_DRIVER_ENV.DriverUserId]?.trim() || ''
   if (!apiUrl || !resolvedDriverUserId)
     return null
 

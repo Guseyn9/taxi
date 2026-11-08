@@ -12,7 +12,7 @@ import {isConfirmedDriverHistory} from '../tools/recentDriverHistory'
 
 // Response fixtures exercise frontend transitions. They do not prove a server contract.
 describe.each(['order','vote','offer'])('two-role local journey %s',(mode:string)=>{
- const make=()=>({b_id:`QA-${mode}`,u_id:'client',b_state:B.Processing,b_car_class:'1',b_passengers_count:1,b_cars_count:mode==='offer'?0:1,b_voting:mode==='vote',b_price_estimate:22.5,b_options:mode==='offer'?{customer_price:150}:{},drivers:[]} as unknown as IOrder)
+ const make=()=>({b_id:`QA-${mode}`,u_id:'client',b_state:B.Processing,b_car_class:'1',b_passengers_count:1,b_cars_count:1,b_voting:mode==='vote',b_price_estimate:22.5,b_options:mode==='offer'?{customer_price:150,offer_mode:'OFFER'}:{},drivers:[]} as unknown as IOrder)
  beforeEach(()=>{localStorage.clear();sessionStorage.clear()})
  it('keeps the request type and quote consistent before and after assignment',()=>{
   const order=make();expect(passengerRequestMode({order,selectedMode:'offer'})).toBe(mode)

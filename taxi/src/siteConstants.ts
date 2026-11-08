@@ -158,7 +158,7 @@ class Constants {
   recalculate() {
     this.COURIER_CALL_RATE = getConstantValue('courier_call_rate', defaultValues.COURIER_CALL_RATE)
     this.EXTRA_CHARGE_FOR_NIGHT_TIME = getConstantValue('extra_charge_for_night_time', defaultValues.EXTRA_CHARGE_FOR_NIGHT_TIME)
-    this.COURIER_FARE_PER_1_KM = getConstantValue('courier_fare_per_1_km', defaultValues.COURIER_CALL_RATE)
+    this.COURIER_FARE_PER_1_KM = getConstantValue('courier_fare_per_1_km', defaultValues.COURIER_FARE_PER_1_KM)
     this.START_OF_NIGHT_TIME = getConstantValue('start_of_night_time', defaultValues.START_OF_NIGHT_TIME)
     this.END_OF_NIGHT_TIME = getConstantValue('the_end_of_the_night_time', defaultValues.END_OF_NIGHT_TIME)
     this.ENABLE_CUSTOMER_PRICE = this.calc_ENABLE_CUSTOMER_PRICE()
@@ -402,6 +402,7 @@ function isPetitCarClass(carClass: ICarClass) {
   ].map(normalizeConstantText).join(' ')
 
   return text.includes('petit') ||
+    text.includes('petti') ||
     text.includes('петит') ||
     text.includes('econom') ||
     text.includes('эконом') ||

@@ -1,3 +1,5 @@
+import RouteFailure from '../../design/maps/RouteFailure'
+import { isUsableRouteInfo, makeLocalRoutePoints, makeOsrmRoutePoints, validRoutePoint } from '../../tools/roadRoute'
 import {getRequiredCarClassKind} from '../CarClassBadge'
 import {visibleMapPoint} from '../../design/maps/mapCenter'
 import {createPortal} from 'react-dom'
@@ -11,7 +13,7 @@ import MapBoundary from '../../design/maps/MapBoundary'
 import {displayAddress} from '../../design/addressPresentation'
 import {canAutoCenter,validMapPoint} from '../../design/maps/locationPolicy'
 import {configSelectors} from '../../state/config'
-import { PASSENGER } from '../../design/maps/markers/assets'
+import { PASSENGER, MAP_CENTER } from '../../design/maps/markers/assets'
 import RsaleBasemap, {viewportPadding} from '../../design/maps/RsaleBasemap'
 import {passengerInitialCamera} from '../../design/maps/passengerCamera'
 import { MOROCCO_CENTER, MOROCCO_ZOOM, MOROCCO_VIEW, MOROCCO_MAX_ZOOM, isInMoroccoView } from '../../design/maps/morocco'
@@ -402,7 +404,7 @@ function rememberStableSelectedOrderRoute(key: string, route: IRouteInfo) {
 }
 
 function getStableSelectedOrderRouteKey(orderId: any, from?: IAddressPoint | null, to?: IAddressPoint | null) {
-  if (!orderId || !from?.latitude || !from?.longitude || !to?.latitude || !to?.longitude)
+  if (!orderId || !validRoutePoint(from) || !validRoutePoint(to))
     return ''
 
   return [
@@ -978,6 +980,9 @@ function MapContent({
   const [userCoordinatesAccuracy, setUserCoordinatesAccuracy] =
     useState<number | null>(null)
   const [routeInfo, setRouteInfo] = useState<IRouteInfo | null>(null)
+  const [routeFailure, setRouteFailure] = useState(false)
+  const [routeRetry, setRouteRetry] = useState(0)
+  const lastOrderRouteKeyRef = useRef<string | null>(null)
   const [driverRouteInfoById, setDriverRouteInfoById] =
     useState<Record<string, IRouteInfo | null>>({})
   const lastOrderRouteInfoRef = useRef<IRouteInfo | null>(null)
@@ -1321,6 +1326,7 @@ function MapContent({
   ])
 
   useEffect(() => {
+    let current = true
     if (isOpen) {
       backendGateway.getWashTrips()
         .then(items => items.filter(item =>
@@ -1343,9 +1349,11 @@ function MapContent({
             // @ts-ignore
             tooltip: item.t_complete_datetime.format('DD.MM HH:mm'),
           }))
-          setStaticMarkers(markers)
+          if (current) setStaticMarkers(markers)
         })
+        .catch(() => { if (current) setStaticMarkers([]) })
     }
+    return () => { current = false }
   }, [isOpen])
 
   useEffect(() => {
@@ -1470,7 +1478,7 @@ function MapContent({
     }
 
     syncCenter()
-    safeLeafletAction(() => map.on('moveend resize', syncCenter))
+    safeLeafletAction(() => map.on('move moveend resize', syncCenter))
     const observer=new ResizeObserver(syncCenter)
     observer.observe(map.getContainer())
     const surface=map.getContainer().closest('.passenger')
@@ -1478,7 +1486,7 @@ function MapContent({
     if(sheet)observer.observe(sheet)
     return () => {
       observer.disconnect()
-      safeLeafletAction(() => map.off('moveend resize', syncCenter))
+      safeLeafletAction(() => map.off('move moveend resize', syncCenter))
     }
   }, [map, setCenter])
 
@@ -1507,13 +1515,14 @@ function MapContent({
   }, [selectedActiveOrder?.b_id])
 
   useEffect(() => {
+    setRouteFailure(false)
     const stableRouteCacheKey = getStableSelectedOrderRouteKey(
       selectedOrder || selectedActiveOrder?.b_id,
       from,
       to,
     )
 
-    if (!from?.latitude || !from?.longitude || !to?.latitude || !to?.longitude) {
+    if (!validRoutePoint(from) || !validRoutePoint(to)) {
       writeFrontendLog('map.mainRoute.missingCoordinates', {
         selectedOrder,
         orderId: selectedActiveOrder?.b_id,
@@ -1542,6 +1551,7 @@ function MapContent({
         stableRouteCacheKey,
         route: summarizeRouteInfo(cachedStableRoute),
       })
+      lastOrderRouteKeyRef.current = routeKey
       lastOrderRouteInfoRef.current = cachedStableRoute
       setRouteInfo(cachedStableRoute)
       setShowRouteInfo(false)
@@ -1550,6 +1560,7 @@ function MapContent({
 
     const shouldKeepStableSelectedOrderRoute = Boolean(
       selectedOrder &&
+      lastOrderRouteKeyRef.current === routeKey &&
       lastOrderRouteInfoRef.current?.points?.length,
     )
 
@@ -1588,6 +1599,8 @@ function MapContent({
       },
     })
 
+    setRouteInfo(null)
+    lastOrderRouteInfoRef.current = null
     makeRoutePointsSafe(from, to, wayGraph, 'main-order', {
       orderId: selectedActiveOrder?.b_id,
       screen: 'PassengerMap',
@@ -1618,6 +1631,7 @@ function MapContent({
               route: summarizeRouteInfo(info),
             },
           })
+          lastOrderRouteKeyRef.current = routeKey
           lastOrderRouteInfoRef.current = info
           if (stableRouteCacheKey)
             rememberStableSelectedOrderRoute(stableRouteCacheKey, info)
@@ -1639,14 +1653,13 @@ function MapContent({
           message: error instanceof Error ? error.message : String(error),
           fallbackRoute: summarizeRouteInfo(lastOrderRouteInfoRef.current),
         })
-        if (!changed && lastOrderRouteInfoRef.current)
-          setRouteInfo(lastOrderRouteInfoRef.current)
+        if (!changed) { setRouteFailure(true); setRouteInfo(null) }
       })
 
     return () => {
       changed = true
     }
-  }, [routeKey, wayGraph, selectedActiveOrder?.b_id, selectedOrder])
+  }, [routeKey, wayGraph, selectedActiveOrder?.b_id, selectedOrder, routeRetry])
 
   useEffect(() => {
     if (!selectedActiveOrder) {
@@ -2333,6 +2346,7 @@ function MapContent({
   return (
     <>
       <RsaleBasemap initialOverview={initialOverview} showRegionControls={!isModal} />
+      {routeFailure && <RouteFailure onRetry={() => setRouteRetry(value => value + 1)} />}
       {locationError!==null&&createPortal(<LocationFeedback code={locationError} iso={language?.iso} busy={locating} onAllow={centerOnUser} onClose={()=>setLocationError(null)} onPickMap={onPickLocation?()=>{setLocationError(null);onPickLocation()}:undefined}/>,!isModal ? document.querySelector('.layout') || document.body : document.body)}
       {Boolean(navigator.geolocation) && <MapLocationAction enabled={!isModal&&Boolean(containerClassName?.includes('passenger__form-map-container'))}>
         <button
@@ -2354,7 +2368,7 @@ function MapContent({
           aria-label={t(TRANSLATION.SHOW_MY_LOCATION)}
           title={t(TRANSLATION.SHOW_MY_LOCATION)}
         >
-          {!isModal&&containerClassName?.includes('passenger__form-map-container')?<><Navigation2 size={18} aria-hidden="true"/><span className="header-location-label">Location</span></>:<img src={images.mapLocationButton} alt="" />}
+          {!isModal&&containerClassName?.includes('passenger__form-map-container')?<><Navigation2 size={18} aria-hidden="true"/><span className="header-location-label">{t('location_action')}</span></>:<img src={images.mapLocationButton} alt="" />}
         </button></MapLocationAction>
       }
       {
@@ -2491,7 +2505,7 @@ function MapContent({
           </React.Fragment>
         )
       })}
-      {shouldShowFromMarker && !isSelectedOrderTripStarted && !!from?.latitude && !!from?.longitude &&
+      {shouldShowFromMarker && !isSelectedOrderTripStarted && validRoutePoint(from) &&
         <Marker
           position={[from.latitude, from.longitude]}
           icon={FROM_MARKER_ICON}
@@ -2499,7 +2513,7 @@ function MapContent({
           <Popup>{t(TRANSLATION.FROM)}{!!from.address && `: ${displayAddress(from.shortAddress || from.address,language?.iso,from.latitude,from.longitude)}`}</Popup>
         </Marker>
       }
-      {modalHighlight === 'from' && !!from?.latitude && !!from.longitude &&
+      {modalHighlight === 'from' && validRoutePoint(from) &&
         <CircleMarker
           center={[from.latitude, from.longitude]}
           radius={24}
@@ -2511,7 +2525,7 @@ function MapContent({
           }}
         />
       }
-      {!!to?.latitude && !!to?.longitude &&
+      {validRoutePoint(to) &&
         <Marker
           position={[to.latitude, to.longitude]}
           icon={TO_MARKER_ICON}
@@ -2519,7 +2533,7 @@ function MapContent({
           <Popup>{t(TRANSLATION.TO)}{!!to.address && `: ${displayAddress(to.shortAddress || to.address,language?.iso,to.latitude,to.longitude)}`}</Popup>
         </Marker>
       }
-      {modalHighlight === 'to' && !!to?.latitude && !!to.longitude &&
+      {modalHighlight === 'to' && validRoutePoint(to) &&
         <CircleMarker
           center={[to.latitude, to.longitude]}
           radius={24}
@@ -2532,7 +2546,7 @@ function MapContent({
         />
       }
       {shouldShowCenterMarker && <img
-        src={PASSENGER}
+        src={MAP_CENTER}
         className="map-container__center-marker"
         alt=""
         aria-hidden="true"
@@ -2560,7 +2574,7 @@ function MapContent({
             }}
           />
         )}
-        {!!(from?.latitude && from?.longitude) && !!(to?.latitude && to?.longitude) && (
+        {validRoutePoint(from) && validRoutePoint(to) && (
           <Button
             className='modal-button'
             text={t(TRANSLATION.BUILD_THE_ROUTE)}
@@ -2762,14 +2776,14 @@ async function makeRoutePointsSafe(
 }
 
 function getDirectRouteDistanceKm(from: IAddressPoint, to: IAddressPoint) {
-  if (!from.latitude || !from.longitude || !to.latitude || !to.longitude)
+  if (!validRoutePoint(from) || !validRoutePoint(to))
     return null
 
-  return distanceBetweenEarthCoordinates(from.latitude, from.longitude, to.latitude, to.longitude)
+  return distanceBetweenEarthCoordinates(from.latitude!, from.longitude!, to.latitude!, to.longitude!)
 }
 
 function makeShortDirectRouteInfo(from: IAddressPoint, to: IAddressPoint, distanceKm: number): IRouteInfo {
-  const hasBothPoints = Boolean(from.latitude && from.longitude && to.latitude && to.longitude)
+  const hasBothPoints = validRoutePoint(from) && validRoutePoint(to)
   return {
     distance: parseFloat(Math.max(0, distanceKm).toFixed(2)),
     time: { hours: 0, minutes: 0 },
@@ -2809,83 +2823,4 @@ function getRouteRejectReason(route: IRouteInfo | null | undefined, directDistan
     return 'too_few_points_for_road_route'
 
   return 'unknown_unusable_route'
-}
-
-async function makeOsrmRoutePoints(
-  from: IAddressPoint,
-  to: IAddressPoint,
-): Promise<IRouteInfo | null> {
-  if (!from.latitude || !from.longitude || !to.latitude || !to.longitude)
-    return null
-
-  const url = [
-    'https://router.project-osrm.org/route/v1/driving/',
-    `${from.longitude},${from.latitude};${to.longitude},${to.latitude}`,
-    '?overview=full&geometries=geojson',
-  ].join('')
-  const response = await fetch(url)
-  if (!response.ok)
-    return null
-
-  const data = await response.json()
-  const route = data?.routes?.[0]
-  const coordinates = route?.geometry?.coordinates
-  if (!Array.isArray(coordinates) || coordinates.length < 2)
-    return null
-
-  const durationSeconds = Number(route.duration) || 0
-  const hours = Math.floor(durationSeconds / 3600)
-  const minutes = Math.max(1, Math.round((durationSeconds - hours * 3600) / 60))
-
-  return {
-    distance: parseFloat(((Number(route.distance) || 0) / 1000).toFixed(2)),
-    time: { hours, minutes },
-    points: coordinates.map((item: [number, number]) => [item[1], item[0]]),
-  }
-}
-
-function isUsableRouteInfo(route: IRouteInfo | null | undefined): route is IRouteInfo {
-  return Boolean(
-    route &&
-    Array.isArray(route.points) &&
-    route.points.length > 2 &&
-    route.points.every(point =>
-      Array.isArray(point) &&
-      point.length >= 2 &&
-      Number.isFinite(point[0]) &&
-      Number.isFinite(point[1]),
-    ),
-  )
-}
-
-function makeLocalRoutePoints(
-  from: IAddressPoint,
-  to: IAddressPoint,
-  wayGraph?: IWayGraph,
-): IRouteInfo | null {
-  if (!wayGraph || !from.latitude || !from.longitude || !to.latitude || !to.longitude)
-    return null
-
-  const [startNode] = wayGraph.findClosestNode(from.latitude, from.longitude)
-  const [endNode] = wayGraph.findClosestNode(to.latitude, to.longitude)
-  if (!startNode || !endNode)
-    return null
-
-  const [path, distanceMeters] = wayGraph.findShortestPath(startNode.id, endNode.id)
-  if (path.length < 2 || !Number.isFinite(distanceMeters))
-    return null
-
-  const minutes = Math.max(1, Math.round(distanceMeters / 1000 / 35 * 60))
-  return {
-    distance: parseFloat((distanceMeters / 1000).toFixed(2)),
-    time: {
-      hours: Math.floor(minutes / 60),
-      minutes: minutes % 60,
-    },
-    points: [
-      [from.latitude, from.longitude],
-      ...path.map(node => [node.latitude, node.longitude] as [number, number]),
-      [to.latitude, to.longitude],
-    ],
-  }
 }

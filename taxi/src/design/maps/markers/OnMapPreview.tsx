@@ -2,7 +2,7 @@ import {useTaxiColor} from '../useTaxiColor'
 import {taxiPicture} from '../taxiPalette'
 import {useSelector} from 'react-redux'
 import {clientOrderSelectors} from '../../../state/clientOrder'
-import {getKindFromClassId} from '../../../components/CarClassBadge'
+import {getClassArtworkKind} from '../../../components/CarClassBadge'
 import React, { useEffect, useRef, useState } from 'react'
 import L from 'leaflet'
 import { Marker, Polyline, Tooltip, useMap } from 'react-leaflet'
@@ -28,7 +28,7 @@ export function routePosition(progress:number):[number,number] {
 export default function OnMapPreview({onCameraChange}:{onCameraChange?:()=>void}){
   const map=useMap()
   const selectedClass=useSelector(clientOrderSelectors.carClass)
-  const vehicleKind=getKindFromClassId(selectedClass)||'petit'
+  const vehicleKind=getClassArtworkKind(selectedClass)
   const vehicleColor=useTaxiColor(route[0],vehicleKind)
   const controls=useRef<HTMLDivElement>(null)
   const [active,setActive]=useState(false),[playing,setPlaying]=useState(false),[progress,setProgress]=useState(0)

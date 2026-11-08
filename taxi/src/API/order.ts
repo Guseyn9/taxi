@@ -1,10 +1,15 @@
+import { MutationReadbackGuard } from '../tools/mutationReadback'
+import { assertSuccessfulMutationResponse } from '../platform/adapters/backendError'
 import axios from 'axios'
+import { bookingOptionAssignment, performerOptions } from './legacyContract'
+import { normalizeMoney } from '../tools/money'
 import { Stringify } from '../types'
 import { objectFromEntries } from '../tools/compat'
 import {
   EServices,
   EBookingDriverState,
   EOrderTypes,
+  EUserRoles,
   EPaymentWays,
   IBookingAddresses,
   IBookingCoordinates,
@@ -66,61 +71,7 @@ function getConfiguredTestUserIds() {
 }
 
 
-function hasBackendText(error: any, needle: string) {
-  const lowerNeedle = needle.toLowerCase()
-  const parts = [
-    error?.message,
-    error?.error,
-    error?.reason,
-    error?.data?.message,
-    error?.data?.error,
-    error?.response?.data?.message,
-    error?.response?.data?.error,
-  ]
-
-  return parts.some(part => String(part || '').toLowerCase().includes(lowerNeedle))
-}
-
-function isBOptionsArrayShapeError(error: any) {
-  return hasBackendText(error, 'b_options element not array')
-}
-
-function isBOptionsBackendError(error: any) {
-  return isBOptionsArrayShapeError(error) ||
-    hasBackendText(error, 'wrong b_options keys') ||
-    hasBackendText(error, 'b_options')
-}
-
-function toBackendBOptionsArrayValues(options: any) {
-  if (!options || typeof options !== 'object')
-    return options
-
-  return Object.keys(options).reduce((acc, key) => {
-    const value = options[key]
-    if (value === undefined || value === null || value === '')
-      return acc
-
-    acc[key] = Array.isArray(value) ? value : [value]
-    return acc
-  }, {} as Record<string, unknown[]>)
-}
-
-function withConvertedBOptionsMode(converted: any, mode: 'normal' | 'array-values' | 'omit') {
-  const next = { ...converted }
-
-  if (mode === 'omit') {
-    delete next.b_options
-    return next
-  }
-
-  if (mode === 'array-values' && next.b_options)
-    next.b_options = toBackendBOptionsArrayValues(next.b_options)
-
-  return next
-}
-
-function makeDrivePostParams(formData: FormData, converted: any, mode: 'normal' | 'array-values' | 'omit' = 'normal') {
-  const requestConverted = withConvertedBOptionsMode(converted, mode)
+function makeDrivePostParams(formData: FormData, requestConverted: any) {
   const params = cloneFormData(formData)
   addToFormData(params, {
     data: JSON.stringify(objectFromEntries(
@@ -186,7 +137,8 @@ async function _postDrive(
   data: IOrder,
 ): Promise<IResponseFields & {
   b_id: IOrder['b_id'],
-  b_driver_code: IOrder['b_driver_code']
+  b_driver_code: IOrder['b_driver_code'],
+  confirmationPending?: boolean,
 }> {
   const defaults: Partial<IOrder> = {
     b_payment_way: EPaymentWays.Cash,
@@ -207,29 +159,14 @@ async function _postDrive(
 
   const converted = reverseConvertOrder(orderData)
 
-  const postDriveWithMode = async(mode: 'normal' | 'array-values' | 'omit' = 'normal') => {
-    const response = await axios.post(`${Config.API_URL}/drive`, makeDrivePostParams(formData, converted, mode))
+  const postDriveRequest = async() => {
+    const response = await axios.post(`${Config.API_URL}/drive`, makeDrivePostParams(formData, converted))
     if (response.data.status === 'error')
       throw response.data
     return response
   }
 
-  let response
-  try {
-    response = await postDriveWithMode('normal')
-  } catch (error) {
-    if (!isBOptionsArrayShapeError(error))
-      throw error
-
-    try {
-      response = await postDriveWithMode('array-values')
-    } catch (arrayError) {
-      if (!isBOptionsBackendError(arrayError))
-        throw arrayError
-
-      response = await postDriveWithMode('omit')
-    }
-  }
+  const response = await postDriveRequest()
 
   const result = response.data.data
   result.b_id = result.b_id.toString()
@@ -238,20 +175,41 @@ async function _postDrive(
     saveBrowserEmulatorOrderId('drivers', result.b_id)
 
   if (data.b_voting) {
-    const params = cloneFormData(formData)
-    addToFormData(params, {
-      action: EBookingActions.SetConfirmState,
-    })
     try {
-      await axios.post(`${Config.API_URL}/drive/get/${result.b_id}`, params)
-    } catch (error) {
-      console.error(error)
+      await _confirmDrive({formData} as IApiMethodArguments, result.b_id)
+    } catch {
+      // Creation is already committed. Preserve its ID, expose the unfinished
+      // confirmation, and let the user retry that command rather than create again.
+      result.confirmationPending = true
     }
   }
 
   return result
 }
 export const postDrive = apiMethod<typeof _postDrive>(_postDrive)
+
+const _confirmDrive = async(args: IApiMethodArguments, id: IOrder['b_id']) => {
+  const before = await _getOrder({formData:cloneFormData(args.formData)} as IApiMethodArguments, id)
+  if (before?.b_confirm_state === true) return {code:'200',status:'success',reconciled:true}
+  if (before?.b_confirm_state !== false) throw new Error('Order confirmation state is unavailable')
+  const params = cloneFormData(args.formData)
+  addToFormData(params, {action:EBookingActions.SetConfirmState})
+  try {
+    const {data} = await axios.post(`${Config.API_URL}/drive/get/${id}`, params)
+    if (!data || data.status !== 'success' || String(data.code) !== '200')
+      throw data ?? new Error('Order confirmation acknowledgement is unavailable')
+    return data
+  } catch (error) {
+    // Lost acknowledgement and "already confirmed" are resolved by a read,
+    // never by silently repeating a write or treating an error as success.
+    try {
+      const after = await _getOrder({formData:cloneFormData(args.formData)} as IApiMethodArguments, id)
+      if (after?.b_confirm_state === true) return {code:'200',status:'success',reconciled:true}
+    } catch { /* A failed read leaves the outcome unresolved. */ }
+    throw error
+  }
+}
+export const confirmDrive = apiMethod<typeof _confirmDrive>(_confirmDrive)
 
 const _cancelDrive = (
   { formData }: IApiMethodArguments,
@@ -264,7 +222,7 @@ const _cancelDrive = (
   })
 
   return axios.post(`${Config.API_URL}/drive/get/${id}`, formData)
-    .then(res => res.data)
+    .then(res => assertSuccessfulMutationResponse(res.data))
 }
 export const cancelDrive = apiMethod<typeof _cancelDrive>(_cancelDrive)
 
@@ -286,7 +244,8 @@ export const getOrders: <TType extends EOrderTypes>(
     locationClasses?: boolean
   } = {},
 ) => {
-  const userID = userSelectors.user(store.getState())?.u_id
+  const currentUser = userSelectors.user(store.getState())
+  const userID = currentUser?.u_id
 
   addToFormData(formData, {
     array_type: 'list',
@@ -353,7 +312,10 @@ export const getOrders: <TType extends EOrderTypes>(
           !isBackendTestOrder(item, response.data.user?.[item.u_id]),
         )
         .map((item: any) => convertOrder(item))
-        .filter((item: IOrder) => item.b_confirm_state)
+        .filter((item: IOrder) => item.b_confirm_state || (
+          type === EOrderTypes.Active && currentUser?.u_role === EUserRoles.Client &&
+          String(item.u_id) === String(userID) && item.b_voting && item.b_confirm_state === false
+        ))
         .sort((a: IOrder, b: IOrder) =>
           a.b_start_datetime < b.b_start_datetime ? 1 : -1,
         ),
@@ -387,37 +349,8 @@ const _editOrder = (
 export const editOrder = apiMethod<typeof _editOrder>(_editOrder)
 
 
-const CUSTOMER_PRICE_EDIT_KEYS = [
-  'b_start_address',
-  'b_start_latitude',
-  'b_start_longitude',
-  'b_destination_address',
-  'b_destination_latitude',
-  'b_destination_longitude',
-  'b_start_datetime',
-  'b_custom_comment',
-  'b_flight_number',
-  'b_terminal',
-  'b_passengers_count',
-  'b_luggage_count',
-  'b_placard',
-  'b_car_class',
-  'b_payment_way',
-  'b_payment_card',
-  'b_cars_count',
-  'b_max_waiting',
-  'b_options',
-  'b_contact',
-  'b_comments',
-  'b_services',
-  'b_location_class',
-  'b_currency',
-]
-
 function normalizeCustomerPrice(value: number | string) {
-  const numberValue = Number(String(value).replace(',', '.').replace(/[^\d.-]/g, ''))
-
-  return Number.isFinite(numberValue) ? Math.max(0, Math.round(numberValue)) : 0
+  return normalizeMoney(value) ?? 0
 }
 
 const _updateOrderCustomerPrice = (
@@ -425,21 +358,7 @@ const _updateOrderCustomerPrice = (
   order: IOrder,
   price: number | string,
 ): Promise<IResponseFields> => {
-  const nextOrder = {
-    ...order,
-    b_options: {
-      ...(order.b_options || {}),
-      customer_price: normalizeCustomerPrice(price),
-    },
-  }
-  const converted = reverseConvertOrder(nextOrder as IOrder)
-  if (converted.b_options)
-    converted.b_options = toBackendBOptionsArrayValues(converted.b_options)
-  const data = objectFromEntries(
-    CUSTOMER_PRICE_EDIT_KEYS
-      .filter(key => converted[key] !== undefined)
-      .map(key => [key, converted[key]]),
-  )
+  const data = { b_options: bookingOptionAssignment('customer_price', normalizeCustomerPrice(price)) }
 
   addToFormData(formData, {
     action: EBookingActions.Edit,
@@ -448,7 +367,7 @@ const _updateOrderCustomerPrice = (
 
   return axios.post(`${Config.API_URL}/drive/get/${order.b_id}`, formData)
     .then(res => res.data)
-    .then(res => res.status === 'error' ? Promise.reject(res) : res)
+    .then(assertSuccessfulMutationResponse)
 }
 export const updateOrderCustomerPrice = apiMethod<typeof _updateOrderCustomerPrice>(_updateOrderCustomerPrice)
 
@@ -474,6 +393,7 @@ const _takeOrder = (
   options: {
     votingNumber?: string | number
     performers_price: number
+    offerEta?: string
   },
   candidate?: boolean,
 ): Promise<ITakeOrderResult> => {
@@ -510,6 +430,7 @@ const takeOrderRequest = (
   options: {
     votingNumber?: string | number
     performers_price: number
+    offerEta?: string
   },
   candidate?: boolean,
 ): Promise<ITakeOrderResult> => {
@@ -521,10 +442,9 @@ const takeOrderRequest = (
     .then(car => {
       if (!car) return Promise.reject({ message: t(TRANSLATION.NOT_LINKED_CAR), error: 'used_car_not_found' })
 
-      const driverDoorNumber = normalizeDriverDoorNumber(options.votingNumber) ||
-        getDriverDoorNumber({ c_id: car.c_id }, car)
+      const boardingCode = normalizeDriverDoorNumber(options.votingNumber)
 
-      const postTake = (safeOnly = false) => {
+      const postTake = () => {
         const requestFormData = cloneFormData(formData)
         const fields: Record<string, any> = {
           action: EBookingActions.SetPerformer,
@@ -532,37 +452,24 @@ const takeOrderRequest = (
           data: JSON.stringify(cleanDriverOfferOptions({
             c_id: car.c_id,
             c_payment_way: EPaymentWays.Cash,
-            c_options: buildSafePerformerOptions(options.performers_price),
+            c_options: performerOptions(options.performers_price, options.offerEta),
           })),
         }
 
-        // b_driver_code — это код посадки для старта поездки (set_start_state), а не для
-        // взятия заказа. На gruzvill его передача в set_performer отклоняется ("Не удалось
-        // выполнить действие"). Рабочие эмуляторы берут обычный заказ без него, поэтому в
-        // безопасном ретрае повторяем взятие без b_driver_code.
-        if (!safeOnly && driverDoorNumber)
-          fields.b_driver_code = driverDoorNumber
+        // Keep an explicitly entered boarding code intact. Never retry without it
+        // or substitute the vehicle number after a server refusal.
+        if (boardingCode)
+          fields.b_driver_code = boardingCode
 
         addToFormData(requestFormData, fields)
 
         return axios.post(`${Config.API_URL}/drive/get/${id}`, requestFormData)
           .then(res => res.data)
-          .then(res => res.status === 'error' ? Promise.reject(res) : res)
+          .then(assertSuccessfulMutationResponse)
       }
 
-      return postTake(false).catch(firstError => {
-        // Заказ уже взят этим водителем — повторять не нужно.
-        if (!driverDoorNumber || isAlreadyTakenPerformerError(firstError))
-          return Promise.reject(firstError)
+      return postTake()
 
-        return postTake(true).catch(retryError => {
-          // Редкий случай: первый POST успел назначить исполнителя и упал уже на
-          // b_driver_code — тогда ретрай вернёт "already performer", а заказ фактически взят.
-          if (isAlreadyTakenPerformerError(retryError))
-            return { c_index: '', current_cars_count: '', b_cars_count: '' }
-          return Promise.reject(retryError)
-        })
-      })
     })
 }
 export const takeOrder = apiMethod<typeof _takeOrder>(_takeOrder)
@@ -581,20 +488,6 @@ function cleanDriverOfferComment(comment?: string) {
   return typeof comment === 'string' ? comment.trim() : ''
 }
 
-// Если первый POST уже назначил водителя исполнителем, безопасный ретрай не нужен —
-// иначе backend вернёт "already performer". В этом случае взятие фактически прошло.
-function isAlreadyTakenPerformerError(error: any) {
-  const text = [
-    error?.message,
-    error?.error,
-    error?.reason,
-    error?.data?.message,
-    error?.response?.data?.message,
-  ].filter(Boolean).join(' ').toLowerCase()
-
-  return text.includes('already performer') || text.includes('booking driver state')
-}
-
 function cleanDriverOfferOptions(options: Record<string, unknown>) {
   const cleaned: Record<string, unknown> = {}
 
@@ -609,37 +502,17 @@ function cleanDriverOfferOptions(options: Record<string, unknown>) {
   return cleaned
 }
 
-function buildSafePerformerOptions(price?: number) {
-  return cleanDriverOfferOptions({ performers_price: price })
-}
-
 function buildDriverOfferOptions(offer: TDriverOfferPayload) {
-  // gruzvill backend accepts performers_price reliably. Extra keys like
-  // driver_offer_eta/driver_offer_comment may return wrong c_options keys.
-  return cleanDriverOfferOptions({ performers_price: offer.price })
+  return performerOptions(offer.price, offer.eta, offer.comment)
 }
 
 function buildVotingCandidateOptions(performersPrice?: number, eta?: string) {
-  // gruzvill-safe voting candidate: price is enough to show the driver offer.
-  return cleanDriverOfferOptions({ performers_price: performersPrice })
+  return performerOptions(performersPrice, eta)
 }
 
-function getWrongCOptionsKeys(error: any) {
-  const parts = [
-    error?.message,
-    error?.error,
-    error?.reason,
-    error?.data?.message,
-    error?.response?.data?.message,
-    error?.response?.data?.error,
-  ]
-
-  return parts.some(part => String(part || '').toLowerCase().includes('wrong c_options keys'))
-}
-
-function buildDriverOfferPerformerData(carID: string, offer: TDriverOfferPayload, safeOnly = false) {
+function buildDriverOfferPerformerData(carID: string, offer: TDriverOfferPayload) {
   const comment = cleanDriverOfferComment(offer.comment)
-  const cOptions = safeOnly ? buildSafePerformerOptions(offer.price) : buildDriverOfferOptions(offer)
+  const cOptions = buildDriverOfferOptions(offer)
 
   // The passenger UI reads driver_offer_eta / driver_offer_comment from c_options.
   // These keys must be allowed in backend c_options_valid_keys for the active config.
@@ -654,11 +527,11 @@ function buildDriverOfferPerformerData(carID: string, offer: TDriverOfferPayload
   })
 }
 
-function buildVotingCandidateData(carID: string, performersPrice?: number, eta?: string, safeOnly = false) {
+function buildVotingCandidateData(carID: string, performersPrice?: number, eta?: string) {
   return cleanDriverOfferOptions({
     c_id: carID,
     c_payment_way: EPaymentWays.Cash,
-    c_options: safeOnly ? buildSafePerformerOptions(performersPrice) : buildVotingCandidateOptions(performersPrice, eta),
+    c_options: buildVotingCandidateOptions(performersPrice, eta),
     c_pickup_time: eta,
     c_arrival_time: eta,
   })
@@ -669,6 +542,10 @@ const _sendOrderOffer = (
   id: IOrder['b_id'],
   offer: TDriverOfferPayload,
 ) => {
+  const price = normalizeMoney(offer?.price)
+  if (price === null || price <= 0 || typeof offer?.eta !== 'string' || !offer.eta.trim())
+    return Promise.reject(new Error('Offer requires a positive finite price and pickup time'))
+  offer = { ...offer, price, eta: offer.eta.trim() }
   const userID = userSelectors.user(store.getState())?.u_id
   if (!userID)
     return Promise.reject({ message: t(TRANSLATION.WRONG_USER_ROLE) })
@@ -677,7 +554,7 @@ const _sendOrderOffer = (
     .then(car => {
       if (!car) return Promise.reject({ message: t(TRANSLATION.NOT_LINKED_CAR), error: 'used_car_not_found' })
 
-      const postOffer = (safeOnly = false) => {
+      const postOffer = () => {
         const requestFormData = cloneFormData(formData)
         addToFormData(requestFormData, {
           action: EBookingActions.SetPerformer,
@@ -685,15 +562,15 @@ const _sendOrderOffer = (
           c_pickup_time: offer.eta,
           c_arrival_time: offer.eta,
           c_comment: cleanDriverOfferComment(offer.comment),
-          data: JSON.stringify(buildDriverOfferPerformerData(car.c_id, offer, safeOnly)),
+          data: JSON.stringify(buildDriverOfferPerformerData(car.c_id, offer)),
         })
 
         return axios.post(`${Config.API_URL}/drive/get/${id}`, requestFormData)
           .then(res => res.data)
-          .then(res => res.status === 'error' ? Promise.reject(res) : res)
+          .then(assertSuccessfulMutationResponse)
       }
 
-      return postOffer(false)
+      return postOffer()
     })
 }
 export const sendOrderOffer = apiMethod<typeof _sendOrderOffer>(_sendOrderOffer)
@@ -712,22 +589,22 @@ const _participateVotingOrder = (
     .then(car => {
       if (!car) return Promise.reject({ message: t(TRANSLATION.NOT_LINKED_CAR), error: 'used_car_not_found' })
 
-      const postVoting = (safeOnly = false) => {
+      const postVoting = () => {
         const requestFormData = cloneFormData(formData)
         addToFormData(requestFormData, {
           action: EBookingActions.SetPerformer,
           performer: '0',
           c_pickup_time: eta,
           c_arrival_time: eta,
-          data: JSON.stringify(buildVotingCandidateData(car.c_id, performersPrice, eta, safeOnly)),
+          data: JSON.stringify(buildVotingCandidateData(car.c_id, performersPrice, eta)),
         })
 
         return axios.post(`${Config.API_URL}/drive/get/${id}`, requestFormData)
           .then(res => res.data)
-          .then(res => res.status === 'error' ? Promise.reject(res) : res)
+          .then(assertSuccessfulMutationResponse)
       }
 
-      return postVoting(false)
+      return postVoting()
     })
 }
 export const participateVotingOrder = apiMethod<typeof _participateVotingOrder>(_participateVotingOrder)
@@ -742,22 +619,30 @@ const _cancelVotingParticipation = (
 
   return axios.post(`${Config.API_URL}/drive/get/${id}`, formData)
     .then(res => res.data)
-    .then(res => res.status === 'error' ? Promise.reject(res) : res)
+    .then(assertSuccessfulMutationResponse)
 }
 export const cancelVotingParticipation = apiMethod<typeof _cancelVotingParticipation>(_cancelVotingParticipation)
 
-export const arrivedVotingOrder = async(id: IOrder['b_id']) => ({
-  code: '200' as const,
-  data: { id },
+export const arrivedVotingOrder = apiMethod(async(args: IApiMethodArguments, id: IOrder['b_id']) => {
+  const order = await _getOrder(args, id)
+  const userId = userSelectors.user(store.getState())?.u_id
+  const driver = order?.drivers?.find(item => String(item.u_id) === String(userId))
+  if (!driver || ![EBookingDriverState.Arrived, EBookingDriverState.Started].includes(driver.c_state))
+    throw new Error('Arrival was not confirmed by the server')
+  return { code: '200', status: 'success' }
 })
 
-export const confirmVotingCode = async(
+const _confirmVotingCode = (
+  { formData }: IApiMethodArguments,
   id: IOrder['b_id'],
   code: number | string,
-) => ({
-  code: '200' as const,
-  data: { id, code },
-})
+) => {
+  addToFormData(formData, { action: 'check_driver_code', b_driver_code: code })
+  return axios.post(`${Config.API_URL}/drive/get/${id}`, formData)
+    .then(res => res.data)
+    .then(assertSuccessfulMutationResponse)
+}
+export const confirmVotingCode = apiMethod<typeof _confirmVotingCode>(_confirmVotingCode)
 
 
 function notifyLocalDriverEmulatorChoice(orderId: IOrder['b_id'], userId?: IUser['u_id']) {
@@ -786,7 +671,7 @@ const _chooseCandidate = (
 
   return axios.post(`${Config.API_URL}/drive/get/${id}`, formData)
     .then(res => res.data)
-    .then(res => res.status === 'error' ? Promise.reject(res) : res)
+    .then(assertSuccessfulMutationResponse)
     .then(res => {
       setPassengerConfirmedChoice(id, user)
       notifyLocalDriverEmulatorChoice(id, user)
@@ -811,9 +696,11 @@ const _releaseCandidateChoice = (
 
   return axios.post(`${Config.API_URL}/drive/get/${id}`, formData)
     .then(res => res.data)
-    .then(res => res.status === 'error' ? Promise.reject(res) : res)
+    .then(assertSuccessfulMutationResponse)
 }
 export const releaseCandidateChoice = apiMethod<typeof _releaseCandidateChoice>(_releaseCandidateChoice)
+
+const driverMutationGuard = new MutationReadbackGuard()
 
 const _setOrderState = (
   { formData }: IApiMethodArguments,
@@ -821,6 +708,11 @@ const _setOrderState = (
   state: EBookingDriverState,
   driverCode?: number | string,
 ) => {
+  const readForm = cloneFormData(formData)
+  const driverId = userSelectors.user(store.getState())?.u_id
+  const checking = (active: boolean) => {
+    if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('taxi:driver-state-check', {detail:{orderId:String(id),active}}))
+  }
   let action
   switch (state) {
     case EBookingDriverState.Arrived:
@@ -843,9 +735,20 @@ const _setOrderState = (
     } : {}),
   })
 
-  return axios.post(`${Config.API_URL}/drive/get/${id}`, formData)
-    .then(res => res.data)
-    .then(res => res.status === 'error' ? Promise.reject(res) : res)
+  return driverMutationGuard.run(`${Config.API_URL}:${driverId}:${id}`, state,
+    () => axios.post(`${Config.API_URL}/drive/get/${id}`, formData)
+      .then(res => res.data)
+      .then(assertSuccessfulMutationResponse),
+    async() => {
+      // Read with auth fields only. Reusing the action form would resend the write.
+      const order = await _getOrder({formData:readForm} as IApiMethodArguments, id)
+      const ownDriver = order?.drivers?.find(driver => String(driver.u_id) === String(driverId))
+      if (!ownDriver || !Number.isFinite(Number(ownDriver.c_state))) throw new Error('Driver state is unavailable')
+      return Number(ownDriver.c_state)
+    }, checking,
+  ).then(result => 'value' in result ? result.value : {
+    code:'200',status:'success',reconciled:true,data:{b_id:id,c_state:result.verifiedState},
+  })
 }
 export const setOrderState = apiMethod<typeof _setOrderState>(_setOrderState)
 
@@ -860,7 +763,7 @@ const _setOrderRating = (
   })
 
   return axios.post(`${Config.API_URL}/drive/get/${id}`, formData)
-    .then(res => res.data)
+    .then(res => assertSuccessfulMutationResponse(res.data))
 }
 /**
  * @param value rating from 1 till 5
@@ -873,6 +776,8 @@ const _setWaitingTime = (
   previous: number,
   additional: number = 180,
 ) => {
+  if (!Number.isSafeInteger(previous) || previous < 0 || !Number.isSafeInteger(additional) || additional <= 0 || !Number.isSafeInteger(previous + additional))
+    return Promise.reject(new Error('Waiting time must use non-negative elapsed seconds and a positive whole-second extension'))
   addToFormData(formData, {
     action: EBookingActions.SetWaitingTime,
     previous,
@@ -880,7 +785,7 @@ const _setWaitingTime = (
   })
 
   return axios.post(`${Config.API_URL}/drive/get/${id}`, formData)
-    .then(res => res.data)
+    .then(res => assertSuccessfulMutationResponse(res.data))
 }
 /**
  * Adds time to wait

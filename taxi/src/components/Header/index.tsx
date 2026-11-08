@@ -1,5 +1,7 @@
 import TestMapArea from '../../design/maps/TestMapArea'
+import { developmentToolsEnabled } from '../../security/developmentTools'
 import LanguagePicker from './LanguagePicker'
+import PassengerHistory, { passengerHistoryCopy } from '../PassengerHistory'
 import {zoneCopy} from '../../admin/zones/copy'
 import {UserRound,ChevronRight} from 'lucide-react'
 import React, { useState } from 'react'
@@ -69,6 +71,7 @@ const mapStateToProps = (state: IRootState) => ({
   activeOrders: ordersSelectors.activeOrders(state),
   selectedOrder: clientOrderSelectors.selectedOrder(state),
   primaryCar: carsSelectors.userPrimaryCar(state),
+  carsLoading: carsSelectors.moduleSelector(state).userCars === undefined,
 })
 
 const mapDispatchToProps = {
@@ -104,6 +107,7 @@ function Header({
   activeOrders,
   selectedOrder,
   primaryCar,
+  carsLoading,
   getUserCars,
   setLanguage,
   setLoginModal,
@@ -117,6 +121,8 @@ function Header({
 
   const [seconds, setSeconds] = useState(0)
   const [menuOpened, setMenuOpened] = useState(false)
+  const [historyOpened, setHistoryOpened] = useState(false)
+  React.useEffect(() => setHistoryOpened(false), [user?.u_id])
   const [statusMenuOpen, setStatusMenuOpen] = useState(false)
   const [statusMenuClosing, setStatusMenuClosing] = useState(false)
   const [statusChanging, setStatusChanging] = useState(false)
@@ -229,10 +235,6 @@ function Header({
     if(!clientOrder)menuItems.push({label:({ru:'Тест анимации · без заказа',fr:'Test animation · sans commande',ar:'اختبار الحركة · بدون طلب'} as Record<string,string>)[language.iso.split('-')[0]]||'Animation test · no order',action:()=>{setMenuOpened(false);window.dispatchEvent(new Event('taxi.ui.map-demo'))}})
   }
 
-  if (user?.u_role === EUserRoles.Administrator) menuItems.push({
-    label: zoneCopy(language?.iso).title,
-    action: () => { setMenuOpened(false); navigation.navigatePath('/admin/zones') },
-  })
 
   if (isDriverArea) {
     menuItems.push({
@@ -301,7 +303,7 @@ function Header({
       'inactive-with-car' :
       isOnlineDriver ? 'active' : 'approved-offline'
 
-  const driverStatusText = !hasCar ?
+  const driverStatusText = carsLoading ? t(TRANSLATION.LOADING) : !hasCar ?
     `${t('driver_line_no_car')}. ${t('driver_status_need_car')}` :
     !isApprovedDriver ?
       `${t('driver_profile_pending_label')}. ${t('driver_status_hint_profile_check')}` :
@@ -491,14 +493,13 @@ function Header({
   })
 
   const languages = SITE_CONSTANTS.LANGUAGES
-    .filter(x => x.iso !== (config.SavedConfig !== 'children' ? ' ' : 'ru'))
 
   const handleLanguageChange = (lang: ILanguage) => {
     setCookie('user_lang', lang.iso)
     setLanguage(lang)
   }
 
-  const isEmulationModeVisible = emulatorPanelOpened || Boolean(emulatorStatus?.running)
+  const isEmulationModeVisible = developmentToolsEnabled() && (emulatorPanelOpened || Boolean(emulatorStatus?.running))
   const emulationModeTitle = emulatorStatus?.mode === 'clients' ? t('emulator_clients_mode') : t('emulator_drivers_mode')
   const buildDate = React.useMemo(() => {
     const value = new Date((versionInfo as any).buildTimestamp)
@@ -531,7 +532,7 @@ function Header({
   },[menuOpened])
 
   return (
-    <header className={cn('header', className)}>
+    <header className={cn('header', className, {'header--menu-open':menuOpened})}>
       <div className="burger-wrapper">
         <div className="column">
           {
@@ -574,14 +575,16 @@ function Header({
 
                       </li>
                     ))}
-                    <li><details className="menu__tools"><summary>{toolsLabel}</summary>{menuItems.slice(1).map((item,index)=><button key={index} type="button" className="menu__button" onClick={()=>item.href?navigation.navigatePath(item.href):item.action?.(index+1)}>{item.label}</button>)}<GraphDiagnostics iso={language?.iso}/><TestMapArea iso={language?.iso}/>
+                    {user && [EUserRoles.Client, EUserRoles.Agent].includes(user.u_role) && <li className="menu__item"><button type="button" className="menu__button" onClick={() => { setMenuOpened(false); setHistoryOpened(true) }}>{passengerHistoryCopy(language?.iso).title}</button></li>}
+                    {user?.u_role === EUserRoles.Administrator && <li className="menu__item"><button type="button" className="menu__button" onClick={() => { setMenuOpened(false); navigation.navigatePath('/admin/zones') }}>{zoneCopy(language?.iso).title}</button></li>}
+                    {developmentToolsEnabled() && <li><details className="menu__tools"><summary>{toolsLabel}</summary>{menuItems.slice(1).map((item,index)=><button key={index} type="button" className="menu__button" onClick={()=>item.href?navigation.navigatePath(item.href):item.action?.(index+1)}>{item.label}</button>)}<GraphDiagnostics iso={language?.iso}/><TestMapArea iso={language?.iso}/>
                       {moroccoConfigMismatch(CURRENCY.NAME, SITE_CONSTANTS.DEFAULT_PHONE_MASK) &&
                         <details className="service-config-diagnostics">
                           <summary>{t('service_configuration')}</summary>
                           <p>{pilotCopy(language?.iso).config}</p>
                           <code dir="ltr">{CURRENCY.NAME} · {SITE_CONSTANTS.DEFAULT_PHONE_MASK}</code>
                         </details>}
-                    </details></li>
+                    </details></li>}
                   </ul>
                 </div>
               )
@@ -606,6 +609,7 @@ function Header({
         )}
         <div className="header-location-slot" data-header-location-slot />
         <LanguagePicker language={language} languages={languages} label={t('language')} onChange={handleLanguageChange} dismiss={menuOpened} onOpen={()=>{setMenuOpened(false);if(statusMenuOpen)closeStatusMenu()}}/>
+        {historyOpened && user && [EUserRoles.Client, EUserRoles.Agent].includes(user.u_role) && <PassengerHistory key={user.u_id} owner={String(user.u_id)} iso={language?.iso} onClose={() => setHistoryOpened(false)} />}
         {isDriver && <div
           className={cn('header-avatar-status', { 'header-avatar-status--driver': isDriver })}
         >
@@ -621,7 +625,8 @@ function Header({
                   if (statusMenuOpen) closeStatusMenu()
                   else setStatusMenuOpen(true)
                 }}
-                disabled={statusChanging}
+                disabled={statusChanging || carsLoading}
+                aria-busy={carsLoading}
               >
                 <DriverStatusAvatar
                   status={driverVisualStatus}
@@ -713,12 +718,12 @@ function Header({
         </div>}
 
       </div>
-      <DriverEmulatorPanel
+      {developmentToolsEnabled() && <DriverEmulatorPanel
         isOpen={emulatorPanelOpened}
         mode={emulatorPanelMode}
         onStatusChange={(snapshot) => setEmulatorStatus({ mode: emulatorPanelMode, running: Boolean(snapshot.running) })}
         onClose={() => setEmulatorPanelOpened(false)}
-      />
+      />}
       {emulatorInfoOpened && (
         <div className="emulation-info" role="dialog" aria-modal="true">
           <div className="emulation-info__backdrop" onClick={() => setEmulatorInfoOpened(false)} />

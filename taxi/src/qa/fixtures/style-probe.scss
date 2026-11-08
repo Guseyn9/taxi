@@ -1,0 +1,13 @@
+@use './style-probe-shared' as *;
+.pipeline-fixture {
+  font-family: Manrope, sans-serif;
+  padding: 24px;
+  color: #191919;
+  background: #fff9f5;
+  .probe-row { @include probe-row; }
+  .icon-grid { display: grid; grid-template-columns: repeat(5, 88px); gap: 12px; }
+  .icon-cell { min-height: 76px; text-align: center; }
+  .icon-cell svg { display: block; margin: auto; }
+  .public-car { width: 140px; height: 70px; background: center / contain no-repeat url('/design-v2/vehicles/petit-agadir-side-v4.png'); }
+  .relative-icon { width: 40px; height: 40px; background: center / contain no-repeat url('../../assets/icons/default/star-empty.svg'); }
+}

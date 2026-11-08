@@ -1,0 +1,142 @@
+{
+  "release": "taxi-morocco-20261108-r18",
+  "preparedAt": "2026-11-08",
+  "sourceBaseCommit": "580a3bd8ddc5bd8b527b86ee63388a4c913917f5",
+  "sourceIncludesLocalChanges": false,
+  "tests": 1314,
+  "suites": 234,
+  "browserEvidence": "Current guest UI and isolated network-disabled remediation fixture; authenticated rides and physical devices remain unaccepted",
+  "backendTarget": "https://ibronevik.itest24.com/taxi_dev2/c/gruzvill/api/v1",
+  "dictionaryTarget": "https://ibronevik.itest24.com/taxi_dev2/c/gruzvill/api/v1/data",
+  "backendPatchesDeployedToSharedDev": false,
+  "backendCandidate": "r5",
+  "fsmEnabled": false,
+  "oauthEnabled": false,
+  "report": "/review/release-20261104/index.html",
+  "productionServiceAccepted": false,
+  "uiCorrections": {
+    "voiceRemoved": true,
+    "tripScopeVisible": true,
+    "transparentCrosshair": true,
+    "russianFilterRemoved": true,
+    "previousNineLanguagesRestored": true,
+    "carClassArtworkConsistent": true,
+    "carArtworkRegression": "Business/Бизнес/Comfort and Grand use the same artwork rule in the selector and map demo; switching preserves route progress",
+    "languageDirection": "Script-aware Arabic/Darija RTL; Spanish, Latin Darija and Tamazight LTR",
+    "tripScopePresentation": "Original compact SVG selector above the sheet; inactive icons, active label; existing auto/manual selection and status indicators"
+  },
+  "correctionsReport": "/review/corrections-20261104.html",
+  "zoneEditor": {
+    "draggableVertices": true,
+    "insertDeleteVertices": true,
+    "draggableCircleCenter": true,
+    "radiusSlider": true,
+    "browserFixture": "/qa/zones/",
+    "sharedBackendAcceptance": false,
+    "report": "/review/zones-20261105.html",
+    "fullscreen": true,
+    "basemap": "Shared Drive Morocco MapLibre style",
+    "qaAudit": "/review/zones-cto-qa-20261105/index.html",
+    "qaFixes": [
+      "deployment map-source policy",
+      "preserve malformed coordinate text",
+      "reject whitespace circle coordinates",
+      "source-error fallback and retry"
+    ]
+  },
+  "tenantMigration": {
+    "from": "children",
+    "to": "gruzvill",
+    "dictionaryVersion": "1793963011.472787_49829e739bcba3565abcb01856369899_a200c71e_1719851",
+    "report": "/review/gruzvill-20261106/",
+    "backendWritesPerformed": false,
+    "productionBlockers": [
+      "Tenant default currency GHS; Morocco MAD quote and settlement unaccepted",
+      "Backend patch deployment and boarding-code authority unaccepted",
+      "Physical device and cross-role integration acceptance outstanding"
+    ]
+  },
+  "valentinAudit": {
+    "commit": "00f2192b65be5482e457f09fa5d5c64447666feb",
+    "sourceBaseline": "8cd07c90cc8c9015b8ee230c3b6821aaf2e4cddf",
+    "reviewedStages": 50,
+    "documentationCompleteOnly": true,
+    "currentLocalRemediationReconciled": true
+  },
+  "frontendRemediation": {
+    "date": "2026-11-07",
+    "scope": "frontend only",
+    "sourceBranch": "fix/frontend-20261107",
+    "backendAccess": false,
+    "sharedBackendWritesPerformed": false,
+    "changes": [
+      "validated JSON tenant bootstrap",
+      "bounded image uploads and import/HTML boundaries",
+      "isolated emulator capability",
+      "session/account isolation",
+      "credential redaction at every encoding layer",
+      "shared fresh GPS map position",
+      "passenger archive read surface",
+      "finite external routing deadline and no built-in provider credential",
+      "optional map read failure recovery",
+      "dependency updates and local deepmerge fix",
+      "reproducible gruzvill build",
+      "strict cancellation and car-mutation success validation",
+      "shared bounded routing with local coverage and snap validation",
+      "correct per-km default and zero coordinates",
+      "take/arrive/PIN acknowledgement before along-the-way boarding",
+      "queued operation errors with acknowledgement IDs",
+      "public test menu removed and audited map labels localized",
+      "stable build metadata across repeated builds",
+      "guest language changes never call authenticated profile mutations"
+    ],
+    "dependencyAudit": "0 known vulnerabilities at preparation; see validation report",
+    "productionServiceAccepted": false
+  },
+  "sourceCommit": null,
+  "sourceParentCommit": "3e1388e3b6a41bfbd73193aa3c462359fe456e1b",
+  "frontendCompletion": {
+    "scope": "frontend defects F01-F08 from current CTO/QA report",
+    "roadGraphCorrection": "Actual adapters already limit closest-node search to 1km; the earlier remote-node mock was not a real-adapter production reproduction. Shared route-consumer guards strengthen this boundary.",
+    "backendWritesPerformed": false,
+    "liveAuthenticatedAcceptance": false,
+    "physicalDeviceAcceptance": false,
+    "nativeLanguageReview": false,
+    "sourceCommitResolution": "Deployment manifest supplies the exact commit after source is committed."
+  },
+  "frontendAuditClosure": {
+    "scope": "Actionable frontend findings in Valentin stages 01-50; inventory stages are documentation, not tests",
+    "status": "frontend-code-and-local-regressions-closed",
+    "report": "docs/FRONTEND_AUDIT_CLOSURE_20261107.md",
+    "backendIntegrationAccepted": false,
+    "newRegressions": [
+      "exact fractional fare and order currency",
+      "partial form config and checkbox/file validation",
+      "empty class availability",
+      "offer/waiting validation and business-error envelopes",
+      "polling resumes after success/failure and exposes stale read health",
+      "nine locale precedence and script direction",
+      "confirmed driver offer decline before navigation",
+      "partial profile save readback and duplicate retry block"
+    ]
+  },
+  "valentinFollowup": {
+    "date": "2026-11-08",
+    "specification": "docs/VALENTIN_20261108_TZ.md",
+    "fsmMcpAssessment": "docs/VALENTIN_FSM_MCP_20261108.md",
+    "browserAcceptance": "local production build: 320x568, 390x844, 844x390, RTL; network-disabled error fixture",
+    "frontendChanges": [
+      "on-demand phone collection",
+      "valid changed phone save",
+      "consistent from/to labels",
+      "retained known order and read-only recovery",
+      "contextual submission failure and owner-scoped review guard",
+      "menu above connection status",
+      "canonical driver route and driver registration intent"
+    ],
+    "sharedBackendWritesPerformed": false,
+    "backendIntegrationAccepted": false,
+    "report": "/review/valentin-20261108/",
+    "validationReport": "/review/valentin-20261108/validation-summary.json"
+  }
+}

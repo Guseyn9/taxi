@@ -1,5 +1,16 @@
 import { applyUiDocumentLanguage, uiLanguageAttributes } from './ui-language'
 
+it.each([
+  ['ru', 'ltr'], ['en', 'ltr'], ['es', 'ltr'], ['fr', 'ltr'],
+  ['ary-Arab', 'rtl'], ['ary-Latn', 'ltr'],
+  ['zgh-Tfng', 'ltr'], ['zgh-Latn', 'ltr'], ['ar-Arab', 'rtl'],
+])('preserves the gruzvill locale %s and its writing direction', (lang: string, dir: string) => {
+  const root = document.createElement('html')
+  applyUiDocumentLanguage(lang, root)
+  expect(root.lang).toBe(lang)
+  expect(root.dir).toBe(dir)
+})
+
 it('normalizes regional UI codes and sets matching HTML language and direction', () => {
   const root = document.createElement('html')
   applyUiDocumentLanguage('AR_ma', root)

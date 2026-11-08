@@ -1,7 +1,9 @@
+import { validateUploadBatch } from '../../security/fileUpload'
 import * as API from './../../API'
 
 export function uploadFiles(data: any) {
   const filesMap: Record<string, any[]> = data.files
+  validateUploadBatch(Object.values(filesMap).flatMap((files: any[]) => files.filter(item => !item[0]).map(item => item[1])))
   const additionalDetails: any = data.u_details
   const params: any = data.tokens
   const uploads = Object.keys(filesMap)
@@ -31,6 +33,7 @@ export function uploadFiles(data: any) {
 
 export function uploadRegisterFiles(params: any) {
   const { filesToUpload, response, u_details } = params
+  validateUploadBatch(filesToUpload.filter((item: any) => item.file).map((item: any) => item.file))
   const uploadsName: string[] = []
   const uploads = filesToUpload
     .filter((item: any) => item.file)
@@ -42,7 +45,7 @@ export function uploadRegisterFiles(params: any) {
     const userData: Record<string, any> = {}
     res.forEach((item, i) => {
       const resData = item.data || {}
-      if (resData.status !== 'success') return
+      if (resData.status !== 'success' || !item.dl_id) throw new Error('Required image upload failed')
       const fileId = resData.data?.dl_id
       userData[uploadsName[i]] = (userData[uploadsName[i]] || []).concat(fileId)
     })

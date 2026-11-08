@@ -51,3 +51,14 @@ export function assertSuccessfulBackendResponse<T>(response: T): T {
 
   return response
 }
+
+/** Envelope-returning mutations must explicitly acknowledge success. Reads and
+ * legacy void-returning gateway operations retain their separate contract. */
+export function assertSuccessfulMutationResponse<T>(response: T): T {
+  assertSuccessfulBackendResponse(response)
+  const value = response as { code?: unknown, status?: unknown } | null
+  if (!value || String(value.code) !== '200' ||
+    (value.status !== undefined && value.status !== 'success' && value.status !== 'ok'))
+    throw new BackendInteractionError(BACKEND_ERROR_CODES.Response, 'Mutation was not confirmed; refresh before retrying', response)
+  return response
+}

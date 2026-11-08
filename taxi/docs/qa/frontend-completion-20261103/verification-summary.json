@@ -1,0 +1,1419 @@
+{
+  "date": "2026-11-03",
+  "scope": "Local separate frontend; isolated proposed PHP contract, not production acceptance",
+  "unit": {
+    "passed": 1038,
+    "suites": 189,
+    "ratingChecks": 8,
+    "newRegressionChecks": 6
+  },
+  "e2e": {
+    "regression": {
+      "passed": 21,
+      "skipped": 0,
+      "flaky": 0,
+      "retries": 0,
+      "setupTests": 3,
+      "scenarioTests": 18
+    },
+    "extendedJourneys": {
+      "businessJourneysPassed": 3,
+      "setupPassed": 3,
+      "modes": [
+        "standard",
+        "vote",
+        "offer"
+      ],
+      "completedByDriverUi": true,
+      "passengerRatingVisible": true,
+      "bothRatingsSavedThroughUi": true,
+      "ratingsIndependentlyReadBack": true
+    }
+  },
+  "visual": {
+    "capturedStates": 25,
+    "viewportSizes": [
+      "320x568",
+      "390x844",
+      "844x390",
+      "768x1024",
+      "1440x900"
+    ],
+    "pageErrors": 0,
+    "documentHorizontalOverflow": 0,
+    "engine": "Chromium",
+    "physicalDevicesTested": false,
+    "fixtureContentsAsserted": true
+  },
+  "typecheck": "passed",
+  "boundary": {
+    "comparedCoreFiles": 268,
+    "comparedBusinessHandlers": 71,
+    "unchangedBusinessHandlers": 52,
+    "failures": [],
+    "ok": true
+  },
+  "scores": {
+    "UI": 8.5,
+    "UX": 8.6,
+    "QA_local": 9,
+    "CTO_frontend": 7.5
+  },
+  "published": false,
+  "sourceHead": "580a3bd8ddc5bd8b527b86ee63388a4c913917f5",
+  "pending": [
+    "authorized production FSM acceptance",
+    "server contracts/security/configuration",
+    "physical phones/native container",
+    "pilot load 200–400 drivers",
+    "CI and deployment acceptance",
+    "architecture/dependency debt"
+  ],
+  "productionBuild": "passed",
+  "finalAuthLogin": {
+    "passed": 3,
+    "skipped": 0
+  },
+  "sourceFilesHashAlgorithm": "SHA-256",
+  "currentScope": "Local frontend verification through entrypoint cleanup; not published or production backend acceptance",
+  "commandRecovery": {
+    "frontendImplemented": true,
+    "physicalReloadVerified": true,
+    "postCountPerOperation": 1,
+    "fixture": "isolated HTTP protocol, not production FSM"
+  },
+  "offerAcceptanceNotification": "deduplicated across list/card/detail/reload",
+  "offerRepeat": {
+    "businessJourneys": 2,
+    "consecutiveOfferPassesIncludingFullRun": 3,
+    "flaky": 0,
+    "retries": 0
+  },
+  "screenshotsUpdated": "five current responsive/driver-card frames; earlier CJM screenshots retain their local verification scope",
+  "toolchain": {
+    "node": "24.22.1",
+    "npmCi": "passed without legacy-peer-deps",
+    "opensslLegacyProvider": false,
+    "lintErrors": 0,
+    "lintWarnings": 11245,
+    "npmAudit": {
+      "info": 0,
+      "low": 9,
+      "moderate": 50,
+      "high": 8,
+      "critical": 0,
+      "total": 67
+    },
+    "httpBrowserChecks": 8,
+    "developmentServerHttpWsChecks": 17
+  },
+  "reportPrivacy": {
+    "fixtureTests": 3,
+    "actualE2ePassed": 21,
+    "decodedHtmlZipEntries": 14,
+    "secretMatches": 0,
+    "rawOutputUploaded": false,
+    "historicalCiArtifactsAccepted": false
+  },
+  "lastVerifiedLocal": "2026-11-04T10:27:05.600175+01:00",
+  "stylePipeline": {
+    "palettes": 2,
+    "iconsPerPalette": 15,
+    "modes": [
+      "development",
+      "production"
+    ],
+    "computedPropertiesMatchBaseline": true,
+    "unchangedSassCssFiles": 8,
+    "sourceMapEscapesRejected": 2,
+    "adjacentMapPreserved": true,
+    "cssSize": {
+      "before": {
+        "cssFiles": 5,
+        "rawBytes": 631694,
+        "gzipBytes": 99175
+      },
+      "after": {
+        "cssFiles": 5,
+        "rawBytes": 570369,
+        "gzipBytes": 90714
+      }
+    },
+    "ciCodePrepared": true,
+    "actualActionsRun": false
+  },
+  "driverMapReliability": {
+    "date": "2026-11-04T09:36:51.101595+01:00",
+    "scope": "Local frontend only; isolated PHP stand. No production acceptance or publication.",
+    "defect": "An order-list update canceled snap results while leaving the old order marked handled; coordinate edits and React effect replay also lost or retained incorrect results.",
+    "beforeRegression": {
+      "failed": 3,
+      "passed": 1,
+      "method": "Previous Driver Map effect and snap function extracted unchanged, then exercised through React."
+    },
+    "fix": "Per-coordinate in-flight work, fresh subscriber for the current plan, independent order completion, exclusion of stale/removed results, and immediate disabled-mode exclusion.",
+    "unit": {
+      "passed": 993,
+      "suites": 188,
+      "focusedHookCases": 22,
+      "relatedPlanAndArrivalCases": 51
+    },
+    "browser": {
+      "passed": 21,
+      "setup": 3,
+      "scenarios": 18,
+      "flaky": 0,
+      "retries": 0,
+      "skipped": 0,
+      "tripModes": [
+        "standard",
+        "vote",
+        "offer"
+      ],
+      "server": "isolated local PHP"
+    },
+    "responsive": {
+      "states": 25,
+      "viewports": [
+        "320x568",
+        "390x844",
+        "844x390",
+        "768x1024",
+        "1440x900"
+      ],
+      "pageErrors": 0,
+      "horizontalDocumentOverflow": 0,
+      "physicalDevices": false
+    },
+    "typecheck": "passed",
+    "lintErrors": 0,
+    "existingLintParserWarnings": 3,
+    "focusedExhaustiveDeps": "passed without suppressions",
+    "productionBuild": "passed",
+    "boundary": {
+      "comparedCoreFiles": 268,
+      "comparedBusinessHandlers": 69,
+      "unchangedBusinessHandlers": 50,
+      "ok": true,
+      "failures": []
+    },
+    "privacy": {
+      "secretMatches": [],
+      "decodedZipEntries": 14,
+      "files": 2
+    },
+    "originalBackendAndCheckoutChanged": false,
+    "published": false,
+    "limitations": [
+      "Road nearest-service cache policy was not changed in this phase.",
+      "Real booked points are never snapped by this hook.",
+      "Large Driver Map, other hook suppressions and dependency debt remain open.",
+      "Physical phones, accepted production FSM and pilot load are not proven."
+    ],
+    "sourceSha256": {
+      "src/pages/Driver/Map.tsx": "af9fc8692f3c6f779c44f1209e825bd7cff93136a4de7e86cd18cb6ae910fbc8",
+      "src/tools/useDemoOrderPoints.ts": "4a372ce1e15e65215902926a41478a91ae15bd21593b12f9fa062bc3ab106d38",
+      "src/tools/useDemoOrderPoints.test.jsx": "b534fe55f5ddd55c90f47f1ba53765f3497c2340f8a371c229f5062debd06b28",
+      "src/.eslintrc.json": "3975532c88469e3109fb073674c1e572b9c32b80b22dd7404f039e499ed90201",
+      "tools/build-release.cjs": "f3a7af57c4414f0b00d17d8eca30a80742ea1ca0703bf32c05dc3eccc486960e"
+    },
+    "journeyScreenshots": {
+      "date": "2026-11-04",
+      "count": 12,
+      "source": "21-test local isolated PHP run; UI commands; simulated GPS; tile provider stubbed",
+      "files": [
+        {
+          "mode": "standard-order",
+          "role": "driver",
+          "stage": "started",
+          "sha256": "8dbafaba72da754cdc54b0a11d5c9f82a681f6edecc44830302dd1d4882d41b0"
+        },
+        {
+          "mode": "standard-order",
+          "role": "driver",
+          "stage": "finished",
+          "sha256": "75424f7e8ac37a7731da3bd63f758a9d079720aa5131e2733494139abcd872d1"
+        },
+        {
+          "mode": "standard-order",
+          "role": "client",
+          "stage": "started",
+          "sha256": "8151c3be4b084c1dda783baf5b472f1d92269349deb53b1e8ff62106fedc9a8b"
+        },
+        {
+          "mode": "standard-order",
+          "role": "client",
+          "stage": "finished",
+          "sha256": "a45ec04e7056c04f359553d1cd2a06787b5c76a8b53dc598177de0b96ced92b3"
+        },
+        {
+          "mode": "voting-order",
+          "role": "driver",
+          "stage": "started",
+          "sha256": "88e69e78aace2460873cf0a358f863caec6929349bfb42578a7ed1e59a402da5"
+        },
+        {
+          "mode": "voting-order",
+          "role": "driver",
+          "stage": "finished",
+          "sha256": "bca00dfdcaf2815d1335e6a546c44307646747d8bb22d5e7ad14b9a66505858d"
+        },
+        {
+          "mode": "voting-order",
+          "role": "client",
+          "stage": "started",
+          "sha256": "d72d33cf1db69d992e9c60f57cddbc7254073e977f1c53629c17133ead796ee4"
+        },
+        {
+          "mode": "voting-order",
+          "role": "client",
+          "stage": "finished",
+          "sha256": "35d03e722dcf236c07ce5364dd3d04a4578e7a2ff2316833e6e249ba82d3a090"
+        },
+        {
+          "mode": "offer-order",
+          "role": "driver",
+          "stage": "started",
+          "sha256": "8dbafaba72da754cdc54b0a11d5c9f82a681f6edecc44830302dd1d4882d41b0"
+        },
+        {
+          "mode": "offer-order",
+          "role": "driver",
+          "stage": "finished",
+          "sha256": "533fab813e6fccef64def971be64283ddcd23705cff06275d02253ad892e4914"
+        },
+        {
+          "mode": "offer-order",
+          "role": "client",
+          "stage": "started",
+          "sha256": "71d640c10c00db7a03e604a20fb0e8ce9cae6f2fe676fa520a0953448a3725e5"
+        },
+        {
+          "mode": "offer-order",
+          "role": "client",
+          "stage": "finished",
+          "sha256": "dbd5f053edf4efa48cca26cac220602065b99e425040c1e5f9edd12acc7c2e67"
+        }
+      ]
+    },
+    "scopedHookRule": {
+      "active": true,
+      "missingDependencyRejected": true,
+      "actualHookErrors": 0,
+      "actualHookWarnings": 0
+    },
+    "reportBrowser": {
+      "rows": 68,
+      "images": 20,
+      "journeyScreenshots": 12,
+      "filter": true,
+      "errors": [],
+      "published": false
+    }
+  },
+  "journeyScreenshots": {
+    "date": "2026-11-04",
+    "count": 12,
+    "source": "21-test local isolated PHP run; UI commands; simulated GPS; tile provider stubbed",
+    "files": [
+      {
+        "mode": "standard-order",
+        "role": "driver",
+        "stage": "started",
+        "sha256": "8dbafaba72da754cdc54b0a11d5c9f82a681f6edecc44830302dd1d4882d41b0"
+      },
+      {
+        "mode": "standard-order",
+        "role": "driver",
+        "stage": "finished",
+        "sha256": "75424f7e8ac37a7731da3bd63f758a9d079720aa5131e2733494139abcd872d1"
+      },
+      {
+        "mode": "standard-order",
+        "role": "client",
+        "stage": "started",
+        "sha256": "8151c3be4b084c1dda783baf5b472f1d92269349deb53b1e8ff62106fedc9a8b"
+      },
+      {
+        "mode": "standard-order",
+        "role": "client",
+        "stage": "finished",
+        "sha256": "a45ec04e7056c04f359553d1cd2a06787b5c76a8b53dc598177de0b96ced92b3"
+      },
+      {
+        "mode": "voting-order",
+        "role": "driver",
+        "stage": "started",
+        "sha256": "88e69e78aace2460873cf0a358f863caec6929349bfb42578a7ed1e59a402da5"
+      },
+      {
+        "mode": "voting-order",
+        "role": "driver",
+        "stage": "finished",
+        "sha256": "bca00dfdcaf2815d1335e6a546c44307646747d8bb22d5e7ad14b9a66505858d"
+      },
+      {
+        "mode": "voting-order",
+        "role": "client",
+        "stage": "started",
+        "sha256": "d72d33cf1db69d992e9c60f57cddbc7254073e977f1c53629c17133ead796ee4"
+      },
+      {
+        "mode": "voting-order",
+        "role": "client",
+        "stage": "finished",
+        "sha256": "35d03e722dcf236c07ce5364dd3d04a4578e7a2ff2316833e6e249ba82d3a090"
+      },
+      {
+        "mode": "offer-order",
+        "role": "driver",
+        "stage": "started",
+        "sha256": "8dbafaba72da754cdc54b0a11d5c9f82a681f6edecc44830302dd1d4882d41b0"
+      },
+      {
+        "mode": "offer-order",
+        "role": "driver",
+        "stage": "finished",
+        "sha256": "533fab813e6fccef64def971be64283ddcd23705cff06275d02253ad892e4914"
+      },
+      {
+        "mode": "offer-order",
+        "role": "client",
+        "stage": "started",
+        "sha256": "71d640c10c00db7a03e604a20fb0e8ce9cae6f2fe676fa520a0953448a3725e5"
+      },
+      {
+        "mode": "offer-order",
+        "role": "client",
+        "stage": "finished",
+        "sha256": "dbd5f053edf4efa48cca26cac220602065b99e425040c1e5f9edd12acc7c2e67"
+      }
+    ]
+  },
+  "roadCache": {
+    "date": "2026-11-04T10:27:05.600175+01:00",
+    "scope": "Local separate frontend only. No Git, Vercel or production-backend changes.",
+    "unit": {
+      "passed": 1032,
+      "suites": 189,
+      "roadAdapterCases": 36,
+      "mapHookCases": 25
+    },
+    "regressionsBefore": {
+      "initialCacheCasesFailed": 5,
+      "mapRecoveryCasesFailed": 2,
+      "uncancelablePhysicalCapFailed": 1
+    },
+    "roadHttpBrowser": {
+      "cases": [
+        {
+          "case": "parallel requests and immutable cache",
+          "passed": true,
+          "httpRequests": 1
+        },
+        {
+          "case": "network recovery after negative TTL",
+          "passed": true,
+          "httpRequests": 2
+        },
+        {
+          "case": "malformed coordinates rejected",
+          "passed": true,
+          "httpRequests": 1
+        },
+        {
+          "case": "invalid input makes no request",
+          "passed": true,
+          "httpRequests": 0
+        },
+        {
+          "case": "slow body aborts",
+          "passed": true,
+          "httpRequests": 1,
+          "elapsedMs": 6003
+        },
+        {
+          "case": "timeout without AbortController",
+          "passed": true,
+          "httpRequests": 1,
+          "elapsedMs": 6011
+        },
+        {
+          "case": "React plan recovery after provider outage; two orders share one retry",
+          "passed": true,
+          "httpRequests": 2
+        }
+      ],
+      "errors": [],
+      "scope": "Isolated loopback HTTP. No live provider, application backend, auth or orders."
+    },
+    "tripE2E": {
+      "passed": 21,
+      "setup": 3,
+      "scenarios": 18,
+      "retries": 0,
+      "flaky": 0,
+      "skipped": 0,
+      "server": "isolated local PHP; UI commands; simulated GPS; tile provider stubbed"
+    },
+    "policy": {
+      "successTtlMs": 900000,
+      "failureTtlMs": 5000,
+      "maxCacheEntries": 256,
+      "maxPendingRequests": 16,
+      "physicalReadCap": 16,
+      "httpAndBodyTimeoutMs": 6000,
+      "clock": "monotonic where available",
+      "persistentLocationCache": false,
+      "automaticHttpRetries": false
+    },
+    "mapRecovery": "Unavailable points may retry on an updated plan or existing stalled-route recovery. Successful/near-road results remain shared. Negative TTL bounds actual network reads.",
+    "unchanged": "Exact original isReachable and ensureReachablePoint implementations retained; same OSRM URL. No Taxi API commands, road graph/profit algorithm, booking coordinates, palettes or license rules changed.",
+    "boundary": {
+      "comparedCoreFiles": 268,
+      "comparedBusinessHandlers": 71,
+      "unchangedBusinessHandlers": 52,
+      "failures": [],
+      "ok": true
+    },
+    "responsive": {
+      "states": 25,
+      "viewports": [
+        "320x568",
+        "390x844",
+        "844x390",
+        "768x1024",
+        "1440x900"
+      ],
+      "pageErrors": 0,
+      "documentHorizontalOverflow": 0,
+      "physicalDevices": false
+    },
+    "productionBuild": "passed",
+    "typecheck": "passed",
+    "lintErrors": 0,
+    "privacy": {
+      "secretMatches": [],
+      "decodedZipEntries": 14,
+      "files": 2
+    },
+    "ci": "Added test:road-cache and isolated browser job; GitHub Actions execution not yet accepted because branch is unpublished.",
+    "published": false,
+    "open": [
+      "Architecture and other type/hook debt",
+      "Remaining dependency warnings",
+      "Accepted-server sessions, OAuth, Offer/ETA and service configuration",
+      "Physical devices, production FSM acceptance and pilot load"
+    ],
+    "sourceSha256": {
+      "src/tools/mapReachability.ts": "3e1c9ef5eb9a35682037d59a14b26999dde2603c9f19cf2e53850ba320c868b0",
+      "src/tools/mapReachability.test.ts": "bfd8e1c75bb3dfd912f3ad76d3e3263ded387c118d48d40a7a0e305df738a779",
+      "src/tools/useDemoOrderPoints.ts": "9e8bab04eaec40ccc17978eb3dd146e7c1b82a8df354e2c1122e73df703355c2",
+      "src/tools/useDemoOrderPoints.test.jsx": "01eb2450c08ab1a71015dca4f8e1cee3a4eb8b40f38db784b74aa4169acc5d08",
+      "src/pages/Driver/Map.tsx": "85e082b58f2dff00d8a26c8be6676decaabfaf13e2cc19c382fa07eab1e0486d",
+      "src/qa/road-cache-entry.ts": "e50024b7d6610b9ae47ccc59a29cc7897d876103b20abb9461dd76154ed3b39c",
+      "tools/check-road-cache.cjs": "32ced32d876cfb81a9c1ef1d1b62a8bf47ecc2c6e3065dfc3d5788ea3530ba74",
+      "tools/test-road-cache-browser.cjs": "553d0e45289a3c90f961fc643c1228d37d486ccb88f2e96adec61c0436e32f01",
+      "tools/verify-design-boundary.cjs": "cace786793a37f767fd662abccddeef490ac31314ac8303d0fd8efd70f22c4cc",
+      "tools/contracts/reviewed-integration-20261103.json": "299685fc8790282146aaa120b75b0e6e6cf54979dcb6f6ed0efaf04b1a975963",
+      "package.json": "f8f97768c53c9206134962a3a71219bc37d1a9a695bd33adcc30f36d71c3a690",
+      "../.github/workflows/frontend-checks.yml": "71b037b98a971233fc2b2970e4163b0b28a52d97c77739d2a4588e0238f70604"
+    },
+    "journeyScreenshots": {
+      "count": 12,
+      "date": "2026-11-04T10:27:05.600175+01:00",
+      "files": [
+        {
+          "mode": "standard-order",
+          "role": "driver",
+          "stage": "started",
+          "sha256": "8dbafaba72da754cdc54b0a11d5c9f82a681f6edecc44830302dd1d4882d41b0"
+        },
+        {
+          "mode": "standard-order",
+          "role": "driver",
+          "stage": "finished",
+          "sha256": "97181b1152ba8326ddcd217024c0dccb71f6c0e75bc268e9aa05ab551d5b20de"
+        },
+        {
+          "mode": "standard-order",
+          "role": "client",
+          "stage": "started",
+          "sha256": "e59af6b3926e3711edc03d7902f6a1c18b02f9894b7a9ecf788d4ae48dff41e8"
+        },
+        {
+          "mode": "standard-order",
+          "role": "client",
+          "stage": "finished",
+          "sha256": "95830ad87c05ba4098ef3ac1174289cf7cfe9654a763de5abe1c578f8ecbf713"
+        },
+        {
+          "mode": "voting-order",
+          "role": "driver",
+          "stage": "started",
+          "sha256": "88e69e78aace2460873cf0a358f863caec6929349bfb42578a7ed1e59a402da5"
+        },
+        {
+          "mode": "voting-order",
+          "role": "driver",
+          "stage": "finished",
+          "sha256": "0ca50c6673ac8106535a4a0da2f210da4fff87a5400bf7288841125914b794a2"
+        },
+        {
+          "mode": "voting-order",
+          "role": "client",
+          "stage": "started",
+          "sha256": "b1489ee7eaf167fb2372033acabf4246c8589941d1e62d12fb2587d83836a963"
+        },
+        {
+          "mode": "voting-order",
+          "role": "client",
+          "stage": "finished",
+          "sha256": "a8113a6dcbd729710bc5860509e3eba7e80843136165b60a70c9d737eea8712a"
+        },
+        {
+          "mode": "offer-order",
+          "role": "driver",
+          "stage": "started",
+          "sha256": "8dbafaba72da754cdc54b0a11d5c9f82a681f6edecc44830302dd1d4882d41b0"
+        },
+        {
+          "mode": "offer-order",
+          "role": "driver",
+          "stage": "finished",
+          "sha256": "712d38ab277847ff24eede581b7e171097acb7681a806ca2fee5de317c2bad8a"
+        },
+        {
+          "mode": "offer-order",
+          "role": "client",
+          "stage": "started",
+          "sha256": "cd70945f1ca372fc4a8211983a2f5fa94fa35d70fdf5731bb98acb3dcc0d267c"
+        },
+        {
+          "mode": "offer-order",
+          "role": "client",
+          "stage": "finished",
+          "sha256": "7b3191d8de8795c11b49503763d93ebaa67981e1c08082b200ae184a1373e2ef"
+        }
+      ]
+    }
+  },
+  "latestRatingFollowup": "rating-verification.json",
+  "ratingFollowup": {
+    "date": "2026-11-04",
+    "localOnly": true,
+    "productionAcceptance": false,
+    "unit": {
+      "passed": 1038,
+      "suites": 189,
+      "ratingChecks": 8,
+      "newRegressionChecks": 6
+    },
+    "beforeFix": {
+      "failedRegressionChecks": 4,
+      "landscapeSubmitOutsideViewport": true
+    },
+    "browser": {
+      "passed": 21,
+      "retries": 0,
+      "flaky": 0,
+      "journeys": [
+        {
+          "project": "standard-order",
+          "evidence": "orderId=2219; driver Finished; both UI ratings saved and independently read back; GPS simulated"
+        },
+        {
+          "project": "voting-order",
+          "evidence": "orderId=2220; driver Finished; both UI ratings saved and independently read back; GPS simulated"
+        },
+        {
+          "project": "offer-order",
+          "evidence": "orderId=2221; driver Finished; both UI ratings saved and independently read back; GPS simulated"
+        }
+      ],
+      "driverRating": 4,
+      "clientRating": 5,
+      "readback": [
+        "b_rating",
+        "drivers[].c_rating"
+      ],
+      "viewports": [
+        "320x568",
+        "390x844",
+        "844x390"
+      ],
+      "fullSubmitVisibilityRequired": true,
+      "minimumRatingTargetPx": 44,
+      "gpsSimulated": true,
+      "mapTilesStubbed": true
+    },
+    "responsiveStates": 25,
+    "typecheck": "passed",
+    "focusedLint": "passed",
+    "boundary": {
+      "ok": true,
+      "files": 268,
+      "handlers": 71
+    },
+    "screenshots": [
+      {
+        "mode": "standard-order",
+        "role": "client",
+        "state": "rating-320x568",
+        "path": "screenshots/ratings/standard-order/client-rating-320x568.png",
+        "sha256": "96b07eebb68f5e7ee5a3834966fab2cd21300815988b0d86c3fb2cf39c2f632f"
+      },
+      {
+        "mode": "standard-order",
+        "role": "client",
+        "state": "rating-390x844",
+        "path": "screenshots/ratings/standard-order/client-rating-390x844.png",
+        "sha256": "69c34a01cc5e8ce407862f01c424ed822ac35379c18dd6bd2bb0a4d89f190218"
+      },
+      {
+        "mode": "standard-order",
+        "role": "client",
+        "state": "rating-844x390",
+        "path": "screenshots/ratings/standard-order/client-rating-844x390.png",
+        "sha256": "4f39ea1bc21bb937c0c1ab4d623c159c0f3f40fdc9f28b68bd21e1a52c24a6ec"
+      },
+      {
+        "mode": "standard-order",
+        "role": "client",
+        "state": "rating-saved",
+        "path": "screenshots/ratings/standard-order/client-rating-saved.png",
+        "sha256": "51b5fcbe6ec0ac3b10f4a3759285bdeff19e8d93c51b1499a44742cd3dd887fe"
+      },
+      {
+        "mode": "standard-order",
+        "role": "driver",
+        "state": "rating-320x568",
+        "path": "screenshots/ratings/standard-order/driver-rating-320x568.png",
+        "sha256": "0ae0641c5f6701bc152dd4e10ef182370639305d728e8e0ab33dd98c42f17c4d"
+      },
+      {
+        "mode": "standard-order",
+        "role": "driver",
+        "state": "rating-390x844",
+        "path": "screenshots/ratings/standard-order/driver-rating-390x844.png",
+        "sha256": "4b0db357a8a9d02f8de543a781448a0a6d0fb9d055ea01792360aa9c552b480a"
+      },
+      {
+        "mode": "standard-order",
+        "role": "driver",
+        "state": "rating-844x390",
+        "path": "screenshots/ratings/standard-order/driver-rating-844x390.png",
+        "sha256": "5ee66ab0c0847bf794a677b1dd9b61a9dd84118aed5cee967787ebb023b2e812"
+      },
+      {
+        "mode": "standard-order",
+        "role": "driver",
+        "state": "rating-saved",
+        "path": "screenshots/ratings/standard-order/driver-rating-saved.png",
+        "sha256": "9f5fae6e5cda40d4a5dff354df2fb7aa574948f50fbd27db1f07a23d23bebaf0"
+      },
+      {
+        "mode": "voting-order",
+        "role": "client",
+        "state": "rating-320x568",
+        "path": "screenshots/ratings/voting-order/client-rating-320x568.png",
+        "sha256": "7801a442d5b5b35ea0242d185e355b238de91bffd51a93bf149cb36e43649a97"
+      },
+      {
+        "mode": "voting-order",
+        "role": "client",
+        "state": "rating-390x844",
+        "path": "screenshots/ratings/voting-order/client-rating-390x844.png",
+        "sha256": "2ce7355b49e2ec534469449ba7244568c68e188c6c08c27ca622b4a96d814c3d"
+      },
+      {
+        "mode": "voting-order",
+        "role": "client",
+        "state": "rating-844x390",
+        "path": "screenshots/ratings/voting-order/client-rating-844x390.png",
+        "sha256": "952c347b132eb75647b053472679c15ae1016fd1c73407a37a24f48e10bbc34f"
+      },
+      {
+        "mode": "voting-order",
+        "role": "client",
+        "state": "rating-saved",
+        "path": "screenshots/ratings/voting-order/client-rating-saved.png",
+        "sha256": "51b5fcbe6ec0ac3b10f4a3759285bdeff19e8d93c51b1499a44742cd3dd887fe"
+      },
+      {
+        "mode": "voting-order",
+        "role": "driver",
+        "state": "rating-320x568",
+        "path": "screenshots/ratings/voting-order/driver-rating-320x568.png",
+        "sha256": "230eb2ac4f6f83b7e00a9e7fc27171be5329ce1ee2c1b2f31ee17870132ab19e"
+      },
+      {
+        "mode": "voting-order",
+        "role": "driver",
+        "state": "rating-390x844",
+        "path": "screenshots/ratings/voting-order/driver-rating-390x844.png",
+        "sha256": "67e1dcca12706b051534c56599cc9fe8d5ef25d947917b97d913898e8d921385"
+      },
+      {
+        "mode": "voting-order",
+        "role": "driver",
+        "state": "rating-844x390",
+        "path": "screenshots/ratings/voting-order/driver-rating-844x390.png",
+        "sha256": "a40b798274d2bf3b533c74f0270d5e982ced6cf1ef57f0ea66274ed86d318b97"
+      },
+      {
+        "mode": "voting-order",
+        "role": "driver",
+        "state": "rating-saved",
+        "path": "screenshots/ratings/voting-order/driver-rating-saved.png",
+        "sha256": "9f5fae6e5cda40d4a5dff354df2fb7aa574948f50fbd27db1f07a23d23bebaf0"
+      },
+      {
+        "mode": "offer-order",
+        "role": "client",
+        "state": "rating-320x568",
+        "path": "screenshots/ratings/offer-order/client-rating-320x568.png",
+        "sha256": "d8b6f874be470056553d5041bd27153dba5448210d01b4302c19bfa32ac8471b"
+      },
+      {
+        "mode": "offer-order",
+        "role": "client",
+        "state": "rating-390x844",
+        "path": "screenshots/ratings/offer-order/client-rating-390x844.png",
+        "sha256": "fa9297cd83f08583dc719113c8273704e87ce61255fa0abbe094c80039bca7f5"
+      },
+      {
+        "mode": "offer-order",
+        "role": "client",
+        "state": "rating-844x390",
+        "path": "screenshots/ratings/offer-order/client-rating-844x390.png",
+        "sha256": "5698edcca1387c92e6b11ade3ee692c6aa49f87bc8ebfaf6783627a96e0a739c"
+      },
+      {
+        "mode": "offer-order",
+        "role": "client",
+        "state": "rating-saved",
+        "path": "screenshots/ratings/offer-order/client-rating-saved.png",
+        "sha256": "51b5fcbe6ec0ac3b10f4a3759285bdeff19e8d93c51b1499a44742cd3dd887fe"
+      },
+      {
+        "mode": "offer-order",
+        "role": "driver",
+        "state": "rating-320x568",
+        "path": "screenshots/ratings/offer-order/driver-rating-320x568.png",
+        "sha256": "1b148c2a570ed5828d4f172e7849fab5ff82cee585b0951ac5f906fdf9c47245"
+      },
+      {
+        "mode": "offer-order",
+        "role": "driver",
+        "state": "rating-390x844",
+        "path": "screenshots/ratings/offer-order/driver-rating-390x844.png",
+        "sha256": "0798786ba3b52e04eb71b5905ef28b6530f670c8bedf0fb7b3fece2bb5bc293f"
+      },
+      {
+        "mode": "offer-order",
+        "role": "driver",
+        "state": "rating-844x390",
+        "path": "screenshots/ratings/offer-order/driver-rating-844x390.png",
+        "sha256": "4eedc6ba4b1ff611fc6daca10418ed1cc2ebb9b6df7175261416a0787cc0b5cd"
+      },
+      {
+        "mode": "offer-order",
+        "role": "driver",
+        "state": "rating-saved",
+        "path": "screenshots/ratings/offer-order/driver-rating-saved.png",
+        "sha256": "9f5fae6e5cda40d4a5dff354df2fb7aa574948f50fbd27db1f07a23d23bebaf0"
+      }
+    ],
+    "sourceSha256": {
+      "src/components/modals/RatingModal.tsx": "4bd193c69a0dd26ba9da757701dc76f798f2fe8b458c020fdf8b1dafe1f5e260",
+      "src/design/drive-v2/surfaces.css": "de92242ef43dddf6a770d499283633339361f2c3e44a6ae775f7b350814cadfc",
+      "src/components/modals/__tests__/rating-submit.test.js": "522a73f4f0ed2185f0feed516e77a27808a1e5ecb20146a2d6b411b2ec161042",
+      "e2e/fixtures/finishJourney.ts": "bd58d9196cac1b2ed6342cb439eb60f4683706f7ccb3a16f4459511df4bdbcfd",
+      "e2e/fixtures/taxiApi.ts": "64246efd74df3f81ace5fdcc10b64387c2142760bc6c67fd79ac119a6bf54dce"
+    },
+    "limits": [
+      "Chromium emulation is not a physical device test",
+      "Isolated local PHP contract is not the working service acceptance",
+      "Service dictionary still contains Oder Completed / Rate only ones; preserve database translation precedence"
+    ],
+    "productionBuild": "passed",
+    "reviewedRatingScreenshots": 24,
+    "privacySecretMatches": 0,
+    "publishedThisFollowup": false
+  },
+  "latestEntrypointsFollowup": "entrypoints-verification.json",
+  "entrypointsFollowup": {
+    "date": "2026-11-04T11:36:43.194860+01:00",
+    "scope": "ARCH-06 only; local frontend, no backend changes or publication",
+    "status": "closed on frontend",
+    "retiredFileCount": 52,
+    "retiredBytes": 144254,
+    "retiredFiles": [
+      {
+        "file": "src/lib/react-dev-utils/FileSizeReporter.js",
+        "canonical": "lib/react-dev-utils/FileSizeReporter.js",
+        "sha256": "568c01fc8f4ff70373f7438c8eafab4411ba669b2a145a1fa1598c247b2d982c",
+        "canonicalSha256": "568c01fc8f4ff70373f7438c8eafab4411ba669b2a145a1fa1598c247b2d982c",
+        "bytes": 4613,
+        "reachable": false
+      },
+      {
+        "file": "src/lib/react-dev-utils/ForkTsCheckerWebpackPlugin.js",
+        "canonical": "lib/react-dev-utils/ForkTsCheckerWebpackPlugin.js",
+        "sha256": "6ad449b215248b9a78d77dd99ef96200083d9fe912fb0725d83108c8b5a0a839",
+        "canonicalSha256": "6ad449b215248b9a78d77dd99ef96200083d9fe912fb0725d83108c8b5a0a839",
+        "bytes": 321,
+        "reachable": false
+      },
+      {
+        "file": "src/lib/react-dev-utils/InlineChunkHtmlPlugin.js",
+        "canonical": "lib/react-dev-utils/InlineChunkHtmlPlugin.js",
+        "sha256": "74a98f7344ceed3da4c8982be4b6f68eb438ce7de19883e0d2f16248ff4254f1",
+        "canonicalSha256": "74a98f7344ceed3da4c8982be4b6f68eb438ce7de19883e0d2f16248ff4254f1",
+        "bytes": 1921,
+        "reachable": false
+      },
+      {
+        "file": "src/lib/react-dev-utils/InterpolateHtmlPlugin.js",
+        "canonical": "lib/react-dev-utils/InterpolateHtmlPlugin.js",
+        "sha256": "2bfb57d66742e89fc4935b9472a6221751f27d9133264e0d0785db36552e80e4",
+        "canonicalSha256": "2bfb57d66742e89fc4935b9472a6221751f27d9133264e0d0785db36552e80e4",
+        "bytes": 1445,
+        "reachable": false
+      },
+      {
+        "file": "src/lib/react-dev-utils/LICENSE",
+        "canonical": "lib/react-dev-utils/LICENSE",
+        "sha256": "f657f99d3fb9647db92628e96007aabb46e5f04f33e49999075aab8e250ca7ce",
+        "canonicalSha256": "f657f99d3fb9647db92628e96007aabb46e5f04f33e49999075aab8e250ca7ce",
+        "bytes": 1080,
+        "reachable": false
+      },
+      {
+        "file": "src/lib/react-dev-utils/ModuleNotFoundPlugin.js",
+        "canonical": "lib/react-dev-utils/ModuleNotFoundPlugin.js",
+        "sha256": "b55e44655f0d36df91cd5fefb4f2381dd74538ef7a3d70e805529a327bfdc2b1",
+        "canonicalSha256": "b55e44655f0d36df91cd5fefb4f2381dd74538ef7a3d70e805529a327bfdc2b1",
+        "bytes": 4315,
+        "reachable": false
+      },
+      {
+        "file": "src/lib/react-dev-utils/ModuleScopePlugin.js",
+        "canonical": "lib/react-dev-utils/ModuleScopePlugin.js",
+        "sha256": "a2fd7903c5a139a0f70d99c2d30de0f273c97a795ec6343d1352a253291b5503",
+        "canonicalSha256": "a2fd7903c5a139a0f70d99c2d30de0f273c97a795ec6343d1352a253291b5503",
+        "bytes": 3197,
+        "reachable": false
+      },
+      {
+        "file": "src/lib/react-dev-utils/README.md",
+        "canonical": "lib/react-dev-utils/README.md",
+        "sha256": "7ba842e5ad484bf4243cf304c16ce3b209d9e758cb5859ea66b1b106084da0d9",
+        "canonicalSha256": "7ba842e5ad484bf4243cf304c16ce3b209d9e758cb5859ea66b1b106084da0d9",
+        "bytes": 15128,
+        "reachable": false
+      },
+      {
+        "file": "src/lib/react-dev-utils/WatchMissingNodeModulesPlugin.js",
+        "canonical": "lib/react-dev-utils/WatchMissingNodeModulesPlugin.js",
+        "sha256": "11545a1a3b263a2c5faaf801a42297d9ab6061118d6aec8cccd5949dc297d4be",
+        "canonicalSha256": "11545a1a3b263a2c5faaf801a42297d9ab6061118d6aec8cccd5949dc297d4be",
+        "bytes": 1101,
+        "reachable": false
+      },
+      {
+        "file": "src/lib/react-dev-utils/WebpackDevServerUtils.js",
+        "canonical": "lib/react-dev-utils/WebpackDevServerUtils.js",
+        "sha256": "89904421638191c49cf575a1fcd5db9d7eeb55d614429693554eeb9c0a18c27b",
+        "canonicalSha256": "89904421638191c49cf575a1fcd5db9d7eeb55d614429693554eeb9c0a18c27b",
+        "bytes": 15215,
+        "reachable": false
+      },
+      {
+        "file": "src/lib/react-dev-utils/browsersHelper.js",
+        "canonical": "lib/react-dev-utils/browsersHelper.js",
+        "sha256": "e31c89125f50a25a684823195a360caa84d5e33e4af9beec5afdb6ac22eac11c",
+        "canonicalSha256": "e31c89125f50a25a684823195a360caa84d5e33e4af9beec5afdb6ac22eac11c",
+        "bytes": 2517,
+        "reachable": false
+      },
+      {
+        "file": "src/lib/react-dev-utils/chalk.js",
+        "canonical": "lib/react-dev-utils/chalk.js",
+        "sha256": "9a06c89a6670241a4cf10fc97144566ea5ef64934abd2ff088b704100b9f5716",
+        "canonicalSha256": "9a06c89a6670241a4cf10fc97144566ea5ef64934abd2ff088b704100b9f5716",
+        "bytes": 254,
+        "reachable": false
+      },
+      {
+        "file": "src/lib/react-dev-utils/checkRequiredFiles.js",
+        "canonical": "lib/react-dev-utils/checkRequiredFiles.js",
+        "sha256": "2b9528fd8e91b073a98fcd87cd8e013abdb0df2e86d2407fa2e39875e2345b34",
+        "canonicalSha256": "2b9528fd8e91b073a98fcd87cd8e013abdb0df2e86d2407fa2e39875e2345b34",
+        "bytes": 856,
+        "reachable": false
+      },
+      {
+        "file": "src/lib/react-dev-utils/clearConsole.js",
+        "canonical": "lib/react-dev-utils/clearConsole.js",
+        "sha256": "13435f396a539bd73f6ea5be6b798e6628060171be61c239cbbd3dd0727e36a2",
+        "canonicalSha256": "13435f396a539bd73f6ea5be6b798e6628060171be61c239cbbd3dd0727e36a2",
+        "bytes": 365,
+        "reachable": false
+      },
+      {
+        "file": "src/lib/react-dev-utils/crossSpawn.js",
+        "canonical": "lib/react-dev-utils/crossSpawn.js",
+        "sha256": "8cba45594b0045842e2a0fa23d01573347a9d4d5fab3427864d512cef1c7384c",
+        "canonicalSha256": "8cba45594b0045842e2a0fa23d01573347a9d4d5fab3427864d512cef1c7384c",
+        "bytes": 270,
+        "reachable": false
+      },
+      {
+        "file": "src/lib/react-dev-utils/errorOverlayMiddleware.js",
+        "canonical": "lib/react-dev-utils/errorOverlayMiddleware.js",
+        "sha256": "ca5a8342f1f327dc2d638e31575545c97198db232e72fd87707bba1b593f302a",
+        "canonicalSha256": "ca5a8342f1f327dc2d638e31575545c97198db232e72fd87707bba1b593f302a",
+        "bytes": 732,
+        "reachable": false
+      },
+      {
+        "file": "src/lib/react-dev-utils/eslintFormatter.js",
+        "canonical": "lib/react-dev-utils/eslintFormatter.js",
+        "sha256": "28a2b1c3d24a1ab0e753e870f09c14735216e4e76a605674f35c94c673b85665",
+        "canonicalSha256": "28a2b1c3d24a1ab0e753e870f09c14735216e4e76a605674f35c94c673b85665",
+        "bytes": 2401,
+        "reachable": false
+      },
+      {
+        "file": "src/lib/react-dev-utils/evalSourceMapMiddleware.js",
+        "canonical": "lib/react-dev-utils/evalSourceMapMiddleware.js",
+        "sha256": "b359de1b63793ca0086d0a0703dce349d9d6884de0ceae99d0d90dcc0eae2eaa",
+        "canonicalSha256": "b359de1b63793ca0086d0a0703dce349d9d6884de0ceae99d0d90dcc0eae2eaa",
+        "bytes": 1485,
+        "reachable": false
+      },
+      {
+        "file": "src/lib/react-dev-utils/formatWebpackMessages.js",
+        "canonical": "lib/react-dev-utils/formatWebpackMessages.js",
+        "sha256": "2f636b9e06347b34d9ecfaa9a428c365f08723e4aecd42b7c01056390943d611",
+        "canonicalSha256": "2f636b9e06347b34d9ecfaa9a428c365f08723e4aecd42b7c01056390943d611",
+        "bytes": 3934,
+        "reachable": false
+      },
+      {
+        "file": "src/lib/react-dev-utils/getCSSModuleLocalIdent.js",
+        "canonical": "lib/react-dev-utils/getCSSModuleLocalIdent.js",
+        "sha256": "0810f452d1d23294dbf8fb3defe10382c4459b9c5ac8474459308b05b3ecb6d6",
+        "canonicalSha256": "0810f452d1d23294dbf8fb3defe10382c4459b9c5ac8474459308b05b3ecb6d6",
+        "bytes": 1216,
+        "reachable": false
+      },
+      {
+        "file": "src/lib/react-dev-utils/getCacheIdentifier.js",
+        "canonical": "lib/react-dev-utils/getCacheIdentifier.js",
+        "sha256": "619b64f54fcc922d8477dfa308c6d337f727081e458b5f87f87b60f73ea66d05",
+        "canonicalSha256": "619b64f54fcc922d8477dfa308c6d337f727081e458b5f87f87b60f73ea66d05",
+        "bytes": 584,
+        "reachable": false
+      },
+      {
+        "file": "src/lib/react-dev-utils/getProcessForPort.js",
+        "canonical": "lib/react-dev-utils/getProcessForPort.js",
+        "sha256": "b78c0f1285e3bb4d5626e02c467df23572dbc7b411c80480722b12fb5f57d1eb",
+        "canonicalSha256": "b78c0f1285e3bb4d5626e02c467df23572dbc7b411c80480722b12fb5f57d1eb",
+        "bytes": 1960,
+        "reachable": false
+      },
+      {
+        "file": "src/lib/react-dev-utils/getPublicUrlOrPath.js",
+        "canonical": "lib/react-dev-utils/getPublicUrlOrPath.js",
+        "sha256": "ef9d2b061dd9c0dc90d35a3707bb23503d55b5dce08a341ca07d20c62904663c",
+        "canonicalSha256": "ef9d2b061dd9c0dc90d35a3707bb23503d55b5dce08a341ca07d20c62904663c",
+        "bytes": 2069,
+        "reachable": false
+      },
+      {
+        "file": "src/lib/react-dev-utils/globby.js",
+        "canonical": "lib/react-dev-utils/globby.js",
+        "sha256": "b00b7479f51eb10db3ebeeb2ce93d44feed46d2c814b3b137e14b11f60eb3ee4",
+        "canonicalSha256": "b00b7479f51eb10db3ebeeb2ce93d44feed46d2c814b3b137e14b11f60eb3ee4",
+        "bytes": 257,
+        "reachable": false
+      },
+      {
+        "file": "src/lib/react-dev-utils/ignoredFiles.js",
+        "canonical": "lib/react-dev-utils/ignoredFiles.js",
+        "sha256": "9dd414ba4c0e9a4fe661188f78dde5ba57104adf3ff3c0399a0a4f659ac56a79",
+        "canonicalSha256": "9dd414ba4c0e9a4fe661188f78dde5ba57104adf3ff3c0399a0a4f659ac56a79",
+        "bytes": 467,
+        "reachable": false
+      },
+      {
+        "file": "src/lib/react-dev-utils/immer.js",
+        "canonical": "lib/react-dev-utils/immer.js",
+        "sha256": "b3b8e2a3cee0c39f3d12b2daeff0b2a6a33c5c644cbca4d98c26e8ab3fdf9ce1",
+        "canonicalSha256": "b3b8e2a3cee0c39f3d12b2daeff0b2a6a33c5c644cbca4d98c26e8ab3fdf9ce1",
+        "bytes": 254,
+        "reachable": false
+      },
+      {
+        "file": "src/lib/react-dev-utils/inquirer.js",
+        "canonical": "lib/react-dev-utils/inquirer.js",
+        "sha256": "e225358bf20cc63e2645d170c0774f0af8288d02f7037cd666908d41adcca0fc",
+        "canonicalSha256": "e225358bf20cc63e2645d170c0774f0af8288d02f7037cd666908d41adcca0fc",
+        "bytes": 263,
+        "reachable": false
+      },
+      {
+        "file": "src/lib/react-dev-utils/launchEditor.js",
+        "canonical": "lib/react-dev-utils/launchEditor.js",
+        "sha256": "97779b7375cbd1813b2ce088ed6b31a791083dc32dd5c653ddcfba4d3e15ec34",
+        "canonicalSha256": "97779b7375cbd1813b2ce088ed6b31a791083dc32dd5c653ddcfba4d3e15ec34",
+        "bytes": 19473,
+        "reachable": false
+      },
+      {
+        "file": "src/lib/react-dev-utils/launchEditorEndpoint.js",
+        "canonical": "lib/react-dev-utils/launchEditorEndpoint.js",
+        "sha256": "3fe464d175446ebd777a10fa2455a8773c711a15ad7d9330196b486855c0f871",
+        "canonicalSha256": "3fe464d175446ebd777a10fa2455a8773c711a15ad7d9330196b486855c0f871",
+        "bytes": 330,
+        "reachable": false
+      },
+      {
+        "file": "src/lib/react-dev-utils/noopServiceWorkerMiddleware.js",
+        "canonical": "lib/react-dev-utils/noopServiceWorkerMiddleware.js",
+        "sha256": "f8bb453c8aff99f4cf6d9b2430c95deba72ce207f6e2883100592d1c69954faf",
+        "canonicalSha256": "f8bb453c8aff99f4cf6d9b2430c95deba72ce207f6e2883100592d1c69954faf",
+        "bytes": 1354,
+        "reachable": false
+      },
+      {
+        "file": "src/lib/react-dev-utils/openBrowser.js",
+        "canonical": "lib/react-dev-utils/openBrowser.js",
+        "sha256": "f08718de01cb76455d4f54cf9ad1b232ec2db551941cd9a9aae4617db8d0175c",
+        "canonicalSha256": "f08718de01cb76455d4f54cf9ad1b232ec2db551941cd9a9aae4617db8d0175c",
+        "bytes": 4414,
+        "reachable": false
+      },
+      {
+        "file": "src/lib/react-dev-utils/openChrome.applescript",
+        "canonical": "lib/react-dev-utils/openChrome.applescript",
+        "sha256": "71fa7162a8531eeaaa25429e3f91596f64ed752b9835c2dfb50e53dbb2f6c0eb",
+        "canonicalSha256": "71fa7162a8531eeaaa25429e3f91596f64ed752b9835c2dfb50e53dbb2f6c0eb",
+        "bytes": 2657,
+        "reachable": false
+      },
+      {
+        "file": "src/lib/react-dev-utils/package.json",
+        "canonical": "lib/react-dev-utils/package.json",
+        "sha256": "7eb4c100ce974f9a3b61e6aaf2c464f71f94d74877a1b10ec8630ce9f08d9ce3",
+        "canonicalSha256": "58efdc1f01c2b46da31309237c9d8af5d4e6ebef6a639bce7516f6b503f95c8a",
+        "bytes": 2328,
+        "reachable": false
+      },
+      {
+        "file": "src/lib/react-dev-utils/printBuildError.js",
+        "canonical": "lib/react-dev-utils/printBuildError.js",
+        "sha256": "c9aa743cb7d6159b84a7bd270414d474a51e1fbe1c183e4b19d22df9d27f6722",
+        "canonicalSha256": "c9aa743cb7d6159b84a7bd270414d474a51e1fbe1c183e4b19d22df9d27f6722",
+        "bytes": 1231,
+        "reachable": false
+      },
+      {
+        "file": "src/lib/react-dev-utils/printHostingInstructions.js",
+        "canonical": "lib/react-dev-utils/printHostingInstructions.js",
+        "sha256": "74bed4e340f9a888425a22cb63b77ad253619bfd8c87ef7dd430820fadddd8aa",
+        "canonicalSha256": "74bed4e340f9a888425a22cb63b77ad253619bfd8c87ef7dd430820fadddd8aa",
+        "bytes": 3696,
+        "reachable": false
+      },
+      {
+        "file": "src/lib/react-dev-utils/redirectServedPathMiddleware.js",
+        "canonical": "lib/react-dev-utils/redirectServedPathMiddleware.js",
+        "sha256": "77356394f084e7714e4ab79e84a8651a9f06ff5def44597ba0b36e987476f276",
+        "canonicalSha256": "77356394f084e7714e4ab79e84a8651a9f06ff5def44597ba0b36e987476f276",
+        "bytes": 741,
+        "reachable": false
+      },
+      {
+        "file": "src/lib/react-dev-utils/typescriptFormatter.js",
+        "canonical": "lib/react-dev-utils/typescriptFormatter.js",
+        "sha256": "870a986cbb14699e2c95bb8afe91e21e32acf0f00416e6fd29ec5e3cc615fb81",
+        "canonicalSha256": "870a986cbb14699e2c95bb8afe91e21e32acf0f00416e6fd29ec5e3cc615fb81",
+        "bytes": 1276,
+        "reachable": false
+      },
+      {
+        "file": "src/lib/react-dev-utils/webpackHotDevClient.js",
+        "canonical": "lib/react-dev-utils/webpackHotDevClient.js",
+        "sha256": "40e7e4cbc00fdb5f978cabb7282cef637e8147b9abcc17e94003f8f04492946f",
+        "canonicalSha256": "40e7e4cbc00fdb5f978cabb7282cef637e8147b9abcc17e94003f8f04492946f",
+        "bytes": 8007,
+        "reachable": false
+      },
+      {
+        "file": "src/lib/react-leaflet-fullscreen-plugin/Control.FullScreen.css",
+        "canonical": "lib/react-leaflet-fullscreen-plugin/Control.FullScreen.css",
+        "sha256": "45300b9c737be8f277d91271da6c60832f9152df5321157e99f3cb48b6c8ef90",
+        "canonicalSha256": "45300b9c737be8f277d91271da6c60832f9152df5321157e99f3cb48b6c8ef90",
+        "bytes": 849,
+        "reachable": false
+      },
+      {
+        "file": "src/lib/react-leaflet-fullscreen-plugin/FullscreenComponent.js",
+        "canonical": "lib/react-leaflet-fullscreen-plugin/FullscreenComponent.js",
+        "sha256": "c5da67e3fc9c0929db45cf189b6bf5b7bad3483d62b8658675887c1fff6c4a4d",
+        "canonicalSha256": "c5da67e3fc9c0929db45cf189b6bf5b7bad3483d62b8658675887c1fff6c4a4d",
+        "bytes": 951,
+        "reachable": false
+      },
+      {
+        "file": "src/lib/react-leaflet-fullscreen-plugin/LICENSE",
+        "canonical": "lib/react-leaflet-fullscreen-plugin/LICENSE",
+        "sha256": "1146d24f29fc16542e1feb8c7300de1b4b2f2ec772e704af9d31cb08ddbc6885",
+        "canonicalSha256": "1146d24f29fc16542e1feb8c7300de1b4b2f2ec772e704af9d31cb08ddbc6885",
+        "bytes": 1110,
+        "reachable": false
+      },
+      {
+        "file": "src/lib/react-leaflet-fullscreen-plugin/README.md",
+        "canonical": "lib/react-leaflet-fullscreen-plugin/README.md",
+        "sha256": "1c2ee341c686925880d3cff440af94ec5723fd1ea04d3366a133d83ba0a7f7ee",
+        "canonicalSha256": "1c2ee341c686925880d3cff440af94ec5723fd1ea04d3366a133d83ba0a7f7ee",
+        "bytes": 3062,
+        "reachable": false
+      },
+      {
+        "file": "src/lib/react-leaflet-fullscreen-plugin/icon-fullscreen-2x.png",
+        "canonical": "lib/react-leaflet-fullscreen-plugin/icon-fullscreen-2x.png",
+        "sha256": "0c21498604db3386a5a7ebfdea3df190eee24db8d1a923b49f727e5eca346977",
+        "canonicalSha256": "0c21498604db3386a5a7ebfdea3df190eee24db8d1a923b49f727e5eca346977",
+        "bytes": 215,
+        "reachable": false
+      },
+      {
+        "file": "src/lib/react-leaflet-fullscreen-plugin/icon-fullscreen.png",
+        "canonical": "lib/react-leaflet-fullscreen-plugin/icon-fullscreen.png",
+        "sha256": "2393c0cda898be7a3ac7b3fdec5bd3303c6125a240effe7f35756f58e853c489",
+        "canonicalSha256": "2393c0cda898be7a3ac7b3fdec5bd3303c6125a240effe7f35756f58e853c489",
+        "bytes": 139,
+        "reachable": false
+      },
+      {
+        "file": "src/lib/react-leaflet-fullscreen-plugin/package.json",
+        "canonical": "lib/react-leaflet-fullscreen-plugin/package.json",
+        "sha256": "1a3c576f824903ecf27a5185243f9b68683ef7a000ba90aed22b33b08b61a644",
+        "canonicalSha256": "1a3c576f824903ecf27a5185243f9b68683ef7a000ba90aed22b33b08b61a644",
+        "bytes": 1110,
+        "reachable": false
+      },
+      {
+        "file": "scripts/scripts/build.js",
+        "canonical": "scripts/build.js",
+        "sha256": "18af9b009004b027b61aa32479dbc21a8e980f700a85040209124681b5ce4fbd",
+        "canonicalSha256": "18af9b009004b027b61aa32479dbc21a8e980f700a85040209124681b5ce4fbd",
+        "bytes": 7704,
+        "reachable": false
+      },
+      {
+        "file": "scripts/scripts/start.js",
+        "canonical": "scripts/start.js",
+        "sha256": "da35abccf4bcac016071ebcb08f66278a693a286100e4e6927a965b019d40e5c",
+        "canonicalSha256": "94e060506f1b7ea846d1418a561efff779166136d2c0bcda09a042a2e14c34de",
+        "bytes": 4897,
+        "reachable": false
+      },
+      {
+        "file": "scripts/scripts/test.js",
+        "canonical": "scripts/test.js",
+        "sha256": "a18a07029552edd869ec2ff01f927bb66b4a3cc3890ba6a66b1e30c478b39191",
+        "canonicalSha256": "a18a07029552edd869ec2ff01f927bb66b4a3cc3890ba6a66b1e30c478b39191",
+        "bytes": 1342,
+        "reachable": false
+      },
+      {
+        "file": "src/tsconfig.json",
+        "canonical": "tsconfig.json",
+        "sha256": "f4d1c49de9024797830f806baefc2f4fa7acd1f46e985e1d42f5563d375e349c",
+        "canonicalSha256": "3d6b7a6a962715184af8d7c64346849f43fa66c708d7bc40565c4396ffe1a756",
+        "bytes": 756,
+        "reachable": false
+      },
+      {
+        "file": "scripts/tsconfig.json",
+        "canonical": "tsconfig.json",
+        "sha256": "f4d1c49de9024797830f806baefc2f4fa7acd1f46e985e1d42f5563d375e349c",
+        "canonicalSha256": "3d6b7a6a962715184af8d7c64346849f43fa66c708d7bc40565c4396ffe1a756",
+        "bytes": 756,
+        "reachable": false
+      },
+      {
+        "file": "public/tsconfig.json",
+        "canonical": "tsconfig.json",
+        "sha256": "f4d1c49de9024797830f806baefc2f4fa7acd1f46e985e1d42f5563d375e349c",
+        "canonicalSha256": "3d6b7a6a962715184af8d7c64346849f43fa66c708d7bc40565c4396ffe1a756",
+        "bytes": 756,
+        "reachable": false
+      },
+      {
+        "file": "package_fixed.json",
+        "canonical": "package.json",
+        "sha256": "12a5df48d96a4d742b7e9a8befd8a3c495a6eb364166d163b89ec4faa5f0e1b1",
+        "canonicalSha256": "f8f97768c53c9206134962a3a71219bc37d1a9a695bd33adcc30f36d71c3a690",
+        "bytes": 6880,
+        "reachable": false
+      }
+    ],
+    "backupVerifiedBySha256": true,
+    "staticBefore": {
+      "parsedFiles": 1232,
+      "roots": 269,
+      "reachableFiles": 774,
+      "incomingReferences": 0,
+      "reachableRetired": 0
+    },
+    "staticAfter": {
+      "parsedFiles": 1195,
+      "roots": 270,
+      "reachableFiles": 775,
+      "incomingReferences": 0,
+      "unresolvedLocalReferences": 0,
+      "reachableParseErrors": 0
+    },
+    "retainedCompatibilityEntryPoints": 9,
+    "dynamicLoadsReviewed": [
+      {
+        "file": "src/components/Icon/index.tsx",
+        "line": 23
+      },
+      {
+        "file": "src/components/Icon/index.tsx",
+        "line": 25
+      },
+      {
+        "file": "src/security/clientEnvironment.test.js",
+        "line": 11
+      },
+      {
+        "file": "scripts/build.js",
+        "line": 95
+      },
+      {
+        "file": "scripts/start.js",
+        "line": 119
+      },
+      {
+        "file": "scripts/start.js",
+        "line": 141
+      },
+      {
+        "file": "config/modules.js",
+        "line": 124
+      },
+      {
+        "file": "config/modules.js",
+        "line": 131
+      },
+      {
+        "file": "config/paths.js",
+        "line": 20
+      },
+      {
+        "file": "config/webpack.config.js",
+        "line": 28
+      },
+      {
+        "file": "config/webpack.config.js",
+        "line": 129
+      },
+      {
+        "file": "config/webpackDevServer.config.js",
+        "line": 70
+      },
+      {
+        "file": "lib/react-dev-utils/getProcessForPort.js",
+        "line": 37
+      }
+    ],
+    "dynamicLoadReview": "SVG palettes, canonical package/tsconfig/proxy paths, Sass loader, installed TypeScript and local process package identification; no retired paths",
+    "negativeControls": [
+      {
+        "name": "public tsconfig reappears",
+        "rejected": true,
+        "failures": 1
+      },
+      {
+        "name": "vendored library copied into src",
+        "rejected": true,
+        "failures": 1
+      },
+      {
+        "name": "compatibility shim forks logic",
+        "rejected": true,
+        "failures": 1
+      },
+      {
+        "name": "command points to nested script",
+        "rejected": true,
+        "failures": 1
+      },
+      {
+        "name": "runtime entrypoint missing",
+        "rejected": true,
+        "failures": 1
+      }
+    ],
+    "unit": {
+      "passed": 1038,
+      "suites": 189
+    },
+    "browser": {
+      "passed": 21,
+      "retries": 0,
+      "flaky": 0,
+      "gpsSimulated": true,
+      "mapTilesStubbed": true,
+      "isolatedLocalPhp": true
+    },
+    "typecheck": "passed",
+    "lintErrors": 0,
+    "existingLintConsoleWarnings": 3,
+    "productionAppBuild": "passed",
+    "styleBrowserChecks": {
+      "development": "passed",
+      "production": "passed",
+      "palettes": 2,
+      "iconsPerPalette": 15,
+      "pageErrors": 0,
+      "failedRequests": 0
+    },
+    "appCssByteIdentical": true,
+    "boundary": {
+      "ok": true,
+      "files": 268,
+      "handlers": 71
+    },
+    "ci": "workflow updated locally, not run on GitHub",
+    "productionAcceptance": false,
+    "publishedThisFollowup": false,
+    "sourceSha256": {
+      "tools/check-entrypoints.cjs": "221cdef5c1dee0d51d79bfd831f7fa8037c9bae78da0014fbfe2d1b417c66a37",
+      "pre-build.js": "320a37205b23382eef84668679c86a9452ea3fe25e2a2ee0f83b83b3a065e1f7",
+      "package.json": "aeed99802e5f9f3356356d22ea231758468e8b92ed607dd2db110e77a688983d",
+      "tools/check-frontend.cjs": "04752c3978285e4db58959826ef86a9ec9ab98f3a460214a11ac784c96161cfe",
+      "docs/architecture/entrypoints.md": "1466be7bdc502ac524d74ad4ae152321839a1c2db1d4ad70ddef0f60bc1d92cd"
+    },
+    "releaseBuild": "passed",
+    "releaseCssByteIdentical": true
+  },
+  "registryCounts": {
+    "Закрыто на фронте": 31,
+    "Нужен backend/контракт": 10,
+    "Нужна публикация/приёмка": 8,
+    "Техдолг, не закрыт": 3,
+    "Фронт подготовлен; требуется серверная работа или проверка": 16
+  }
+}

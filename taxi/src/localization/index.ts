@@ -12,6 +12,27 @@ interface IOptions {
 }
 
 const FALLBACK_TRANSLATIONS: Record<string, Record<string, string>> = {
+  profile_partial_save:{en:'Vehicle changes were saved, but the profile was not fully saved. Check the refreshed vehicle data, then close and reopen the profile before retrying.',ru:'Машина сохранена, но профиль сохранён не полностью. Проверьте обновлённые данные машины, затем закройте и откройте профиль перед повтором.',es:'El vehículo se guardó, pero el perfil no se guardó por completo. Revisa los datos actualizados y vuelve a abrir el perfil antes de reintentar.',fr:'Le véhicule est enregistré, mais le profil est incomplet. Vérifiez les données actualisées, puis fermez et rouvrez le profil avant de réessayer.',ar:'حُفظت تغييرات السيارة، لكن لم يُحفظ الملف بالكامل. تحقق من بيانات السيارة المحدثة، ثم أغلق الملف وأعد فتحه قبل المحاولة.'},
+  profile_car_unconfirmed:{en:'Vehicle saving was not confirmed. Check the refreshed vehicle list before retrying. Close and reopen the profile after checking.',ru:'Сохранение машины не подтверждено. Проверьте обновлённый список машин перед повтором. После проверки закройте и откройте профиль.',es:'No se confirmó el guardado del vehículo. Revisa la lista actualizada y vuelve a abrir el perfil antes de reintentar.',fr:'L’enregistrement du véhicule n’est pas confirmé. Vérifiez la liste actualisée, puis rouvrez le profil avant de réessayer.',ar:'لم يُؤكد حفظ السيارة. تحقق من قائمة السيارات المحدثة قبل المحاولة، ثم أغلق الملف وأعد فتحه.'},
+  driver_action_result_pending:{ru:'Сначала проверьте результат предыдущего действия по заказу.',en:'Check the previous action result for this order first.',fr:'Vérifiez d’abord le résultat de l’action précédente pour cette commande.',ar:'تحقق أولاً من نتيجة الإجراء السابق لهذا الطلب.'},
+  driver_action_session_changed:{ru:'Аккаунт изменился. Обновите заказ в текущем аккаунте.',en:'Your account changed. Refresh the order in the current account.',fr:'Le compte a changé. Actualisez la commande dans le compte actuel.',ar:'تغيّر الحساب. حدّث الطلب في الحساب الحالي.'},
+  emulator_test_server_required:{ru:'Для серверного эмулятора нужны отдельный тестовый стенд и временные аккаунты.',en:'Server emulation requires an isolated test server and disposable accounts.',fr:'L’émulateur nécessite un serveur de test isolé et des comptes temporaires.',ar:'يتطلب المحاكي خادم اختبار معزولاً وحسابات مؤقتة.'},
+  emulator_local_demo:{ru:'Открыть демо без регистрации',en:'Try the demo without registration',fr:'Essayer la démo sans inscription',ar:'جرّب العرض دون تسجيل'},
+  voting_confirmation_status:{ru:'Поиск не подтверждён',en:'Search not confirmed',fr:'Recherche non confirmée',ar:'البحث غير مؤكد'},
+  voting_confirmation_pending:{ru:'Заказ создан, но поиск такси ещё не подтверждён. Повторите подтверждение этого заказа.',en:'Your order was created, but the taxi search is not confirmed. Confirm this order again.',fr:'La commande est créée, mais la recherche de taxi n’est pas confirmée. Confirmez cette commande.',ar:'تم إنشاء الطلب، لكن البحث عن سيارة لم يُؤكد بعد. أكّد هذا الطلب مجددًا.'},
+  voting_confirmation_retry:{ru:'Подтвердить поиск',en:'Confirm search',fr:'Confirmer la recherche',ar:'تأكيد البحث'},
+  driver_rating_label:{ru:'Рейтинг',en:'Rating',fr:'Note',ar:'التقييم'},
+  login:{en:'Email',ru:'Email',fr:'E-mail',ar:'البريد الإلكتروني'},
+  name:{en:'Name',ru:'Имя',fr:'Nom',ar:'الاسم'},
+  phone:{en:'Phone',ru:'Телефон',fr:'Téléphone',ar:'الهاتف'},
+  email_error:{en:'Enter a valid email address.',ru:'Укажите корректный email.',fr:'Saisissez une adresse e-mail valide.',ar:'أدخل بريداً إلكترونياً صالحاً.'},
+  phone_pattern_error:{en:'Check the country code and phone number.',ru:'Проверьте код страны и номер телефона.',fr:'Vérifiez le code pays et le numéro.',ar:'تحقق من رمز البلد ورقم الهاتف.'},
+  required_field:{en:'Complete this field.',ru:'Заполните это поле.',fr:'Remplissez ce champ.',ar:'أكمل هذا الحقل.'},
+  location_action:{en:'Location',ru:'Локация',es:'Ubicación',fr:'Position',ar:'الموقع',ary:'الموقع','ary-Latn':'Lmawqiɛ',zgh:'ⴰⴷⵖⴰⵔ','zgh-Latn':'Adɣar'},
+  fare_whole_amount_note:{en:'The fractional part of the calculated amount is discarded.',ru:'Дробная часть расчётной суммы не учитывается.',es:'Se descarta la parte decimal del importe calculado.',fr:'La partie décimale du montant calculé est ignorée.',ar:'لا يُحتسب الجزء العشري من المبلغ المحسوب.'},
+  map_expand:{en:'Expand map',ru:'Развернуть карту',es:'Ampliar mapa',fr:'Agrandir la carte',ar:'توسيع الخريطة',ary:'كبّر الخريطة','ary-Latn':'Kebber lkharita',zgh:'ⵙⵎⵖⵔ ⵜⴰⴽⴰⵕⴹⴰ','zgh-Latn':'Ssemɣer takarḍa'},
+  map_return_to_booking:{en:'Return to booking',ru:'Вернуться к форме',es:'Volver a la reserva',fr:'Retour à la réservation',ar:'العودة إلى الحجز',ary:'رجع للحجز','ary-Latn':'Rjeɛ lḥejz',zgh:'ⵓⵖⴰⵍ ⵖⵔ ⵓⵙⵖⵍ','zgh-Latn':'Uɣal ɣer usɣel'},
+  route_unavailable:{en:'Road route is unavailable. Please try again.',ru:'Не удалось построить дорожный маршрут. Повторите попытку.',es:'No se pudo calcular la ruta. Inténtalo de nuevo.',fr:'Impossible de calculer l’itinéraire. Réessayez.',ar:'تعذّر حساب مسار الطريق. حاول مجدداً.'},
   from:{ru:'Откуда',en:'From',fr:'Départ',ar:'من'},
   to:{ru:'Куда',en:'To',fr:'Destination',ar:'إلى'},
   cost:{ru:'Стоимость',en:'Cost',fr:'Prix',ar:'السعر'},
@@ -2131,7 +2152,7 @@ function getFallbackText(key: string, language?: { iso?: string, id?: string | n
   const dictionary = FALLBACK_TRANSLATIONS[key]
 
   if (dictionary)
-    return dictionary[iso] || dictionary.en || dictionary.ru
+    return dictionary[language?.iso || iso] || dictionary[iso] || dictionary.en || dictionary.ru
 
   return key
     .replace(/_p$/, '')

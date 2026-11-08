@@ -7,6 +7,7 @@ import { IRootState, IDispatch } from '..'
 import { watch as watchGeolocation, activateSending as activateGeolocationSending } from '../geolocation/actionCreators'
 import { ActionTypes } from './constants'
 import { order as orderSelector } from './selectors'
+import { assertSuccessfulMutationResponse } from '../../platform/adapters/backendError'
 
 const READY_ORDERS_GEOLOCATION_INTERVAL = 1000 * 20
 
@@ -46,6 +47,7 @@ export const watchOrder = (
 
 export const clearOrders = (): TAction => ({ type: ActionTypes.CLEAR })
 export const refreshActiveOrders = (): TAction => ({ type: ActionTypes.GET_ACTIVE_ORDERS_REQUEST })
+export const refreshReadyOrders = (): TAction => ({ type: ActionTypes.GET_READY_ORDERS_REQUEST })
 // Перечитать ОДИН заказ тем же механизмом, которым его обновляет watchOrder
 // (getOrderSaga). Нужно там, где состояние заказа изменила команда, выполненная
 // в обход redux-мутации: store должен догнать бэкенд, не дожидаясь опроса.
@@ -83,21 +85,20 @@ export const setState = (
 function mutationThunk<TReturn>(
   mutation: () => Promise<TReturn>,
   id: IOrder['b_id'],
-  isFail: (value: TReturn) => boolean = () => false,
 ) {
   return async(dispatch: IDispatch): Promise<TReturn> => {
     dispatch({ type: ActionTypes.MUTATION_START, payload: id })
     try {
-      const result = await mutation()
+      const result = assertSuccessfulMutationResponse(await mutation())
       dispatch({
-        type: isFail(result) ?
-          ActionTypes.MUTATION_FAIL :
-          ActionTypes.UPDATE_SUCCESS,
+        type: ActionTypes.UPDATE_SUCCESS,
         payload: id,
       })
       return result
     } catch (error) {
       dispatch({ type: ActionTypes.MUTATION_FAIL, payload: id })
+      dispatch(refreshOrder(id))
+      dispatch(refreshActiveOrders())
       throw error
     }
   }
@@ -105,4 +106,4 @@ function mutationThunk<TReturn>(
 const APIMutationThunk = <TReturn extends IResponse<string, unknown>>(
   mutation: () => Promise<TReturn>,
   id: IOrder['b_id'],
-) => mutationThunk(mutation, id, value => value.code !== '200')
+) => mutationThunk(mutation, id)

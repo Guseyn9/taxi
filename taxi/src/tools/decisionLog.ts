@@ -1,3 +1,4 @@
+import { redactDiagnosticText, isCredentialKey } from '../security/diagnosticRedaction'
 /**
  * Decision Log — третий журнал системы, рядом с RAW и Flow.
  *
@@ -207,7 +208,7 @@ function sanitize(value: any, depth = 0): JsonLike {
 
   const type = typeof value
   if (type === 'string')
-    return value.length > MAX_STRING_LENGTH ? `${value.slice(0, MAX_STRING_LENGTH)}...` : value
+    return redactDiagnosticText(value).slice(0, MAX_STRING_LENGTH)
 
   if (type === 'number')
     return Number.isFinite(value) ? value : null
@@ -229,6 +230,7 @@ function sanitize(value: any, depth = 0): JsonLike {
     const output: { [key: string]: JsonLike } = {}
     Object.keys(value).slice(0, MAX_ARRAY_ITEMS).forEach(key => {
       const lower = key.toLowerCase()
+      if (isCredentialKey(key)) { output[key] = '[hidden]'; return }
       if (
         lower.includes('password') ||
         lower.includes('token') ||

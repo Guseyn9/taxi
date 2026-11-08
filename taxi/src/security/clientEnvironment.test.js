@@ -1,3 +1,4 @@
+/** @jest-environment node */
 const {assertBrowserEnvironment}=require('../../tools/client-env-policy.js')
 test('rejects shared FSM credentials without putting the value in the error',()=>{
  const secret='test-only-do-not-publish'
@@ -14,4 +15,9 @@ test('legacy build entry points delegate to one canonical configuration',()=>{
  expect(require('../config/env.js')).toBe(require('../../config/env.js'))
  expect(require('../config/webpack.config.js')).toBe(require('../../config/webpack.config.js'))
  expect(require('../config/paths.js')).toBe(require('../../config/paths.js'))
+})
+test('production rejects mixed FSM flags and fixed impersonation IDs',()=>{
+ expect(()=>assertBrowserEnvironment({NODE_ENV:'production',REACT_APP_FSM_API_URL:'https://example.test'})).toThrow('COMMAND_STATUS')
+ expect(()=>assertBrowserEnvironment({NODE_ENV:'production',REACT_APP_FSM_API_URL:'https://example.test',REACT_APP_FSM_COMMAND_STATUS_ENABLED:'true',REACT_APP_FSM_DRIVER_USER_ID:'1420'})).toThrow('identity')
+ expect(()=>assertBrowserEnvironment({NODE_ENV:'production',REACT_APP_FSM_API_URL:'https://example.test',REACT_APP_FSM_COMMAND_STATUS_ENABLED:'true'})).not.toThrow()
 })

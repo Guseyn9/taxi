@@ -1,3 +1,4 @@
+import { newAuthenticatedContext } from './fixtures/tabSession'
 /**
  * TEST-E2E-007 — А.1.6, Passenger SOS after Started. Живой backend.
  *
@@ -57,6 +58,7 @@ import {
   PICKUP,
   STATE_NAMES,
   clickPrimaryAction,
+  departAndArrive,
   confirmActionResult,
   expectUiDriverState,
   openBoardingForm,
@@ -106,7 +108,6 @@ let passenger: ISession
 let passengerContext: BrowserContext
 let passengerPage: Page
 let driver: IRole
-let boardingCode: string
 const createdOrders: string[] = []
 let cancelRequests: ICancelRequest[] = []
 
@@ -117,7 +118,7 @@ const stateName = (state: number | undefined) =>
 
 /** Отдельная сессия пользователя — общих cookies/localStorage у ролей нет. */
 async function openSession(browser: Browser, storageState: string): Promise<BrowserContext> {
-  const context = await browser.newContext({
+  const context = await newAuthenticatedContext(browser, {
     ...devices['Desktop Chrome'],
     storageState,
     baseURL: appUrl(),
@@ -150,7 +151,6 @@ async function prepareDriver(
 test.beforeAll(async({ browser }) => {
   passenger = await login(passengerAccount(), 'пассажир')
   driver = await prepareDriver(browser, driverAccount(), DRIVER_STORAGE, 'водитель')
-  boardingCode = boardingCodeOf(driver.car)
 
   await cancelTestOrders(passenger)
 
@@ -256,7 +256,7 @@ async function driveOrderToStarted(orderId: string): Promise<void> {
 
   await openDriverMap(driver.page)
   await expectUiDriverState(driver.page, DRIVER_STATE.Performer, 'карта водителя показывает принятый заказ')
-  await clickPrimaryAction(driver.page)
+  await departAndArrive(driver.page)
   await expect
     .poll(() => backendDriverState(orderId), { message: 'водитель выехал/прибыл (Arrived)', timeout: 90_000 })
     .toBe(DRIVER_STATE.Arrived)
@@ -264,7 +264,7 @@ async function driveOrderToStarted(orderId: string): Promise<void> {
   await expectPassengerDriverState(passengerPage, DRIVER_STATE.Arrived, 'пассажир видит, что водитель прибыл')
 
   await openBoardingForm(driver.page)
-  await submitBoardingCode(driver.page, boardingCode)
+  await submitBoardingCode(driver.page, boardingCodeOf(await readOrder(passenger, orderId)))
   await expect
     .poll(() => backendDriverState(orderId), { message: 'заказ перешёл в Started', timeout: 90_000 })
     .toBe(DRIVER_STATE.Started)
@@ -532,7 +532,7 @@ test('А.1.6 (Driver) — Alarm водителя остаётся прежним
 
   await openDriverMap(driver.page)
   await expectUiDriverState(driver.page, DRIVER_STATE.Performer, 'карта показывает принятый заказ')
-  await clickPrimaryAction(driver.page)
+  await departAndArrive(driver.page)
   await expect
     .poll(() => backendDriverState(orderId), { message: 'водитель выехал (Arrived)', timeout: 90_000 })
     .toBe(DRIVER_STATE.Arrived)

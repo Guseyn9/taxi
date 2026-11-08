@@ -6,6 +6,7 @@ import {
 import { TAction } from '../../types'
 import { ICar } from '../../types/types'
 import { ActionTypes, ICarState, ICarsState } from './constants'
+import { ActionTypes as UserActions } from '../user/constants'
 
 const CarRecord = ImmutableRecord<ICarState>({
   value: undefined,
@@ -24,6 +25,10 @@ export default function(
   { type, payload }: TAction,
 ) {
   switch (type) {
+    case UserActions.LOGIN_START:
+    case UserActions.GOOGLE_LOGIN_START:
+    case UserActions.LOGOUT_START:
+      return new ReducerRecord()
 
     case ActionTypes.START_MUTATION: {
       return state
@@ -34,6 +39,7 @@ export default function(
         )
     }
     case ActionTypes.END_MUTATION: {
+      if (!state.cars.has(payload)) return state
       const carData = state.cars.get(payload)!
         .update('mutations', value => value - 1)
       return state
@@ -46,6 +52,7 @@ export default function(
     }
 
     case ActionTypes.GET_SUCCESS: {
+      if (!state.cars.has(payload.c_id)) return state
       return state
         .set('cars', state.cars
           .update(payload.c_id, value => value!

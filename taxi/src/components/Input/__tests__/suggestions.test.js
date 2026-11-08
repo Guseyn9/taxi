@@ -1,9 +1,9 @@
 import React,{act} from 'react'
 import {createRoot} from 'react-dom/client'
+import Input from '../index'
 jest.mock('react-helmet-async',()=>({Helmet:({children})=><>{children}</>}))
 jest.mock('../../Button',()=>({__esModule:true,default:props=><button type="button" onClick={props.onClick}>{props.text}</button>,EButtonShapes:{Flat:0}}))
 jest.mock('../../../localization',()=>({t:value=>value,TRANSLATION:{}}))
-import Input from '../index'
 const originalScrollIntoView=HTMLElement.prototype.scrollIntoView
 beforeAll(()=>{HTMLElement.prototype.scrollIntoView=jest.fn()})
 afterAll(()=>{HTMLElement.prototype.scrollIntoView=originalScrollIntoView})

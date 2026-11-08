@@ -91,11 +91,14 @@ export interface IModalsState {
   }
   messageModal: {
     isOpen: boolean
+    id?: string
     status?: EStatuses
     kind?: string
     orderID?: IOrder['b_id'] | null
     message?: string
   }
+  messageQueue: IModalsState['messageModal'][]
+  messageSequence: number
   ratingModal: {
     isOpen: boolean
     orderID?: IOrder['b_id'] | null

@@ -10,6 +10,9 @@ import SITE_CONSTANTS from '../../siteConstants'
 import { IRootState } from '../../state'
 import { clientOrderSelectors } from '../../state/clientOrder'
 import { ordersSelectors } from '../../state/orders'
+import { refreshOrder, refreshActiveOrders } from '../../state/orders/actionCreators'
+import { useDispatch } from '../../tools/hooks'
+import { sameUser } from '../../tools/identity'
 import moment from 'moment'
 import { modalsActionCreators, modalsSelectors } from '../../state/modals'
 import { useInterval } from '../../tools/hooks'
@@ -17,7 +20,7 @@ import images from '../../constants/images'
 import Overlay from './Overlay'
 import { getStableRemainingLifetimeSeconds } from '../../tools/reliableTime'
 import { getPassengerPickupEta } from '../../tools/driverOffer'
-import { EBookingDriverState, EColorTypes, EStatuses, ICar, IDriver, IUser } from '../../types/types'
+import { EBookingStates, EBookingDriverState, EColorTypes, EStatuses, ICar, IDriver, IUser } from '../../types/types'
 
 const mapStateToProps = (state: IRootState) => ({
   isOpen: modalsSelectors.isVoteModalOpen(state),
@@ -44,7 +47,12 @@ const VoteModal: React.FC<IProps> = ({
   setCancelModal,
   setMessageModal,
 }) => {
-  const order = activeOrders?.find(item => item.b_id === selectedOrder)
+  const dispatch = useDispatch()
+  const expiryRead = React.useRef<string | null>(null)
+  const order = activeOrders?.find(item => sameUser(item.b_id, selectedOrder))
+  useEffect(() => {
+    if (isOpen && order && [EBookingStates.Canceled, EBookingStates.Completed].includes(order.b_state)) setVoteModal(false)
+  }, [isOpen, order?.b_state, setVoteModal])
   const [pickupEtaVersion, setPickupEtaVersion] = useState(0)
 
   const candidates = useMemo(() =>
@@ -96,16 +104,21 @@ const VoteModal: React.FC<IProps> = ({
       return
 
     const stableRemaining = getStableRemainingLifetimeSeconds(order, Date.now())
-    const newSeconds = order?.b_start_datetime ?
+    const newSeconds = stableRemaining !== null ? stableRemaining : order?.b_start_datetime ?
       ((sumSeconds || SITE_CONSTANTS.WAITING_INTERVAL) - moment().diff(order?.b_start_datetime, 'seconds')) :
-      stableRemaining !== null ? stableRemaining : sumSeconds || SITE_CONSTANTS.WAITING_INTERVAL
+      sumSeconds || SITE_CONSTANTS.WAITING_INTERVAL
     if (newSeconds <= 0 && isOpen) {
-      console.error('Seconds is less then 0')
-      setVoteModal(false)
-      setSeconds(order?.b_max_waiting || SITE_CONSTANTS.WAITING_INTERVAL)
-      setSumSeconds(order?.b_max_waiting || SITE_CONSTANTS.WAITING_INTERVAL)
+      setSeconds(0)
+      // A local countdown cannot cancel a server order or start a new search cycle.
+      const key = `${order?.b_id}:${order?.b_max_waiting}`
+      if (order?.b_id && expiryRead.current !== key) {
+        expiryRead.current = key
+        dispatch(refreshOrder(order.b_id))
+        dispatch(refreshActiveOrders())
+      }
       return
     }
+    expiryRead.current = null
     setSeconds(newSeconds)
   }, 1000)
 
@@ -113,9 +126,9 @@ const VoteModal: React.FC<IProps> = ({
     if (isOpen) {
       const stableRemaining = getStableRemainingLifetimeSeconds(order, Date.now())
       setSeconds(
-        order?.b_start_datetime ?
+        stableRemaining !== null ? stableRemaining : order?.b_start_datetime ?
           ((sumSeconds || SITE_CONSTANTS.WAITING_INTERVAL) - moment().diff(order?.b_start_datetime, 'seconds')) :
-          stableRemaining !== null ? stableRemaining : sumSeconds || SITE_CONSTANTS.WAITING_INTERVAL,
+          sumSeconds || SITE_CONSTANTS.WAITING_INTERVAL,
       )
       setSumSeconds(order?.b_max_waiting || SITE_CONSTANTS.WAITING_INTERVAL)
     }

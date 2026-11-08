@@ -25,10 +25,11 @@ import * as API from '../../API'
 import { IRootState } from '..'
 import { geoposition as geopositionSelector } from '../geolocation/selectors'
 import { user as userSelector } from '../user/selectors'
-import { getUserCars, drive as driveCar } from '../cars/actionCreators'
-import { userPrimaryCar as userPrimaryCarSelector } from '../cars/selectors'
+import { getUserCars } from '../cars/actionCreators'
+import { userDrivenCar as userDrivenCarSelector } from '../cars/selectors'
 import { setSelectedOrder } from '../clientOrder/actionCreators'
 import { closeAllModals, setMessageModal } from '../modals/actionCreators'
+import {needsOrderDetailRefresh} from '../../tools/orderDetailRefresh'
 import { getAreasBetweenPoints } from '../areas/actionCreators'
 import { ActionTypes } from './constants'
 import {
@@ -572,7 +573,7 @@ function* getActiveOrdersSaga() {
 
     const driverGeoposition = yield* select(geopositionSelector)
     const currentUser = yield* select(userSelector)
-    const currentCar = yield* select(userPrimaryCarSelector)
+    const currentCar = yield* select(userDrivenCarSelector)
 
     writeFlowEvent('DRIVER_GEOLOCATION_SNAPSHOT', {
       driverId: currentUser?.u_id ?? null,
@@ -797,7 +798,6 @@ function* getActiveOrdersSaga() {
  * всякой задержки. Ключ — водитель, чтобы другая учётка на той же странице не
  * унаследовала чужую попытку.
  */
-const readyOrdersAutoDriveAttempted: Record<string, true> = {}
 
 /**
  * Каждый выход отсюда обязан завершить цикл опроса сигналом
@@ -814,7 +814,7 @@ function* getReadyOrdersSaga() {
 
   // Машин у водителя нет. Когда основная машина появится, следующий цикл сам
   // пойдёт в API.
-  if ((yield* select(userPrimaryCarSelector)) === null) {
+  if ((yield* select(userDrivenCarSelector)) === null) {
     yield put({
       type: ActionTypes.GET_READY_ORDERS_FAIL,
       payload: { detail: 'primary_car_missing' },
@@ -822,7 +822,6 @@ function* getReadyOrdersSaga() {
     return
   }
 
-  const autoDriveKey = String(currentUserAtStart?.u_id)
 
   try {
     const response = yield* call(API.getOrders, EOrderTypes.Ready)
@@ -832,16 +831,8 @@ function* getReadyOrdersSaga() {
       responseData.code === '404' &&
       responseData.data?.detail === 'used_car_not_found'
     ) {
-      // Попытка рейса идёт в фоне: она может ждать загрузки машин, и опрос не
-      // должен стоять вместе с ней.
-      if (!readyOrdersAutoDriveAttempted[autoDriveKey]) {
-        readyOrdersAutoDriveAttempted[autoDriveKey] = true
-        yield fork(function*() {
-          const success = yield* drivePrimaryCarSaga()
-          if (success)
-            yield put({ type: ActionTypes.GET_READY_ORDERS_REQUEST })
-        })
-      }
+      // Vehicle activation is an explicit user action, never an order-poll side effect.
+      yield put(getUserCars())
       yield put({
         type: ActionTypes.GET_READY_ORDERS_FAIL,
         payload: { detail: 'used_car_not_found' },
@@ -851,7 +842,6 @@ function* getReadyOrdersSaga() {
 
     if ((response as any).code !== '200')
       throw response
-    delete readyOrdersAutoDriveAttempted[autoDriveKey]
     const orders: IOrder[] = ((response as any).data?.booking ?? []).map(updateCompletedOrderDuration)
     yield put({ type: ActionTypes.GET_READY_ORDERS_SUCCESS, payload: orders })
 
@@ -926,6 +916,13 @@ function* afterOrdersChangeSaga(prev: IOrder[], current: IOrder[]) {
   const existing =
     yield* select((state: IRootState) => moduleSelector(state).orders)
   const owner = String((yield* select(userSelector))?.u_id ?? '')
+  // A previously opened detail must not hide a new response/choice in list polling.
+  // Re-read instead of merging unversioned lifecycle data into the detail record.
+  for (const order of current) {
+    const record = existing.get(order.b_id)
+    if (!record?.mutations && needsOrderDetailRefresh(record?.value, order))
+      yield put({type:ActionTypes.GET_ORDER_REQUEST,payload:order.b_id})
+  }
   for (const order of diff)
     if (existing.has(order.b_id) || order.drivers?.some(driver => String(driver.u_id) === owner))
       yield put({ type: ActionTypes.GET_ORDER_REQUEST, payload: order.b_id, historyOwner: owner })
@@ -976,11 +973,10 @@ function isVotingStillWaitingForDriver(order: IOrder) {
   )
 }
 
-function getVotingCancelAt(order: IOrder) {
+function getVotingCancelAt(order: IOrder, now = +moment()) {
   if (!isVotingStillWaitingForDriver(order))
     return null
 
-  const now = +moment()
   const stableRemaining = getStableRemainingLifetimeSeconds(order, now)
   if (stableRemaining !== null)
     return now + Math.max(0, stableRemaining) * 1000
@@ -1041,11 +1037,11 @@ function* cancelOrdersOnNextExpireSaga(orders: IOrder[]) {
   }, Infinity) - +moment()
   if (nextCancel === Infinity)
     return null
-  yield delay(Math.max(nextCancel, 0))
+  yield delay(Math.max(nextCancel, 5000))
   return yield* cancelExpiredOrdersSaga(orders)
 }
 
-function* cancelExpiredOrdersSaga(orders: IOrder[]) {
+export function* cancelExpiredOrdersSaga(orders: IOrder[]) {
   const user = yield* select(userSelector)
   if (!user || user.u_role !== EUserRoles.Client)
     return orders
@@ -1055,7 +1051,7 @@ function* cancelExpiredOrdersSaga(orders: IOrder[]) {
   const now = +moment()
 
   for (const order of orders) {
-    const cancelAt = getVotingCancelAt(order)
+    const cancelAt = getVotingCancelAt(order, now)
     ;(
       cancelAt && cancelAt <= now ?
         ordersToCancel :
@@ -1064,39 +1060,25 @@ function* cancelExpiredOrdersSaga(orders: IOrder[]) {
   }
 
   for (const order of ordersToCancel) {
+    let current = order
     try {
-      yield* call(API.cancelDrive, order.b_id)
-      yield* showClientVotingTimeoutMessageSaga(order)
+      // Preserve the legacy expiry policy, but never cancel a freshly extended,
+      // assigned or completed order from an old client-side countdown.
+      const latest = yield* call(API.getOrder, order.b_id)
+      if (!latest) { keptOrders.push(current); continue }
+      current = latest
+      if ([EBookingStates.Canceled, EBookingStates.Completed].includes(current.b_state)) continue
+      const confirmedDeadline = getVotingCancelAt(current)
+      if (!confirmedDeadline || confirmedDeadline > +moment()) { keptOrders.push(current); continue }
+      yield* call(API.cancelDrive, current.b_id)
+      const confirmed = yield* call(API.getOrder, current.b_id)
+      if (confirmed?.b_state === EBookingStates.Canceled) yield* showClientVotingTimeoutMessageSaga(current)
+      else keptOrders.push(confirmed || current)
     } catch (error) {
+      keptOrders.push(current)
       console.error(error)
     }
   }
 
   return keptOrders
-}
-
-function* drivePrimaryCarSaga() {
-  let car = yield* select(userPrimaryCarSelector)
-  if (car === undefined)
-    yield put(getUserCars())
-  while (car === undefined) {
-    yield take()
-    car = yield* select(userPrimaryCarSelector)
-  }
-  if (car) {
-    try {
-      const response = yield* putResolve(driveCar(car))
-      if (String(response.code) === '200')
-        return true
-      yield put(setMessageModal({
-        isOpen: true,
-        status: EStatuses.Warning,
-        message: getApiErrorMessage(response, { context: 'driver-order' }),
-      }))
-      return false
-    } catch (error) {
-      console.error(error)
-    }
-  }
-  return false
 }

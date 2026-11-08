@@ -95,3 +95,20 @@ it('clears results for an empty query and distinguishes empty results from failu
   advance(10000)
   expect(search).toHaveBeenCalledTimes(2)
 })
+
+it('does not search or retry below three characters, and clears earlier suggestions immediately', async() => {
+  const result = deferred()
+  const search = jest.fn(() => result.promise)
+  for (const query of ['', 'A', 'Ag', '  Ag  ']) {
+    render({query,contextKey:'agadir:pickup',search})
+    act(() => current.retry()); advance(1000)
+    expect(current).toMatchObject({status:'idle',suggestions:[]})
+  }
+  expect(search).not.toHaveBeenCalled()
+  render({query:'Aga',contextKey:'agadir:pickup',search}); advance(350)
+  await resolveRequest(result,[{description:'Agadir'}])
+  expect(current.status).toBe('ready')
+  render({query:'Ag',contextKey:'agadir:pickup',search})
+  expect(current).toMatchObject({status:'idle',suggestions:[]})
+  advance(1000); expect(search).toHaveBeenCalledTimes(1)
+})

@@ -11,7 +11,8 @@ import {ActionTypes} from '../../state/orders/constants'
 import {EUserRoles} from '../../types/types'
 import {readHealth,subscribeReadHealth,subscribeResume} from './readHealth'
 import './connection.css'
-const words={ru:['Нет связи. Показаны последние данные поездки.','Не удалось обновить поездку. Показаны последние данные.','Обновляем данные поездки…','Повторить'],en:['Offline. Showing the last trip data.','Trip could not be refreshed. Showing the last data.','Refreshing trip data…','Retry'],fr:['Hors connexion. Dernières données du trajet.','Impossible d’actualiser le trajet. Dernières données affichées.','Actualisation du trajet…','Réessayer'],ar:['لا يوجد اتصال. تظهر آخر بيانات الرحلة.','تعذر تحديث الرحلة. تظهر آخر البيانات.','جارٍ تحديث بيانات الرحلة…','إعادة المحاولة']}
+import {serviceText} from '../serviceText'
+const retryWords={ru:'Повторить',en:'Retry',fr:'Réessayer',ar:'إعادة المحاولة'}
 export function refreshVisibleTrip(){
  const state=store.getState(),user=userSelectors.user(state)
  if(navigator.onLine===false)return
@@ -28,7 +29,9 @@ export default function ConnectionBar(){
  useEffect(()=>{const change=()=>setOnline(navigator.onLine!==false);window.addEventListener('online',change);window.addEventListener('offline',change);const unwatch=subscribeReadHealth(()=>setHealth(readHealth())),stop=subscribeResume(refreshVisibleTrip);return()=>{window.removeEventListener('online',change);window.removeEventListener('offline',change);unwatch();stop()}},[])
  const authWords={ru:'Не удалось восстановить вход. Сессия сохранена; повторите подключение.',en:'Sign-in could not be restored. Your session is saved; reconnect to retry.',fr:'Connexion non rétablie. La session est conservée ; réessayez.',ar:'تعذر استعادة تسجيل الدخول. الجلسة محفوظة؛ أعد الاتصال.'}
  const base=(language?.iso||'en').toLowerCase().split(/[-_]/)[0]
- const copy=words[(language?.iso||'en').toLowerCase().split(/[-_]/)[0] as keyof typeof words]||words.en
+ const retry=retryWords[base as keyof typeof retryWords]||retryWords.en
+ const refreshCopy={ru:{offline:'Нет связи. Данные заказов временно не обновляются.',failed:'Не удалось обновить данные заказов. На экране остаются последние полученные данные.',pending:'Обновляем данные заказов…'},en:{offline:'Offline. Order updates are paused.',failed:'Could not refresh order data. The last received data remains on screen.',pending:'Refreshing order data…'},fr:{offline:'Hors connexion. Actualisation des commandes suspendue.',failed:'Impossible d’actualiser les commandes. Les dernières données reçues restent affichées.',pending:'Actualisation des commandes…'},ar:{offline:'لا يوجد اتصال. تحديث قائمة الطلبات متوقف.',failed:'تعذر تحديث بيانات الطلبات. تبقى آخر البيانات المستلمة على الشاشة.',pending:'جارٍ تحديث قائمة الطلبات…'}}
+ const labels=serviceText(refreshCopy[base as keyof typeof refreshCopy]||refreshCopy.en,'order_read_status')
  if(!user&&!health.authRetry||online&&!health.failed&&!health.authRetry)return null
- return <aside className="ride-connection" role="status" aria-live="polite" data-online={online}><WifiOff size={18}/><span>{!user&&health.authRetry?(authWords[base as keyof typeof authWords]||authWords.en):!online?copy[0]:health.pending?copy[2]:copy[1]}</span>{online&&<button type="button" onClick={refreshVisibleTrip} disabled={health.pending}><RefreshCw size={15}/>{copy[3]}</button>}</aside>
+ return <aside className="ride-connection" role="status" aria-live="polite" data-online={online}><WifiOff size={18}/><span>{!user&&health.authRetry?(authWords[base as keyof typeof authWords]||authWords.en):!online?labels.offline:health.pending?labels.pending:labels.failed}</span>{online&&<button type="button" onClick={refreshVisibleTrip} disabled={health.pending}><RefreshCw size={15}/>{retry}</button>}</aside>
 }

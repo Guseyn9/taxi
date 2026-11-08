@@ -1,7 +1,8 @@
 import { test as setup, expect, Page, BrowserContext } from '@playwright/test'
 import fs from 'fs'
+import { saveTabSession } from './fixtures/tabSession'
 import path from 'path'
-import { IAccount, driver2Account, driverAccount, hasDriver2Account, passengerAccount } from './fixtures/accounts'
+import { apiBase, IAccount, driver2Account, driverAccount, hasDriver2Account, passengerAccount } from './fixtures/accounts'
 import { expectAppBooted, stubMapTiles } from './fixtures/appShell'
 import { DRIVER2_STORAGE, DRIVER_PAGE, DRIVER_STORAGE, PICKUP } from './fixtures/driverUi'
 import { PASSENGER_PAGE, PASSENGER_STORAGE } from './fixtures/passengerUi'
@@ -40,17 +41,28 @@ async function signIn(
 ): Promise<void> {
   await context.setGeolocation(PICKUP)
   await stubMapTiles(context)
+  const observedApi = new Set<string>()
+  const recordApi = (request:import('@playwright/test').Request) => {
+    const url=new URL(request.url())
+    const match=/^(.*\/c\/[^/]+\/api\/v1)(?:\/|$)/.exec(url.pathname)
+    if(match)observedApi.add(url.origin+match[1])
+  }
+  page.on('request',recordApi)
   await page.goto(entryPage)
 
   await expectAppBooted(page)
+  await expect.poll(()=>observedApi.size,{message:'приложение выбрало целевой API до ввода пароля'}).toBeGreaterThan(0)
+  page.off('request',recordApi)
+  expect([...observedApi], 'API формы и независимых проверок совпадают').toEqual([apiBase()])
 
-  // Вход открывается аватаром в шапке (components/Header/index.tsx).
-  await page.locator('header .avatar').first().click()
+  // The account entry lives inside the header menu.
+  await page.locator('header .burger-button').click()
+  await page.locator('.menu__account').click()
 
   const login = page.locator('input[name="login"]')
   await expect(login).toBeVisible()
   const password = page.locator('input[name="password"]')
-  const signInButton = page.getByRole('button', { name: /^sign in$/i })
+  const signInButton = page.locator('.sign-in-subform button[type="submit"]')
 
   // Кнопка включается только при чистой валидации формы
   // (`disabled={!!Object.values(errors).length}` в LoginModal/Login.tsx), а поле
@@ -77,16 +89,17 @@ async function signIn(
   // Приложение хранит токены здесь (state/user/sagas.ts) — ждём именно их,
   // а не таймер.
   await expect
-    .poll(() => page.evaluate(() => localStorage.getItem('state.user.tokens')), { timeout: 60_000 })
+    .poll(() => page.evaluate(() => sessionStorage.getItem('state.user.tokens')), { timeout: 60_000 })
     .toBeTruthy()
 
   fs.mkdirSync(path.dirname(storage), { recursive: true })
   await context.storageState({ path: storage })
+  fs.chmodSync(storage, 0o600)
+  await saveTabSession(page, storage)
 }
 
-// Вход выполняется на «своей» странице роли, поэтому и режим внешнего
-// эмулятора (driverEmulator=1), и токены сессии оказываются в storageState уже
-// к моменту сохранения — перезагружать страницу ещё раз незачем.
+// Каждая роль входит на своей странице в обычном рабочем режиме.
+// Токены сохраняются отдельно для каждой вкладки и роли.
 setup('водитель входит через форму приложения', async({ page, context }) => {
   await signIn(page, context, driverAccount(), DRIVER_PAGE, DRIVER_STORAGE)
 })

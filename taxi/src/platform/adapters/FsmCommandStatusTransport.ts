@@ -1,4 +1,5 @@
 import { BackendInteractionError } from './backendError'
+import { withHttpDeadline } from './httpDeadline'
 
 export const FSM_COMMAND_EXECUTION_STATUSES = {
   Pending: 'PENDING',
@@ -63,20 +64,26 @@ export class FsmCommandStatusTransport implements CommandStatusTransport {
     this.fetchRequest = dependencies.fetch ?? fetch.bind(globalThis)
   }
 
-  async getStatus(instanceId: number): Promise<FsmCommandStatus> {
+  getStatus(instanceId: number): Promise<FsmCommandStatus> {
+    return withHttpDeadline(signal => this.getStatusBeforeDeadline(instanceId, signal), 10000, 'FSM_COMMAND_STATUS_TIMEOUT')
+  }
+
+  private async getStatusBeforeDeadline(instanceId: number, signal?: AbortSignal): Promise<FsmCommandStatus> {
     if (!Number.isInteger(instanceId) || instanceId <= 0)
       throw new Error('FSM command instanceId must be a positive integer')
 
     const response = await this.fetchRequest(
       `${trimTrailingSlash(this.config.apiUrl)}/api/commands/${instanceId}`,
-      { method: 'GET', headers: this.headers() },
+      { method: 'GET', headers: this.headers(), signal },
     )
     const details = await readResponseDetails(response)
     if (!response.ok) {
+      const retryHeader = response.headers?.get?.('Retry-After')
+      const retryAfterMs = retryHeader ? (/^\d+(?:\.\d+)?$/.test(retryHeader) ? Number(retryHeader) * 1000 : Date.parse(retryHeader) - Date.now()) : 0
       throw new BackendInteractionError(
         `FSM_COMMAND_STATUS_HTTP_${response.status}`,
         getServerErrorMessage(details, `FSM Command Status failed with HTTP ${response.status}`),
-        details,
+        retryAfterMs > 0 && Number.isFinite(retryAfterMs) ? { response: details, retryAfterMs } : details,
       )
     }
 

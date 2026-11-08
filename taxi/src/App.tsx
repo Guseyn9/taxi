@@ -1,10 +1,14 @@
 import ConnectionBar from './design/reliability/ConnectionBar'
 import React, { useEffect } from 'react'
+import { notifyNativeStartup } from './tools/nativeStartup'
+import { recordPlatformProvider } from './diagnostics/platformProvider'
 import { applyUiDocumentLanguage } from './design/ui-language'
 import './design/rtl.css'
 import { subscribeSessionRevocation } from './security/sessionTokens'
 import { ActionTypes as UserActionTypes } from './state/user/constants'
 import { clearOrders } from './state/orders/actionCreators'
+import { refreshOrder, refreshActiveOrders, refreshReadyOrders } from './state/orders/actionCreators'
+import {subscribeOrderWake} from './tools/orderWake'
 import { connect, ConnectedProps } from 'react-redux'
 import { Helmet } from 'react-helmet-async'
 import SITE_CONSTANTS from './siteConstants'
@@ -21,6 +25,7 @@ import { backendGateway } from './platform/adapters/LegacyBackendGateway'
 import { createConfiguredFsmOrderSnapshotProvider } from './platform/adapters/FsmOrderSnapshotTransport'
 import { createConfiguredFsmDriverSnapshotProvider } from './platform/adapters/FsmDriverSnapshotTransport'
 import { platformInterface } from './platform/platform-interface'
+import { driverMapGateway, DRIVER_MAP_EVENTS } from './platform/adapters/DriverMapGateway'
 import './App.scss'
 
 const legacySnapshotProvider = new LegacyReduxSnapshotProvider(store)
@@ -31,6 +36,7 @@ const mapStateToProps = (state: IRootState) => ({
   configStatus: configSelectors.status(state),
   language: configSelectors.language(state),
   user: userSelectors.user(state),
+  tokens: userSelectors.tokens(state),
 })
 
 const mapDispatchToProps = {
@@ -46,20 +52,39 @@ const App: React.FC<IProps> = ({
   configStatus,
   language,
   user,
+  tokens,
   initUser,
 }) => {
   useEffect(() => { applyUiDocumentLanguage(language?.iso, document.documentElement) }, [language?.iso])
+  useEffect(() => driverMapGateway.subscribe(event => {
+    if (event.type !== DRIVER_MAP_EVENTS.RecoveryChecked) return
+    const payload = event.payload as { orderId: string }
+    store.dispatch(refreshOrder(payload.orderId))
+    store.dispatch(refreshActiveOrders())
+    store.dispatch(refreshReadyOrders())
+    // Query the selected provider as well: FSM views do not read legacy Redux.
+    void platformInterface.runtime.refresh()
+  }), [])
+  useEffect(() => {
+    driverMapGateway.setRecoveryIdentity(user?.u_role === EUserRoles.Driver ? user.u_id : null)
+  }, [user?.u_id, user?.u_role, tokens?.token, tokens?.u_hash])
+  useEffect(() => {
+    if (!user?.u_id) return
+    return subscribeOrderWake(() => {
+      store.dispatch(refreshActiveOrders())
+      if (user.u_role === EUserRoles.Driver) store.dispatch(refreshReadyOrders())
+      store.getState().orders.orders.forEach((record, id) => {
+        if (record.listeners > 0) store.dispatch(refreshOrder(id))
+      })
+    })
+  }, [user?.u_id,user?.u_role])
   useEffect(() => subscribeSessionRevocation(() => {
-    store.dispatch({ type: UserActionTypes.LOGOUT_START })
+    store.dispatch({ type: UserActionTypes.LOGOUT_START, payload: { externalRevocation: true } })
     store.dispatch(clearOrders())
     store.dispatch({ type: UserActionTypes.LOGOUT_SUCCESS })
   }), [])
 
-  if ((window as any).ReactNativeWebView) {
-    (window as any).ReactNativeWebView.postMessage(
-      JSON.stringify({ type: 'SYSTEM', message: 'START' }),
-    )
-  }
+  useEffect(() => { notifyNativeStartup((window as any).ReactNativeWebView) }, [])
 
   useEffect(() => {
     initUser()
@@ -75,6 +100,7 @@ const App: React.FC<IProps> = ({
     const driverSnapshotProvider = user?.u_role === EUserRoles.Driver ?
       createConfiguredFsmDriverSnapshotProvider(user.u_id) :
       null
+    recordPlatformProvider(driverSnapshotProvider ? 'fsm-driver' : serverOrderSnapshotProvider ? 'fsm-order' : 'legacy-redux')
     platformInterface.snapshotProvider
       .setProvider(
         driverSnapshotProvider ?? serverOrderSnapshotProvider ?? legacySnapshotProvider,

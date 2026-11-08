@@ -1,0 +1,14 @@
+[
+  {
+    "pass": "cold",
+    "metrics": "Источник: network\nУзлов: 69892\nВ worker: 155.8 ms\nJSON: 16.3 ms\nПостроение: 74.8 ms\nПодключение в UI: 0.2 ms\nКеш сохранён: true\n",
+    "graphRequests": 1,
+    "errors": []
+  },
+  {
+    "pass": "warm-reload",
+    "metrics": "Источник: indexeddb\nУзлов: 69892\nВ worker: 6.6 ms\nJSON: 0.0 ms\nПостроение: 0.0 ms\nПодключение в UI: 0.0 ms\nКеш сохранён: true\n",
+    "graphRequests": 1,
+    "errors": []
+  }
+]

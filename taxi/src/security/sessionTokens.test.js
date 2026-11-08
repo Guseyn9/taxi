@@ -1,4 +1,4 @@
-import {loadSessionTokens,saveSessionTokens,clearSessionTokens} from './sessionTokens'
+import {loadSessionTokens,saveSessionTokens,clearSessionTokens,getSessionRecoveryId} from './sessionTokens'
 beforeEach(()=>{clearSessionTokens();localStorage.clear();sessionStorage.clear()})
 test('migrates legacy credentials once and retains reload auth only in the current tab session',()=>{
  localStorage.setItem('state.user.tokens',JSON.stringify({token:'test-token',u_hash:'test-hash'}))
@@ -27,4 +27,29 @@ test('other tabs receive logout revocation while unrelated storage changes do no
  window.dispatchEvent(new StorageEvent('storage',{key:'unrelated'}));expect(listener).not.toHaveBeenCalled()
  window.dispatchEvent(new StorageEvent('storage',{key:'taxi.auth.revocation',newValue:'changed'}));expect(listener).toHaveBeenCalledTimes(1)
  expect(loadSessionTokens()).toBeNull();stop()
+})
+test('recovery identity survives a module reload but rotates with credentials and logout',()=>{
+ saveSessionTokens({token:'first',u_hash:'first-hash'});const first=getSessionRecoveryId()
+ expect(first).toBeTruthy();expect(getSessionRecoveryId()).toBe(first)
+ let reloaded
+ jest.isolateModules(()=>{reloaded=require('./sessionTokens');expect(reloaded.loadSessionTokens()).toEqual({token:'first',u_hash:'first-hash'});expect(reloaded.getSessionRecoveryId()).toBe(first)})
+ saveSessionTokens({token:'second',u_hash:'second-hash'});expect(getSessionRecoveryId()).not.toBe(first)
+ clearSessionTokens();expect(getSessionRecoveryId()).toBeNull()
+})
+test('reading an initialized recovery identity does not write storage during UI rendering',()=>{
+ saveSessionTokens({token:'current',u_hash:'current-hash'});const first=getSessionRecoveryId()
+ const write=jest.spyOn(Storage.prototype,'setItem')
+ try{expect(getSessionRecoveryId()).toBe(first);expect(write).not.toHaveBeenCalled()}finally{write.mockRestore()}
+})
+test('quota errors must not sign back into an old account or reuse its recovery identity',()=>{
+ saveSessionTokens({token:'old',u_hash:'old-hash'});const old=getSessionRecoveryId()
+ const write=jest.spyOn(Storage.prototype,'setItem').mockImplementation(()=>{throw Error('quota')})
+ try{saveSessionTokens({token:'new',u_hash:'new-hash'});expect(loadSessionTokens()).toEqual({token:'new',u_hash:'new-hash'});expect(getSessionRecoveryId()).not.toBe(old)}finally{write.mockRestore()}
+})
+test('a valid new in-memory login survives an undeletable stale storage record after revocation',()=>{
+ saveSessionTokens({token:'old',u_hash:'old-hash'})
+ localStorage.setItem('taxi.auth.revocation','new-generation')
+ const write=jest.spyOn(Storage.prototype,'setItem').mockImplementation(()=>{throw Error('blocked')})
+ const remove=jest.spyOn(Storage.prototype,'removeItem').mockImplementation(()=>{throw Error('blocked')})
+ try{saveSessionTokens({token:'new',u_hash:'new-hash'});expect(loadSessionTokens()).toEqual({token:'new',u_hash:'new-hash'})}finally{write.mockRestore();remove.mockRestore()}
 })
