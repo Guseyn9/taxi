@@ -128,8 +128,8 @@
     },
     "src/tools/apiMessages.ts": {
       "baselineSha256": "2af42129f123187e0804c5658c7fa1a26caf100a60a44300f354a462baa6158e",
-      "currentSha256": "33d0d57f575e8da1ba695c064f6f275a1e493b3a3f6421f08d2943e909df57c5",
-      "reason": "Retain API diagnostics policy and map pending-command/session-change errors to localized, actionable user text. FSM integration 2026-11-08: Present pending/quarantine and authorization errors using existing localized UI messages. Runtime rollout/auth follow-up: Explain pre-write policy failures and repeat sign-in using localized messages; no remote body shown.",
+      "currentSha256": "6958f16344efe1b164cf2799d771a1e297cd0e60acc6dc416b7af8d35afe1762",
+      "reason": "Retain API diagnostics policy and map pending-command/session-change errors to localized, actionable user text. FSM integration 2026-11-08: Present pending/quarantine and authorization errors using existing localized UI messages. Runtime rollout/auth follow-up: Explain pre-write policy failures and repeat sign-in using localized messages; no remote body shown. Require new login only for HTTP401/WS4401 or the dedicated CORE_AUTHENTICATION_REQUIRED code; preserve valid sessions on entity permission failures.",
       "evidence": [
         "src/tools/apiMessages.test.js",
         "src/platform/adapters/__tests__/fsmSessionIntegration.test.js",
@@ -281,8 +281,8 @@
     },
     "src/platform/adapters/FsmCommandStatusTransport.ts": {
       "baselineSha256": "25240dbb49206fe5a0fa4dbd3d743387abef2c6d30b79c2905b43941c761bd00",
-      "currentSha256": "41b47de4bc3b57ae23b8ed293636a90257a920c9a9fce8634b0b4d79f593e787",
-      "reason": "Bound HTTP reads and preserve Retry-After for transient status failures. FSM integration 2026-11-08: Use the current session pair on HTTP and first WebSocket message, Core-id routes and verified snapshot projection; retain deadline, revision and receipt behavior. No shared browser secret. Runtime rollout/auth follow-up: Track the request-time pair for HTTP/WS authentication refusal and test disabled-operation recovery; no mutation fallback after dispatch.",
+      "currentSha256": "822c7909388da62f3cd035f8bba947a883ff20224e5731a0d8b3da67038f6a7e",
+      "reason": "Bound HTTP reads and preserve Retry-After for transient status failures. FSM integration 2026-11-08: Use the current session pair on HTTP and first WebSocket message, Core-id routes and verified snapshot projection; retain deadline, revision and receipt behavior. No shared browser secret. Runtime rollout/auth follow-up: Track the request-time pair for HTTP/WS authentication refusal and test disabled-operation recovery; no mutation fallback after dispatch. Require new login only for HTTP401/WS4401 or the dedicated CORE_AUTHENTICATION_REQUIRED code; preserve valid sessions on entity permission failures.",
       "evidence": [
         "src/platform/adapters/__tests__/FsmCommandStatusTransport.test.js",
         "src/platform/adapters/__tests__/httpDeadline.test.js",

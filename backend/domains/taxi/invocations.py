@@ -123,7 +123,13 @@ class IbronevikOutboxHandler:
     def __call__(self, event):
         try:
             credentials, private_payload = self.cipher.decrypt_bundle(event.credentials_encrypted)
-            uid, _ = self.client.authorize(credentials)
+            try:
+                uid, _ = self.client.authorize(credentials)
+            except AuthenticationError:
+                # A permission rejection or expired encrypted stash is not
+                # evidence that the user's current Core login was revoked.
+                reason = 'CORE_OUTCOME_UNKNOWN' if event.write_attempted is True else 'CORE_AUTHENTICATION_REQUIRED'
+                raise PermanentDeliveryError(reason) from None
             if uid != event.payload["userId"]:
                 raise PermanentDeliveryError("AUTHORIZATION_FAILED")
             request = event.payload

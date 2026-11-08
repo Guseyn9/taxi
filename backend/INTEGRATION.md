@@ -29,13 +29,13 @@
 
 Локально: MySQL 8, Redis 7, одноразовый PHP Core и синтетические пользователи/заказы. Общий gruzvill tenant и production не изменялись.
 
-- Unit discovery: 190 тестов, 160 passed, 30 skipped по явным opt-in условиям.
-- Отдельный настоящий MySQL / Core HTTP mock: 19 passed. Phase A без смены state, все 10 пользовательских операций, HTTP200 refusal, unknown write без повтора, restart, конкурентные дубли, changed payload включая race-loser, binding validation, выбор водителя, encrypted PIN и receipt после отмены.
-- Runtime/re-auth regression: hot-file policy, malformed/missing config, отсутствие POST при отказе чтения, recovery после отключения, защита от смены маршрута внутри dispatch, HTTP401/WS4401 и late-refusal после нового входа. FAILED/unknown и divergence остаются блокирующими до подтверждённого sync=idle для того же заказа; исходный write не повторяется.
+- Unit discovery: 192 теста, 161 passed, 31 skipped по явным opt-in условиям.
+- Отдельный настоящий MySQL / Core HTTP mock: 20 passed. Phase A без смены state, все 10 пользовательских операций, HTTP200 refusal, unknown write без повтора, restart, конкурентные дубли, changed payload включая race-loser, binding validation, выбор водителя, encrypted PIN и receipt после отмены.
+- Runtime/re-auth regression: hot-file policy, malformed/missing config, отсутствие POST при отказе чтения, recovery после отключения, защита от смены маршрута внутри dispatch, HTTP401/WS4401 и late-refusal после нового входа. Отказ прав не вызывает logout; Core session refusal имеет отдельный machine code CORE_AUTHENTICATION_REQUIRED. Service 5xx/429 внутри HTTP200 не считается неверной сессией. FAILED/unknown и divergence остаются блокирующими до подтверждённого sync=idle для того же заказа; исходный write не повторяется.
 - Legacy MySQL/Redis: 9 passed. Исправлена UTC-ошибка retry-планирования; timestamp fixtures приведены к UTC.
 - Настоящий PHP Core: 2 test methods / 5 сценариев — DIRECT, VOTE, OFFER select→arrive→PIN/start→finish, отмена водителем и пассажиром. Отдельная opt-in проверка, не новая CI job.
 - Браузер frontend→FSM API→worker/outbox→PHP: create→vote→cancel, Core id 1922, local id 61, `order_cancelled`, sync idle; WS first-message auth. Локальный runtime, не публичный сервер.
-- Frontend: 237 suites / 1353 tests passed; TypeScript, ESLint без ошибок; граница 71 бизнес-обработчика — без непросмотренных отличий. Integration build запускается отдельно от стандартной сборки; результат отражён в PR/CI.
+- Frontend: 237 suites / 1354 tests passed; TypeScript, ESLint без ошибок; граница 71 бизнес-обработчика — без непросмотренных отличий. Integration build запускается отдельно от стандартной сборки; результат отражён в PR/CI.
 
 Unit discovery запускается с `FSM_EXTERNAL_SYNC_ENABLED=0`: старые fake sessions не эмулируют sync tables. Production с таким флагом запрещён. CI независимо поднимает чистый MySQL, применяет миграции дважды и проверяет Core-first механизм.
 

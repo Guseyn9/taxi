@@ -92,7 +92,7 @@ export class FsmCommandStatusTransport implements CommandStatusTransport {
     }
 
     const result = validateCommandStatus(details, instanceId)
-    if (result.status === 'FAILED' && result.errorCode === 'AUTHORIZATION_FAILED') handleFsmAuthenticationFailure(401, sentHeaders)
+    if (result.status === 'FAILED' && result.errorCode === 'CORE_AUTHENTICATION_REQUIRED') handleFsmAuthenticationFailure(401, sentHeaders)
     return result
   }
 

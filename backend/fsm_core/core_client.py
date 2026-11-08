@@ -91,6 +91,9 @@ class CoreClient:
             result = response.json()
         except (httpx.HTTPError, ValueError):
             raise CoreUnavailable("Core response unavailable or invalid") from None
+        business_code = str(result.get('code', '')) if isinstance(result, dict) else ''
+        if business_code.isdigit() and (500 <= int(business_code) < 600 or int(business_code) == 429):
+            raise CoreUnavailable("Core temporarily unavailable")
         if not isinstance(result, dict) or str(result.get("code")) != "200" or result.get("status") != "success":
             # Legacy API often returns business/auth failures with HTTP 200/404.
             message = str(result.get("message", "")).lower() if isinstance(result, dict) else ""

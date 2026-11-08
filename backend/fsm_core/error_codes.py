@@ -14,6 +14,7 @@ Public errorCode vocabulary (part of the API contract, documented in README):
 * ``INVALID_PARAMETERS`` — envelope validation, payload validation, intent
   resolution failure.
 * ``AUTHORIZATION_FAILED`` — principal lacks access to the entity.
+* ``CORE_AUTHENTICATION_REQUIRED`` — Core refused the initiator session before a write.
 * ``INTERNAL_ERROR`` — anything else. Acts as the catch-all.
 """
 
@@ -49,6 +50,7 @@ INVALID_TRANSITION = "INVALID_TRANSITION"
 UNKNOWN_ENTITY = "UNKNOWN_ENTITY"
 INVALID_PARAMETERS = "INVALID_PARAMETERS"
 AUTHORIZATION_FAILED = "AUTHORIZATION_FAILED"
+CORE_AUTHENTICATION_REQUIRED = "CORE_AUTHENTICATION_REQUIRED"
 INTERNAL_ERROR = "INTERNAL_ERROR"
 ENTITY_SYNC_IN_PROGRESS = "ENTITY_SYNC_IN_PROGRESS"
 
@@ -59,6 +61,7 @@ KNOWN_ERROR_CODES = frozenset(
         UNKNOWN_ENTITY,
         INVALID_PARAMETERS,
         AUTHORIZATION_FAILED,
+        CORE_AUTHENTICATION_REQUIRED,
         INTERNAL_ERROR,
         ENTITY_SYNC_IN_PROGRESS,
         "CORE_REJECTED", "CORE_OUTCOME_UNKNOWN", "CORE_FSM_DIVERGENCE",

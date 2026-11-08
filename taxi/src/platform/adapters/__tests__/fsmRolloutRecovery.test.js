@@ -96,7 +96,7 @@ it.each(['order','driver'])('wires actual %s WebSocket 4401 to re-authentication
  try{socket.onopen();socket.onclose({code:4401});expect(loadSessionTokens()).toBeNull()}finally{stop()}
 })
 it('requires sign-in for a definitive command authentication failure',async()=>{
- const request=jest.fn().mockResolvedValue(response({instanceId:7,status:'FAILED',errorCode:'AUTHORIZATION_FAILED'}))
+ const request=jest.fn().mockResolvedValue(response({instanceId:7,status:'FAILED',errorCode:'CORE_AUTHENTICATION_REQUIRED'}))
  await new FsmCommandStatusTransport({apiUrl,useSessionAuth:true},{fetch:request}).getStatus(7)
  expect(loadSessionTokens()).toBeNull()
 })
@@ -120,4 +120,10 @@ it('does not clear an unknown receipt when the idle snapshot belongs to another 
  const first=jest.fn().mockResolvedValueOnce(response(accepted,202)).mockResolvedValueOnce(response({instanceId:7,status:'FAILED',errorCode:'CORE_FSM_DIVERGENCE'})).mockResolvedValueOnce(response({orderId:99,coreOrderId:901,sync:{status:'idle'}}))
  await expect(new FsmPassengerBridge(apiUrl,first).command('901','cancel_requested')).rejects.toMatchObject({code:'CORE_OUTCOME_UNKNOWN'})
  expect(sessionStorage.getItem('taxi.passenger.fsm-pending.v1')).toContain('instanceId')
+})
+
+it('preserves a valid login for a FAILED command denied by the entity permission policy',async()=>{
+ const request=jest.fn().mockResolvedValue(response({instanceId:7,status:'FAILED',errorCode:'AUTHORIZATION_FAILED',errorMessage:'Permission denied'}))
+ await new FsmCommandStatusTransport({apiUrl,useSessionAuth:true},{fetch:request}).getStatus(7)
+ expect(loadSessionTokens().token).toBe('private-token')
 })

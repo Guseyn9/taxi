@@ -52,8 +52,9 @@ class CoreFirstMySQLTests(unittest.TestCase):
         credentials = UserCredentials('secret-user-token', 'secret-user-hash')
         self.driver = Principal(205, ('driver',), credentials=credentials)
         self.client = Principal(100, ('client',), credentials=credentials)
-        self.writes, self.fail, self.timeout = [], False, False
+        self.writes, self.core_refused, self.timeout = [], False, False
         self.auth_unavailable = False
+        self.auth_refused = False
         self.read_state, self.driver_state, self.auth_id = '1', '3', 205
         self.http = CoreClient('https://core.example.test/api', transport=httpx.MockTransport(self.remote))
         handlers = OutboxHandlerRegistry()
@@ -66,6 +67,8 @@ class CoreFirstMySQLTests(unittest.TestCase):
         self.assertIn('name="token"', body)
         self.assertIn('secret-user-token', body)
         if request.url.path.endswith('/user/authorized'):
+            if self.auth_refused:
+                return httpx.Response(200,json={'status':'error','code':'401'})
             if self.auth_unavailable:
                 return httpx.Response(503,json={'status':'error'})
             return httpx.Response(200, json={'code':'200','status':'success','auth_user':{'u_id':self.auth_id,'u_role':2 if self.auth_id==205 else 1}})
@@ -76,7 +79,7 @@ class CoreFirstMySQLTests(unittest.TestCase):
             self.writes.append(body)
             if self.timeout:
                 raise httpx.ReadTimeout('untrusted secret-user-token error', request=request)
-            if self.fail:
+            if self.core_refused:
                 return httpx.Response(200, json={'code':'404','status':'error','message':'business rejection secret-user-token'})
             if self.auth_id == 205 and 'set_cancel_state' in body:
                 self.driver_state = '2'
@@ -130,7 +133,7 @@ class CoreFirstMySQLTests(unittest.TestCase):
         self.assertEqual(len(self.writes),1)
 
     def test_http_200_business_failure_preserves_state(self):
-        oid=self.order(); instance=self.phase_a(oid); self.fail=True
+        oid=self.order(); instance=self.phase_a(oid); self.core_refused=True
         self.assertEqual(self.dispatcher.run_once(self.Session).failed,1)
         self.assertEqual(self.scalar('SELECT status FROM orders'),'order_driver_assigned')
         self.assertEqual(self.status(instance)['status'],'FAILED')
@@ -264,6 +267,18 @@ class CoreFirstMySQLTests(unittest.TestCase):
             with self.assertRaises(CommandValidationError):
                 self.accept(oid,key=key,payload={'reason':'two'})
         self.assertEqual(self.scalar('SELECT COUNT(*) FROM server_fsm_instances'),1)
+
+    def test_core_auth_refusal_is_distinct_from_a_permission_failure(self):
+        oid=self.order()
+        instance=self.phase_a(oid)
+        self.auth_refused=True
+        self.dispatcher.run_once(self.Session)
+        result=self.status(instance)
+        self.assertEqual(result['errorCode'],'CORE_AUTHENTICATION_REQUIRED')
+        self.assertEqual(result['errorMessage'],'CORE_AUTHENTICATION_REQUIRED')
+        self.assertEqual(len(self.writes),0)
+        self.assertEqual(self.scalar('SELECT status FROM orders'),'order_driver_assigned')
+        self.assertEqual(self.scalar('SELECT COUNT(*) FROM fsm_sync_mismatches'),0)
 
     def test_missing_core_binding_fails_startup(self):
         from fsm_core.registry import RegistryValidationError

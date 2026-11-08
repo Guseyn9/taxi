@@ -53,6 +53,13 @@ class CoreAuthenticationTests(unittest.TestCase):
         self.http_status=503
         with self.assertRaises(AuthenticationUnavailable): self.provider.authenticate(self.pair)
 
+    def test_http_200_service_error_envelope_is_not_an_auth_refusal(self):
+        for code in ['500', '503', '429']:
+            self.response={'code':code,'status':'error','message':'private-token service error'}
+            with self.subTest(code=code), self.assertRaises(AuthenticationUnavailable) as result:
+                self.provider.authenticate(self.pair)
+            self.assertNotIn('private-token', str(result.exception))
+
     def test_untrusted_role_and_missing_identity_are_rejected(self):
         for user in [None,{}, {'u_id':205,'u_role':999}, {'u_id':205,'u_role':2,'u_ban':1}, {'u_id':205,'u_role':2,'u_active':0}]:
             self.response={'code':200,'status':'success','auth_user':user}
@@ -76,7 +83,7 @@ class CoreAuthenticationTests(unittest.TestCase):
             with self.assertRaises(CommandValidationError): parse_command_envelope({'intent':'ride_started','commandId':'one','payload':payload})
 
     def test_business_failure_even_with_http_200_and_safe_error(self):
-        self.response={'code':'500','status':'error','message':'private-token SQL stack'}
+        self.response={'code':'404','status':'error','message':'private-token booking unavailable'}
         with self.assertRaises(CoreRefused) as ctx: self.client.post('/drive/get/901',self.pair,{'action':'set_cancel_state'})
         self.assertEqual(str(ctx.exception),'CORE_REJECTED')
 

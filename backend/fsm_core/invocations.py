@@ -89,8 +89,8 @@ def finalize_invocation(session, event, response, *, sent, error=None):
     elif error in {"CORE_OUTCOME_UNKNOWN", "CORE_PROCESSING_LEASE_EXPIRED"}:
         record_mismatch(session, event, error)
         code = "CORE_OUTCOME_UNKNOWN"
-    elif error == "AUTHORIZATION_FAILED":
-        code = "AUTHORIZATION_FAILED"
+    elif error in {"AUTHORIZATION_FAILED", "CORE_AUTHENTICATION_REQUIRED"}:
+        code = error
     session.execute(text("DELETE FROM fsm_entity_locks WHERE outbox_event_id=:id"), {"id": event.id})
     session.execute(text("DELETE FROM fsm_command_credentials WHERE instance_id=:id"), {"id": target})
     update_command_status(session, target, "COMPLETED" if sent else "FAILED", error_code=None if sent else code,

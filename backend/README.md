@@ -59,6 +59,8 @@ WS   /api/realtime/ws/taxi/core-order/{coreId}
 
 WebSocket: первым сообщением `{"type":"auth","token":"…","u_hash":"…"}` в течение 10 секунд; credentials не помещаются в URL. Остальные generic snapshot/event/command endpoints сохранены для совместимости и используют локальный FSM id, а не Core id.
 
+`CORE_AUTHENTICATION_REQUIRED` в FAILED означает, что Core отклонил учётную пару до записи; нужен новый вход. `AUTHORIZATION_FAILED` означает отказ прав/контекста и не должен отзывать действующую сессию. Ошибки service 5xx/429, даже внутри HTTP200, остаются временными.
+
 `202` означает принятие. Результат проверяется по receipt до `COMPLETED`/`FAILED`; `snapshot.sync.status=pending` блокирует действия. `error` требует сверки. `/health` — liveness, не доказательство доступности Core/Redis или успешного заказа.
 
 Продакшен этой веткой не изменён. Инструкция готовит отдельный backend deployment; target acceptance выполняется после настройки реального хостинга и tenant.
