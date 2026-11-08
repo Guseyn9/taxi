@@ -156,7 +156,7 @@ const App: React.FC<IProps> = ({
     <React.Fragment>
       <Theme>
         {getMetaTags()}
-        <ConnectionBar/>
+        <ConnectionBar authOnly/>
         <React.Fragment key={`routes-${language?.id || ''}-${language?.iso || ''}`}>
           <AppRoutes />
           <ModalHost languageIso={language?.iso} />

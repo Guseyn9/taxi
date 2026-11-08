@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "reviewDate": "2026-11-07",
+  "reviewDate": "2026-11-08",
   "baselineCommit": "1d4065058c90e9ad39dfb301bc3affc3da8847a5",
   "scope": "Local frontend integration only; not production backend or FSM acceptance",
   "paths": {
@@ -44,12 +44,13 @@
     },
     "src/App.tsx": {
       "baselineSha256": "1a2355ee3a7327b8cfac0ccd3eb889d3a88f89a34c7d8b626c14b40e566931d6",
-      "currentSha256": "73b014d841fd7a482caba9fcf51452a4ae54a7553a83ab85fb91a307c93775b5",
-      "reason": "Run native startup in effect, refresh on lifecycle recovery, bind providers to current session, avoid revocation echo.",
+      "currentSha256": "e7f34927295de2450146863c0d9d31ed3b3362184194195ecb7e1561617bf730",
+      "reason": "Run native startup in effect, refresh on lifecycle recovery, bind providers to current session, avoid revocation echo. R19: Logged-in read-health notice moves into Layout flow; App renders only the compact sign-in recovery notice. No request, auth or order mutation changes.",
       "evidence": [
         "src/tools/nativeStartup.test.js",
         "src/security/sessionIsolation.test.js",
-        "src/tools/orderWake.test.js"
+        "src/tools/orderWake.test.js",
+        "src/design/reliability/ConnectionBar.test.jsx"
       ]
     },
     "src/state/orders/actionCreators.ts": {

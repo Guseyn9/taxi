@@ -7,6 +7,7 @@ import { userSelectors } from '../../state/user'
 import { driverMapGateway } from '../../platform/adapters/DriverMapGateway'
 import DriverCommandRecoveryNotice from '../DriverCommandRecoveryNotice'
 import Header from '../Header'
+import ConnectionBar from '../../design/reliability/ConnectionBar'
 import './styles.scss'
 
 const mapStateToProps = (state: IRootState) => ({
@@ -28,6 +29,7 @@ function Layout({
   return (
     <main className="layout" data-config-status={EStatuses[configStatus]}>
       <Header key={`${configStatus}-${language?.id || ''}-${language?.iso || ''}`} className="layout__header" />
+      <ConnectionBar />
       <DriverCommandRecoveryNotice controller={driverMapGateway.recovery} userId={user?.u_role===EUserRoles.Driver?user.u_id:undefined} iso={language?.iso}/>
       <div className="layout__content">{children}</div>
     </main>
