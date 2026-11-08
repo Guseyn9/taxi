@@ -1,0 +1,73 @@
+name: FSM backend
+on:
+  pull_request:
+    paths: ['backend/**', '.github/workflows/fsm-backend.yml']
+  push:
+    branches: [main]
+    paths: ['backend/**', '.github/workflows/fsm-backend.yml']
+permissions:
+  contents: read
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: local-fsm-only
+          MYSQL_DATABASE: taxi_fsm_test
+        ports: ['3306:3306']
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -plocal-fsm-only"
+          --health-interval=5s --health-timeout=5s --health-retries=30
+    defaults:
+      run:
+        working-directory: backend
+    env:
+      DB_HOST: 127.0.0.1
+      DB_PORT: '3306'
+      DB_NAME: taxi_fsm_test
+      DB_USER: root
+      DB_PASSWORD: local-fsm-only
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+      - run: pip install -r requirements.txt
+      - name: Unit, authentication and WebSocket regression tests
+        run: python -m unittest discover -s tests -q
+        env:
+          FSM_EXTERNAL_SYNC_ENABLED: '0'
+      - name: Clean MySQL schema and migration replay
+        run: |
+          python -m tools.migrate
+          python -m tools.migrate
+      - name: Core-first transactions, crash recovery and concurrency
+        run: python -m unittest discover -s tests -p test_core_first_mysql.py -v
+        env:
+          FSM_SYNC_TEST_MYSQL_URL: mysql+mysqlconnector://root:local-fsm-only@127.0.0.1:3306/taxi_fsm_test
+  frontend-profile:
+    name: FSM frontend build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: taxi
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: taxi/package.json
+          cache: npm
+          cache-dependency-path: taxi/package-lock.json
+      - run: npm ci
+      - name: Build opt-in integration without a live backend
+        run: node tools/build-fsm.cjs
+        env:
+          CI: 'true'
+          REACT_APP_FSM_API_URL: https://fsm.example.invalid
+          REACT_APP_FSM_PASSENGER_ENABLED: 'true'

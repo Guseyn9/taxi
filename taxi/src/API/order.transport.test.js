@@ -2,6 +2,7 @@ import axios from 'axios'
 import {postDrive,confirmDrive,getOrders,updateOrderCustomerPrice,takeOrder,sendOrderOffer,participateVotingOrder,cancelDrive,setWaitingTime,chooseCandidate,releaseCandidateChoice,confirmVotingCode,cancelVotingParticipation,setOrderRating} from './order'
 import {getUserCar} from './car'
 import {EOrderTypes} from '../types/types'
+import {configuredFsmPassengerBridge,fsmPassengerEnabled} from '../platform/adapters/FsmPassengerBridge'
 let mockUser={u_id:'client-1',u_role:1}
 jest.mock('axios',()=>({__esModule:true,default:{post:jest.fn()}}))
 jest.mock('./httpPolicy',()=>({}))
@@ -15,12 +16,31 @@ jest.mock('./car',()=>({getUserCar:jest.fn()}))
 jest.mock('../tools/driverOffer',()=>({setPassengerConfirmedChoice:jest.fn()}))
 jest.mock('../tools/emulatorMode',()=>({isAnyBrowserEmulatorOrder:()=>false,isBrowserEmulatorRunning:()=>false,saveBrowserEmulatorOrderId:jest.fn()}))
 jest.mock('../tools/orderInteractionLog',()=>({recordOrderInteraction:jest.fn()}))
+jest.mock('../platform/adapters/FsmPassengerBridge',()=>({fsmPassengerEnabled:jest.fn(()=>false),configuredFsmPassengerBridge:jest.fn()}))
 const success=(data={})=>({data:{code:'200',status:'success',data}})
 const read=(confirmed,id='42')=>success({booking:{[id]:{b_id:id,b_confirm_state:confirmed?1:0,b_state:1,b_voting:1}}})
 const error={code:'404',status:'error',message:'wrong b_options keys'}
 const formAt=i=>axios.post.mock.calls[i][1]
 const actions=()=>axios.post.mock.calls.map(([,form])=>form.get('action'))
-beforeEach(()=>{localStorage.clear();sessionStorage.clear();jest.clearAllMocks();mockUser={u_id:'client-1',u_role:1};getUserCar.mockResolvedValue({c_id:'car-7',registration_plate:'1234'})})
+beforeEach(()=>{localStorage.clear();sessionStorage.clear();jest.clearAllMocks();fsmPassengerEnabled.mockReturnValue(false);mockUser={u_id:'client-1',u_role:1};getUserCar.mockResolvedValue({c_id:'car-7',registration_plate:'1234'})})
+test('FSM creation keeps its confirmed Core id when the optional detail read fails and does not POST a legacy order',async()=>{
+ fsmPassengerEnabled.mockReturnValue(true)
+ const create=jest.fn().mockResolvedValue('901')
+ configuredFsmPassengerBridge.mockReturnValue({create})
+ axios.post.mockRejectedValue(new Error('optional read offline'))
+ await expect(postDrive({b_options:{offer_mode:'OFFER',customer_price:150}})).resolves.toMatchObject({b_id:'901'})
+ expect(create).toHaveBeenCalledTimes(1)
+ expect(create.mock.calls[0][1]).toBe('OFFER')
+ expect(axios.post.mock.calls.every(([url])=>url.includes('/drive/get/901'))).toBe(true)
+})
+test('FSM passenger cancellation chooses one write path',async()=>{
+ fsmPassengerEnabled.mockReturnValue(true)
+ const command=jest.fn().mockResolvedValue(undefined)
+ configuredFsmPassengerBridge.mockReturnValue({command})
+ await cancelDrive('901','fixture reason')
+ expect(command).toHaveBeenCalledWith('901','cancel_requested',{reason:'fixture reason'})
+ expect(axios.post).not.toHaveBeenCalled()
+})
 test('creation preserves explicit Offer options and posts once',async()=>{
  axios.post.mockResolvedValueOnce(success({b_id:42}))
  await expect(postDrive({b_cars_count:1,b_options:{customer_price:150.25,offer_mode:'OFFER'}})).resolves.toMatchObject({b_id:'42'})

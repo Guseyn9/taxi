@@ -1,0 +1,42 @@
+services:
+  mysql:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: fsm_platform_test
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-proot"]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+
+  redis:
+    image: redis:7-alpine
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+
+  test:
+    image: python:3.12-slim
+    profiles: ["test"]
+    working_dir: /workspace
+    volumes:
+      - ../..:/workspace:Z
+    environment:
+      FSM_TEST_MYSQL_URL: mysql+mysqlconnector://root:root@mysql:3306/fsm_platform_test
+      FSM_TEST_REDIS_URL: redis://redis:6379/0
+      FSM_EXTERNAL_SYNC_ENABLED: '0'
+      FSM_ENV: test
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command:
+      - sh
+      - -c
+      - >-
+        pip install --quiet -r requirements.txt &&
+        python -m unittest tests.test_fsm_platform_mysql_integration -v

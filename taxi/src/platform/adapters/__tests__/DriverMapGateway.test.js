@@ -61,6 +61,15 @@ function createResponse(body, status = 200) {
   }
 }
 
+it('uses only the legacy path when this individual FSM operation is disabled',async()=>{
+ backendGateway.cancelDrive.mockClear()
+ const transport={send:jest.fn(),supports:()=>false}
+ const gateway=new DriverMapGateway(createRuntime(),transport)
+ await gateway.cancel('42','fixture reason')
+ expect(backendGateway.cancelDrive).toHaveBeenCalledWith('42','fixture reason')
+ expect(transport.send).not.toHaveBeenCalled()
+})
+
 it('persists acceptance before notifying the UI and recovers by status lookup without another POST',async()=>{
  sessionStorage.clear()
  const owner={userId:'1420',service:'https://test.invalid',sessionId:'test-login'}
@@ -193,7 +202,7 @@ describe('DriverMapGateway', () => {
       duplicate: false,
       instanceId: 104,
       status: 'PENDING',
-      intent: 'cancel_requested',
+      intent: 'driver_cancel_requested',
     }) }
     const completionWaiter = {
       captureBaseline: jest.fn().mockReturnValue({ state: 'order_in_ride' }),
@@ -208,7 +217,7 @@ describe('DriverMapGateway', () => {
 
     expect(commandTransport.send).toHaveBeenCalledWith(
       '42',
-      'cancel_requested',
+      'driver_cancel_requested',
       { reason: 'Vehicle issue' },
       expect.objectContaining({ source: 'driver.interface' }),
     )
@@ -227,7 +236,7 @@ describe('DriverMapGateway', () => {
         duplicate: false,
         instanceId: 105,
         status: 'PENDING',
-        intent: 'cancel_requested',
+        intent: 'driver_cancel_requested',
       }, 202))
       .mockResolvedValueOnce(createResponse({
         instanceId: 105,
@@ -257,7 +266,7 @@ describe('DriverMapGateway', () => {
     ])
     expect(JSON.parse(fetchRequest.mock.calls[0][1].body)).toEqual(expect.objectContaining({
       commandId: 'cmd-cancel-105',
-      intent: 'cancel_requested',
+      intent: 'driver_cancel_requested',
       payload: { reason: 'Vehicle issue' },
     }))
     expect(listener).toHaveBeenCalledWith(expect.objectContaining({
@@ -579,4 +588,29 @@ it('continues waiting for an accepted command after the map unmounts',async()=>{
  for(let i=0;i<12;i++)await Promise.resolve()
  expect(waiter.wait).toHaveBeenCalledTimes(1);unmount();expect(waiter.cancelAll).not.toHaveBeenCalled()
  finish({status:'COMPLETED',instanceId:911});await expect(pending).resolves.toBeUndefined()
+})
+
+it('freezes the selected FSM path instead of falling back when rollout changes during dispatch',async()=>{
+ backendGateway.cancelDrive.mockClear()
+ const transport={supports:jest.fn().mockReturnValueOnce(true).mockReturnValue(false),resolveEnabled:jest.fn().mockResolvedValue(true),send:jest.fn().mockResolvedValue({accepted:true,duplicate:false,instanceId:301,status:'PENDING',intent:'driver_cancel_requested'})}
+ const waiter={captureBaseline:()=>({state:null}),wait:jest.fn().mockResolvedValue({status:'COMPLETED',instanceId:301}),fail:jest.fn(),cancelAll:jest.fn()}
+ const gateway=new DriverMapGateway(createRuntime(),transport,1000,waiter)
+ await gateway.cancel('42','reason')
+ expect(transport.supports).toHaveBeenCalledTimes(1)
+ expect(transport.send).toHaveBeenCalledTimes(1)
+ expect(backendGateway.cancelDrive).not.toHaveBeenCalled()
+})
+it('blocks a legacy route after disabling FSM while its receipt is still in flight',async()=>{
+ backendGateway.cancelDrive.mockClear()
+ let release
+ const transport={resolveEnabled:jest.fn().mockResolvedValue(true),send:jest.fn().mockImplementation(()=>new Promise(resolve=>{release=resolve}))}
+ const waiter={captureBaseline:()=>({state:null}),wait:jest.fn().mockResolvedValue({status:'COMPLETED',instanceId:302}),fail:jest.fn(),cancelAll:jest.fn()}
+ const gateway=new DriverMapGateway(createRuntime(),transport,1000,waiter)
+ const pending=gateway.start('42')
+ for(let i=0;i<15;i++)await Promise.resolve()
+ transport.resolveEnabled.mockResolvedValue(false)
+ await expect(gateway.cancel('42','reason')).rejects.toMatchObject({code:'FSM_COMMAND_PENDING'})
+ expect(backendGateway.cancelDrive).not.toHaveBeenCalled()
+ release({accepted:true,duplicate:false,instanceId:302,status:'PENDING',intent:'ride_started'})
+ await pending
 })

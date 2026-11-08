@@ -1,3 +1,4 @@
+import { requiresFsmReconciliation } from './fsmReconciliation'
 import type { CommandCompletionRequest, CommandCompletionResult, DriverCommandCompletionWaiter } from './DriverCommandCompletionWaiter'
 import { COMMAND_COMPLETION_FAILURE_KINDS, COMMAND_COMPLETION_STATUSES } from './DriverCommandCompletionWaiter'
 import { BackendInteractionError } from './backendError'
@@ -16,6 +17,7 @@ export interface DriverCommandRecoveryOptions {
   scope: () => CommandRecoveryScope | null
   storage?: Pick<Storage, 'getItem' | 'setItem' | 'removeItem'> | null
   now?: () => number
+  verifyReconciliation?: (command: SavedDriverCommand) => Promise<boolean>
   onRecovered?: (command: SavedDriverCommand, result: CommandCompletionResult) => void
 }
 const EMPTY: readonly RecoveringDriverCommand[] = Object.freeze([])
@@ -108,10 +110,10 @@ export class DriverCommandRecovery {
     if (!this.persist()) this.emit(this.records.map(item => item.instanceId === command.instanceId ? { ...item, durable: false } : item))
   }
 
-  settle(instanceId: number, result: CommandCompletionResult, scope: CommandRecoveryScope | null): void {
+  settle(instanceId: number, result: CommandCompletionResult, scope: CommandRecoveryScope | null, reconciled = false): void {
     if (!this.isCurrent(scope) || !sameScope(scope, this.scope)) return
     const terminal = result.status === COMMAND_COMPLETION_STATUSES.Completed ||
-      result.status === COMMAND_COMPLETION_STATUSES.Failed && result.failureKind === COMMAND_COMPLETION_FAILURE_KINDS.Execution
+      result.status === COMMAND_COMPLETION_STATUSES.Failed && result.failureKind === COMMAND_COMPLETION_FAILURE_KINDS.Execution && (!requiresFsmReconciliation(result) || reconciled)
     if (terminal) this.emit(this.records.flatMap(item => item.instanceId !== instanceId ? [item] : item.restored ? [{ ...item, phase: result.status === COMMAND_COMPLETION_STATUSES.Completed ? 'completed' as const : 'failed' as const }] : []))
     else this.emit(this.records.map(item => item.instanceId === instanceId ? { ...item, phase: 'unconfirmed' } : item))
     this.persist()
@@ -133,7 +135,9 @@ export class DriverCommandRecovery {
     try {
       const result = await this.waiter.wait({ ...command, baseline: { state: null } })
       if (!this.isCurrent(scope) || !sameScope(this.scope, scope)) return
-      this.settle(command.instanceId, result, scope)
+      const reconciled = requiresFsmReconciliation(result) && this.options.verifyReconciliation ? await this.options.verifyReconciliation(command) : false
+      if (!this.isCurrent(scope) || !sameScope(this.scope, scope)) return
+      this.settle(command.instanceId, result, scope, reconciled)
       this.options.onRecovered?.(command, result)
     } catch {
       this.settle(command.instanceId, { status: COMMAND_COMPLETION_STATUSES.Timeout, instanceId: command.instanceId }, scope)

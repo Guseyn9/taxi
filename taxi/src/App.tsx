@@ -1,3 +1,5 @@
+import { subscribeFsmAuthenticationRequired } from './platform/adapters/fsmSessionAuth'
+import { setLoginModal } from './state/modals/actionCreators'
 import ConnectionBar from './design/reliability/ConnectionBar'
 import React, { useEffect } from 'react'
 import { notifyNativeStartup } from './tools/nativeStartup'
@@ -78,6 +80,12 @@ const App: React.FC<IProps> = ({
       })
     })
   }, [user?.u_id,user?.u_role])
+  useEffect(() => subscribeFsmAuthenticationRequired(() => {
+    store.dispatch({ type: UserActionTypes.LOGOUT_START, payload: { externalRevocation: true } })
+    store.dispatch(clearOrders())
+    store.dispatch({ type: UserActionTypes.LOGOUT_SUCCESS })
+    store.dispatch(setLoginModal(true))
+  }), [])
   useEffect(() => subscribeSessionRevocation(() => {
     store.dispatch({ type: UserActionTypes.LOGOUT_START, payload: { externalRevocation: true } })
     store.dispatch(clearOrders())

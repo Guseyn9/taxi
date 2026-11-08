@@ -90,3 +90,18 @@ test('snapshot-only fallback cannot claim completion of a restored command',()=>
  saved();const waiter={wait:jest.fn(),cancelAll:jest.fn()},controller=new DriverCommandRecovery(waiter,{scope:()=>scope})
  controller.activate();expect(waiter.wait).not.toHaveBeenCalled();expect(controller.getSnapshot()).toEqual([])
 })
+
+test('unknown FAILED status remains pending until a fresh server snapshot proves reconciliation',async()=>{
+ saved()
+ const waiter=new CommandStatusDriverCommandCompletionWaiter({getStatus:jest.fn().mockResolvedValue({instanceId:91,status:'FAILED',errorCode:'CORE_OUTCOME_UNKNOWN'})},500,100)
+ const verifyReconciliation=jest.fn().mockResolvedValueOnce(false).mockResolvedValueOnce(true)
+ const controller=new DriverCommandRecovery(waiter,{scope:()=>scope,storage:sessionStorage,verifyReconciliation})
+ controller.activate();await tick();await tick()
+ expect(controller.hasPending('42')).toBe(true)
+ expect(sessionStorage.getItem(KEY)).toContain('91')
+ controller.dismiss(91);expect(controller.hasPending('42')).toBe(true)
+ controller.retry(91);await tick();await tick()
+ expect(verifyReconciliation).toHaveBeenCalledTimes(2)
+ expect(controller.hasPending('42')).toBe(false)
+ expect(sessionStorage.getItem(KEY)).toBeNull()
+})
