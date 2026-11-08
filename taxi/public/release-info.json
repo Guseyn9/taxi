@@ -1,10 +1,10 @@
 {
-  "release": "taxi-morocco-20261107-r17",
-  "preparedAt": "2026-11-07",
+  "release": "taxi-morocco-20261108-r18",
+  "preparedAt": "2026-11-08",
   "sourceBaseCommit": "580a3bd8ddc5bd8b527b86ee63388a4c913917f5",
   "sourceIncludesLocalChanges": false,
-  "tests": 1265,
-  "suites": 223,
+  "tests": 1314,
+  "suites": 234,
   "browserEvidence": "Current guest UI and isolated network-disabled remediation fixture; authenticated rides and physical devices remain unaccepted",
   "backendTarget": "https://ibronevik.itest24.com/taxi_dev2/c/gruzvill/api/v1",
   "dictionaryTarget": "https://ibronevik.itest24.com/taxi_dev2/c/gruzvill/api/v1/data",
@@ -94,7 +94,7 @@
     "productionServiceAccepted": false
   },
   "sourceCommit": null,
-  "sourceParentCommit": "e6149dc993c3e186da3b3824478eff2d4d8f4159",
+  "sourceParentCommit": "3e1388e3b6a41bfbd73193aa3c462359fe456e1b",
   "frontendCompletion": {
     "scope": "frontend defects F01-F08 from current CTO/QA report",
     "roadGraphCorrection": "Actual adapters already limit closest-node search to 1km; the earlier remote-node mock was not a real-adapter production reproduction. Shared route-consumer guards strengthen this boundary.",
@@ -119,5 +119,24 @@
       "confirmed driver offer decline before navigation",
       "partial profile save readback and duplicate retry block"
     ]
+  },
+  "valentinFollowup": {
+    "date": "2026-11-08",
+    "specification": "docs/VALENTIN_20261108_TZ.md",
+    "fsmMcpAssessment": "docs/VALENTIN_FSM_MCP_20261108.md",
+    "browserAcceptance": "local production build: 320x568, 390x844, 844x390, RTL; network-disabled error fixture",
+    "frontendChanges": [
+      "on-demand phone collection",
+      "valid changed phone save",
+      "consistent from/to labels",
+      "retained known order and read-only recovery",
+      "contextual submission failure and owner-scoped review guard",
+      "menu above connection status",
+      "canonical driver route and driver registration intent"
+    ],
+    "sharedBackendWritesPerformed": false,
+    "backendIntegrationAccepted": false,
+    "report": "/review/valentin-20261108/",
+    "validationReport": "/review/valentin-20261108/validation-summary.json"
   }
 }

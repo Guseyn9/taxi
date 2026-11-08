@@ -151,12 +151,18 @@
     },
     "src/pages/Passenger/VotingForm.tsx": {
       "baselineSha256": "5c1d5f7e314bc4fbfbb994751026eb0dd9eb76ec9af20f24f9bcac648a4a48bd",
-      "currentSha256": "190fc57fae343d9e731e66fcae924fce9b4c8245810f6d82b7061821b0a1d4d6",
-      "reason": "One explicit selection; no implicit releases, retries or fake local success. Readback releases a canceled choice; pending confirmation has its own recovery. 2026-11-04: remove the voice submission registration and show the existing boundary selector before route entry; submit and order handlers unchanged from r6. R17: Move the unchanged selector out of the address body to its original position above the sheet, restoring compact SVG icons and active-label expansion. Submission and selection handlers unchanged.",
+      "currentSha256": "2e63eb72674939b413d60033faaed9b890fc078fbafd34eab8bfe936659556a3",
+      "reason": "One explicit selection; no implicit releases, retries or fake local success. Readback releases a canceled choice; pending confirmation has its own recovery. 2026-11-04: remove the voice submission registration and show the existing boundary selector before route entry; submit and order handlers unchanged from r6. R17: Move the unchanged selector out of the address body to its original position above the sheet, restoring compact SVG icons and active-label expansion. Submission and selection handlers unchanged. R18: collect phone only on booking intent; move local save to validated PassengerPhoneField; contextual creation failures retain amount, request read refresh and persist owner-scoped review gating for uncertain results. Explicit New ride after viewing a known order clears the review flag. No API endpoint or payload changes. After read-only list review an explicit confirmed new intent can clear the unknown-result guard; that action never sends an order. Known post-create IDs are also read directly while absent from the active list.",
       "evidence": [
         "src/tools/useReleaseCanceledPassengerChoice.test.jsx",
         "src/API/order.transport.test.js",
-        "src/pilot/PendingVotingConfirmation.test.jsx"
+        "src/pilot/PendingVotingConfirmation.test.jsx",
+        "src/pages/Passenger/VotingForm.review.test.jsx",
+        "src/pages/Passenger/PassengerPhoneField.test.tsx",
+        "src/design/RideRequestActions.test.js",
+        "src/design/bookingCreationReview.test.js",
+        "src/design/bookingSubmissionError.test.js",
+        "src/pages/Passenger/Passenger.recovery.test.jsx"
       ]
     },
     "src/components/PriceInput/index.tsx": {
@@ -1034,7 +1040,9 @@
     "src/API/order.ts :: _chooseCandidate": "src/API/order.ts",
     "src/API/order.ts :: _releaseCandidateChoice": "src/API/order.ts",
     "src/API/order.ts :: _setOrderRating": "src/API/order.ts",
-    "src/API/order.ts :: _setWaitingTime": "src/API/order.ts"
+    "src/API/order.ts :: _setWaitingTime": "src/API/order.ts",
+    "src/pages/Passenger/VotingForm.tsx :: handleNewOrderClick": "src/pages/Passenger/VotingForm.tsx",
+    "src/pages/Passenger/VotingForm.tsx :: handleSavePhoneClick": "src/pages/Passenger/VotingForm.tsx"
   },
   "lastReviewedRoadCache": "2026-11-04",
   "lastFrontendRemediation": {

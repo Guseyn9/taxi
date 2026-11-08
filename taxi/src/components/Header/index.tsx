@@ -532,7 +532,7 @@ function Header({
   },[menuOpened])
 
   return (
-    <header className={cn('header', className)}>
+    <header className={cn('header', className, {'header--menu-open':menuOpened})}>
       <div className="burger-wrapper">
         <div className="column">
           {

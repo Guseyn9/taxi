@@ -385,6 +385,8 @@ export function getPhoneNumberError(
     return required ? t(TRANSLATION.REQUIRED_FIELD) : null
   if (phone < 10 ** (minPhoneLength - 1) || phone >= 10 ** maxPhoneLength)
     return t(TRANSLATION.PHONE_PATTERN_ERROR)
+  if (!Number.isSafeInteger(phone))
+    return t(TRANSLATION.PHONE_PATTERN_ERROR)
   return null
 }
 

@@ -29,6 +29,7 @@ import { tripToRestore,rememberedTrip,rememberTrip } from '../../design/restoreT
 import { Button as UiButton } from '../../components/ui/button'
 import { ArrowLeft,MapPin,Crosshair,Flag } from 'lucide-react'
 import {mapActionCopy} from '../../design/maps/mapActionCopy'
+import {useRetainedOrder} from './useRetainedOrder'
 
 function getReverseGeocodeText(response: any) {
   const address = String(response?.display_name || '').trim()
@@ -165,17 +166,16 @@ function Passenger({
     if(trip){restoredForUser.current=owner;setSelectedOrder(trip.b_id)}
   },[user?.u_id,activeOrders,selectedOrderID,isCreatingAnotherOrder,setSelectedOrder])
 
-  const selectedOrder = useMemo(() =>
-    !isCreatingAnotherOrder && selectedOrderID ?
-      activeOrders?.find((item) => item.b_id === selectedOrderID && !terminalBooking(item)) ?? null :
-      null
-  , [activeOrders, selectedOrderID, isCreatingAnotherOrder])
+  const readSelectedOrder = useCallback((id: IOrder['b_id']) => passengerGateway.getOrder(id), [])
+  const retained = useRetainedOrder(user?.u_id, isCreatingAnotherOrder ? null : submittedOrderId || selectedOrderID,
+    activeOrders, readSelectedOrder)
+  const selectedOrder = submittedOrderId ? null : retained.order
 
   const submittedOrder = useMemo(() =>
     submittedOrderId ?
-      activeOrders?.find((item) => item.b_id === submittedOrderId) ?? null :
+      retained.order || activeOrders?.find((item) => String(item.b_id) === String(submittedOrderId)) || null :
       null
-  , [activeOrders, submittedOrderId])
+  , [activeOrders, submittedOrderId, retained.order])
 
   useEffect(() => {
     if (submittedOrder) {
@@ -194,20 +194,14 @@ function Passenger({
   }, [submittedOrder?.b_id, setSelectedOrder, setIsExpanded])
 
   useEffect(() => {
-    if (submittedOrderId !== null)
-      return
-
-    if (!selectedOrder) {
-      // Не сворачиваем нижнюю панель на каждом polling activeOrders, когда пользователь
-      // просто заполняет новую заявку. Раньше refresh через несколько секунд делал
-      // setIsExpanded(false) при selectedOrder=null, из-за чего форма сама схлопывалась.
-      // Сворачиваем только если реально был выбран заказ, но он исчез из activeOrders.
-      if (activeOrders && selectedOrderID) {
-        setIsExpanded(false)
-        setSelectedOrder(null)
-      }
-    }
-  }, [activeOrders, selectedOrder?.b_id, selectedOrderID, submittedOrderId, setSelectedOrder, setIsExpanded])
+    // An empty or failed list never unlocks a known booking, including the gap
+    // between create acknowledgement and its first appearance in the list.
+    if (!retained.terminal) return
+    setIsExpanded(false)
+    setSelectedOrder(null)
+    setSubmittedOrderId(null)
+    setSubmittedOrderDraft(null)
+  }, [retained.terminal, selectedOrder?.b_id, selectedOrderID, submittedOrderId, setSelectedOrder, setIsExpanded])
 
   useEffect(() => {
     if (!cancelRequestedOrderId || selectedOrderID !== null)
@@ -829,8 +823,8 @@ function Passenger({
       syncTo={pickTo}
       onSubmit={onSubmit}
       lockedOrder={shouldKeepRequestForm ? selectedOrder : null}
-      lockedDraft={waitingForSubmittedOrder ? submittedOrderDraft : null}
-      lockedOrderId={shouldKeepRequestForm ? selectedOrder?.b_id : submittedOrderId}
+      lockedDraft={waitingForSubmittedOrder ? submittedOrderDraft || {} : selectedOrderID && !isCreatingAnotherOrder && !selectedOrder ? {} : null}
+      lockedOrderId={shouldKeepRequestForm ? selectedOrder?.b_id : submittedOrderId || selectedOrderID}
       onLockedCancel={handleLockedCancel}
       onNewOrder={handleNewOrderClick}
       minimizedPartRef={minimizedPartRef}
@@ -843,7 +837,7 @@ function Passenger({
     pickFrom, pickTo,
     onSubmit,
     shouldKeepRequestForm, selectedOrder, waitingForSubmittedOrder, submittedOrderDraft,
-    submittedOrderId, handleLockedCancel, handleNewOrderClick, effectivePassengerUiConfig,
+    submittedOrderId, selectedOrderID, isCreatingAnotherOrder, handleLockedCancel, handleNewOrderClick, effectivePassengerUiConfig,
   ])
 
   useEffect(()=>{if(selectedOrder || mapPicker)setSheetCollapsed(false)},[selectedOrder?.b_id,mapPicker])

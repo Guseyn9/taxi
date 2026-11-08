@@ -1,0 +1,64 @@
+{
+  "release": "taxi-morocco-20261108-r18",
+  "testedSourceParent": "3e1388e3b6a41bfbd73193aa3c462359fe456e1b",
+  "sourceIncludesReviewedPatch": true,
+  "exactDeploymentCommit": "See release-info.json after source commit",
+  "checks": {
+    "unit": {
+      "tests": 1314,
+      "suites": 234,
+      "exitCode": 0
+    },
+    "typecheck": {
+      "exitCode": 0
+    },
+    "lint": {
+      "errors": 0
+    },
+    "boundary": {
+      "ok": true,
+      "handlers": 71
+    },
+    "productionGruzvillBuild": {
+      "exitCode": 0
+    }
+  },
+  "browser": {
+    "checkedAt": "2026-11-08T10:36:54.353Z",
+    "source": "local r18 production build and network-disabled fixture",
+    "viewports": [
+      [
+        320,
+        568
+      ],
+      [
+        390,
+        844
+      ],
+      [
+        844,
+        390
+      ]
+    ],
+    "fromToLabelsStable": true,
+    "rtl390": true,
+    "phoneOnDemandFocused": true,
+    "saveDisabledAfterSave": true,
+    "offerBusinessErrorRetains100": true,
+    "unknownOfferBlocksSending": true,
+    "menuAboveStatus": true,
+    "escapeRestoresMenuFocus": true,
+    "driverCanonicalUrl": "http://127.0.0.1:8771/driver-order?tab=2#orders",
+    "driverLoginRole": "driver",
+    "driverRegistrationVehicleFields": true,
+    "externalWrites": 0,
+    "fixtureErrorLogs": [],
+    "appErrorLogs": [],
+    "explicitNewIntentNoAutoSubmit": true,
+    "phoneErrorContrastVerified": true,
+    "finalCheckAt": "2026-11-08T10:48:52.696Z"
+  },
+  "sharedBackendWritesPerformed": false,
+  "backendIntegrationAccepted": false,
+  "mcpSourceAccessible": false
+}

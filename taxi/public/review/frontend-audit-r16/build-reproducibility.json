@@ -1,0 +1,9 @@
+{
+  "sourceCommit": "e6149dc993c3e186da3b3824478eff2d4d8f4159",
+  "builds": 2,
+  "jsCssAssets": 108,
+  "matching": true,
+  "differences": [],
+  "node": "24.22.1",
+  "npm": "11.18.0"
+}

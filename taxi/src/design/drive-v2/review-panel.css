@@ -130,14 +130,16 @@
 #root .car-class-slider[data-class-count] .car-class-slider__options>li{scroll-snap-align:start}
 #root .car-class-slider[data-class-count] .car-class-slider__slide:focus-visible{outline:2px solid var(--drive-red);outline-offset:-5px}
 #root .rs-booking-blocked{margin:0;padding:8px 10px;border:1px solid var(--drive-wine-line);border-radius:10px;color:var(--drive-on-wine);font:500 12px/18px Manrope,sans-serif}
-#root .rs-booking-phone-fix{align-self:flex-start;min-height:44px;color:var(--drive-on-wine);text-decoration:underline}
 /* A compact sheet keeps descriptions in the help dialog, not above the map. */
 #root .passenger__form-container[data-sheet-collapsed=true] .passenger-voting-form[data-locked=false][data-options-view=false] .rs-booking-actions__help{position:absolute;inset-inline-end:0;bottom:calc(100% + 8px);width:44px;height:44px;padding:12px;font-size:0;border:0}
 #root .passenger__form-container[data-sheet-collapsed=true] .rs-booking-actions{position:relative}
 #root .passenger__form-container[data-sheet-collapsed=true] .passenger-voting-form[data-locked=false][data-options-view=false] .rs-booking-action__submit{flex-direction:row;flex-wrap:wrap;gap:6px;height:auto;min-height:52px;padding:8px}
 #root .passenger__form-container[data-sheet-collapsed=true] .rs-booking-action__submit span{width:auto;flex:0 1 auto;font-size:12px;line-height:16px}
 #root .passenger__form-container[data-sheet-collapsed=true] .rs-booking-action__detail{display:none}
-#root .passenger__form-container[data-sheet-collapsed=true] .passenger-voting-form[data-locked=false][data-options-view=false] .passenger-voting-form__location-wrapper .input__header{display:none}
+#root .passenger__form-container[data-sheet-collapsed=true] .passenger-voting-form[data-locked=false][data-options-view=false] .passenger-voting-form__location-wrapper .input__header{display:flex}
+#root .rs-ride-body>.rs-phone-field .passenger-voting-form__phone-save-button,#root .rs-ride-body>.rs-phone-field .passenger-voting-form__phone-save-button:hover{background:var(--drive-red)!important;color:var(--drive-white)!important;border:1px solid var(--drive-red)!important;opacity:1}
+#root .rs-ride-body>.rs-phone-field .passenger-voting-form__phone-save-button:disabled{background:var(--drive-line)!important;color:var(--drive-muted)!important;border-color:var(--drive-line)!important;opacity:1;cursor:default}
+#root .rs-ride-body>.rs-phone-field .input__error{color:var(--drive-on-wine);font-weight:600}
 #root .passenger__form-container[data-sheet-collapsed=true] .passenger-voting-form[data-locked=false][data-options-view=false] .input__wrapper{min-height:48px!important}
 #root .passenger__form-container[data-sheet-collapsed=true] .passenger-voting-form[data-locked=false][data-options-view=false] .rs-booking-actions__help{display:none}
 #root .map-container__center-marker{width:36px!important;height:36px!important;transform:translate(-50%,-50%)!important}

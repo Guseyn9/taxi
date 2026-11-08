@@ -165,7 +165,7 @@ function LocationInput({
         'aria-label': pointLabel,
         name: type === EPointType.From ? 'pickupAddress' : 'destinationAddress',
         autoComplete: 'off',
-        placeholder: type === EPointType.From ? rideCopy(language?.iso).pickupSearch : rideCopy(language?.iso).destinationSearch,
+        placeholder: pointLabel,
         value: getPointDisplayValue(),
         disabled,
         readOnly: disabled,

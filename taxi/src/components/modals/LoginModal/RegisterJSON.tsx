@@ -9,6 +9,8 @@ import { t, TRANSLATION } from '../../../localization'
 import JSONForm from '../../JSONForm'
 import { TForm, TFormElement } from '../../JSONForm/types'
 import ErrorFrame from '../../ErrorFrame'
+import {useLocation} from 'react-router-dom'
+import {authRoleForPath} from './authRole'
 
 const mapStateToProps = (state: IRootState) => {
   return {
@@ -163,7 +165,7 @@ const getCarDiagnostics = (car: any) => {
   return { errors, messages }
 }
 
-function RegisterForm({
+export function RegisterForm({
   status,
   message,
   register,
@@ -172,11 +174,14 @@ function RegisterForm({
   setMessageModal,
 }: IProps) {
   const [errors, setErrors] = useState<Record<string, string>>({})
+  const location = useLocation()
+  const role = authRoleForPath(location.pathname)
 
   const handleSubmit = (values: any) => {
     setErrors({})
-    const isDriver = Number(values.u_role) === EUserRoles.Driver
+    const isDriver = role === EUserRoles.Driver
     const { password, password_confirm, data = {}, ...registerValues } = values
+    registerValues.u_role = role
     const passwordValue = password || data.password
 
     if (passwordValue !== password_confirm) {
@@ -257,6 +262,7 @@ function RegisterForm({
     <JSONForm
       className="json-registration-form"
       fields={fields}
+      defaultValues={{u_role:role}}
       onSubmit={handleSubmit}
       errors={errors}
       state={{

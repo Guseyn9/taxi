@@ -3,6 +3,7 @@ import { Eye, EyeOff,Mail,MessageCircle } from 'lucide-react'
 import { configSelectors } from '../../../state/config'
 import { dialogCopy } from '../dialogCopy'
 import { authCopy } from './authCopy'
+import {authRoleForPath} from './authRole'
 import Config from '../../../config'
 import { t, TRANSLATION } from '../../../localization'
 import Checkbox from '../../Checkbox'
@@ -90,9 +91,7 @@ export const LoginForm: React.FC<IProps> = ({
   const { navigatePath: navigate } = usePlatformNavigator()
   const googleClientId = '973943716904-b33r11ijgi08m5etsg5ndv409shh1tjl.apps.googleusercontent.com'
 
-  const role = !location.pathname.includes('/driver-order') ?
-    EUserRoles.Client :
-    EUserRoles.Driver
+  const role = authRoleForPath(location.pathname)
 
   const schema = yup.object({
     type: yup.string().required(t(TRANSLATION.REQUIRED_FIELD)),
@@ -196,6 +195,7 @@ export const LoginForm: React.FC<IProps> = ({
   return (
     <form
       className="login-form sign-in-subform"
+      data-auth-role={role === EUserRoles.Driver ? 'driver' : 'passenger'}
       noValidate
       aria-busy={status===EStatuses.Loading}
       onSubmit={handleSubmit(onSubmit)}

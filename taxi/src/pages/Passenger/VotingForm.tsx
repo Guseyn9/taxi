@@ -1,4 +1,7 @@
 import PendingVotingConfirmation from '../../pilot/PendingVotingConfirmation'
+import PassengerPhoneField, {PASSENGER_SAVED_PHONE_KEY} from './PassengerPhoneField'
+import {bookingSubmissionError, bookingErrorCopy, bookingSubmissionUnconfirmed} from '../../design/bookingSubmissionError'
+import {bookingCreationNeedsReview, markBookingCreationReview} from '../../design/bookingCreationReview'
 import PassengerBoardingCode from '../../pilot/PassengerBoardingCode'
 import { normalizeMoney } from '../../tools/money'
 import { offerBookingOptions } from '../../API/legacyContract'
@@ -92,7 +95,6 @@ import { PassengerUiConfig } from '../../types/passengerUi'
 import './voting-form.scss'
 
 const DRIVER_AVATAR_FALLBACK = '/assets/images/default/driver-avatar-default.png'
-const PASSENGER_SAVED_PHONE_KEY = 'gruzvill_passenger_saved_phone'
 
 type TClientOrderMode = 'vote' | 'offer' | 'order'
 
@@ -123,7 +125,7 @@ interface IProps extends PassengerVotingFormStoreProps {
   uiConfig?: PassengerUiConfig
 }
 
-const VotingForm = function VotingForm({
+export const VotingForm = function VotingForm({
   from,
   to,
   fromZoneStatus,
@@ -228,6 +230,8 @@ const VotingForm = function VotingForm({
   }
   const offerPending = usePendingOffer(user?.u_id,lockedOrderId,refreshActiveOrders)
   const available = !locked
+  const [creationUncertain, setCreationUncertain] = useState(() => bookingCreationNeedsReview(user?.u_id))
+  useEffect(() => setCreationUncertain(bookingCreationNeedsReview(user?.u_id)), [user?.u_id])
 
   const [fromError, setFromError] = useState<string | null>(null)
   useLayoutEffect(() => { setFromError(null) }, [from])
@@ -243,7 +247,7 @@ const VotingForm = function VotingForm({
     try {
       const savedPhone = window.localStorage.getItem(PASSENGER_SAVED_PHONE_KEY)
       const normalizedPhone = savedPhone?.replace(/\D/g, '')
-      if (normalizedPhone)
+      if (normalizedPhone && !getPhoneNumberError(Number(normalizedPhone)))
         setPhone(Number(normalizedPhone))
     } catch (error) {
       console.error(error)
@@ -267,7 +271,7 @@ const VotingForm = function VotingForm({
   }
 
   const submit = useCallback(async(mode: TClientOrderMode = 'order'): Promise<boolean> => {
-    if (locked || submissionPending.current)
+    if (locked || creationUncertain || submissionPending.current)
       return false
 
     setSubmitError(null)
@@ -448,7 +452,11 @@ const VotingForm = function VotingForm({
       onSubmit(data, draft)
       return true
     } catch (error) {
-      setSubmitError(getSafeSubmitErrorMessage(error))
+      setSubmitError(bookingSubmissionError(error, mode, languageIso))
+      const unconfirmed = bookingSubmissionUnconfirmed(error)
+      setCreationUncertain(unconfirmed)
+      markBookingCreationReview(user?.u_id, unconfirmed)
+      refreshActiveOrders()
       console.error(error)
       return false
     } finally {
@@ -456,7 +464,7 @@ const VotingForm = function VotingForm({
       setSubmitting(false)
     }
   }, [
-    locked,
+    locked, creationUncertain, refreshActiveOrders,
     from, to, comments, time, phone, user,
     locationClass, algorithmLocationClass, readSubmissionState, setLoginModal, createOrder, languageIso,
     setIsExpanded, onSubmit, resetClientOrder,
@@ -1172,26 +1180,10 @@ const VotingForm = function VotingForm({
   const handleNewOrderClick = useCallback((event?: React.MouseEvent) => {
     event?.preventDefault()
     event?.stopPropagation()
+    setCreationUncertain(false)
+    markBookingCreationReview(user?.u_id, false)
     onNewOrder && onNewOrder()
-  }, [onNewOrder])
-
-  const handleSavePhoneClick = useCallback((event?: React.MouseEvent) => {
-    event?.preventDefault()
-    event?.stopPropagation()
-
-    const normalizedPhone = String(phone ?? '').replace(/\D/g, '')
-    if (!normalizedPhone) {
-      setPhoneError(t(TRANSLATION.PHONE_PATTERN_ERROR))
-      return
-    }
-
-    try {
-      window.localStorage.setItem(PASSENGER_SAVED_PHONE_KEY, normalizedPhone)
-      setPhone(Number(normalizedPhone))
-    } catch (error) {
-      console.error(error)
-    }
-  }, [phone, setPhone])
+  }, [onNewOrder, user?.u_id])
 
   const allowedModes = orderFormLayout.orderModeResolution.allowedModes
   const readinessCopy = bookingReadinessCopy(languageIso)
@@ -1199,16 +1191,34 @@ const VotingForm = function VotingForm({
     hasClass:orderFormLayout.classResolution.availableClassIds.length > 0,
     phoneValid:!getPhoneNumberError(phone),pending:submitting})
   const effectiveMode = selectedMode && allowedModes.includes(selectedMode) ? selectedMode : (preferOfferMode ? 'offer' : 'order')
-  const submitButtons = <>{blocked==='phone'&&<UiButton type="button" variant="ghost" className="rs-booking-phone-fix" onClick={openOptions}>{readinessCopy.editPhone}</UiButton>}<RideRequestActions mode={effectiveMode} iso={languageIso} allowedModes={allowedModes}
-    submitDisabled={Boolean(blocked)} blockedReason={blocked ? readinessCopy[blocked] : undefined}
-    disabled={!available} pending={submitting} error={submitError}
+  const submitButtons = <RideRequestActions mode={effectiveMode} iso={languageIso} allowedModes={allowedModes}
+    onPrepare={() => {
+      const error = getPhoneNumberError(phone)
+      if (!error) return true
+      setPhoneError(error)
+      openOptions()
+      requestAnimationFrame(() => {
+        const field = rideBodyRef.current?.querySelector<HTMLInputElement>('[data-testid="passenger-order-phone"]')
+        field?.scrollIntoView({block: 'center'})
+        field?.focus({preventScroll: true})
+      })
+      return false
+    }}
+    submitDisabled={creationUncertain || Boolean(blocked && blocked !== 'phone')} blockedReason={blocked && blocked !== 'phone' ? readinessCopy[blocked] : undefined}
+    disabled={!available} pending={submitting} error={creationUncertain ? bookingErrorCopy(languageIso).unknown : submitError}
+    recoveryLabel={bookingErrorCopy(languageIso).refresh} onRefresh={refreshActiveOrders}
+    onStartNew={creationUncertain ? () => {
+      markBookingCreationReview(user?.u_id, false)
+      setCreationUncertain(false)
+      setSubmitError(null)
+    } : undefined}
     priceField={<div ref={priceInputRef} className="rs-request-price">
       <PriceInput forceCustomerPrice customerOfferEditable visibleItems={['customer']} customerLabel={journeyCopy(languageIso).offer} disabled={submitting}/>
     </div>}
     onChange={mode => {
       setSelectedMode(mode)
-      setSubmitError(null)
-    }} onSubmit={mode => submit(mode)} /></>
+      if (!creationUncertain) setSubmitError(null)
+    }} onSubmit={mode => submit(mode)} />
 
   const showLockedDriverPanel = Boolean(selectedDriver) && isBlockVisible('driverCard')
   const isLockedTripStarted = selectedDriver?.c_state === EBookingDriverState.Started
@@ -1543,8 +1553,8 @@ const VotingForm = function VotingForm({
     const message = ({ru:'Тип заказа пока не подтверждён сервером. Проверяем этот же заказ. Не создавайте повторный.',fr:'Le type du trajet n’est pas confirmé. Vérification de la même réservation en cours. Ne la dupliquez pas.',ar:'لم يتم تأكيد نوع الطلب. جارٍ التحقق من نفس الحجز. لا تنشئ طلباً مكرراً.'} as Record<string,string>)[addressLocale(languageIso)] || 'Booking type is not confirmed. Checking this same booking. Do not create a duplicate.'
     return <div className="passenger-voting-form passenger-voting-form--locked" data-testid="pending-offer" role="region" aria-label={message}>
       <strong>№{String(lockedOrderId)}</strong><p role="status">{message}</p>
-      <ReadonlyLocationInput value={lockedInfo.fromAddress} iso={languageIso} placeholder={t(TRANSLATION.START_POINT)}/>
-      <ReadonlyLocationInput value={lockedInfo.toAddress} iso={languageIso} placeholder={t(TRANSLATION.DESTINATION_POINT)}/>
+      <ReadonlyLocationInput value={lockedInfo.fromAddress} iso={languageIso} placeholder={uiCopy.pickup}/>
+      <ReadonlyLocationInput value={lockedInfo.toAddress} iso={languageIso} placeholder={uiCopy.destination}/>
       <Button type="button" checkLogin={false} text={t(TRANSLATION.CANCEL,{toUpper:false})} onClick={handleLockedCancelClick}/>
     </div>
   }
@@ -1586,13 +1596,13 @@ const VotingForm = function VotingForm({
                 className="passenger-voting-form__input"
                 value={lockedInfo.fromAddress}
                 iso={languageIso}
-                placeholder={t(TRANSLATION.START_POINT)}
+                placeholder={uiCopy.pickup}
               />
               <ReadonlyLocationInput
                 className="passenger-voting-form__input"
                 value={lockedInfo.toAddress}
                 iso={languageIso}
-                placeholder={t(TRANSLATION.DESTINATION_POINT)}
+                placeholder={uiCopy.destination}
               />
             </LockedRouteSummary>
           ) : (
@@ -1729,40 +1739,8 @@ const VotingForm = function VotingForm({
       )}
 
       {!locked && optionsView && (
-        <Input
-          fieldWrapperClassName="passenger-voting-form__input rs-phone-field"
-          label={t(TRANSLATION.PHONE)}
-          inputProps={{
-            'aria-label': t(TRANSLATION.PHONE),
-            dir:'ltr',
-            value: phone ?? '',
-            // Контракт для E2E: поле телефона формы заказа.
-            ...({ 'data-testid': 'passenger-order-phone' } as React.ComponentProps<'input'>),
-          }}
-          inputType={EInputTypes.MaskedPhone}
-          style={EInputStyles.RedDesign}
-          buttons={[
-            ...(user?.u_phone ? [{
-              src: images.checkMarkRed,
-              title: t(TRANSLATION.PHONE),
-              onClick() {
-                setPhone(+user!.u_phone!)
-              },
-            }] : []),
-            {
-              text: t(TRANSLATION.SAVE),
-              title: t(TRANSLATION.SAVE),
-              className: 'passenger-voting-form__phone-save-button',
-              onClick: handleSavePhoneClick,
-              checkLogin: false,
-              fixedSize: false,
-            },
-          ]}
-          error={phoneError ?? undefined}
-          onChange={(e) => {
-            setPhone(e as number)
-          }}
-        />
+        <PassengerPhoneField phone={phone} profilePhone={user?.u_phone} error={phoneError}
+          iso={languageIso} onChange={setPhone}/>
       )}
       {!locked && optionsView && showPriceFields &&
         <div

@@ -3,6 +3,9 @@
   "installCommand": "npm ci --legacy-peer-deps",
   "outputDirectory": "build",
   "framework": null,
+  "redirects": [
+    {"source": "/review/frontend-audit-r16/driver-order", "destination": "/driver-order", "permanent": false}
+  ],
   "rewrites": [
     {
       "source": "/(.*)",

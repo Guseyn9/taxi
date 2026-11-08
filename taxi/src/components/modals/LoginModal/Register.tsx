@@ -15,6 +15,7 @@ import { connect, ConnectedProps } from 'react-redux'
 import cn from 'classnames'
 import { EStatuses, EUserRoles, EWorkTypes, TFilesMap, IRequiredFields } from '../../../types/types'
 import { useLocation } from 'react-router-dom'
+import {authRoleForPath} from './authRole'
 import { yupResolver } from '@hookform/resolvers/yup'
 import * as yup from 'yup'
 import Alert from '../../Alert/Alert'
@@ -194,7 +195,7 @@ export const RegisterForm: React.FC<IProps> = ({
     reValidateMode: 'onChange',
     defaultValues: {
       type: ERegistrationType.Email,
-      u_role: !location.pathname.includes('/driver-order') ? EUserRoles.Client : EUserRoles.Driver,
+      u_role: authRoleForPath(location.pathname),
     },
     resolver: yupResolver(schema),
   })
