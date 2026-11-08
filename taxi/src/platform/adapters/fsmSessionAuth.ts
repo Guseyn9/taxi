@@ -32,7 +32,7 @@ export function handleFsmAuthenticationFailure(status: number, sent: HeadersInit
   }
   const current = loadSessionTokens()
   if (!current || readHeader('X-Auth-Token') !== current.token || readHeader('X-Auth-U-Hash') !== current.u_hash) return
-  clearSessionTokens()
+  clearSessionTokens(false) // Core refused this pair, not other tab logins.
   authRequiredListeners.forEach(listener => listener())
 }
 export function handleFsmSocketClose(event: unknown, sentAuth: string | null): void {

@@ -59,9 +59,11 @@ it('recovers a lost POST receipt by key without replaying the write after disabl
 it('requests sign-in once for a current HTTP 401, without calling Core logout',async()=>{
  const listener=jest.fn(),stop=subscribeFsmAuthenticationRequired(listener)
  try {
+  const epoch = localStorage.getItem('taxi.auth.revocation')
   const request=jest.fn().mockResolvedValue(response({},401))
   await expect(new FsmCommandStatusTransport({apiUrl,useSessionAuth:true},{fetch:request}).getStatus(7)).rejects.toMatchObject({code:'FSM_COMMAND_STATUS_HTTP_401'})
   expect(loadSessionTokens()).toBeNull();expect(listener).toHaveBeenCalledTimes(1)
+  expect(localStorage.getItem('taxi.auth.revocation')).toBe(epoch)
   expect(request).toHaveBeenCalledTimes(1)
  }finally{stop()}
 })

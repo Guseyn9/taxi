@@ -981,8 +981,8 @@
     },
     "src/platform/adapters/fsmSessionAuth.ts": {
       "baselineSha256": null,
-      "currentSha256": "d227e577e2dfbb1f03e2efb485463e6cd938c689c2a91112ed02a84409b8f3aa",
-      "reason": "New opt-in FSM adapter/helper: session-scoped receipts, no optimistic completion or replay after unknown writes; operation gates and explicit logout warning. Our existing authentication is retained. Runtime rollout/auth follow-up: On 401/4401 or definitive Core authorization failure require new login only for the exact pair sent. Never revoke a newer session on a delayed refusal, or revoke on 403/503/network loss.",
+      "currentSha256": "f39556a93a260683a00f3811c9f70a18692d718714bca6a6340eae28305ed1c1",
+      "reason": "New opt-in FSM adapter/helper: session-scoped receipts, no optimistic completion or replay after unknown writes; operation gates and explicit logout warning. Our existing authentication is retained. Runtime rollout/auth follow-up: On 401/4401 or definitive Core authorization failure require new login only for the exact pair sent. Never revoke a newer session on a delayed refusal, or revoke on 403/503/network loss. A refusal revokes only this tab pair; manual cross-tab logout behavior remains in the existing logout flow.",
       "evidence": [
         "src/platform/adapters/__tests__/fsmSessionIntegration.test.js",
         "src/platform/adapters/__tests__/fsmIntentGate.test.js",
