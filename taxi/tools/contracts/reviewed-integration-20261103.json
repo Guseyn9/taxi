@@ -954,7 +954,7 @@
       "evidence": [
         "src/components/modals/__tests__/profile-save.test.jsx"
       ],
-      "currentSha256": "ddf2c284e197ca5ac8017dc8a3d6bab9e7d6b463a8d4e36e824f34e7dcff704e"
+      "currentSha256": "9b289cd15dd7c839732e3ce65d3f2d5155369a2f7e9f03b6d975c8d1da5c13bf"
     },
     "src/platform/adapters/FsmPassengerBridge.ts": {
       "baselineSha256": null,

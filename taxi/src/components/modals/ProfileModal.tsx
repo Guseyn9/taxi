@@ -36,6 +36,7 @@ import JSONForm from '../JSONForm'
 import { TForm } from '../JSONForm/types'
 import DriverStatusAvatar from '../DriverStatusAvatar'
 import ActiveVehiclePicker from '../ActiveVehiclePicker'
+import {vehiclePickerCopy} from '../ActiveVehiclePicker/copy'
 import Overlay from './Overlay'
 import './styles.scss'
 
@@ -584,6 +585,7 @@ export function ProfileModalContent({
           <legend>{t(TRANSLATION.PROFILE)}</legend>
           {saveBlocked && <p role="alert">{t(saveProgress.current.carConfirmed ? 'profile_partial_save' : 'profile_car_unconfirmed')}</p>}
           {isDriver && <ActiveVehiclePicker />}
+          {car && <p className="profile-modal__car-target">{vehiclePickerCopy(language?.iso).editing}: {car.registration_plate || car.c_id}.</p>}
           <div className="avatar">
             {isValuesLoaded ?
               (
