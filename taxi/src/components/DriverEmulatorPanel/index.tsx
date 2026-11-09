@@ -3,6 +3,7 @@ import cn from 'classnames'
 import { X } from 'lucide-react'
 import { BrowserDriverEmulator, BrowserClientOrderEmulator, BrowserEmulatorSnapshot } from './browserEmulator'
 import emulationModeExactIcon from '../../assets/images/emulationModeExactIcon.png'
+import { emulatorAvailabilityCopy } from './availabilityCopy'
 import { t } from '../../localization'
 import { isBrowserEmulatorRunning } from '../../tools/emulatorMode'
 import { emulatorTestReady } from './testRuntime'
@@ -175,6 +176,7 @@ function DriverEmulatorPanel({ isOpen, autoStart, mode = 'drivers', onStatusChan
   const isClientGenerator = mode === 'clients'
   const title = isClientGenerator ? t('emulator_clients') : t('emulator_drivers')
   const subtitle = isClientGenerator ? t('emulator_clients_subtitle') : t('emulator_drivers_subtitle')
+  const availability = emulatorAvailabilityCopy()
   const logs = status.logs?.length ? status.logs.join('\n') : t('emulator_logs_empty')
 
   return (
@@ -227,9 +229,9 @@ function DriverEmulatorPanel({ isOpen, autoStart, mode = 'drivers', onStatusChan
           <button type="button" onClick={() => runAction('check')} disabled={loading || !emulatorTestReady(mode)} className="driver-emulator-panel__actions-muted">{t('emulator_check')}</button>
         </div>
         {!emulatorTestReady(mode) && <p role="status">
-          {t('emulator_test_server_required', { fallback: 'Server emulation requires an isolated test server and disposable accounts.' })}
+          {availability.required}
           {' '}<a href={`/investor/index.html?view=${mode === 'drivers' ? 'passenger' : 'driver'}`}>
-            {t('emulator_local_demo', { fallback: 'Try the local demo without registration' })}
+            {availability.demo}
           </a>
         </p>}
 

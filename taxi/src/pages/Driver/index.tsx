@@ -1,7 +1,6 @@
 import React, { createContext, useEffect, useRef, useState } from 'react'
 import {claimDriverOfferNotification} from '../../tools/driverOfferNotifications'
 import DriverOrders from './Orders'
-import ActiveVehiclePicker from '../../components/ActiveVehiclePicker'
 import { LogIn } from 'lucide-react'
 import DriverMap from './Map'
 import { t, TRANSLATION } from '../../localization'
@@ -555,7 +554,6 @@ const Driver: React.FC<IProps> = ({
     <>
       <OrderModeDecisionModal />
       <OrderModeToast />
-      <ActiveVehiclePicker />
       <div className="driver-tabs" data-order-source={emulatorOrdersEnabled ? 'emulator' : 'normal'}>
         <button
           onClick={onFirstTabClick}

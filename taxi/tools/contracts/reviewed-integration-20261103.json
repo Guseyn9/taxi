@@ -571,8 +571,8 @@
     },
     "src/pages/Driver/index.tsx": {
       "baselineSha256": "06b3d0ea62b8011537ec2ef054185052ee7a59c558b5ef40e43b3bf2ff7eaea4",
-      "currentSha256": "86a807784e2598a76774968cc32a1bbfce145c3f683ab08bd98511139e711605",
-      "reason": "Start ordinary Driver polling and GPS publication independently of emulator flags.",
+      "currentSha256": "ac1b0614aad781b379eaa106b3d06960bd61a7e44f2075e880f3afd3714ca5e0",
+      "reason": "Start ordinary Driver polling and GPS publication independently of emulator flags. R20: Remove active-vehicle selector from main driver layout; it is mounted in driver profile instead. Driver order handlers unchanged.",
       "evidence": [
         "src/state/orders/__tests__/readyOrdersPolling.test.js",
         "src/state/geolocation/sagas.test.js"
@@ -950,11 +950,11 @@
     },
     "src/components/modals/ProfileModal.tsx": {
       "baselineSha256": "017a126141d775877931478f15bdf597fe0392a5c48073f4d8a69389ab41caa0",
-      "reason": " R16: Explicit partial/unconfirmed vehicle-save error with readback and blocked retry; reject missing upload IDs and unconfirmed profile response. Client validation precedes car write. Backend atomicity remains external.",
+      "reason": " R16: Explicit partial/unconfirmed vehicle-save error with readback and blocked retry; reject missing upload IDs and unconfirmed profile response. Client validation precedes car write. Backend atomicity remains external. R20: Move the unchanged active-vehicle selector from the main driver screen into the driver profile; profile save handlers unchanged.",
       "evidence": [
         "src/components/modals/__tests__/profile-save.test.jsx"
       ],
-      "currentSha256": "34f3d74d56daef530a11bef59d30187cf7a8548ab353069090478c10afdd5964"
+      "currentSha256": "9b289cd15dd7c839732e3ce65d3f2d5155369a2f7e9f03b6d975c8d1da5c13bf"
     },
     "src/platform/adapters/FsmPassengerBridge.ts": {
       "baselineSha256": null,

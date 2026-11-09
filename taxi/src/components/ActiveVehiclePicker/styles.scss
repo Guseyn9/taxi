@@ -1,0 +1,9 @@
+.driver-vehicle-picker {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+  margin: 10px 0; padding: 12px; max-width: 100%; box-sizing: border-box;
+  background: #fff; border: 1px solid #e4d6cf; border-radius: 14px;
+  label { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; min-width: 0; max-width: 100%; }
+  select, button { min-width: 0; max-width: 100%; min-height: 44px; padding: 8px 12px; border: 1px solid #d4c6bf; border-radius: 10px; background: #fffaf7; color: #292323; white-space: normal; }
+  button:disabled { opacity: .55; }
+  p { flex-basis: 100%; margin: 0; }
+}
