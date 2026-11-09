@@ -15,3 +15,16 @@ Validation:
 - Fixture now includes production journey CSS and adjacent CSS imports in production order; local network calls remain blocked by CSP.
 
 These are frontend and synthetic error-state checks, not backend ride acceptance.
+
+## Debug menu and unexpected driver controls
+
+User screenshots showed that the public-build gate hid log exports and both role-specific emulator panels. Restore the existing menu entry points in production builds. Graph/test-position controls remain restricted to local development. Opening an emulator does not start it. Existing runtime isolation and disposable-account checks remain unchanged: server emulation is not configured on the Vercel build and cannot be claimed as accepted or functional there. The panel now explains this in Russian/French/Arabic/English and links to the existing local demo.
+
+Move ActiveVehiclePicker from the main driver page into the driver profile. Preserve its selection, activation and refresh actions. Give the selector component its own stylesheet and localized fallback copy, so it renders consistently inside the profile regardless of route. The compact order refresh failure notice still reports a real backend read failure; this patch does not suppress it.
+
+Additional acceptance on a production-mode network-disabled fixture:
+- Client menu: driver emulator, interface/flow/all logs visible.
+- Driver menu: client emulator, flow/raw/decision/all logs visible.
+- Both emulator dialogs open and close; start/check remain disabled without the isolated runtime. No order or emulator request was sent.
+- Vehicle profile on 320px: Russian labels, no horizontal overflow, minimum touch target above 44px.
+- 237 suites / 1354 tests, TypeScript, scoped ESLint and boundary check passed after these changes.

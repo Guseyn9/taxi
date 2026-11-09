@@ -35,6 +35,9 @@ import {createStore, applyMiddleware} from 'redux'
 import {MemoryRouter} from 'react-router-dom'
 import {HelmetProvider} from 'react-helmet-async'
 import runtimeStore from '../state'
+import carReducer from '../state/cars/reducer'
+import {ActionTypes as CarActions} from '../state/cars/constants'
+import ActiveVehiclePicker from '../components/ActiveVehiclePicker'
 import Layout from '../components/Layout'
 import {readHealthMiddleware} from '../design/reliability/readHealth'
 import {ActionTypes as OrdersActions} from '../state/orders/constants'
@@ -47,8 +50,10 @@ import {MapContainer} from 'react-leaflet'
 import RsaleBasemap from '../design/maps/RsaleBasemap'
 
 const language = {id:1, iso:'ru', native:'Русский'}
+const fixtureDriver = new URLSearchParams(window.location.search).get('role')==='driver'
 const original = runtimeStore.getState()
-const base = {...original, user:original.user.set('user', {u_id:'fixture-client',u_role:EUserRoles.Client,u_name:'QA'} as any),
+const base = {...original, user:original.user.set('user', {u_id:'fixture-client',u_role:fixtureDriver?EUserRoles.Driver:EUserRoles.Client,u_name:'QA'} as any),
+  cars:carReducer(original.cars,{type:CarActions.GET_USER_CARS_SUCCESS,payload:[{c_id:'qa-vehicle',u_d_id:'fixture-client',registration_plate:'QA 001',seats:4}]} as any),
   config:original.config.set('status',EStatuses.Success).set('language',language as any)}
 const store = createStore((state: typeof base = base) => state, applyMiddleware(readHealthMiddleware))
 setLocalizationLanguageReader(() => store.getState().config.language)
@@ -57,6 +62,7 @@ function Fixture() {
   const [mode, setMode] = useState<'order'|'offer'|'vote'>('order')
   const [amount, setAmount] = useState('100'), [error, setError] = useState<string | null>(null)
   const [attempts, setAttempts] = useState(0), [reads, setReads] = useState(0), [uncertain, setUncertain] = useState(false)
+  if(new URLSearchParams(window.location.search).get('surface')==='vehicle')return <Layout><section className="modal profile-modal"><h1>Профиль</h1><ActiveVehiclePicker/></section></Layout>
   if(new URLSearchParams(window.location.search).get('surface')==='driver-map')return <Layout><section className="driver" style={{display:'flex',flexDirection:'column',flex:1,minHeight:0}}>
     <nav aria-label="Режим карты" style={{display:'flex',flex:'none',gap:8,padding:8,flexWrap:'wrap'}}><button>Кратко</button><button>Все</button><button>Карта</button><button onClick={()=>store.dispatch({type:OrdersActions.GET_ACTIVE_ORDERS_FAIL})}>Сбой обновления</button></nav>
     <MapContainer className="map" center={[30.4206,-9.598]} zoom={10} zoomControl={false} style={{position:'relative',flex:1,width:'100%',minHeight:0}}><RsaleBasemap initialOverview/></MapContainer>
@@ -76,4 +82,4 @@ function Fixture() {
     <p>Отправок fixture: {attempts}; проверок: {reads}</p>
   </div></Layout></>
 }
-createRoot(document.getElementById('root')!).render(<Provider store={store}><HelmetProvider><MemoryRouter initialEntries={['/passenger-order']}><Fixture/></MemoryRouter></HelmetProvider></Provider>)
+createRoot(document.getElementById('root')!).render(<Provider store={store}><HelmetProvider><MemoryRouter initialEntries={[fixtureDriver?'/driver-order':'/passenger-order']}><Fixture/></MemoryRouter></HelmetProvider></Provider>)
