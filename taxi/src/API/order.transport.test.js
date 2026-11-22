@@ -188,6 +188,27 @@ test('waiting preserves valid seconds and rejects a business error without retry
  expect(axios.post).toHaveBeenCalledTimes(1);expect(formAt(0).get('previous')).toBe('60');expect(formAt(0).get('additional')).toBe('180')
 })
 
+test.each([null, 'raw-response', {}, {status:'success'}, {code:'200',status:'failed'}])(
+ 'boarding reports a missing acknowledgement without retaining the response body: %j',
+ async response => {
+  axios.post.mockResolvedValueOnce({data:response})
+  await expect(confirmVotingCode('42','123')).rejects.toMatchObject({
+   code:'BOARDING_CHECK_UNCONFIRMED',
+   details:undefined,
+  })
+  expect(actions()).toEqual(['check_driver_code'])
+ },
+)
+
+test('boarding keeps a server PIN rejection distinct from an unconfirmed check',async()=>{
+ axios.post.mockResolvedValueOnce({data:{status:'error',message:'wrong driver code'}})
+ await expect(confirmVotingCode('42','123')).rejects.toMatchObject({
+  code:'BACKEND_RESPONSE_ERROR',
+  message:'wrong driver code',
+ })
+ expect(actions()).toEqual(['check_driver_code'])
+})
+
 test.each([
  ['choose',()=>chooseCandidate('42','driver-2')],
  ['release',()=>releaseCandidateChoice('42','driver-2')],

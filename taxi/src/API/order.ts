@@ -1,5 +1,5 @@
 import { MutationReadbackGuard } from '../tools/mutationReadback'
-import { assertSuccessfulMutationResponse } from '../platform/adapters/backendError'
+import { assertSuccessfulMutationResponse, BACKEND_ERROR_CODES, BackendInteractionError } from '../platform/adapters/backendError'
 import axios from 'axios'
 import { bookingOptionAssignment, performerOptions } from './legacyContract'
 import { normalizeMoney } from '../tools/money'
@@ -707,8 +707,10 @@ const _confirmVotingCode = (
 ) => {
   addToFormData(formData, { action: 'check_driver_code', b_driver_code: code })
   return axios.post(`${Config.API_URL}/drive/get/${id}`, formData)
-    .then(res => res.data)
-    .then(assertSuccessfulMutationResponse)
+    .then(({ data }) => assertSuccessfulMutationResponse(data, () => new BackendInteractionError(
+      BACKEND_ERROR_CODES.BoardingCheckUnconfirmed,
+      'Boarding code check was not confirmed',
+    )))
 }
 export const confirmVotingCode = apiMethod<typeof _confirmVotingCode>(_confirmVotingCode)
 

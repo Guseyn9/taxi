@@ -25,6 +25,30 @@ test('without an expected code the server checks the PIN and rejection leaves th
  expect(confirm).toHaveBeenCalledWith('111');expect(host.textContent).toContain('Wrong code')
  await act(async()=>root.unmount());host.remove();delete global.IS_REACT_ACT_ENVIRONMENT
 })
+
+test('an unconfirmed check leaves the boarding dialog open with the localized notice',async()=>{
+ global.IS_REACT_ACT_ENVIRONMENT=true
+ const host=document.createElement('div')
+ document.body.appendChild(host)
+ const root=createRoot(host)
+ const confirm=jest.fn().mockRejectedValue({code:'BOARDING_CHECK_UNCONFIRMED'})
+ const close=jest.fn()
+ try {
+  await act(async()=>root.render(<BoardingCodeDialog expected={undefined} onConfirm={confirm} onClose={close}/>))
+  const input=host.querySelector('input')
+  await act(async()=>{input.value='111';input.dispatchEvent(new Event('input',{bubbles:true}))})
+  await act(async()=>host.querySelector('form').dispatchEvent(new Event('submit',{bubbles:true,cancelable:true})))
+  expect(confirm).toHaveBeenCalledTimes(1)
+  expect(close).not.toHaveBeenCalled()
+  expect(host.querySelector('[role="alert"]').textContent).toBe('driver_boarding_check_unconfirmed')
+  expect(host.querySelector('button[type="submit"]').disabled).toBe(false)
+ } finally {
+  await act(async()=>root.unmount())
+  host.remove()
+  delete global.IS_REACT_ACT_ENVIRONMENT
+ }
+})
+
 test.each([
  ['a*01','D*Ol','a*01'],
  ['*','*','*'],

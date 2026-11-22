@@ -1,7 +1,7 @@
 import {useDriverDepartures,driverJourneyCopy} from '../../tools/driverPickupJourney'
 import {claimDriverOfferNotification} from '../../tools/driverOfferNotifications'
 import {confirmOfferDecline} from '../../tools/confirmedOfferDecline'
-import {getApiErrorMessage} from '../../tools/apiMessages'
+import {getApiErrorMessage,getUnconfirmedBoardingMessage} from '../../tools/apiMessages'
 import type { IOrder } from '../../types/types'
 import { MapPin, Plus, Minus } from 'lucide-react'
 import { formatPhoneNumber } from '../../tools/phoneUtils'
@@ -1367,7 +1367,7 @@ const Order: React.FC<IProps> = ({
         console.error(error)
         setMessageModal({
           isOpen: true,
-          message: error?.message || error.toString() || t(TRANSLATION.ERROR),
+          message: getUnconfirmedBoardingMessage(error) ?? (error?.message || error.toString() || t(TRANSLATION.ERROR)),
           status: EStatuses.Fail,
         })
       })

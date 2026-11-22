@@ -5,6 +5,8 @@
  * оба участника (водитель и пассажир — реальные учётки gruzvill). Ни один
  * endpoint не подменяется: единственное, что мокируется, — тайлы карты, они к
  * проверяемому сценарию отношения не имеют (§4 ТЗ).
+ * Сценарий восстановления после неподтверждённого ответа запускается только
+ * с локальными адресами приложения и Core и подменяет один ответ проверки кода.
  *
  * Что делает браузер: смотрит заказ, откликается, едет, приезжает, вводит код
  * посадки и подтверждает. Backend-вызовы из теста — только подготовка данных и
@@ -13,7 +15,7 @@
 
 import { expect } from '@playwright/test'
 import { test } from './fixtures/tabSession'
-import { driverAccount, passengerAccount } from './fixtures/accounts'
+import { apiBase, appUrl, driverAccount, passengerAccount } from './fixtures/accounts'
 import { expectAppBooted } from './fixtures/appShell'
 import {
   boardingCodeOf,
@@ -34,6 +36,7 @@ import {
   DESTINATION,
   DRIVER_PAGE,
   PICKUP,
+  boardingConfirmButton,
   boardingCodeInput,
   departAndArrive,
   expectUiDriverState,
@@ -200,6 +203,46 @@ test.describe('TEST-E2E-001 — посадка по коду в голосово
       test.info().annotations.push({ type: 'ui-sync', description: `${delay} ms` })
       expect(await isBoardingFormVisible(page), 'форма кода посадки закрылась').toBe(false)
       await expectBackendState(orderId, DRIVER_STATE.Started, 'бэкенд перевёл заказ в Started')
+    })
+  })
+
+  test('Локально: неподтверждённая проверка кода сохраняет заказ до успешного повтора', async({ page }) => {
+    test.skip(
+      [appUrl(), apiBase()].some(url => new URL(url).hostname !== '127.0.0.1'),
+      'Подмена ответа проверки кода допускается только на изолированном локальном Core',
+    )
+    const { orderId } = await prepareVotingOrder('unconfirmed-boarding')
+    await driveToBoarding(page, orderId)
+    const code = boardingCodeOf(await readOrder(passenger, orderId))
+    const orderUrl = new URL(`drive/get/${orderId}`, apiBase().replace(/\/?$/, '/')).href
+    let unconfirmedResponses = 0
+    await page.route(orderUrl, async route => {
+      const request = route.request()
+      const body = request.postData() ?? ''
+      if (request.method() === 'POST' && /name="action"\r?\n\r?\ncheck_driver_code\r?\n/.test(body)) {
+        unconfirmedResponses += 1
+        await route.fulfill({ status: 200, json: {}, headers: { 'access-control-allow-origin': '*' } })
+      } else {
+        await route.continue()
+      }
+    })
+
+    await withBoardingDiagnostics(page, orderId, async actions => {
+      await openBoardingForm(page)
+      await submitBoardingCode(page, code)
+      await expect(page.getByText('Сервис не подтвердил проверку кода посадки.', { exact: false })).toBeVisible()
+      await expect(boardingCodeInput(page)).toBeVisible()
+      await expect(boardingConfirmButton(page)).toBeEnabled()
+      expect(unconfirmedResponses).toBe(1)
+      expect(actions.of(orderId, 'set_start_state')).toHaveLength(0)
+      expect(await backendState(orderId)).toBe(DRIVER_STATE.Arrived)
+
+      await page.unroute(orderUrl)
+      await submitBoardingCode(page, code)
+      await expectBackendState(orderId, DRIVER_STATE.Started, 'Core подтвердил повторную проверку и старт')
+      await expectUiDriverState(page, DRIVER_STATE.Started, 'карта обновилась после успешного повтора')
+      expect(actions.of(orderId, 'check_driver_code')).toHaveLength(2)
+      expect(actions.of(orderId, 'set_start_state')).toHaveLength(1)
     })
   })
 
