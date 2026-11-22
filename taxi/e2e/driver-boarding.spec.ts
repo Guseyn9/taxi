@@ -38,6 +38,7 @@ import {
   PICKUP,
   boardingConfirmButton,
   boardingCodeInput,
+  confirmActionResult,
   departAndArrive,
   expectUiDriverState,
   isBoardingFormVisible,
@@ -230,7 +231,9 @@ test.describe('TEST-E2E-001 — посадка по коду в голосово
     await withBoardingDiagnostics(page, orderId, async actions => {
       await openBoardingForm(page)
       await submitBoardingCode(page, code)
-      await expect(page.getByText('Сервис не подтвердил проверку кода посадки.', { exact: false })).toBeVisible()
+      await expect(page.getByText(/Сервис не подтвердил проверку кода посадки|The service did not confirm the boarding code check/))
+        .toBeVisible()
+      await confirmActionResult(page, 'fail', 'показано сообщение о неподтверждённой проверке')
       await expect(boardingCodeInput(page)).toBeVisible()
       await expect(boardingConfirmButton(page)).toBeEnabled()
       expect(unconfirmedResponses).toBe(1)
