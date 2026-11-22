@@ -20,3 +20,24 @@ it('rejects prototype-bearing or invalid-language dictionaries', () => {
   expect(() => validateTenantDictionary(JSON.parse(JSON.stringify(valid()).replace('"lang_vls":','"__proto__":{},"lang_vls":')))).toThrow()
   expect(({} as any).polluted).toBeUndefined()
 })
+
+it('normalizes the archived Core car-class array without renumbering its classes', () => {
+  const input = valid()
+  const classes = [{en: 'Any'}, {en: 'Economy'}, {en: 'Comfort'}]
+  input.data.data.car_classes = classes
+
+  const result = validateTenantDictionary(JSON.parse(JSON.stringify(input)))
+
+  expect(result.dictionary.car_classes).toEqual({0: classes[0], 1: classes[1], 2: classes[2]})
+  expect(Array.isArray(result.dictionary.car_classes)).toBe(false)
+})
+
+it('continues to reject malformed class arrays and arrays for other dictionary fields', () => {
+  const input = valid()
+  input.data.data.car_classes = [null]
+  expect(() => validateTenantDictionary(input)).toThrow('Incomplete tenant dictionary')
+
+  const withMissingConstants = valid()
+  withMissingConstants.data.data.site_constants = []
+  expect(() => validateTenantDictionary(withMissingConstants)).toThrow('Incomplete tenant dictionary')
+})

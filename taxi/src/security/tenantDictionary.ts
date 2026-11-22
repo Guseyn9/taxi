@@ -5,8 +5,12 @@ export function validateTenantDictionary(response: any) {
   const payload = response?.data
   if (String(response?.code) !== '200' || response?.status !== 'success' || !record(payload) || !record(payload.data)) throw new Error('Invalid tenant dictionary')
   const dictionary = payload.data
-  for (const key of ['langs', 'lang_vls', 'site_constants', 'car_classes', 'booking_location_classes'])
+  for (const key of ['langs', 'lang_vls', 'site_constants', 'booking_location_classes'])
     if (!record(dictionary[key])) throw new Error('Incomplete tenant dictionary')
+  const carClasses = dictionary.car_classes
+  // PHP encodes a class map with keys 0..n as a JSON array. Keep each index as its class ID.
+  if (!record(carClasses) && !(Array.isArray(carClasses) && carClasses.every(record)))
+    throw new Error('Incomplete tenant dictionary')
   if (!Object.keys(dictionary.langs).length || !Object.values(dictionary.langs).every((lang: any) => record(lang) && typeof lang.native === 'string' && /^[a-z]{2,3}(?:-[a-z0-9]{2,8})*$/i.test(lang.iso))) throw new Error('Invalid tenant languages')
   const serialized = JSON.stringify(payload)
   if (serialized.length > 8 * 1024 * 1024) throw new Error('Tenant dictionary exceeds limit')
@@ -20,7 +24,8 @@ export function validateTenantDictionary(response: any) {
     }
   }
   visit(payload, 0)
-  return { dictionary, metadata: {
+  const normalized = Array.isArray(carClasses) ? { ...dictionary, car_classes: { ...carClasses } } : dictionary
+  return { dictionary: normalized, metadata: {
     version: String(payload.version || ''), default_lang: payload.default_lang,
     default_currency: typeof payload.default_currency === 'string' ? payload.default_currency : '',
     default_country: typeof payload.default_country === 'string' ? payload.default_country : '',
