@@ -386,18 +386,20 @@
     },
     "src/components/DriverEmulatorPanel/browserEmulator.ts": {
       "baselineSha256": "094a4e1146a82ecba24699d9ef10448005cd412fceb5e0762c82ddbd95b747ec",
-      "currentSha256": "3de06224990b3f68a7f27d26968722dc66002d5500513c266aec90ad5f672fbf",
-      "reason": "Remove embedded user/manager credentials, account provisioning and administrative approval/class mutation. All start/check paths require memory-only disposable accounts and loopback API.",
+      "currentSha256": "1bba6b8ce7ee8039fdf1e257030ea7e70c7e63e26bde5a5343555020f3c46a3d",
+      "reason": "Remove embedded user/manager credentials, account provisioning and administrative approval/class mutation. All start/check paths require memory-only disposable accounts and loopback API. Local test API requests omit cookies and reject redirects; client QA can use explicitly configured coordinates.",
       "evidence": [
-        "src/components/DriverEmulatorPanel/testRuntime.test.ts"
+        "src/components/DriverEmulatorPanel/testRuntime.test.ts",
+        "src/components/DriverEmulatorPanel/index.test.jsx"
       ]
     },
     "src/components/DriverEmulatorPanel/testRuntime.ts": {
       "baselineSha256": null,
-      "currentSha256": "8373042e5a58390ce807a2002ece02db67575a601c29fa5f21fb723057a9d187",
-      "reason": "Validate loopback page and endpoint; keep explicitly supplied disposable accounts in memory; no public shared pool.",
+      "currentSha256": "3c86ffb15e052a9e89fc5080de54eeb3a53328c1238a8f0a6ec3cffeb6ca8524",
+      "reason": "Validate loopback page and endpoint; keep explicitly supplied disposable accounts in memory; no public shared pool. Import validated operator-provided account lists for the application-selected local API and revoke the runtime at the session boundary.",
       "evidence": [
-        "src/components/DriverEmulatorPanel/testRuntime.test.ts"
+        "src/components/DriverEmulatorPanel/testRuntime.test.ts",
+        "src/components/DriverEmulatorPanel/index.test.jsx"
       ]
     },
     "src/platform/adapters/DriverCommandCompletionWaiter.ts": {
