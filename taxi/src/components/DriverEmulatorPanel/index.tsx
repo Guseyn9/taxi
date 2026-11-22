@@ -1,4 +1,5 @@
 import React from 'react'
+import { createPortal } from 'react-dom'
 import cn from 'classnames'
 import { X } from 'lucide-react'
 import { BrowserDriverEmulator, BrowserClientOrderEmulator, BrowserEmulatorSnapshot } from './browserEmulator'
@@ -208,7 +209,7 @@ function DriverEmulatorPanel({ isOpen, autoStart, mode = 'drivers', onStatusChan
     !emulatorTestReady('drivers') && !emulatorTestReady('clients')
   const logs = status.logs?.length ? status.logs.join('\n') : t('emulator_logs_empty')
 
-  return (
+  const panel = (
     <div className="driver-emulator-panel" role="dialog" aria-modal="true" aria-labelledby={titleId} ref={panelRef} tabIndex={-1} onKeyDown={event => {
       if(event.key === 'Escape'){event.preventDefault();event.stopPropagation();onClose()}
       if(event.key === 'Tab'){
@@ -304,6 +305,8 @@ function DriverEmulatorPanel({ isOpen, autoStart, mode = 'drivers', onStatusChan
       </div>
     </div>
   )
+  // Keep the modal above map notices rendered outside the header.
+  return typeof document === 'undefined' ? panel : createPortal(panel, document.body)
 }
 
 export default DriverEmulatorPanel

@@ -50,10 +50,11 @@ afterEach(() => {
   localStorage.clear()
 })
 
-const button = key => [...host.querySelectorAll('button')].find(node => node.textContent === key)
-const render = mode => act(() => root.render(<DriverEmulatorPanel isOpen mode={mode} onClose={() => {}} />))
+const dialog = () => document.body.querySelector('.driver-emulator-panel[role="dialog"]')
+const button = key => [...dialog().querySelectorAll('button')].find(node => node.textContent === key)
+const render = (mode, onClose = () => {}) => act(() => root.render(<DriverEmulatorPanel isOpen mode={mode} onClose={onClose} />))
 const upload = async source => {
-  const input = host.querySelector('input[type="file"]')
+  const input = dialog().querySelector('input[type="file"]')
   const file = {size: source.length, text: async () => source}
   Object.defineProperty(input, 'files', {value: [file], configurable: true})
   await act(async () => input.dispatchEvent(new Event('change', {bubbles: true})))
@@ -89,18 +90,28 @@ it.each(['drivers', 'clients'])('loads local accounts from the %s panel and only
 it('shows a local validation error and allows the operator to choose a corrected file', async () => {
   render('clients')
   await upload(fileFor('drivers'))
-  expect(host.querySelector('[role="alert"]').textContent).toBe('Check the account file')
+  expect(dialog().querySelector('[role="alert"]').textContent).toBe('Check the account file')
   expect(button('emulator_start').disabled).toBe(true)
 
   await upload(fileFor('clients'))
-  expect(host.querySelector('[role="alert"]')).toBeNull()
+  expect(dialog().querySelector('[role="alert"]')).toBeNull()
   expect(button('emulator_start').disabled).toBe(false)
 })
 
 it('offers no account upload or emulator actions for a shared Core URL', () => {
   Config.API_URL = 'https://example.invalid/taxi/c/test/api/v1'
   render('clients')
-  expect(host.querySelector('input[type="file"]')).toBeNull()
+  expect(dialog().querySelector('input[type="file"]')).toBeNull()
   expect(button('emulator_check').disabled).toBe(true)
   expect(button('emulator_start').disabled).toBe(true)
+})
+
+it('opens the dialog outside the header stacking context and exposes its close button', () => {
+  const onClose = jest.fn()
+  render('clients', onClose)
+  expect(dialog().parentElement).toBe(document.body)
+  expect(host.contains(dialog())).toBe(false)
+
+  act(() => dialog().querySelector('button[aria-label="close"]').click())
+  expect(onClose).toHaveBeenCalledTimes(1)
 })

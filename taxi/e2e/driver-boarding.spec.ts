@@ -68,6 +68,9 @@ const createdOrders: string[] = []
 test.beforeAll(async() => {
   driver = await login(driverAccount(), 'водитель')
   passenger = await login(passengerAccount(), 'пассажир')
+  const { cancelled, skipped } = await cancelTestOrders(passenger)
+  if (cancelled || skipped.length)
+    console.log(`E2E sweep перед проверкой посадки: отменено ${cancelled}, пропущено ${skipped.length}`)
   car = await getDriverCar(driver)
   await goOnline(driver, car, PICKUP)
 })
