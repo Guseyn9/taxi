@@ -52,6 +52,7 @@ import {
   expectUiDriverState,
   isBoardingFormVisible,
   openOrderCard,
+  watchOrderActions,
   switchToDriverMap,
   takeOrderButton,
 } from './fixtures/driverUi'
@@ -294,8 +295,23 @@ test('А.1.1 — стандартный вызов: от создания зак
     passengerPage, DRIVER_STATE.Arrived, 'пассажир видит, что водитель в пути')
 
   // ШАГ 6. ПРОВЕРКА 7 — поездка началась.
-  await clickPrimaryAction(driverPage)
-  await expectBackendState(orderId, DRIVER_STATE.Started, 'бэкенд перевёл заказ в Started')
+  const startActions = watchOrderActions(driverPage)
+  try {
+    await clickPrimaryAction(driverPage)
+    await expectBackendState(orderId, DRIVER_STATE.Started, 'бэкенд перевёл заказ в Started')
+  } catch (error) {
+    const responses = startActions.of(orderId, 'set_start_state').map(action => ({
+      httpStatus: action.httpStatus ?? null,
+      serviceCode: /^[1-5]\d{2}$/.test(action.code ?? '') ? Number(action.code) : null,
+      serviceStatus: action.status === 'success' || action.status === 'error' ? action.status : null,
+    }))
+    const description = JSON.stringify({ method: 'POST', endpoint: '/drive/get/:order', action: 'set_start_state', responses })
+    console.error(`E2E START DIAGNOSTICS: ${description}`)
+    testInfo.annotations.push({ type: 'start-response', description })
+    throw error
+  } finally {
+    startActions.dispose()
+  }
   await expectUiDriverState(driverPage, DRIVER_STATE.Started, 'карта показывает начатую поездку')
 
   // У стандартного вызова кода посадки нет — он только у голосового заказа

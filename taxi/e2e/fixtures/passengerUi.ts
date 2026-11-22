@@ -10,6 +10,7 @@ import path from 'path'
 import { expect, Page, Request, Response } from '@playwright/test'
 import { expectAppBooted } from './appShell'
 import {readValue} from './accounts'
+import { DESTINATION, PICKUP } from './driverUi'
 
 export const PASSENGER_PAGE = '/passenger-order'
 
@@ -319,12 +320,22 @@ export interface IPassengerOrderPoint {
   readonly match: string
 }
 
-/** UI geocoder inputs must belong to the same Agadir points as the API fixtures.
- * Configure verified queries and labels for the target service; no Rostov fallback. */
-function configuredPoint(which:'PICKUP'|'DESTINATION'):IPassengerOrderPoint {
-  const query=readValue(`E2E_${which}_QUERY`),match=readValue(`E2E_${which}_MATCH`)
-  if (!query||!match) throw new Error(`Set E2E_${which}_QUERY and E2E_${which}_MATCH to verified Agadir address results`)
-  return {query,match}
+const agadirAddress = {
+  PICKUP: { coordinates: PICKUP, match: 'Avenue' },
+  DESTINATION: { coordinates: DESTINATION, match: 'Tarfaya' },
+}
+
+/** The address fixtures and the API fixtures use the same points in Agadir. */
+function configuredPoint(which: keyof typeof agadirAddress): IPassengerOrderPoint {
+  const query = readValue(`E2E_${which}_QUERY`)
+  const match = readValue(`E2E_${which}_MATCH`)
+  if (!query && !match) {
+    const { coordinates, match } = agadirAddress[which]
+    return { query: `${coordinates.latitude}, ${coordinates.longitude}`, match }
+  }
+  if (!query || !match)
+    throw new Error(`Set both E2E_${which}_QUERY and E2E_${which}_MATCH to override the Agadir address fixture`)
+  return { query, match }
 }
 export const PASSENGER_ORDER_POINTS = {
   get pickup(){return configuredPoint('PICKUP')},
