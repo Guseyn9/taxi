@@ -145,6 +145,28 @@ afterEach(() => {
   jest.restoreAllMocks()
 })
 
+it('keeps the last confirmed active list after a malformed response and applies the next successful refresh', async() => {
+  jest.spyOn(console, 'error').mockImplementation(() => {})
+  const API = mockApi()
+  const polling = startPolling({ primaryCar: CAR, watchReady: false })
+  const { T, dispatch, ofType, getState } = polling
+
+  dispatch({ type: T.GET_ACTIVE_ORDERS_SUCCESS, payload: [ORDER] })
+  API.getOrders.mockRejectedValueOnce(new Error('Invalid booking list')).mockResolvedValueOnce(ok([]))
+  dispatch({ type: T.GET_ACTIVE_ORDERS_REQUEST })
+  await settle()
+
+  expect(ofType(T.GET_ACTIVE_ORDERS_FAIL)).toHaveLength(1)
+  expect(getState().orders.activeOrders.toArray()).toEqual([ORDER.b_id])
+
+  dispatch({ type: T.GET_ACTIVE_ORDERS_REQUEST })
+  await settle()
+
+  expect(ofType(T.GET_ACTIVE_ORDERS_SUCCESS)).toHaveLength(2)
+  expect(getState().orders.activeOrders.toArray()).toEqual([])
+  expect(API.cancelDrive).not.toHaveBeenCalled()
+})
+
 describe('опрос готовых заказов: штатный путь не сломан', () => {
 
   it('машина есть: запрос, SUCCESS, список в store и следующий цикл (AC-5)', async() => {

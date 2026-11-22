@@ -38,6 +38,7 @@ import {
 import { setPassengerConfirmedChoice } from '../tools/driverOffer'
 import { recordOrderInteraction } from '../tools/orderInteractionLog'
 import { configuredFsmPassengerBridge, fsmPassengerEnabled } from '../platform/adapters/FsmPassengerBridge'
+import { writeRawLog } from '../tools/rawLog'
 
 function normalizeId(value: unknown) {
   if (value === null || value === undefined || value === '') return ''
@@ -240,6 +241,30 @@ const _cancelDrive = async(
 }
 export const cancelDrive = apiMethod<typeof _cancelDrive>(_cancelDrive)
 
+function readHiddenOrderIds(userId: IUser['u_id'] | undefined): readonly string[] {
+  if (!userId) return []
+  try {
+    const ids = JSON.parse(localStorage.getItem('hiddenOrders') || '{}')?.[userId]
+    return Array.isArray(ids) ? ids.map(String) : []
+  } catch {
+    return []
+  }
+}
+
+function orderReadCode(value: unknown): number | undefined {
+  if (typeof value !== 'number' && typeof value !== 'string') return undefined
+  return /^[1-5]\d{2}$/.test(String(value)) ? Number(value) : undefined
+}
+
+function orderReadReason(message: unknown): string | undefined {
+  switch (message) {
+    case 'used car not found': return 'used_car_not_found'
+    case 'empty driver location classes': return 'empty_driver_location_classes'
+    case 'auth_error': return 'auth_error'
+    default: return undefined
+  }
+}
+
 export const getOrders: <TType extends EOrderTypes>(
   type?: TType,
   filter?: TType extends EOrderTypes.Ready ? {
@@ -265,8 +290,7 @@ export const getOrders: <TType extends EOrderTypes>(
     array_type: 'list',
   })
 
-  const hiddenOrders = JSON.parse(localStorage.getItem('hiddenOrders') || '{}')
-  const userHiddenOrders = hiddenOrders && userID && hiddenOrders[userID]
+  const hiddenOrderIds = new Set(readHiddenOrderIds(userID))
 
   const queryParams: string[] = []
   let URLAdditionalPath = ''
@@ -294,46 +318,76 @@ export const getOrders: <TType extends EOrderTypes>(
   )
     queryParams.push('filter=test_user_id')
 
-  const { data: response } = await axios.post(
+  const endpoint = `/drive${URLAdditionalPath}`
+  const startedAt = Date.now()
+  // The request contains authentication fields. Log only fixed endpoint metadata and allowlisted codes.
+  const logFailure = (reason: string, httpStatus?: unknown, body?: any) => {
+    writeRawLog('ORDER_LIST_READ_FAILURE', {
+      method: 'POST', endpoint, list: type, reason,
+      httpStatus: orderReadCode(httpStatus), serviceCode: orderReadCode(body?.code),
+      serviceReason: orderReadReason(body?.message), durationMs: Date.now() - startedAt,
+    })
+  }
+  const { data: response, status: httpStatus } = await axios.post(
     `${Config.API_URL}/drive${URLAdditionalPath}` +
     (queryParams.length > 0 ? `?${queryParams.join('&')}` : ''),
     formData,
     {timeout:15000},
-  )
-  if (response.code === '404' && [
-    'used car not found',
-    'empty driver location classes',
-  ].includes(response.message))
-    return { ...response, data: { detail: 'used_car_not_found' } }
-  if (response.code !== '200')
+  ).catch(error => {
+    if (error?.code !== 'ERR_CANCELED') {
+      const reason = error?.response ? 'http_error' :
+        ['ECONNABORTED', 'ETIMEDOUT'].includes(error?.code) ? 'timeout' : 'transport_error'
+      logFailure(reason, error?.response?.status, error?.response?.data)
+    }
+    throw error
+  })
+  const serviceCode = orderReadCode(response?.code)
+  if (serviceCode === undefined || (serviceCode === 200 && response.status === 'error')) {
+    logFailure('invalid_envelope', httpStatus, response)
+    throw new Error('Invalid order list response')
+  }
+  if (serviceCode !== 200) {
+    logFailure('service_error', httpStatus, response)
+    const reason = orderReadReason(response.message)
+    if (serviceCode === 404 && (reason === 'used_car_not_found' || reason === 'empty_driver_location_classes'))
+      return { ...response, code: '404', data: { detail: 'used_car_not_found' } }
     return response
+  }
 
-  if (type === EOrderTypes.Active)
-    for (const item of response.data.booking)
-      item.user = response.data.user[item.u_id]
+  const data = response.data
+  if (!Array.isArray(data?.booking) || data.booking.some((item: { b_id?: unknown }) => !item || typeof item !== 'object' || !normalizeId(item.b_id))) {
+    logFailure('invalid_booking_list', httpStatus, response)
+    throw new Error('Invalid booking list')
+  }
 
-  return {
-    ...response,
-    data: {
-      ...response.data,
-      booking: response.data.booking
-        ?.filter((item: IOrder) =>
-          !(userHiddenOrders && userHiddenOrders.includes(item.b_id)),
-        )
-        .filter((item: any) =>
-          isBrowserEmulatorRunning('drivers') ||
-          isBrowserEmulatorRunning('clients') ||
-          !isBackendTestOrder(item, response.data.user?.[item.u_id]),
-        )
-        .map((item: any) => convertOrder(item))
-        .filter((item: IOrder) => item.b_confirm_state || (
-          type === EOrderTypes.Active && currentUser?.u_role === EUserRoles.Client &&
-          String(item.u_id) === String(userID) && item.b_voting && item.b_confirm_state === false
-        ))
-        .sort((a: IOrder, b: IOrder) =>
-          a.b_start_datetime < b.b_start_datetime ? 1 : -1,
-        ),
-    },
+  try {
+    return {
+      ...response,
+      code: '200',
+      data: {
+        ...data,
+        booking: data.booking
+          .filter((item: IOrder) => !hiddenOrderIds.has(String(item.b_id)))
+          .filter((item: any) =>
+            isBrowserEmulatorRunning('drivers') ||
+            isBrowserEmulatorRunning('clients') ||
+            !isBackendTestOrder(item, data.user?.[item.u_id]),
+          )
+          .map((item: any) => convertOrder(type === EOrderTypes.Active ? {
+            ...item, user: data.user?.[item.u_id] ?? item.user,
+          } : item))
+          .filter((item: IOrder) => item.b_confirm_state || (
+            type === EOrderTypes.Active && currentUser?.u_role === EUserRoles.Client &&
+            String(item.u_id) === String(userID) && item.b_voting && item.b_confirm_state === false
+          ))
+          .sort((a: IOrder, b: IOrder) =>
+            a.b_start_datetime < b.b_start_datetime ? 1 : -1,
+          ),
+      },
+    }
+  } catch (error) {
+    logFailure('order_conversion_error', httpStatus, response)
+    throw error
   }
 })
 

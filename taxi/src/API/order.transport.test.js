@@ -2,6 +2,7 @@ import axios from 'axios'
 import {postDrive,confirmDrive,getOrders,updateOrderCustomerPrice,takeOrder,sendOrderOffer,participateVotingOrder,cancelDrive,setWaitingTime,chooseCandidate,releaseCandidateChoice,confirmVotingCode,cancelVotingParticipation,setOrderRating} from './order'
 import {getUserCar} from './car'
 import {EOrderTypes} from '../types/types'
+import {writeRawLog} from '../tools/rawLog'
 import {configuredFsmPassengerBridge,fsmPassengerEnabled} from '../platform/adapters/FsmPassengerBridge'
 let mockUser={u_id:'client-1',u_role:1}
 jest.mock('axios',()=>({__esModule:true,default:{post:jest.fn()}}))
@@ -16,6 +17,7 @@ jest.mock('./car',()=>({getUserCar:jest.fn()}))
 jest.mock('../tools/driverOffer',()=>({setPassengerConfirmedChoice:jest.fn()}))
 jest.mock('../tools/emulatorMode',()=>({isAnyBrowserEmulatorOrder:()=>false,isBrowserEmulatorRunning:()=>false,saveBrowserEmulatorOrderId:jest.fn()}))
 jest.mock('../tools/orderInteractionLog',()=>({recordOrderInteraction:jest.fn()}))
+jest.mock('../tools/rawLog',()=>({writeRawLog:jest.fn()}))
 jest.mock('../platform/adapters/FsmPassengerBridge',()=>({fsmPassengerEnabled:jest.fn(()=>false),configuredFsmPassengerBridge:jest.fn()}))
 const success=(data={})=>({data:{code:'200',status:'success',data}})
 const read=(confirmed,id='42')=>success({booking:{[id]:{b_id:id,b_confirm_state:confirmed?1:0,b_state:1,b_voting:1}}})
@@ -86,6 +88,49 @@ test('only an owning client sees unconfirmed Voting in its active list',async()=
  mockUser={u_id:'client-1',u_role:2}
  axios.post.mockResolvedValueOnce(success({booking:rows,user:{}}))
  expect((await getOrders(EOrderTypes.Active)).data.booking).toEqual([])
+})
+
+test('active list still updates with damaged hidden-order storage and no user lookup',async()=>{
+ localStorage.setItem('hiddenOrders','{')
+ axios.post.mockResolvedValueOnce(success({booking:[{b_id:'42',u_id:'client-1',b_confirm_state:1}]}))
+ const result=await getOrders(EOrderTypes.Active)
+ expect(result.data.booking.map(order=>order.b_id)).toEqual(['42'])
+ expect(axios.post).toHaveBeenCalledWith('https://local.example.test/api/v1/drive?fields=00000000u1',expect.any(FormData),{timeout:15000})
+ expect(formAt(0).get('array_type')).toBe('list')
+ expect(writeRawLog).not.toHaveBeenCalled()
+})
+
+test('missing lookup preserves the embedded user and the valid hidden-order filter',async()=>{
+ localStorage.setItem('hiddenOrders',JSON.stringify({'client-1':['43']}))
+ const user={u_id:'client-1',u_name:'Fixture'}
+ axios.post.mockResolvedValueOnce(success({booking:[{b_id:'42',u_id:'client-1',b_confirm_state:1,user},{b_id:'43',b_confirm_state:1}]}))
+ const {data}=await getOrders(EOrderTypes.Active)
+ expect(data.booking).toEqual([expect.objectContaining({b_id:'42',user})])
+})
+
+test('HTTP 200 with an invalid list rejects instead of replacing the last good orders',async()=>{
+ axios.post.mockResolvedValueOnce({...success({booking:null}),status:200})
+ await expect(getOrders(EOrderTypes.Active)).rejects.toThrow('Invalid booking list')
+ expect(writeRawLog).toHaveBeenCalledWith('ORDER_LIST_READ_FAILURE',expect.objectContaining({endpoint:'/drive',httpStatus:200,serviceCode:200,reason:'invalid_booking_list'}))
+})
+
+test('an HTTP success with service refusal logs the statuses without recording the response body',async()=>{
+ const refusal={code:'403',status:'error',message:'private response text',data:{token:'do not log'}}
+ axios.post.mockResolvedValueOnce({data:refusal,status:200})
+ await expect(getOrders(EOrderTypes.Active)).resolves.toEqual(refusal)
+ expect(writeRawLog.mock.calls).toEqual([['ORDER_LIST_READ_FAILURE',{
+   method:'POST',endpoint:'/drive',list:EOrderTypes.Active,reason:'service_error',httpStatus:200,serviceCode:403,serviceReason:undefined,durationMs:expect.any(Number),
+ }]])
+})
+
+test.each([
+ [{code:'ERR_BAD_RESPONSE',response:{status:503,data:{code:'503',token:'private'}}},'http_error',503],
+ [{code:'ECONNABORTED',config:{data:'private'}},'timeout',undefined],
+])('records enough to distinguish an HTTP failure from a timeout (%j)',async(error,reason,httpStatus)=>{
+ axios.post.mockRejectedValueOnce(error)
+ await expect(getOrders(EOrderTypes.Ready)).rejects.toBe(error)
+ expect(writeRawLog).toHaveBeenCalledWith('ORDER_LIST_READ_FAILURE',expect.objectContaining({endpoint:'/drive/now',httpStatus,reason}))
+ expect(JSON.stringify(writeRawLog.mock.calls)).not.toContain('private')
 })
 test('price edit uses the option assignment operator and sends no stale address or count',async()=>{
  axios.post.mockResolvedValueOnce(success())
