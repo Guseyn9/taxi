@@ -1,7 +1,6 @@
 import React, { createContext, useEffect, useRef, useState } from 'react'
 import {claimDriverOfferNotification} from '../../tools/driverOfferNotifications'
 import DriverOrders from './Orders'
-import { LogIn } from 'lucide-react'
 import DriverMap from './Map'
 import { t, TRANSLATION } from '../../localization'
 import { connect, ConnectedProps } from 'react-redux'
@@ -16,7 +15,7 @@ import { canDriverTakeOrderBySeats, getDriverFreeSeats } from '../../tools/drive
 import SITE_CONSTANTS from '../../siteConstants'
 import { EBookingDriverState, EBookingStates, EStatuses, EUserRoles, IAddressPoint, IOrder } from '../../types/types'
 import cn from 'classnames'
-import ErrorFrame from '../../components/ErrorFrame'
+import DriverSignIn from '../../components/DriverSignIn'
 import images from '../../constants/images'
 import { withLayout } from '../../HOCs/withLayout'
 import { addHiddenOrder } from '../../tools/utils'
@@ -529,18 +528,8 @@ const Driver: React.FC<IProps> = ({
     })
   }, [orderControlMode, readyOrders, activeOrders, driverCar, user?.u_id, user?.u_role, navigate, setMessageModal])
 
-  if (user?.u_role !== EUserRoles.Driver) {
-    return (
-      <ErrorFrame
-        renderImage={() => (
-          <button type="button" className="errorIcon driver-login-action" aria-label={t(TRANSLATION.UNAUTHORIZED_ACCESS)} onClick={() => setLoginModal(true)}>
-            <LogIn size={20} aria-hidden="true" /><span>{t(TRANSLATION.SIGN_IN_HEADER)}</span>
-          </button>
-        )}
-        title={t(TRANSLATION.UNAUTHORIZED_ACCESS)}
-      />
-    )
-  }
+  if (user?.u_role !== EUserRoles.Driver)
+    return <DriverSignIn onSignIn={() => setLoginModal(true)} />
 
   const onFirstTabClick = () => {
     navigate(PLATFORM_ROUTES.DriverOrders, { query: { tab: EDriverTabs.Lite } })

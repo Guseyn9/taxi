@@ -14,6 +14,7 @@ import React, { useEffect, useRef, useState } from 'react'
 import { connect, ConnectedProps } from 'react-redux'
 import { useParams } from 'react-router-dom'
 import PageSection from '../../components/PageSection'
+import DriverSignIn from '../../components/DriverSignIn'
 import Button from '../../components/Button'
 import Input, { EInputTypes } from '../../components/Input'
 import { addHiddenOrder, distanceBetweenEarthCoordinates } from '../../tools/utils'
@@ -2050,7 +2051,12 @@ const Order: React.FC<IProps> = ({
     </PageSection>
 }
 
-export default withLayout(connector(Order))
+function DriverOrderRoute(props: IProps) {
+  if (!props.user) return <DriverSignIn onSignIn={() => props.setLoginModal(true)} />
+  return <Order {...props} />
+}
+
+export default withLayout(connector(DriverOrderRoute))
 
 const VOTING_PARTICIPATION_STORAGE_KEY = 'driverVotingParticipations'
 const VOTING_ARRIVED_STORAGE_KEY = 'driverVotingArrived'

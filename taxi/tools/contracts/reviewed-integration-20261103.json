@@ -573,8 +573,8 @@
     },
     "src/pages/Driver/index.tsx": {
       "baselineSha256": "06b3d0ea62b8011537ec2ef054185052ee7a59c558b5ef40e43b3bf2ff7eaea4",
-      "currentSha256": "ac1b0614aad781b379eaa106b3d06960bd61a7e44f2075e880f3afd3714ca5e0",
-      "reason": "Start ordinary Driver polling and GPS publication independently of emulator flags. R20: Remove active-vehicle selector from main driver layout; it is mounted in driver profile instead. Driver order handlers unchanged.",
+      "currentSha256": "fb93b747d0cf948fcb59669c869610b61a6dbf845ee71e337181209a885d62f4",
+      "reason": "Start ordinary Driver polling and GPS publication independently of emulator flags. R20: Remove active-vehicle selector from main driver layout; it is mounted in driver profile instead. Driver order handlers unchanged. R28: Reuse the existing guest driver sign-in action as a shared component.",
       "evidence": [
         "src/state/orders/__tests__/readyOrdersPolling.test.js",
         "src/state/geolocation/sagas.test.js"
@@ -591,8 +591,8 @@
     },
     "src/pages/Order/index.tsx": {
       "baselineSha256": "966575e0df96d960727a065c1d5006ae9586e3f4b3f9b39aaa225f8f3bc2b84a",
-      "currentSha256": "cbbda0f5fbff0c7f47a65557a8db0ffbb04b0beedb7e720760dc445893b5c0d5",
-      "reason": "Keep prior reviewed detail behavior; do not open a second acceptance modal after the same offer event has been displayed. R16: Client-selected Offer decline awaits the existing cancelVotingParticipation acknowledgement before local hide/navigation; failure retains offer and reads back. Synchronous duplicate-click guard.",
+      "currentSha256": "21f3c449304b89c9e2c1210c9411e1413b6e9ae4d48efd24f85973cdd3fed1ee",
+      "reason": "Keep prior reviewed detail behavior; do not open a second acceptance modal after the same offer event has been displayed. R16: Client-selected Offer decline awaits the existing cancelVotingParticipation acknowledgement before local hide/navigation; failure retains offer and reads back. Synchronous duplicate-click guard. R28: Show the driver sign-in action before mounting the order screen for an unauthenticated visitor. The guest route sends no detail reads.",
       "evidence": [
         "src/tools/driverOfferNotifications.test.ts",
         "e2e/offer-order.spec.ts",
