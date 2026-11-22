@@ -35,7 +35,6 @@ import {
   DRIVER_PAGE,
   PICKUP,
   boardingCodeInput,
-  clickPrimaryAction,
   departAndArrive,
   expectUiDriverState,
   isBoardingFormVisible,
@@ -43,7 +42,7 @@ import {
   openBoardingForm,
   openDriverMap,
   submitBoardingCode,
-  watchOrderActions,
+  withBoardingDiagnostics,
   messageModalStatus,
 } from './fixtures/driverUi'
 import {slowPassengerNetwork} from './fixtures/passengerUi'
@@ -192,80 +191,69 @@ test.describe('TEST-E2E-001 — посадка по коду в голосово
     await driveToBoarding(page, orderId)
 
     // STEP 5-6 — форма кода посадки и настоящий код водителя.
-    await openBoardingForm(page)
-    const actions=watchOrderActions(page)
-    await submitBoardingCode(page, boardingCodeOf(await readOrder(passenger, orderId)))
-    // The UI budget starts after the successful server acknowledgement, not
-    // before a potentially slow network round trip.
-    await expect.poll(()=>actions.of(orderId,'set_start_state').some(item=>item.status==='success')).toBe(true)
-    actions.dispose()
-
-    // STEP 9 — то, ради чего тест написан. Замер обязателен: дефект был не в том,
-    // что интерфейс НИКОГДА не догонит бэкенд, а в том, что он догонял его только
-    // следующим опросом списка заказов. Без верхней границы тест проходит и на
-    // сломанном коде — проверено инъекцией регрессии.
-    const delay = await measureUiStateDelay(page, DRIVER_STATE.Started, UI_SYNC_BUDGET_MS)
-    test.info().annotations.push({ type: 'ui-sync', description: `${delay} ms` })
-    expect(await isBoardingFormVisible(page), 'форма кода посадки закрылась').toBe(false)
-
-    // STEP 8 — backend как независимое подтверждение.
-    await expectBackendState(orderId, DRIVER_STATE.Started, 'бэкенд перевёл заказ в Started')
+    await withBoardingDiagnostics(page, orderId, async actions => {
+      await openBoardingForm(page)
+      await submitBoardingCode(page, boardingCodeOf(await readOrder(passenger, orderId)))
+      // Start the UI budget after the server acknowledges the transition.
+      await expect.poll(() => actions.of(orderId, 'set_start_state').some(item => item.status === 'success')).toBe(true)
+      const delay = await measureUiStateDelay(page, DRIVER_STATE.Started, UI_SYNC_BUDGET_MS)
+      test.info().annotations.push({ type: 'ui-sync', description: `${delay} ms` })
+      expect(await isBoardingFormVisible(page), 'форма кода посадки закрылась').toBe(false)
+      await expectBackendState(orderId, DRIVER_STATE.Started, 'бэкенд перевёл заказ в Started')
+    })
   })
 
   test('B: некорректный код не переводит заказ в Started', async({ page }) => {
     const { orderId } = await prepareVotingOrder('B')
     await driveToBoarding(page, orderId)
 
-    await openBoardingForm(page)
-    const correct=boardingCodeOf(await readOrder(passenger,orderId))
-    const actions=watchOrderActions(page)
-    await submitBoardingCode(page, correct==='9'?'8':'9')
-    await expect.poll(async()=>
-      (await page.getByRole('alert').count())>0 || await messageModalStatus(page)==='fail',
-    {message:'неверный код показан ошибкой'}).toBe(true)
-    expect(actions.of(orderId,'set_start_state'), 'локально отклонённый код не начинает поездку').toHaveLength(0)
-    actions.dispose()
-
-    expect(await backendState(orderId), 'заказ не ушёл в Started').not.toBe(DRIVER_STATE.Started)
-    await expect(boardingCodeInput(page), 'карточка осталась в режиме посадки').toBeVisible()
-    expect(await backendState(orderId)).toBe(DRIVER_STATE.Arrived)
+    await withBoardingDiagnostics(page, orderId, async actions => {
+      await openBoardingForm(page)
+      const correct = boardingCodeOf(await readOrder(passenger, orderId))
+      await submitBoardingCode(page, correct === '9' ? '8' : '9')
+      await expect.poll(async() =>
+        (await page.getByRole('alert').count()) > 0 || await messageModalStatus(page) === 'fail',
+      { message: 'неверный код показан ошибкой' }).toBe(true)
+      expect(actions.of(orderId, 'set_start_state').length, 'локально отклонённый код не начинает поездку').toBe(0)
+      expect(await backendState(orderId), 'заказ не ушёл в Started').not.toBe(DRIVER_STATE.Started)
+      await expect(boardingCodeInput(page), 'карточка осталась в режиме посадки').toBeVisible()
+      expect(await backendState(orderId)).toBe(DRIVER_STATE.Arrived)
+    })
   })
 
   test('C: двойное подтверждение не ломает состояние заказа', async({ page }) => {
     const { orderId } = await prepareVotingOrder('C')
     await driveToBoarding(page, orderId)
 
-    await openBoardingForm(page)
-    const input = boardingCodeInput(page)
-    await input.fill(boardingCodeOf(await readOrder(passenger, orderId)))
-
-    const confirm = page.getByTestId('driver-boarding-confirm')
-    const actions=watchOrderActions(page)
-    const restoreNetwork=await slowPassengerNetwork(page,1_500)
-    try {
-      await confirm.click()
-      await confirm.click({force:true})
-    } finally {await restoreNetwork()}
-
-    await expectBackendState(orderId, DRIVER_STATE.Started, 'заказ ровно один раз ушёл в Started')
-    expect(actions.of(orderId,'set_start_state'), 'двойной клик отправил одну команду Start').toHaveLength(1)
-    actions.dispose()
-    await expectUiDriverState(page, DRIVER_STATE.Started, 'интерфейс показывает Started')
+    await withBoardingDiagnostics(page, orderId, async actions => {
+      await openBoardingForm(page)
+      await boardingCodeInput(page).fill(boardingCodeOf(await readOrder(passenger, orderId)))
+      const confirm = page.getByTestId('driver-boarding-confirm')
+      const restoreNetwork = await slowPassengerNetwork(page, 1_500)
+      try {
+        await confirm.click()
+        await confirm.click({ force: true })
+      } finally {
+        await restoreNetwork()
+      }
+      await expectBackendState(orderId, DRIVER_STATE.Started, 'заказ ровно один раз ушёл в Started')
+      expect(actions.of(orderId, 'set_start_state').length, 'двойной клик отправил одну команду Start').toBe(1)
+      await expectUiDriverState(page, DRIVER_STATE.Started, 'интерфейс показывает Started')
+    })
   })
 
   test('D: после перезагрузки страница остаётся в Started', async({ page }) => {
     const { orderId } = await prepareVotingOrder('D')
     await driveToBoarding(page, orderId)
 
-    await openBoardingForm(page)
-    await submitBoardingCode(page, boardingCodeOf(await readOrder(passenger, orderId)))
-    await expectBackendState(orderId, DRIVER_STATE.Started, 'бэкенд перевёл заказ в Started')
-
-    await page.goto(DRIVER_PAGE)
-
-    // Проверяет, что исправление — не только локальный optimistic state.
-    await expectUiDriverState(page, DRIVER_STATE.Started, 'после перезагрузки интерфейс всё ещё Started')
-    expect(await isBoardingFormVisible(page), 'подтверждение кода не вернулось').toBe(false)
+    await withBoardingDiagnostics(page, orderId, async() => {
+      await openBoardingForm(page)
+      await submitBoardingCode(page, boardingCodeOf(await readOrder(passenger, orderId)))
+      await expectBackendState(orderId, DRIVER_STATE.Started, 'бэкенд перевёл заказ в Started')
+      await page.goto(DRIVER_PAGE)
+      await expectUiDriverState(page, DRIVER_STATE.Started, 'после перезагрузки интерфейс всё ещё Started')
+      expect(await isBoardingFormVisible(page), 'подтверждение кода не вернулось').toBe(false)
+    })
   })
 
 })

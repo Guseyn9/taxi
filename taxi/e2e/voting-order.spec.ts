@@ -73,6 +73,7 @@ import {
   openDriverMap,
   openOrderCard,
   submitBoardingCode,
+  withBoardingDiagnostics,
   takeOrderButton,
 } from './fixtures/driverUi'
 import {
@@ -410,10 +411,12 @@ test('А.1.2 — голосование: от создания заказа до
   // ШАГ 11 (AC-10, AC-11) — начало поездки. У голосового заказа переход
   // Arrived → Started проходит через код посадки: это часть его контракта, а не
   // обход (TEST-E2E-001, pages/Driver/Map.tsx). Код настоящий, водительский.
-  await openBoardingForm(driver1.page)
-  await submitBoardingCode(driver1.page, boardingCodeOf(await readOrder(passenger, orderId)))
-  await expectBackendState(orderId, driver1, DRIVER_STATE.Started, 'бэкенд перевёл заказ в Started')
-  await expectUiDriverState(driver1.page, DRIVER_STATE.Started, 'карта показывает начатую поездку')
+  await withBoardingDiagnostics(driver1.page, orderId, async() => {
+    await openBoardingForm(driver1.page)
+    await submitBoardingCode(driver1.page, boardingCodeOf(await readOrder(passenger, orderId)))
+    await expectBackendState(orderId, driver1, DRIVER_STATE.Started, 'бэкенд перевёл заказ в Started')
+    await expectUiDriverState(driver1.page, DRIVER_STATE.Started, 'карта показывает начатую поездку')
+  })
   await expectPassengerDriverState(
     passengerPage, DRIVER_STATE.Started, 'пассажир видит, что поездка началась')
 

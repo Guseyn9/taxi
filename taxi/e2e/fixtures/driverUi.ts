@@ -191,6 +191,7 @@ export interface IOrderActionRecord {
   readonly action: string
   readonly performer?: string
   httpStatus?: number
+  transportFailed?: boolean
   /** `status` и `code` из тела ответа: HTTP 200 оборачивает и бизнес-ошибки. */
   status?: string
   code?: string
@@ -223,14 +224,17 @@ export function watchOrderActions(page: Page): IOrderActionWatch {
   const onRequest = (request: Request) => {
     if (request.method() !== 'POST')
       return
-    const orderId = /\/drive\/get\/(\d+)$/.exec(new URL(request.url()).pathname)?.[1]
+    const orderId = /\/drive\/get\/(\d+)\/?$/.exec(new URL(request.url()).pathname)?.[1]
     if (!orderId)
       return
     const body = request.postData() ?? ''
-    const action = field(body, 'action')
+    const urlEncoded = request.headers()['content-type']?.startsWith('application/x-www-form-urlencoded')
+    const params = urlEncoded ? new URLSearchParams(body) : null
+    const action = params ? params.get('action') : field(body, 'action')
     if (!action)
       return
-    const record: IOrderActionRecord = { orderId, action, performer: field(body, 'performer') }
+    const performer = params ? params.get('performer') ?? undefined : field(body, 'performer')
+    const record: IOrderActionRecord = { orderId, action, performer }
     records.push(record)
     byRequest.set(request, record)
   }
@@ -238,15 +242,20 @@ export function watchOrderActions(page: Page): IOrderActionWatch {
     const record = byRequest.get(response.request())
     if (!record)
       return
-    const body = await response.json().catch(() => undefined)
     record.httpStatus = response.status()
+    const body = await response.json().catch(() => undefined)
     record.status = body?.status === undefined ? undefined : String(body.status)
     record.code = body?.code === undefined ? undefined : String(body.code)
     record.message = body?.message === undefined ? undefined : String(body.message)
   }
+  const onRequestFailed = (request: Request) => {
+    const record = byRequest.get(request)
+    if (record) record.transportFailed = true
+  }
 
   page.on('request', onRequest)
   page.on('response', onResponse)
+  page.on('requestfailed', onRequestFailed)
 
   return {
     records,
@@ -262,7 +271,52 @@ export function watchOrderActions(page: Page): IOrderActionWatch {
     dispose() {
       page.off('request', onRequest)
       page.off('response', onResponse)
+      page.off('requestfailed', onRequestFailed)
     },
+  }
+}
+
+const boardingRefusals = new Map([
+  ['wrong driver code', 'wrong_code'],
+  ['booking with empty driver code', 'empty_order_code'],
+  ['maximum attempts exceeded', 'attempt_limit'],
+  ['not appointed performer', 'not_appointed'],
+  ['unauthorized access', 'unauthorized'],
+  ['wrong user role', 'wrong_role'],
+  ['wrong booking state', 'wrong_state'],
+  ['wrong action', 'unknown_action'],
+  ['unknown action', 'unknown_action'],
+  ['action not found', 'unknown_action'],
+])
+
+/** Report where boarding stopped without writing PINs, order IDs or response bodies. */
+export async function withBoardingDiagnostics(
+  page: Page,
+  orderId: string,
+  run: (actions: IOrderActionWatch) => Promise<void>,
+): Promise<void> {
+  const watch = watchOrderActions(page)
+  try {
+    await run(watch)
+  } catch (error) {
+    const actions = watch.records.filter(record => record.orderId === orderId &&
+      (record.action === 'check_driver_code' || record.action === 'set_start_state'))
+    const responses = actions.map(record => ({
+      action: record.action,
+      httpStatus: record.httpStatus ?? null,
+      transportFailed: record.transportFailed === true,
+      serviceCode: /^[1-5]\d{2}$/.test(record.code ?? '') ? Number(record.code) : null,
+      serviceStatus: record.status === 'success' || record.status === 'error' ? record.status : null,
+      refusal: boardingRefusals.get(record.message?.trim().toLowerCase() ?? '') ?? null,
+    }))
+    const description = JSON.stringify({
+      method: 'POST', endpoint: '/drive/get/:order',
+      boardingFormVisible: await isBoardingFormVisible(page), responses,
+    })
+    console.error(`E2E BOARDING DIAGNOSTICS: ${description}`)
+    throw error
+  } finally {
+    watch.dispose()
   }
 }
 
