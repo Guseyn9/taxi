@@ -1759,6 +1759,10 @@ function DriverOrderMapModeContent({
       atPickup:hasReachedPickup,depart:()=>{},arrive:async()=>{},
       board:async()=>{
         if(isVotingOrder(order)){await driverMapGateway.openCard(order.b_id);return}
+        if (!order.b_driver_code) {
+          await runMapOrderTransition(order.b_id, () => confirmBoardingCommand(order.b_id, ''))
+          return
+        }
         requestBoarding(order,async code=>{
           await confirmBoardingCommand(order.b_id,code)
           refreshMapOrderState(order.b_id)

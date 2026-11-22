@@ -163,6 +163,21 @@ describe('DriverMapGateway', () => {
     }))
   })
 
+  it('starts rides without a boarding code via the legacy state transition', async() => {
+    const gateway = new DriverMapGateway(createRuntime())
+    const listener = jest.fn()
+    gateway.mount()
+    gateway.subscribe(listener)
+    await gateway.confirmBoarding('42', '')
+
+    expect(backendGateway.confirmVotingCode).not.toHaveBeenCalled()
+    expect(backendGateway.setOrderState).toHaveBeenCalledWith('42', 5, undefined)
+    expect(listener).toHaveBeenCalledWith(expect.objectContaining({
+      type: DRIVER_MAP_EVENTS.BoardingConfirmed,
+      payload: { orderId: '42' },
+    }))
+  })
+
   it('routes presentation and application requests through events', async() => {
     const runtime = createRuntime()
     const gateway = new DriverMapGateway(runtime)

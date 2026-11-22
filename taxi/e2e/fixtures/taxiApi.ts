@@ -187,7 +187,7 @@ export async function getDriverCar(session: ISession): Promise<ICar> {
 /** The order PIN is read from the server; car IDs are never boarding codes. */
 export function boardingCodeOf(order: IOrderSnapshot): string {
   const code = String(order.b_driver_code ?? '').trim()
-  if (/^[A-Za-z0-9]{1,32}$/.test(code)) return code
+  if (/^[A-Za-z0-9*]{1,32}$/.test(code)) return code
   throw new BackendError('сервер не передал код посадки заказа', {b_id:order.b_id})
 }
 

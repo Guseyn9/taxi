@@ -413,8 +413,8 @@
     },
     "src/platform/adapters/DriverMapGateway.ts": {
       "baselineSha256": "5a39912ed9d76bfb98a6edd9f9ed5eab6e04bf78e7cf2c17262e21368783301f",
-      "currentSha256": "deeda01b1cd29f9378f34d7927c1d829d3391e64cd4442dc2bda5e9ae4fb319f",
-      "reason": "Persist accepted commands and gate pending orders; refuse FSM sends without the recovery login identity. Never replay a restored command. FSM integration 2026-11-08: Choose one lifecycle transport before sending based on per-intent support; use driver_cancel_requested, never passenger cancel. Preserve receipt recovery and never fallback on write errors. Runtime rollout/auth follow-up: Freeze the selected path per dispatch, check pending commands before/after async policy read and block legacy while an FSM receipt is in flight. Retain FAILED receipts with unknown Core outcome/divergence until an authenticated matching idle snapshot proves server reconciliation; never replay the original command during this check.",
+      "currentSha256": "107281bc80fff990dc0741a44243bd667e5e1c33403db999a1ed3527a7417571",
+      "reason": "Persist accepted commands and gate pending orders; refuse FSM sends without the recovery login identity. Never replay a restored command. FSM integration 2026-11-08: Choose one lifecycle transport before sending based on per-intent support; use driver_cancel_requested, never passenger cancel. Preserve receipt recovery and never fallback on write errors. Runtime rollout/auth follow-up: Freeze the selected path per dispatch, check pending commands before/after async policy read and block legacy while an FSM receipt is in flight. Retain FAILED receipts with unknown Core outcome/divergence until an authenticated matching idle snapshot proves server reconciliation; never replay the original command during this check. Boarding follow-up 2026-11-22: Start a ride without a boarding code through the existing legacy transition. Preserve validation for supplied codes, acknowledgement and FSM transport selection.",
       "evidence": [
         "src/platform/adapters/__tests__/DriverMapGateway.test.js",
         "tools/test-command-recovery-browser.cjs",
@@ -491,8 +491,8 @@
     },
     "src/platform/adapters/__tests__/DriverMapGateway.test.js": {
       "baselineSha256": "021d005be23f1df39fd202d5cd9437726069b2fab7d998373a52c8dd7832b9c3",
-      "currentSha256": "6f11e82f1d55f04c0ccfcdfd24a52b608ebb48d66907ae1b4c954cab54a1603d",
-      "reason": "Recovery and missing-login regression tests; original lifecycle contracts retained. FSM integration 2026-11-08: Exercise canonical driver cancellation and disabled-intent legacy selection before dispatch. Runtime rollout/auth follow-up: Track the request-time pair for HTTP/WS authentication refusal and test disabled-operation recovery; no mutation fallback after dispatch.",
+      "currentSha256": "9dd0ac83d173f0af95a472ee95dbd13b491726884056622899432c210f6ef1ff",
+      "reason": "Recovery and missing-login regression tests; original lifecycle contracts retained. FSM integration 2026-11-08: Exercise canonical driver cancellation and disabled-intent legacy selection before dispatch. Runtime rollout/auth follow-up: Track the request-time pair for HTTP/WS authentication refusal and test disabled-operation recovery; no mutation fallback after dispatch. Boarding follow-up 2026-11-22: Assert the legacy start without a code sends the state change without an empty code check.",
       "evidence": [
         "src/platform/adapters/__tests__/DriverMapGateway.test.js",
         "src/platform/adapters/__tests__/fsmSessionIntegration.test.js",
