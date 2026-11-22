@@ -58,7 +58,7 @@ const UnavailableBase = ({ status }: { status: EStatuses }) => {
       aria-live="polite"
     >
       <img src={status === EStatuses.Loading || status === EStatuses.Default ? images.fetching : images.error} alt=""/>
-      <div className="loading-frame__title">{t(status === EStatuses.Loading || status === EStatuses.Default ? TRANSLATION.LOADING : TRANSLATION.DATABASE_IS_UNAVAILABLE)}</div>
+      <div className="loading-frame__title">{t(status === EStatuses.Loading || status === EStatuses.Default ? TRANSLATION.LOADING : 'tenant_configuration_unavailable')}</div>
       {status !== EStatuses.Loading && status !== EStatuses.Default && <button type="button" className="rs-config-retry" onClick={()=>window.location.reload()}>{t('retry')}</button>}
     </div>
   </PageSection>

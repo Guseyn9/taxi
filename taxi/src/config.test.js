@@ -1,6 +1,7 @@
 jest.mock('./security/tenantDictionary',()=>({loadTenantDictionary:jest.fn()}))
 jest.mock('./state',()=>({__esModule:true,default:{dispatch:jest.fn()}}))
 jest.mock('./state/config/actionCreators',()=>({setConfigError:()=>({type:'CONFIG_ERROR'}),setConfigLoaded:()=>({type:'CONFIG_LOADED'})}))
+jest.mock('./tools/rawLog',()=>({writeRawLog:jest.fn()}))
 let Config,version,dispatch
 const dictionary = {dictionary:{langs:{1:{iso:'en',native:'English'}}},metadata:{version:'v1'}}
 const endpointEnvKeys=['REACT_APP_API_ROOT','REACT_APP_DICTIONARY_ROOT','REACT_APP_SERVICE_CONFIG','REACT_APP_ALLOWED_SERVICE_CONFIGS']
@@ -26,7 +27,9 @@ test('a stalled JSON transfer has a bounded lifetime and late results cannot suc
  let resolve;version.mockImplementation(()=>new Promise(yes=>{resolve=yes}));Config=require('./config').default
  jest.advanceTimersByTime(15000)
  expect(dispatch).toHaveBeenCalledWith({type:'CONFIG_ERROR'})
- resolve(1);await Promise.resolve()
+ expect(version.mock.calls[0][1].aborted).toBe(true)
+ resolve(dictionary);await Promise.resolve()
+ expect(dispatch).not.toHaveBeenCalledWith({type:'CONFIG_LOADED'})
  // Once timed out, the transfer must not restart or append its script.
  expect(document.querySelectorAll('script')).toHaveLength(0)
 })
@@ -37,7 +40,7 @@ test('JSON dictionary uses the configured stand and fixed tenant without executi
   localStorage.setItem('config','gruzvill')
   version.mockResolvedValue(dictionary);Config=require('./config').default
   await Promise.resolve();await Promise.resolve()
-  expect(version).toHaveBeenCalledWith('http://127.0.0.1:57100/taxi/c/local/api/v1')
+  expect(version).toHaveBeenCalledWith('http://127.0.0.1:57100/taxi/c/local/api/v1',expect.any(AbortSignal))
   expect(document.querySelector('script')).toBeNull();expect(window.data).toEqual(dictionary.dictionary)
  }finally{
   if(oldRoot===undefined)delete process.env.REACT_APP_API_ROOT;else process.env.REACT_APP_API_ROOT=oldRoot
@@ -49,7 +52,7 @@ test('query parameters cannot select unapproved tenant data',async()=>{
  try{
   window.history.replaceState(null,'','/?config=untrusted');version.mockResolvedValue(dictionary);Config=require('./config').default
   await Promise.resolve();await Promise.resolve()
-  expect(Config.SavedConfig).toBe('gruzvill');expect(version).toHaveBeenCalledWith('https://ibronevik.ru/taxi/c/gruzvill/api/v1')
+  expect(Config.SavedConfig).toBe('gruzvill');expect(version).toHaveBeenCalledWith('https://ibronevik.ru/taxi/c/gruzvill/api/v1',expect.any(AbortSignal))
   Config.setConfig('approved');await Promise.resolve();await Promise.resolve();expect(Config.SavedConfig).toBe('approved')
  }finally{window.history.replaceState(null,'','/');if(previous===undefined)delete process.env.REACT_APP_ALLOWED_SERVICE_CONFIGS;else process.env.REACT_APP_ALLOWED_SERVICE_CONFIGS=previous}
 })
@@ -61,6 +64,23 @@ test('clearing browser configuration keeps the fixed stand tenant for API and di
  version.mockResolvedValue(dictionary);Config=require('./config').default
  await Promise.resolve();await Promise.resolve()
  expect(Config.API_URL).toBe('http://127.0.0.1:57110/taxi/c/local/api/v1')
- expect(version).toHaveBeenCalledWith(Config.API_URL)
+ expect(version).toHaveBeenCalledWith(Config.API_URL,expect.any(AbortSignal))
  expect(document.querySelector('script')).toBeNull();expect(window.data).toEqual(dictionary.dictionary)
+})
+
+test('switching a tenant cancels the old read and never publishes its response',async()=>{
+ process.env.REACT_APP_ALLOWED_SERVICE_CONFIGS='approved'
+ let finishOld
+ version.mockImplementationOnce(()=>new Promise(resolve=>{finishOld=resolve}))
+  .mockResolvedValueOnce({...dictionary,metadata:{version:'current-tenant'}})
+ Config=require('./config').default
+ const obsolete=version.mock.calls[0][1]
+ Config.setConfig('approved')
+ await Promise.resolve()
+ expect(obsolete.aborted).toBe(true)
+ expect(window.version).toBe('current-tenant')
+ finishOld({...dictionary,metadata:{version:'obsolete'}})
+ await Promise.resolve()
+ expect(window.version).toBe('current-tenant')
+ expect(dispatch.mock.calls.filter(([action])=>action.type==='CONFIG_LOADED')).toHaveLength(1)
 })

@@ -37,8 +37,8 @@
     },
     "src/config.ts": {
       "baselineSha256": "9dbb0225fb87694f986b38ef37338034cef9bebfb6778e0b33526441de37cf72",
-      "currentSha256": "bf7681a549aea9e90fc82ffb1ebda8ccacf85fb632f88d24ad7ea04728971c8b",
-      "reason": "Fetch validated tenant JSON with deadline; fixed tenant allowlist and identity cleanup.",
+      "currentSha256": "4d42aec48a41380de3dfb82d29599fba1f16f929e3ccf7e9b015c75d7911d8e7",
+      "reason": "Fetch validated tenant JSON with deadline; fixed tenant allowlist and identity cleanup. Bounded retry for the same dictionary GET, cancellation of superseded tenant loads, and a sanitized deadline event.",
       "evidence": [
         "src/security/tenantDictionary.test.ts",
         "src/serviceEndpoints.test.ts"
@@ -542,8 +542,8 @@
     },
     "src/localization/index.ts": {
       "baselineSha256": "7c149da56433970b312de35c89f2c23593889b1cc8478f3b3bbba229571bc032",
-      "currentSha256": "41feb760cce2e159c47f1b5f4ead35f31c1577f0482104e23f9a1dafd09ccd63",
-      "reason": "Service DB translations still take precedence; add offline fallback copy for pending commands and account changes. R14: Localize audited map controls, preserve script-specific fallbacks and keep service text precedence. R16: Add localized disclosure of existing final whole-amount policy; service text still has precedence. R16: Localized actionable partial-save and unconfirmed-car messages. Runtime rollout/auth follow-up: Add four-locale packaged fallback text for rollout read failure and repeat sign-in; service translations retain priority.",
+      "currentSha256": "6f38e8eb835488446e37a6a96742ae2cc73f38037da64eedf99eb2a5418291e1",
+      "reason": "Service DB translations still take precedence; add offline fallback copy for pending commands and account changes. R14: Localize audited map controls, preserve script-specific fallbacks and keep service text precedence. R16: Add localized disclosure of existing final whole-amount policy; service text still has precedence. R16: Localized actionable partial-save and unconfirmed-car messages. Runtime rollout/auth follow-up: Add four-locale packaged fallback text for rollout read failure and repeat sign-in; service translations retain priority. Localized configuration load failure wording avoids attributing unclassified errors to a database.",
       "evidence": [
         "src/localization/locale.test.js",
         "src/tools/apiMessages.test.js",
