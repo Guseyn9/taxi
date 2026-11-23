@@ -185,6 +185,8 @@ export async function expectDriverMapState(
     .toHaveAttribute('data-driver-state', String(state), { timeout })
 }
 
+type OrderResponseKind = 'empty' | 'json-object' | 'json-null' | 'json-array' | 'json-value' | 'non-json' | 'unavailable'
+
 /** Одно действие над заказом, которое браузер отправил на `POST /drive/get/{b_id}`. */
 export interface IOrderActionRecord {
   readonly orderId: string
@@ -192,6 +194,7 @@ export interface IOrderActionRecord {
   readonly performer?: string
   httpStatus?: number
   transportFailed?: boolean
+  responseKind?: OrderResponseKind
   /** `status` и `code` из тела ответа: HTTP 200 оборачивает и бизнес-ошибки. */
   status?: string
   code?: string
@@ -243,10 +246,33 @@ export function watchOrderActions(page: Page): IOrderActionWatch {
     if (!record)
       return
     record.httpStatus = response.status()
-    const body = await response.json().catch(() => undefined)
-    record.status = body?.status === undefined ? undefined : String(body.status)
-    record.code = body?.code === undefined ? undefined : String(body.code)
-    record.message = body?.message === undefined ? undefined : String(body.message)
+    const text = await response.text().catch(() => undefined)
+    if (text === undefined) {
+      // Chromium may not return a body handle for an explicitly empty response.
+      record.responseKind = response.headers()['content-length'] === '0' ? 'empty' : 'unavailable'
+      return
+    }
+    if (!text.trim()) {
+      record.responseKind = 'empty'
+      return
+    }
+    let body: unknown
+    try {
+      body = JSON.parse(text)
+    } catch {
+      record.responseKind = 'non-json'
+      return
+    }
+    if (body === null) record.responseKind = 'json-null'
+    else if (Array.isArray(body)) record.responseKind = 'json-array'
+    else if (typeof body === 'object') record.responseKind = 'json-object'
+    else record.responseKind = 'json-value'
+    if (record.responseKind !== 'json-object')
+      return
+    const envelope = body as {status?: unknown, code?: unknown, message?: unknown}
+    record.status = envelope.status === undefined ? undefined : String(envelope.status)
+    record.code = envelope.code === undefined ? undefined : String(envelope.code)
+    record.message = envelope.message === undefined ? undefined : String(envelope.message)
   }
   const onRequestFailed = (request: Request) => {
     const record = byRequest.get(request)
@@ -304,9 +330,10 @@ export async function withBoardingDiagnostics(
     const responses = actions.map(record => ({
       action: record.action,
       httpStatus: record.httpStatus ?? null,
+      responseKind: record.responseKind ?? null,
       transportFailed: record.transportFailed === true,
       serviceCode: /^[1-5]\d{2}$/.test(record.code ?? '') ? Number(record.code) : null,
-      serviceStatus: record.status === 'success' || record.status === 'error' ? record.status : null,
+      serviceStatus: record.status === 'success' || record.status === 'ok' || record.status === 'error' ? record.status : null,
       refusal: boardingRefusals.get(record.message?.trim().toLowerCase() ?? '') ?? null,
     }))
     const description = JSON.stringify({

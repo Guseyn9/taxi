@@ -237,6 +237,7 @@ test.describe('TEST-E2E-001 — посадка по коду в голосово
       await expect(boardingCodeInput(page)).toBeVisible()
       await expect(boardingConfirmButton(page)).toBeEnabled()
       expect(unconfirmedResponses).toBe(1)
+      await expect.poll(() => actions.of(orderId, 'check_driver_code')[0]?.responseKind).toBe('json-object')
       expect(actions.of(orderId, 'set_start_state')).toHaveLength(0)
       expect(await backendState(orderId)).toBe(DRIVER_STATE.Arrived)
 
