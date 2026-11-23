@@ -3,7 +3,7 @@ import { Eye, EyeOff,Mail,MessageCircle } from 'lucide-react'
 import { configSelectors } from '../../../state/config'
 import { dialogCopy } from '../dialogCopy'
 import { authCopy } from './authCopy'
-import {authRoleForPath} from './authRole'
+import {authRoleForPath, keepCurrentDriverOrder} from './authRole'
 import Config from '../../../config'
 import { t, TRANSLATION } from '../../../localization'
 import Checkbox from '../../Checkbox'
@@ -88,7 +88,10 @@ export const LoginForm: React.FC<IProps> = ({
   const [isVisible, toggleVisibility] = useVisibility(false)
   const [isPasswordVisible, togglePasswordVisibility] = useVisibility(true)
   const location = useLocation()
-  const { navigatePath: navigate } = usePlatformNavigator()
+  const { navigatePath } = usePlatformNavigator()
+  const navigate = (destination: string) => {
+    if (!keepCurrentDriverOrder(location.pathname, destination)) navigatePath(destination)
+  }
   const googleClientId = '973943716904-b33r11ijgi08m5etsg5ndv409shh1tjl.apps.googleusercontent.com'
 
   const role = authRoleForPath(location.pathname)

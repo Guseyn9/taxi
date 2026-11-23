@@ -11,3 +11,11 @@ test('diagnostic property names cannot turn an unknown failure into a vehicle-de
 test.each(['FSM_COMMAND_PENDING','FSM_COMMAND_RECOVERY_REQUIRED','FSM_COMMAND_RECOVERY_LIMIT'])('pending command explains the next step without exposing transport internals: %s',code=>{
  expect(getApiErrorMessage({code,message:'Check instance XYZ',details:{token:'test-not-for-display'}})).toBe('driver_action_result_pending')
 })
+
+test('an unconfirmed boarding code check displays only the localized notice',()=>{
+ expect(getApiErrorMessage({
+  code:'BOARDING_CHECK_UNCONFIRMED',
+  message:'internal error',
+  details:{token:'test-not-for-display'},
+ },{context:'driver-order'})).toBe('driver_boarding_check_unconfirmed')
+})

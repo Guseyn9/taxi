@@ -1,7 +1,7 @@
 import {useDriverDepartures,driverJourneyCopy} from '../../tools/driverPickupJourney'
 import {claimDriverOfferNotification} from '../../tools/driverOfferNotifications'
 import {confirmOfferDecline} from '../../tools/confirmedOfferDecline'
-import {getApiErrorMessage} from '../../tools/apiMessages'
+import {getApiErrorMessage,getUnconfirmedBoardingMessage} from '../../tools/apiMessages'
 import type { IOrder } from '../../types/types'
 import { MapPin, Plus, Minus } from 'lucide-react'
 import { formatPhoneNumber } from '../../tools/phoneUtils'
@@ -14,6 +14,7 @@ import React, { useEffect, useRef, useState } from 'react'
 import { connect, ConnectedProps } from 'react-redux'
 import { useParams } from 'react-router-dom'
 import PageSection from '../../components/PageSection'
+import DriverSignIn from '../../components/DriverSignIn'
 import Button from '../../components/Button'
 import Input, { EInputTypes } from '../../components/Input'
 import { addHiddenOrder, distanceBetweenEarthCoordinates } from '../../tools/utils'
@@ -1366,7 +1367,7 @@ const Order: React.FC<IProps> = ({
         console.error(error)
         setMessageModal({
           isOpen: true,
-          message: error?.message || error.toString() || t(TRANSLATION.ERROR),
+          message: getUnconfirmedBoardingMessage(error) ?? (error?.message || error.toString() || t(TRANSLATION.ERROR)),
           status: EStatuses.Fail,
         })
       })
@@ -2050,7 +2051,12 @@ const Order: React.FC<IProps> = ({
     </PageSection>
 }
 
-export default withLayout(connector(Order))
+function DriverOrderRoute(props: IProps) {
+  if (!props.user) return <DriverSignIn onSignIn={() => props.setLoginModal(true)} />
+  return <Order {...props} />
+}
+
+export default withLayout(connector(DriverOrderRoute))
 
 const VOTING_PARTICIPATION_STORAGE_KEY = 'driverVotingParticipations'
 const VOTING_ARRIVED_STORAGE_KEY = 'driverVotingArrived'

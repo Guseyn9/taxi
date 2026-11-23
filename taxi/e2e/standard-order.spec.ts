@@ -47,11 +47,12 @@ import {
   DESTINATION,
   DRIVER_STORAGE,
   PICKUP,
-  clickPrimaryAction,
   departAndArrive,
+  driverMapAction,
   expectUiDriverState,
   isBoardingFormVisible,
   openOrderCard,
+  watchOrderActions,
   switchToDriverMap,
   takeOrderButton,
 } from './fixtures/driverUi'
@@ -294,8 +295,34 @@ test('А.1.1 — стандартный вызов: от создания зак
     passengerPage, DRIVER_STATE.Arrived, 'пассажир видит, что водитель в пути')
 
   // ШАГ 6. ПРОВЕРКА 7 — поездка началась.
-  await clickPrimaryAction(driverPage)
-  await expectBackendState(orderId, DRIVER_STATE.Started, 'бэкенд перевёл заказ в Started')
+  const boardingAction = driverMapAction(driverPage, orderId)
+  const startActions = watchOrderActions(driverPage)
+  try {
+    await expect(boardingAction).toHaveAttribute('data-pickup-stage', 'board')
+    await expect(boardingAction).toBeEnabled()
+    await boardingAction.click()
+    await expectBackendState(orderId, DRIVER_STATE.Started, 'бэкенд перевёл заказ в Started')
+    expect(startActions.of(orderId, 'check_driver_code').length, 'Standard не проверяет пустой код').toBe(0)
+    expect(startActions.of(orderId, 'set_start_state').length, 'Standard отправляет одну команду старта').toBe(1)
+  } catch (error) {
+    const responses = startActions.records.filter(action => action.orderId === orderId &&
+      ['check_driver_code', 'set_start_state'].includes(action.action)).map(action => ({
+      action: action.action,
+      httpStatus: action.httpStatus ?? null,
+      serviceCode: /^[1-5]\d{2}$/.test(action.code ?? '') ? Number(action.code) : null,
+      serviceStatus: action.status === 'success' || action.status === 'error' ? action.status : null,
+    }))
+    const description = JSON.stringify({
+      method: 'POST', endpoint: '/drive/get/:order',
+      orderDetailHasBoardingCode: Boolean(assigned.b_driver_code),
+      boardingFormVisible: await isBoardingFormVisible(driverPage), responses,
+    })
+    console.error(`E2E START DIAGNOSTICS: ${description}`)
+    testInfo.annotations.push({ type: 'start-response', description })
+    throw error
+  } finally {
+    startActions.dispose()
+  }
   await expectUiDriverState(driverPage, DRIVER_STATE.Started, 'карта показывает начатую поездку')
 
   // У стандартного вызова кода посадки нет — он только у голосового заказа

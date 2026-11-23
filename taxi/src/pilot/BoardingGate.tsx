@@ -3,6 +3,7 @@ import Overlay from '../components/modals/Overlay'
 import {t,TRANSLATION} from '../localization'
 import type {IOrder} from '../types/types'
 import {isBoardingCodeAccepted,normalizeBoardingCode} from '../tools/driverBoarding'
+import {getUnconfirmedBoardingMessage} from '../tools/apiMessages'
 
 export function BoardingCodeDialog({expected,onConfirm,onClose}:{expected:unknown,onConfirm:(code:string)=>Promise<void>,onClose:()=>void}){
  const [code,setCode]=useState(''),[error,setError]=useState(''),[pending,setPending]=useState(false)
@@ -15,7 +16,18 @@ export function BoardingCodeDialog({expected,onConfirm,onClose}:{expected:unknow
   // The driver's vehicle number is not a passenger PIN. Unknown PINs are checked by the server.
   if(!isBoardingCodeAccepted(expected,entered)){setError(t(TRANSLATION.WRONG_BOARDING_CODE));return}
   inFlight.current=true;setPending(true);setError('')
-  try{await onConfirm(entered);onClose()}catch(error){setError(t(String((error as any)?.message||'').includes('wrong driver code')?TRANSLATION.WRONG_BOARDING_CODE:TRANSLATION.ERROR))}finally{inFlight.current=false;setPending(false)}
+  try {
+   await onConfirm(entered)
+   onClose()
+  } catch (error) {
+   const translation = String((error as Error)?.message || '').includes('wrong driver code')
+    ? TRANSLATION.WRONG_BOARDING_CODE
+    : TRANSLATION.ERROR
+   setError(getUnconfirmedBoardingMessage(error) ?? t(translation))
+  } finally {
+   inFlight.current = false
+   setPending(false)
+  }
  }}><label>{t(TRANSLATION.CLIENT_BOARDING_CODE)}<input data-testid="driver-boarding-code-input" aria-label={t(TRANSLATION.CLIENT_BOARDING_CODE)} value={code} onInput={event=>setCode(event.currentTarget.value)} type="text" inputMode="text" maxLength={32} autoComplete="off" autoCapitalize="none" spellCheck={false} disabled={pending}/></label>
  {error&&<p role="alert">{error}</p>}<button type="submit" data-testid="driver-boarding-confirm" disabled={pending}>{pending?t(TRANSLATION.LOADING):t(TRANSLATION.DRIVER_VOTING_CONFIRM_CODE)}</button></form></section></Overlay>
 }

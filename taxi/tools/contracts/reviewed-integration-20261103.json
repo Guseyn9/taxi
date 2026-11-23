@@ -6,8 +6,8 @@
   "paths": {
     "src/API/order.ts": {
       "baselineSha256": "144d2b4cb314db4b469f26ef09023b36bd07f2e64cd63e068b4c30670a2f716b",
-      "currentSha256": "ab656547a01ecf9f5884f51a6403fc59c55dc8d75e32bc8e2bfa54dc59b2275c",
-      "reason": "Single creation, cents-preserving edits, persisted ETA, server PIN, lifecycle readback and confirmation recovery by existing ID. New option/PIN contract requires backend rollout. R14: Reject unconfirmed/error cancellation envelopes at the existing API boundary; no endpoint or payload changes. R16: Validate successful mutation envelopes for candidate, offer, waiting, rating and lifecycle paths; validate finite positive offer price and whole waiting seconds before requests. Same endpoints and payload fields; no automatic mutation replay. FSM integration 2026-11-08: Route only opted-in passenger create/confirm/cancel/select/release through durable FSM receipts; keep legacy path before dispatch for disabled intents; retain confirmed Core id on optional detail-read failure. No fallback after an uncertain FSM write. Runtime rollout/auth follow-up: Await runtime rollout resolution before selecting each passenger write path; pending FSM receipts retain their recovery route when disabled. Legacy requests and fields are preserved.",
+      "currentSha256": "0986f95556ca1f0a9ec4c62845ef288115ab8af30a185342a229b049dd931672",
+      "reason": "Single creation, cents-preserving edits, persisted ETA, server PIN, lifecycle readback and confirmation recovery by existing ID. New option/PIN contract requires backend rollout. R14: Reject unconfirmed/error cancellation envelopes at the existing API boundary; no endpoint or payload changes. R16: Validate successful mutation envelopes for candidate, offer, waiting, rating and lifecycle paths; validate finite positive offer price and whole waiting seconds before requests. Same endpoints and payload fields; no automatic mutation replay. FSM integration 2026-11-08: Route only opted-in passenger create/confirm/cancel/select/release through durable FSM receipts; keep legacy path before dispatch for disabled intents; retain confirmed Core id on optional detail-read failure. No fallback after an uncertain FSM write. Runtime rollout/auth follow-up: Await runtime rollout resolution before selecting each passenger write path; pending FSM receipts retain their recovery route when disabled. Legacy requests and fields are preserved. Order-list reads tolerate damaged hidden IDs and optional user lookups, validate successful lists, and log allowlisted response metadata. Existing endpoint, fields and order mutations are unchanged. R29: Classify an unconfirmed boarding check without retaining its raw response. Explicit server rejections retain their existing type.",
       "evidence": [
         "src/API/legacyContract.test.js",
         "src/API/order.transport.test.js",
@@ -37,8 +37,8 @@
     },
     "src/config.ts": {
       "baselineSha256": "9dbb0225fb87694f986b38ef37338034cef9bebfb6778e0b33526441de37cf72",
-      "currentSha256": "bf7681a549aea9e90fc82ffb1ebda8ccacf85fb632f88d24ad7ea04728971c8b",
-      "reason": "Fetch validated tenant JSON with deadline; fixed tenant allowlist and identity cleanup.",
+      "currentSha256": "4d42aec48a41380de3dfb82d29599fba1f16f929e3ccf7e9b015c75d7911d8e7",
+      "reason": "Fetch validated tenant JSON with deadline; fixed tenant allowlist and identity cleanup. Bounded retry for the same dictionary GET, cancellation of superseded tenant loads, and a sanitized deadline event.",
       "evidence": [
         "src/security/tenantDictionary.test.ts",
         "src/serviceEndpoints.test.ts"
@@ -128,8 +128,8 @@
     },
     "src/tools/apiMessages.ts": {
       "baselineSha256": "2af42129f123187e0804c5658c7fa1a26caf100a60a44300f354a462baa6158e",
-      "currentSha256": "6958f16344efe1b164cf2799d771a1e297cd0e60acc6dc416b7af8d35afe1762",
-      "reason": "Retain API diagnostics policy and map pending-command/session-change errors to localized, actionable user text. FSM integration 2026-11-08: Present pending/quarantine and authorization errors using existing localized UI messages. Runtime rollout/auth follow-up: Explain pre-write policy failures and repeat sign-in using localized messages; no remote body shown. Require new login only for HTTP401/WS4401 or the dedicated CORE_AUTHENTICATION_REQUIRED code; preserve valid sessions on entity permission failures.",
+      "currentSha256": "ac1b655239fc27c6f4d8bd67e0f09bd87b653bdceef14d1b0395eee07bb16251",
+      "reason": "Retain API diagnostics policy and map pending-command/session-change errors to localized, actionable user text. FSM integration 2026-11-08: Present pending/quarantine and authorization errors using existing localized UI messages. Runtime rollout/auth follow-up: Explain pre-write policy failures and repeat sign-in using localized messages; no remote body shown. Require new login only for HTTP401/WS4401 or the dedicated CORE_AUTHENTICATION_REQUIRED code; preserve valid sessions on entity permission failures. R29: Localize the unconfirmed boarding check without including raw response fields.",
       "evidence": [
         "src/tools/apiMessages.test.js",
         "src/platform/adapters/__tests__/fsmSessionIntegration.test.js",
@@ -265,8 +265,8 @@
     },
     "src/pilot/BoardingGate.tsx": {
       "baselineSha256": null,
-      "currentSha256": "30bb3b87a2002501b414d791efc425cd08d0acee8e25d6b9fbe364fa40bba703",
-      "reason": "Shared server alphabet; unknown PIN checked by server, duplicate submit blocked.",
+      "currentSha256": "d4fb5f2c99b10972410b5489a51161bffa9a9ef71749c5d227e8055b8262fd65",
+      "reason": "Shared server alphabet; unknown PIN checked by server, duplicate submit blocked. R29: Explain an unconfirmed code check and keep the boarding dialog open.",
       "evidence": [
         "src/pilot/BoardingGate.test.js"
       ]
@@ -386,18 +386,20 @@
     },
     "src/components/DriverEmulatorPanel/browserEmulator.ts": {
       "baselineSha256": "094a4e1146a82ecba24699d9ef10448005cd412fceb5e0762c82ddbd95b747ec",
-      "currentSha256": "3de06224990b3f68a7f27d26968722dc66002d5500513c266aec90ad5f672fbf",
-      "reason": "Remove embedded user/manager credentials, account provisioning and administrative approval/class mutation. All start/check paths require memory-only disposable accounts and loopback API.",
+      "currentSha256": "1bba6b8ce7ee8039fdf1e257030ea7e70c7e63e26bde5a5343555020f3c46a3d",
+      "reason": "Remove embedded user/manager credentials, account provisioning and administrative approval/class mutation. All start/check paths require memory-only disposable accounts and loopback API. Local test API requests omit cookies and reject redirects; client QA can use explicitly configured coordinates.",
       "evidence": [
-        "src/components/DriverEmulatorPanel/testRuntime.test.ts"
+        "src/components/DriverEmulatorPanel/testRuntime.test.ts",
+        "src/components/DriverEmulatorPanel/index.test.jsx"
       ]
     },
     "src/components/DriverEmulatorPanel/testRuntime.ts": {
       "baselineSha256": null,
-      "currentSha256": "8373042e5a58390ce807a2002ece02db67575a601c29fa5f21fb723057a9d187",
-      "reason": "Validate loopback page and endpoint; keep explicitly supplied disposable accounts in memory; no public shared pool.",
+      "currentSha256": "3c86ffb15e052a9e89fc5080de54eeb3a53328c1238a8f0a6ec3cffeb6ca8524",
+      "reason": "Validate loopback page and endpoint; keep explicitly supplied disposable accounts in memory; no public shared pool. Import validated operator-provided account lists for the application-selected local API and revoke the runtime at the session boundary.",
       "evidence": [
-        "src/components/DriverEmulatorPanel/testRuntime.test.ts"
+        "src/components/DriverEmulatorPanel/testRuntime.test.ts",
+        "src/components/DriverEmulatorPanel/index.test.jsx"
       ]
     },
     "src/platform/adapters/DriverCommandCompletionWaiter.ts": {
@@ -411,8 +413,8 @@
     },
     "src/platform/adapters/DriverMapGateway.ts": {
       "baselineSha256": "5a39912ed9d76bfb98a6edd9f9ed5eab6e04bf78e7cf2c17262e21368783301f",
-      "currentSha256": "deeda01b1cd29f9378f34d7927c1d829d3391e64cd4442dc2bda5e9ae4fb319f",
-      "reason": "Persist accepted commands and gate pending orders; refuse FSM sends without the recovery login identity. Never replay a restored command. FSM integration 2026-11-08: Choose one lifecycle transport before sending based on per-intent support; use driver_cancel_requested, never passenger cancel. Preserve receipt recovery and never fallback on write errors. Runtime rollout/auth follow-up: Freeze the selected path per dispatch, check pending commands before/after async policy read and block legacy while an FSM receipt is in flight. Retain FAILED receipts with unknown Core outcome/divergence until an authenticated matching idle snapshot proves server reconciliation; never replay the original command during this check.",
+      "currentSha256": "107281bc80fff990dc0741a44243bd667e5e1c33403db999a1ed3527a7417571",
+      "reason": "Persist accepted commands and gate pending orders; refuse FSM sends without the recovery login identity. Never replay a restored command. FSM integration 2026-11-08: Choose one lifecycle transport before sending based on per-intent support; use driver_cancel_requested, never passenger cancel. Preserve receipt recovery and never fallback on write errors. Runtime rollout/auth follow-up: Freeze the selected path per dispatch, check pending commands before/after async policy read and block legacy while an FSM receipt is in flight. Retain FAILED receipts with unknown Core outcome/divergence until an authenticated matching idle snapshot proves server reconciliation; never replay the original command during this check. Boarding follow-up 2026-11-22: Start a ride without a boarding code through the existing legacy transition. Preserve validation for supplied codes, acknowledgement and FSM transport selection.",
       "evidence": [
         "src/platform/adapters/__tests__/DriverMapGateway.test.js",
         "tools/test-command-recovery-browser.cjs",
@@ -489,8 +491,8 @@
     },
     "src/platform/adapters/__tests__/DriverMapGateway.test.js": {
       "baselineSha256": "021d005be23f1df39fd202d5cd9437726069b2fab7d998373a52c8dd7832b9c3",
-      "currentSha256": "6f11e82f1d55f04c0ccfcdfd24a52b608ebb48d66907ae1b4c954cab54a1603d",
-      "reason": "Recovery and missing-login regression tests; original lifecycle contracts retained. FSM integration 2026-11-08: Exercise canonical driver cancellation and disabled-intent legacy selection before dispatch. Runtime rollout/auth follow-up: Track the request-time pair for HTTP/WS authentication refusal and test disabled-operation recovery; no mutation fallback after dispatch.",
+      "currentSha256": "9dd0ac83d173f0af95a472ee95dbd13b491726884056622899432c210f6ef1ff",
+      "reason": "Recovery and missing-login regression tests; original lifecycle contracts retained. FSM integration 2026-11-08: Exercise canonical driver cancellation and disabled-intent legacy selection before dispatch. Runtime rollout/auth follow-up: Track the request-time pair for HTTP/WS authentication refusal and test disabled-operation recovery; no mutation fallback after dispatch. Boarding follow-up 2026-11-22: Assert the legacy start without a code sends the state change without an empty code check.",
       "evidence": [
         "src/platform/adapters/__tests__/DriverMapGateway.test.js",
         "src/platform/adapters/__tests__/fsmSessionIntegration.test.js",
@@ -542,8 +544,8 @@
     },
     "src/localization/index.ts": {
       "baselineSha256": "7c149da56433970b312de35c89f2c23593889b1cc8478f3b3bbba229571bc032",
-      "currentSha256": "41feb760cce2e159c47f1b5f4ead35f31c1577f0482104e23f9a1dafd09ccd63",
-      "reason": "Service DB translations still take precedence; add offline fallback copy for pending commands and account changes. R14: Localize audited map controls, preserve script-specific fallbacks and keep service text precedence. R16: Add localized disclosure of existing final whole-amount policy; service text still has precedence. R16: Localized actionable partial-save and unconfirmed-car messages. Runtime rollout/auth follow-up: Add four-locale packaged fallback text for rollout read failure and repeat sign-in; service translations retain priority.",
+      "currentSha256": "3eb477efe92abc3e2cf7a8056a26dd1b130c5ddd40ac8ff0ec51b3e1597dd696",
+      "reason": "Service DB translations still take precedence; add offline fallback copy for pending commands and account changes. R14: Localize audited map controls, preserve script-specific fallbacks and keep service text precedence. R16: Add localized disclosure of existing final whole-amount policy; service text still has precedence. R16: Localized actionable partial-save and unconfirmed-car messages. Runtime rollout/auth follow-up: Add four-locale packaged fallback text for rollout read failure and repeat sign-in; service translations retain priority. Localized configuration load failure wording avoids attributing unclassified errors to a database. R29: Add the unconfirmed boarding notice in all supported languages.",
       "evidence": [
         "src/localization/locale.test.js",
         "src/tools/apiMessages.test.js",
@@ -571,8 +573,8 @@
     },
     "src/pages/Driver/index.tsx": {
       "baselineSha256": "06b3d0ea62b8011537ec2ef054185052ee7a59c558b5ef40e43b3bf2ff7eaea4",
-      "currentSha256": "86a807784e2598a76774968cc32a1bbfce145c3f683ab08bd98511139e711605",
-      "reason": "Start ordinary Driver polling and GPS publication independently of emulator flags.",
+      "currentSha256": "fb93b747d0cf948fcb59669c869610b61a6dbf845ee71e337181209a885d62f4",
+      "reason": "Start ordinary Driver polling and GPS publication independently of emulator flags. R20: Remove active-vehicle selector from main driver layout; it is mounted in driver profile instead. Driver order handlers unchanged. R28: Reuse the existing guest driver sign-in action as a shared component.",
       "evidence": [
         "src/state/orders/__tests__/readyOrdersPolling.test.js",
         "src/state/geolocation/sagas.test.js"
@@ -589,8 +591,8 @@
     },
     "src/pages/Order/index.tsx": {
       "baselineSha256": "966575e0df96d960727a065c1d5006ae9586e3f4b3f9b39aaa225f8f3bc2b84a",
-      "currentSha256": "cbbda0f5fbff0c7f47a65557a8db0ffbb04b0beedb7e720760dc445893b5c0d5",
-      "reason": "Keep prior reviewed detail behavior; do not open a second acceptance modal after the same offer event has been displayed. R16: Client-selected Offer decline awaits the existing cancelVotingParticipation acknowledgement before local hide/navigation; failure retains offer and reads back. Synchronous duplicate-click guard.",
+      "currentSha256": "ab5a892a7d293e03d2f49344a6b3e0a3fa77a3f028d9abf38e2901d5765f643c",
+      "reason": "Keep prior reviewed detail behavior; do not open a second acceptance modal after the same offer event has been displayed. R16: Client-selected Offer decline awaits the existing cancelVotingParticipation acknowledgement before local hide/navigation; failure retains offer and reads back. Synchronous duplicate-click guard. R28: Show the driver sign-in action before mounting the order screen for an unauthenticated visitor. The guest route sends no detail reads. R29: Show the localized missing acknowledgement on the voting detail screen.",
       "evidence": [
         "src/tools/driverOfferNotifications.test.ts",
         "e2e/offer-order.spec.ts",
@@ -845,8 +847,8 @@
     },
     "src/platform/adapters/backendError.ts": {
       "baselineSha256": "e4c6f7c55c8c871efe2349398055f6a623b2997a46213ed7b148785b315d0738",
-      "currentSha256": "32b836b632e7db7b9ace79aac00565e8785187426f9b118903aad343e79d9bb1",
-      "reason": " R14: Add a strict success contract for envelope-returning mutations while preserving read/void gateway semantics.",
+      "currentSha256": "51674a3829bc0c6ce368515646ed4b6e74b8cd1de2bd80f46ce16a5d39500716",
+      "reason": " R14: Add a strict success contract for envelope-returning mutations while preserving read/void gateway semantics. R29: Allow the boarding check to report a typed missing acknowledgement while preserving the shared success criteria.",
       "evidence": [
         "src/API/order.transport.test.js",
         "src/state/cars/lifecycle.test.js"
@@ -950,11 +952,11 @@
     },
     "src/components/modals/ProfileModal.tsx": {
       "baselineSha256": "017a126141d775877931478f15bdf597fe0392a5c48073f4d8a69389ab41caa0",
-      "reason": " R16: Explicit partial/unconfirmed vehicle-save error with readback and blocked retry; reject missing upload IDs and unconfirmed profile response. Client validation precedes car write. Backend atomicity remains external.",
+      "reason": " R16: Explicit partial/unconfirmed vehicle-save error with readback and blocked retry; reject missing upload IDs and unconfirmed profile response. Client validation precedes car write. Backend atomicity remains external. R20: Move the unchanged active-vehicle selector from the main driver screen into the driver profile; profile save handlers unchanged.",
       "evidence": [
         "src/components/modals/__tests__/profile-save.test.jsx"
       ],
-      "currentSha256": "34f3d74d56daef530a11bef59d30187cf7a8548ab353069090478c10afdd5964"
+      "currentSha256": "9b289cd15dd7c839732e3ce65d3f2d5155369a2f7e9f03b6d975c8d1da5c13bf"
     },
     "src/platform/adapters/FsmPassengerBridge.ts": {
       "baselineSha256": null,

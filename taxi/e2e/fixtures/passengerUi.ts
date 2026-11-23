@@ -10,6 +10,7 @@ import path from 'path'
 import { expect, Page, Request, Response } from '@playwright/test'
 import { expectAppBooted } from './appShell'
 import {readValue} from './accounts'
+import { DESTINATION, PICKUP } from './driverUi'
 
 export const PASSENGER_PAGE = '/passenger-order'
 
@@ -319,12 +320,22 @@ export interface IPassengerOrderPoint {
   readonly match: string
 }
 
-/** UI geocoder inputs must belong to the same Agadir points as the API fixtures.
- * Configure verified queries and labels for the target service; no Rostov fallback. */
-function configuredPoint(which:'PICKUP'|'DESTINATION'):IPassengerOrderPoint {
-  const query=readValue(`E2E_${which}_QUERY`),match=readValue(`E2E_${which}_MATCH`)
-  if (!query||!match) throw new Error(`Set E2E_${which}_QUERY and E2E_${which}_MATCH to verified Agadir address results`)
-  return {query,match}
+const agadirAddress = {
+  PICKUP: { coordinates: PICKUP, match: 'Avenue' },
+  DESTINATION: { coordinates: DESTINATION, match: 'Tarfaya' },
+}
+
+/** The address fixtures and the API fixtures use the same points in Agadir. */
+function configuredPoint(which: keyof typeof agadirAddress): IPassengerOrderPoint {
+  const query = readValue(`E2E_${which}_QUERY`)
+  const match = readValue(`E2E_${which}_MATCH`)
+  if (!query && !match) {
+    const { coordinates, match } = agadirAddress[which]
+    return { query: `${coordinates.latitude}, ${coordinates.longitude}`, match }
+  }
+  if (!query || !match)
+    throw new Error(`Set both E2E_${which}_QUERY and E2E_${which}_MATCH to override the Agadir address fixture`)
+  return { query, match }
 }
 export const PASSENGER_ORDER_POINTS = {
   get pickup(){return configuredPoint('PICKUP')},
@@ -427,27 +438,35 @@ export async function fillPassengerPhone(page: Page, phone: string): Promise<voi
   await expandPassengerOrderForm(page)
   const digits = phone.replace(/\D/g, '')
   const input = page.getByTestId('passenger-order-phone')
+  const save = page.locator('button.passenger-voting-form__phone-save-button')
   await expect(input, 'поле телефона видно в раскрытой форме').toBeVisible({ timeout: 30_000 })
-  await input.click()
-  await input.press('ControlOrMeta+A')
-  await input.press('Backspace')
+  const alreadyEntered = (await input.inputValue()).replace(/\D/g, '') === digits
+  if (!alreadyEntered) {
+    await input.click()
+    await input.press('ControlOrMeta+A')
+    await input.press('Backspace')
 
-  // Маска (`+233(___)-___-___`) сама показывает код страны. Если набрать номер
-  // целиком, часть цифр совпадёт с этим префиксом, и результат зависит от
-  // положения каретки (замерено: `233335550001` вместо `233555000111`). Поэтому
-  // после очистки набирается только то, чего в маске ещё нет.
-  const shown = (await input.inputValue()).replace(/\D/g, '')
-  const rest = digits.startsWith(shown) ? digits.slice(shown.length) : digits
-  await input.press('End')
-  await input.pressSequentially(rest, { delay: 40 })
+    const mask = await input.inputValue()
+    const prefix = mask.replace(/\D/g, '')
+    const firstSlot = mask.indexOf('_')
+    const slots = mask.match(/_/g)?.length ?? 0
+    if (firstSlot < 0 || !digits.startsWith(prefix) || digits.length !== prefix.length + slots)
+      throw new Error('E2E_PASSENGER_PHONE не подходит под действующую маску телефона заказа')
 
-  await expect
-    .poll(async() => (await input.inputValue()).replace(/\D/g, ''), {
+    // End can place the caret past every editable slot. Move it before the
+    // first placeholder and let the mask formatter advance it during typing.
+    await input.evaluate(async(element, position) => {
+      (element as HTMLInputElement).setSelectionRange(position, position)
+      await new Promise<void>(resolve => requestAnimationFrame(() => resolve()))
+    }, firstSlot)
+    await input.pressSequentially(digits.slice(prefix.length), { delay: 40 })
+    await expect.poll(async() => (await input.inputValue()).replace(/\D/g, '') === digits, {
       message: 'поле телефона содержит введённый номер',
       timeout: 15_000,
-    })
-    .toBe(digits)
-  await page.locator('button.passenger-voting-form__phone-save-button').click()
+    }).toBe(true)
+  }
+  // An unchanged profile or saved phone already has a disabled Save button.
+  if (!alreadyEntered || await save.isEnabled()) await save.click()
   await closePassengerOptions(page)
 }
 

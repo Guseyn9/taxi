@@ -4,3 +4,7 @@ export function authRoleForPath(pathname: string): EUserRoles {
   return /^\/driver-order(?:\/[^/]+)?\/?$/.test(pathname) || pathname === '/driver-order-test'
     ? EUserRoles.Driver : EUserRoles.Client
 }
+
+export function keepCurrentDriverOrder(pathname: string, destination: string): boolean {
+  return destination === '/driver-order' && /^\/driver-order\/[^/]+\/?$/.test(pathname)
+}

@@ -54,7 +54,7 @@ export function RideRequestActions({mode,onChange,onSubmit,onPrepare,onRefresh,o
       <Icon size={24} aria-hidden="true"/><div><h3>{copy[choice]}</h3><p>{hint(choice)}</p></div>
     </section>)}</div>}
     {dialog.price&&<div className="rs-request-price">{priceField}</div>}
-    {error&&dialog.price&&<><p role="alert">{error}</p>{onRefresh&&<Button type="button" onClick={()=>{setDialog(null);refresh()}} disabled={pending}>{recoveryLabel}</Button>}</>}
+    {error&&dialog.price&&<div className="rs-request-error"><p role="alert">{error}</p>{onRefresh&&<Button type="button" onClick={()=>{setDialog(null);refresh()}} disabled={pending}>{recoveryLabel}</Button>}</div>}
     <Button type="button" data-testid={dialog.price?'passenger-order-submit':'passenger-order-help-close'} disabled={dialog.price&&(disabled||pending||submitDisabled)}
      onClick={()=>dialog.price&&dialog.mode?submit(dialog.mode):setDialog(null)}>{pending&&dialog.price?'…':dialog.price?copy.sendOffer:copy.close}</Button>
    </section></Overlay>}

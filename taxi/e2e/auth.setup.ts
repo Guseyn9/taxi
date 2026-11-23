@@ -38,26 +38,35 @@ async function signIn(
   account: IAccount,
   entryPage: string,
   storage: string,
+  driverDetail = false,
 ): Promise<void> {
   await context.setGeolocation(PICKUP)
   await stubMapTiles(context)
   const observedApi = new Set<string>()
+  let detailReadsBeforeSignIn = 0
   const recordApi = (request:import('@playwright/test').Request) => {
     const url=new URL(request.url())
     const match=/^(.*\/c\/[^/]+\/api\/v1)(?:\/|$)/.exec(url.pathname)
     if(match)observedApi.add(url.origin+match[1])
+    if (match && /\/drive\/get\/0\/?$/.test(url.pathname)) detailReadsBeforeSignIn++
   }
   page.on('request',recordApi)
   await page.goto(entryPage)
 
   await expectAppBooted(page)
   await expect.poll(()=>observedApi.size,{message:'приложение выбрало целевой API до ввода пароля'}).toBeGreaterThan(0)
-  page.off('request',recordApi)
   expect([...observedApi], 'API формы и независимых проверок совпадают').toEqual([apiBase()])
 
-  // The account entry lives inside the header menu.
-  await page.locator('header .burger-button').click()
-  await page.locator('.menu__account').click()
+  const signInForm = page.locator('.sign-in-subform')
+  if (driverDetail) {
+    await page.locator('.driver-login-action').click()
+    await expect(signInForm).toHaveAttribute('data-auth-role', 'driver')
+    expect(detailReadsBeforeSignIn, 'гостю не загружается карточка заказа').toBe(0)
+  } else {
+    await page.locator('header .burger-button').click()
+    await page.locator('.menu__account').click()
+  }
+  page.off('request', recordApi)
 
   const login = page.locator('input[name="login"]')
   await expect(login).toBeVisible()
@@ -91,6 +100,10 @@ async function signIn(
   await expect
     .poll(() => page.evaluate(() => sessionStorage.getItem('state.user.tokens')), { timeout: 60_000 })
     .toBeTruthy()
+  if (driverDetail) {
+    await expect(signInForm).toBeHidden()
+    await expect(page).toHaveURL(url => url.pathname + url.search + url.hash === entryPage)
+  }
 
   fs.mkdirSync(path.dirname(storage), { recursive: true })
   await context.storageState({ path: storage })
@@ -112,8 +125,8 @@ setup('пассажир входит через форму приложения'
 // падение сценария: без этой сессии голосовой тест падает на первом же шаге,
 // где второй водитель обязателен, — а тесты, которым он не нужен, из-за
 // незаполненной учётки не ломаются.
-setup('второй водитель входит через форму приложения', async({ page, context }) => {
+setup('второй водитель входит по прямой ссылке на карточку заказа', async({ page, context }) => {
   setup.skip(!hasDriver2Account(),
     'E2E_DRIVER2_LOGIN/E2E_DRIVER2_PASSWORD не заданы — сессия второго водителя не создаётся')
-  await signIn(page, context, driver2Account(), DRIVER_PAGE, DRIVER2_STORAGE)
+  await signIn(page, context, driver2Account(), '/driver-order/0?mode=qa#details', DRIVER2_STORAGE, true)
 })

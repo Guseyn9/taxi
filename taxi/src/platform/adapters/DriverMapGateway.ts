@@ -463,15 +463,18 @@ export class DriverMapGateway {
         }
         case DRIVER_MAP_ACTIONS.ConfirmBoarding: {
           const payload = action.payload as DriverOrderActionPayload
-          assertSuccessfulBackendResponse(
-            await backendGateway.confirmVotingCode(payload.orderId, payload.boardingCode ?? ''),
-          )
+          const boardingCode = payload.boardingCode || undefined
+          if (boardingCode || payload.updateState === false) {
+            assertSuccessfulBackendResponse(
+              await backendGateway.confirmVotingCode(payload.orderId, boardingCode ?? ''),
+            )
+          }
           if (payload.updateState !== false) {
             assertSuccessfulBackendResponse(
               await backendGateway.setOrderState(
                 payload.orderId,
                 EBookingDriverState.Started,
-                payload.boardingCode,
+                boardingCode,
               ),
             )
           }

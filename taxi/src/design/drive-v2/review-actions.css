@@ -30,6 +30,13 @@
 #root .rs-booking-action__submit[aria-busy=true] svg{animation:booking-action-spin 1s linear infinite}
 @keyframes booking-action-spin{to{transform:rotate(360deg)}}
 @media(prefers-reduced-motion:reduce){#root .rs-booking-action__submit[aria-busy=true] svg{animation:none}}
+/* An opaque light surface keeps submission errors readable on the wine sheet and in the price dialog. */
+#root .rs-booking-actions .rs-request-error,body .rs-booking-help .rs-request-error{display:flex;flex-direction:column;align-items:stretch;gap:10px;padding:12px;margin:0;border:1px solid var(--drive-red);border-radius:12px;background:var(--drive-white);color:var(--drive-black);font:500 14px/21px Manrope,sans-serif;overflow-wrap:anywhere}
+#root .rs-booking-actions .rs-request-error p,body .rs-booking-help .rs-request-error p{margin:0;color:inherit;font:inherit}
+#root .rs-booking-actions .rs-request-error button,body .rs-booking-help .rs-request-error button{height:auto;min-height:44px;padding:10px 12px;border:1px solid var(--drive-wine);border-radius:9px;background:var(--drive-white);color:var(--drive-wine);font:700 14px/20px Manrope,sans-serif;white-space:normal;overflow-wrap:anywhere}
+#root .rs-booking-actions .rs-request-error button:hover:not(:disabled),body .rs-booking-help .rs-request-error button:hover:not(:disabled){background:var(--drive-soft)}
+#root .rs-booking-actions .rs-request-error button:focus-visible,body .rs-booking-help .rs-request-error button:focus-visible{outline:2px solid var(--drive-wine);outline-offset:2px;box-shadow:none}
+#root .rs-booking-actions .rs-request-error button:disabled,body .rs-booking-help .rs-request-error button:disabled{opacity:1;cursor:wait}
 .rs-booking-help{width:min(440px,calc(100vw - 24px));padding:24px;display:flex;flex-direction:column;gap:16px;background:white;color:#111}
 .rs-booking-help__methods{display:grid;gap:16px}
 .rs-booking-help__methods>section{display:grid;grid-template-columns:24px minmax(0,1fr);gap:12px;align-items:start;padding-block:4px}
@@ -47,6 +54,7 @@
 .rs-booking-help input.price-input__segment-input{box-sizing:border-box;width:100%!important;min-width:0;min-height:44px;height:44px;padding:4px;border:0!important;border-radius:8px;outline:0!important;box-shadow:none!important;background:transparent;color:var(--drive-black,#101010);font:800 24px/32px Manrope,sans-serif}
 .rs-booking-help .price-input__pictogram{display:flex;align-items:center;justify-content:center;width:24px;height:24px;color:var(--drive-red,#b51218)}
 .rs-booking-help>button{min-height:48px;background:#b51218;color:white}
+body .rs-booking-help>button:focus-visible{outline:2px solid var(--drive-wine);outline-offset:2px;box-shadow:none}
 @media(max-width:399px){#root .rs-booking-actions__list{gap:4px}}
 @media(min-width:900px){#root .passenger-voice{right:72px}}
 /* Two quiet map rows: endpoint tools first, voice below. */

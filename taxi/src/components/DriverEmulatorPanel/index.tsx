@@ -1,11 +1,15 @@
 import React from 'react'
+import { createPortal } from 'react-dom'
 import cn from 'classnames'
 import { X } from 'lucide-react'
 import { BrowserDriverEmulator, BrowserClientOrderEmulator, BrowserEmulatorSnapshot } from './browserEmulator'
 import emulationModeExactIcon from '../../assets/images/emulationModeExactIcon.png'
+import { emulatorAvailabilityCopy } from './availabilityCopy'
 import { t } from '../../localization'
-import { isBrowserEmulatorRunning } from '../../tools/emulatorMode'
-import { emulatorTestReady } from './testRuntime'
+import Config from '../../config'
+import { sessionGeneration } from '../../security/sessionLifecycle'
+import { BROWSER_EMULATOR_STATE_KEY, EXTERNAL_EMULATOR_FLAG_KEY, isBrowserEmulatorRunning } from '../../tools/emulatorMode'
+import { canConfigureEmulatorTestRuntime, configureEmulatorTestRuntime, emulatorTestReady, parseEmulatorTestConfiguration } from './testRuntime'
 import {
   emitDriverRouteEmulatorCommand,
   subscribeDriverRouteEmulatorNotification,
@@ -47,6 +51,7 @@ function DriverEmulatorPanel({ isOpen, autoStart, mode = 'drivers', onStatusChan
     logs: [],
   }))
   const [loading, setLoading] = React.useState(false)
+  const [configurationError, setConfigurationError] = React.useState(false)
   const [lastRouteEmulatorEvent, setLastRouteEmulatorEvent] =
     React.useState<IDriverRouteEmulatorNotification | null>(null)
   const logsRef = React.useRef<HTMLPreElement | null>(null)
@@ -120,6 +125,29 @@ function DriverEmulatorPanel({ isOpen, autoStart, mode = 'drivers', onStatusChan
     }
   }
 
+  const loadTestAccounts = async(event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.currentTarget.files?.[0]
+    event.currentTarget.value = ''
+    if (!file) return
+    const generation = sessionGeneration()
+    const apiUrl = Config.API_URL
+    setLoading(true)
+    setConfigurationError(false)
+    try {
+      if (file.size > 32 * 1024) throw new Error('EMULATOR_TEST_CONFIGURATION_TOO_LARGE')
+      const configuration = parseEmulatorTestConfiguration(apiUrl, await file.text(), mode)
+      if (sessionGeneration() !== generation || Config.API_URL !== apiUrl) return
+      // A newly imported configuration always starts stopped, even after an earlier test.
+      localStorage.removeItem(BROWSER_EMULATOR_STATE_KEY)
+      localStorage.removeItem(EXTERNAL_EMULATOR_FLAG_KEY)
+      configureEmulatorTestRuntime(configuration)
+    } catch {
+      setConfigurationError(true)
+    } finally {
+      setLoading(false)
+    }
+  }
+
   React.useEffect(() => {
     const shouldRestore = emulatorTestReady(mode) && isBrowserEmulatorRunning(mode)
     const emulator = shouldRestore ? getEmulator() : emulatorRef.current
@@ -175,13 +203,17 @@ function DriverEmulatorPanel({ isOpen, autoStart, mode = 'drivers', onStatusChan
   const isClientGenerator = mode === 'clients'
   const title = isClientGenerator ? t('emulator_clients') : t('emulator_drivers')
   const subtitle = isClientGenerator ? t('emulator_clients_subtitle') : t('emulator_drivers_subtitle')
+  const availability = emulatorAvailabilityCopy()
+  const testReady = emulatorTestReady(mode)
+  const canLoadTestAccounts = canConfigureEmulatorTestRuntime(Config.API_URL) &&
+    !emulatorTestReady('drivers') && !emulatorTestReady('clients')
   const logs = status.logs?.length ? status.logs.join('\n') : t('emulator_logs_empty')
 
-  return (
+  const panel = (
     <div className="driver-emulator-panel" role="dialog" aria-modal="true" aria-labelledby={titleId} ref={panelRef} tabIndex={-1} onKeyDown={event => {
       if(event.key === 'Escape'){event.preventDefault();event.stopPropagation();onClose()}
       if(event.key === 'Tab'){
-        const nodes = Array.from(panelRef.current?.querySelectorAll<HTMLElement>('button:not(:disabled),[tabindex="0"]') || []).filter(node=>node.getClientRects().length)
+        const nodes = Array.from(panelRef.current?.querySelectorAll<HTMLElement>('button:not(:disabled),input:not(:disabled),a[href],[tabindex="0"]') || []).filter(node=>node.getClientRects().length)
         const first=nodes[0],last=nodes[nodes.length-1]
         if(event.shiftKey && (document.activeElement===first || document.activeElement===panelRef.current)){event.preventDefault();last?.focus()}
         else if(!event.shiftKey && (document.activeElement===last || document.activeElement===panelRef.current)){event.preventDefault();first?.focus()}
@@ -222,14 +254,21 @@ function DriverEmulatorPanel({ isOpen, autoStart, mode = 'drivers', onStatusChan
         </div>
 
         <div className="driver-emulator-panel__actions">
-          <button type="button" onClick={() => runAction('start')} disabled={loading || running || !emulatorTestReady(mode)}>{t('emulator_start')}</button>
+          <button type="button" onClick={() => runAction('start')} disabled={loading || running || !testReady}>{t('emulator_start')}</button>
           <button type="button" onClick={() => runAction('stop')} disabled={loading || !running} className="driver-emulator-panel__actions-gray">{t('emulator_stop')}</button>
-          <button type="button" onClick={() => runAction('check')} disabled={loading || !emulatorTestReady(mode)} className="driver-emulator-panel__actions-muted">{t('emulator_check')}</button>
+          <button type="button" onClick={() => runAction('check')} disabled={loading || !testReady} className="driver-emulator-panel__actions-muted">{t('emulator_check')}</button>
         </div>
-        {!emulatorTestReady(mode) && <p role="status">
-          {t('emulator_test_server_required', { fallback: 'Server emulation requires an isolated test server and disposable accounts.' })}
+        {canLoadTestAccounts && <label className="driver-emulator-panel__account-file">
+          <span>{availability.loadAccounts}</span>
+          <input type="file" accept=".json,application/json" disabled={loading} onChange={loadTestAccounts} />
+        </label>}
+        {canLoadTestAccounts && configurationError && <p role="alert" className="driver-emulator-panel__notice driver-emulator-panel__notice--error">
+          {availability.invalidAccounts}
+        </p>}
+        {!testReady && <p role="status">
+          {availability.required}
           {' '}<a href={`/investor/index.html?view=${mode === 'drivers' ? 'passenger' : 'driver'}`}>
-            {t('emulator_local_demo', { fallback: 'Try the local demo without registration' })}
+            {availability.demo}
           </a>
         </p>}
 
@@ -266,6 +305,8 @@ function DriverEmulatorPanel({ isOpen, autoStart, mode = 'drivers', onStatusChan
       </div>
     </div>
   )
+  // Keep the modal above map notices rendered outside the header.
+  return typeof document === 'undefined' ? panel : createPortal(panel, document.body)
 }
 
 export default DriverEmulatorPanel

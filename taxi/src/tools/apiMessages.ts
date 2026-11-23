@@ -1,4 +1,5 @@
 import { t, TRANSLATION } from '../localization'
+import { BACKEND_ERROR_CODES } from '../platform/adapters/backendError'
 
 type TApiErrorRule = {
   apiCodes: string[]
@@ -122,10 +123,17 @@ const findApiErrorRule = (response: any) => {
   )
 }
 
+export const getUnconfirmedBoardingMessage = (error: unknown): string | undefined => {
+  if ((error as {code?: string} | null)?.code === BACKEND_ERROR_CODES.BoardingCheckUnconfirmed)
+    return t('driver_boarding_check_unconfirmed')
+}
+
 export const getApiErrorMessage = (
   response: any,
   options: { context?: 'car-registration' | 'car-profile' | 'driver-order' } = {},
 ) => {
+  const boardingMessage = getUnconfirmedBoardingMessage(response)
+  if (boardingMessage) return boardingMessage
   if (['FSM_FEATURE_FLAGS_UNAVAILABLE','FSM_INTENT_DISABLED'].includes(response?.code)) return t('fsm_rollout_unavailable')
   if (/^FSM_.*HTTP_401$/.test(response?.code || '') || response?.code === 'CORE_AUTHENTICATION_REQUIRED') return t('fsm_sign_in_required')
   if (['FSM_COMMAND_PENDING','FSM_COMMAND_RECOVERY_REQUIRED','FSM_COMMAND_RECOVERY_LIMIT','FSM_COMMAND_HTTP_409','ENTITY_SYNC_IN_PROGRESS','CORE_OUTCOME_UNKNOWN','CORE_FSM_DIVERGENCE'].includes(response?.code))

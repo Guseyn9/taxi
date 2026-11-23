@@ -195,6 +195,8 @@ async function apiPost(endpoint: string, fields: any) {
   const url = `${getEmulatorTestRuntime().apiUrl}${endpoint}`
   const response = await fetch(url, {
     method: 'POST',
+    credentials: 'omit',
+    redirect: 'error',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
     body: toUrlEncoded(fields),
   })
@@ -2097,7 +2099,7 @@ async function apiPostForm(endpoint: string, fields: any) {
     if (value === undefined || value === null || value === '') return
     formData.append(key, String(value))
   })
-  const response = await fetch(url, { method: 'POST', body: formData })
+  const response = await fetch(url, { method: 'POST', body: formData, credentials: 'omit', redirect: 'error' })
   return parseResponse(response, url)
 }
 
@@ -2362,6 +2364,12 @@ export class BrowserClientOrderEmulator {
     const driverPosition = getDriverPosition()
     if (driverPosition) {
       this.localOrigin = { latitude: driverPosition[0], longitude: driverPosition[1] }
+      return this.localOrigin
+    }
+
+    const testLocation = getEmulatorTestRuntime().clients.find(account => account.location)?.location
+    if (testLocation) {
+      this.localOrigin = testLocation
       return this.localOrigin
     }
 

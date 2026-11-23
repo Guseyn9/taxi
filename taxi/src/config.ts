@@ -5,9 +5,10 @@ import { DEFAULT_CONFIG_NAME } from './constants'
 import { serviceEndpoints } from './serviceEndpoints'
 import { SESSION_DOMAIN_RESET, clearPrivateDerivedStorage, setPrivateDataOwner } from './security/sessionLifecycle'
 import { clearSessionTokens } from './security/sessionTokens'
+import { writeRawLog } from './tools/rawLog'
 
 let _configName: string
-let configLoadGeneration = 0
+let currentConfigRead: AbortController | undefined
 const resetTenantIdentity = (previous: string | null, next: string) => {
   if (!previous || previous === next) return
   clearSessionTokens();clearPrivateDerivedStorage();setPrivateDataOwner(null)
@@ -26,23 +27,31 @@ const normalizeConfigName = (name?: string | null) => {
     configName
 }
 
-const applyConfigName = (url: string, name?: string | null) => {
-  const generation = ++configLoadGeneration
+const applyConfigName = (url: string) => {
+  currentConfigRead?.abort()
+  const controller = new AbortController()
+  currentConfigRead = controller
   let deadline: ReturnType<typeof setTimeout>
-  let settled = false
-  const fail = () => {
-    if (settled || generation !== configLoadGeneration) return
-    settled = true
+  const finish = () => {
     clearTimeout(deadline)
+    if (currentConfigRead !== controller) return false
+    currentConfigRead = undefined
+    return true
+  }
+  const fail = () => {
+    if (!finish()) return
     document.getElementById('preloader')?.classList.remove('active')
     store.dispatch(setConfigError())
   }
-  // A single bounded JSON read replaces execution of a remote tenant script.
-  deadline = setTimeout(fail, 15000)
-  loadTenantDictionary(url).then(({ dictionary, metadata }) => {
-    if (settled || generation !== configLoadGeneration) {clearTimeout(deadline);return}
-    settled = true
-    clearTimeout(deadline)
+  // Cap both read attempts together and abort when the tenant changes.
+  deadline = setTimeout(() => {
+    if (currentConfigRead === controller)
+      writeRawLog('TENANT_DICTIONARY_READ_FAILURE', { method: 'GET', endpoint: '/data', reason: 'deadline', durationMs: 15000 })
+    fail()
+    controller.abort()
+  }, 15000)
+  loadTenantDictionary(url, controller.signal).then(({ dictionary, metadata }) => {
+    if (!finish()) return
     ;(window as any).data = dictionary
     for (const [key, value] of Object.entries(metadata)) (window as any)[key] = value
     store.dispatch(setConfigLoaded())
@@ -84,7 +93,7 @@ class Config {
     resetTenantIdentity(localStorage.getItem('config'), configName)
     localStorage.setItem('config', configName)
     _configName = configName
-    applyConfigName(this.API_URL, configName)
+    applyConfigName(this.API_URL)
   }
 
   clearConfig() {
@@ -92,7 +101,7 @@ class Config {
     localStorage.removeItem('config')
     _configName = normalizeConfigName()
     resetTenantIdentity(previous, _configName)
-    applyConfigName(this.API_URL, _configName)
+    applyConfigName(this.API_URL)
   }
 
   setDefaultName() {

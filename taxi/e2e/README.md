@@ -16,13 +16,14 @@ Use disposable accounts on an explicitly selected test API. There is no implicit
 E2E_API_BASE=http://127.0.0.1:57100/taxi/c/local/api/v1
 E2E_APP_URL=http://localhost:3000
 E2E_PASSENGER_PHONE=233555000111
-E2E_PICKUP_QUERY=<verified Agadir query>
-E2E_PICKUP_MATCH=<unique address suggestion text>
-E2E_DESTINATION_QUERY=<verified Agadir query>
-E2E_DESTINATION_MATCH=<unique address suggestion text>
+# Optional address overrides. Supply both values for each point.
+# E2E_PICKUP_QUERY=<verified Agadir query>
+# E2E_PICKUP_MATCH=<unique address suggestion text>
+# E2E_DESTINATION_QUERY=<verified Agadir query>
+# E2E_DESTINATION_MATCH=<unique address suggestion text>
 ```
 
-Credentials remain in the ignored `.env.e2e.local` or secret variables. Query labels are not credentials. Verify that their selected coordinates are within the test tolerance of `PICKUP` and `DESTINATION` in `fixtures/driverUi.ts`; a plausible street name alone is insufficient. Different geocoder results require updating the fixture coordinates together. A previously selected address may be returned from personal history instead of the duplicate official suggestion; the test still verifies its actual coordinates independently. The CI workflows accept the four query fields through repository variables and the test phone through a secret.
+Credentials remain in the ignored `.env.e2e.local` or secret variables. By default, the passenger form tests search for the coordinates of `PICKUP` and `DESTINATION` in `fixtures/driverUi.ts` and choose the corresponding Agadir suggestions. The CI workflows accept a query and matching label per point through repository variables and the test phone through a secret. When overriding an address, verify that the suggestion resolves within the tolerance of the same fixture coordinates. A previously selected address may be returned from personal history. The test independently verifies the actual coordinates in the booking even in that case.
 
 Playwright starts the frontend with API root and tenant derived from `E2E_API_BASE`. Setup checks the actual frontend API requests before entering any password. A reused frontend pointing at a different service fails setup. Driver scenarios use normal mode, without `driverEmulator=1`. Arrival has two explicit UI steps: depart, then arrive. The boarding PIN is read from the order response, never guessed from a vehicle ID or registration plate.
 

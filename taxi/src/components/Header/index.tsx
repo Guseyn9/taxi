@@ -232,7 +232,7 @@ function Header({
       label: t('emulator_drivers'),
       action: () => startDriverEmulator('drivers'),
     })
-    if(!clientOrder)menuItems.push({label:({ru:'Тест анимации · без заказа',fr:'Test animation · sans commande',ar:'اختبار الحركة · بدون طلب'} as Record<string,string>)[language.iso.split('-')[0]]||'Animation test · no order',action:()=>{setMenuOpened(false);window.dispatchEvent(new Event('taxi.ui.map-demo'))}})
+    if(developmentToolsEnabled()&&!clientOrder)menuItems.push({label:({ru:'Тест анимации · без заказа',fr:'Test animation · sans commande',ar:'اختبار الحركة · بدون طلب'} as Record<string,string>)[language.iso.split('-')[0]]||'Animation test · no order',action:()=>{setMenuOpened(false);window.dispatchEvent(new Event('taxi.ui.map-demo'))}})
   }
 
 
@@ -499,7 +499,7 @@ function Header({
     setLanguage(lang)
   }
 
-  const isEmulationModeVisible = developmentToolsEnabled() && (emulatorPanelOpened || Boolean(emulatorStatus?.running))
+  const isEmulationModeVisible = emulatorPanelOpened || Boolean(emulatorStatus?.running)
   const emulationModeTitle = emulatorStatus?.mode === 'clients' ? t('emulator_clients_mode') : t('emulator_drivers_mode')
   const buildDate = React.useMemo(() => {
     const value = new Date((versionInfo as any).buildTimestamp)
@@ -577,8 +577,8 @@ function Header({
                     ))}
                     {user && [EUserRoles.Client, EUserRoles.Agent].includes(user.u_role) && <li className="menu__item"><button type="button" className="menu__button" onClick={() => { setMenuOpened(false); setHistoryOpened(true) }}>{passengerHistoryCopy(language?.iso).title}</button></li>}
                     {user?.u_role === EUserRoles.Administrator && <li className="menu__item"><button type="button" className="menu__button" onClick={() => { setMenuOpened(false); navigation.navigatePath('/admin/zones') }}>{zoneCopy(language?.iso).title}</button></li>}
-                    {developmentToolsEnabled() && <li><details className="menu__tools"><summary>{toolsLabel}</summary>{menuItems.slice(1).map((item,index)=><button key={index} type="button" className="menu__button" onClick={()=>item.href?navigation.navigatePath(item.href):item.action?.(index+1)}>{item.label}</button>)}<GraphDiagnostics iso={language?.iso}/><TestMapArea iso={language?.iso}/>
-                      {moroccoConfigMismatch(CURRENCY.NAME, SITE_CONSTANTS.DEFAULT_PHONE_MASK) &&
+                    {<li><details className="menu__tools"><summary>{toolsLabel}</summary>{menuItems.slice(1).map((item,index)=><button key={index} type="button" className="menu__button" onClick={()=>item.href?navigation.navigatePath(item.href):item.action?.(index+1)}>{item.label}</button>)}{developmentToolsEnabled() && <><GraphDiagnostics iso={language?.iso}/><TestMapArea iso={language?.iso}/></>}
+                      {developmentToolsEnabled() && moroccoConfigMismatch(CURRENCY.NAME, SITE_CONSTANTS.DEFAULT_PHONE_MASK) &&
                         <details className="service-config-diagnostics">
                           <summary>{t('service_configuration')}</summary>
                           <p>{pilotCopy(language?.iso).config}</p>
@@ -718,7 +718,7 @@ function Header({
         </div>}
 
       </div>
-      {developmentToolsEnabled() && <DriverEmulatorPanel
+      {<DriverEmulatorPanel
         isOpen={emulatorPanelOpened}
         mode={emulatorPanelMode}
         onStatusChange={(snapshot) => setEmulatorStatus({ mode: emulatorPanelMode, running: Boolean(snapshot.running) })}
