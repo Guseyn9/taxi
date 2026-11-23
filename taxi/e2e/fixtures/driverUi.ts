@@ -187,6 +187,51 @@ export async function expectDriverMapState(
 
 type OrderResponseKind = 'empty' | 'json-object' | 'json-null' | 'json-array' | 'json-value' | 'non-json' | 'unavailable'
 
+const boardingEnvelopeFields = [
+  'code', 'status', 'message', 'error', 'auth_error', 'e_warning',
+  'info', 'data', 'result', 'success', 'required', 'booking',
+] as const
+
+type BoardingEnvelopeShape = {
+  fields: Array<typeof boardingEnvelopeFields[number]>
+  nestedEnvelopes: Array<{
+    path: 'data' | 'data.data' | 'result'
+    serviceCode: number | null
+    serviceStatus: 'success' | 'ok' | 'error' | null
+  }>
+}
+
+const orderResponseObject = (value: unknown): Record<string, unknown> | undefined =>
+  value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : undefined
+
+const diagnosticServiceCode = (value: unknown): number | null =>
+  (typeof value === 'number' || typeof value === 'string') && /^[1-5]\d{2}$/.test(String(value))
+    ? Number(value)
+    : null
+
+const diagnosticServiceStatus = (value: unknown) =>
+  value === 'success' || value === 'ok' || value === 'error' ? value : null
+
+function boardingEnvelopeShape(body: Record<string, unknown>): BoardingEnvelopeShape {
+  const data = orderResponseObject(body.data)
+  const nested = [
+    { path: 'data', value: data },
+    { path: 'data.data', value: orderResponseObject(data?.data) },
+    { path: 'result', value: orderResponseObject(body.result) },
+  ] as const
+  const nestedEnvelopes: BoardingEnvelopeShape['nestedEnvelopes'] = []
+  for (const { path, value } of nested) {
+    const serviceCode = diagnosticServiceCode(value?.code)
+    const serviceStatus = diagnosticServiceStatus(value?.status)
+    if (serviceCode !== null || serviceStatus !== null)
+      nestedEnvelopes.push({ path, serviceCode, serviceStatus })
+  }
+  return {
+    fields: boardingEnvelopeFields.filter(key => Object.prototype.hasOwnProperty.call(body, key)),
+    nestedEnvelopes,
+  }
+}
+
 /** Одно действие над заказом, которое браузер отправил на `POST /drive/get/{b_id}`. */
 export interface IOrderActionRecord {
   readonly orderId: string
@@ -195,6 +240,7 @@ export interface IOrderActionRecord {
   httpStatus?: number
   transportFailed?: boolean
   responseKind?: OrderResponseKind
+  boardingEnvelope?: BoardingEnvelopeShape
   /** `status` и `code` из тела ответа: HTTP 200 оборачивает и бизнес-ошибки. */
   status?: string
   code?: string
@@ -269,10 +315,12 @@ export function watchOrderActions(page: Page): IOrderActionWatch {
     else record.responseKind = 'json-value'
     if (record.responseKind !== 'json-object')
       return
-    const envelope = body as {status?: unknown, code?: unknown, message?: unknown}
-    record.status = envelope.status === undefined ? undefined : String(envelope.status)
-    record.code = envelope.code === undefined ? undefined : String(envelope.code)
-    record.message = envelope.message === undefined ? undefined : String(envelope.message)
+    const envelope = body as Record<string, unknown>
+    if (record.action === 'check_driver_code' || record.action === 'set_start_state')
+      record.boardingEnvelope = boardingEnvelopeShape(envelope)
+    if (typeof envelope.status === 'string') record.status = envelope.status
+    if (typeof envelope.code === 'string' || typeof envelope.code === 'number') record.code = String(envelope.code)
+    if (typeof envelope.message === 'string') record.message = envelope.message
   }
   const onRequestFailed = (request: Request) => {
     const record = byRequest.get(request)
@@ -332,9 +380,10 @@ export async function withBoardingDiagnostics(
       httpStatus: record.httpStatus ?? null,
       responseKind: record.responseKind ?? null,
       transportFailed: record.transportFailed === true,
-      serviceCode: /^[1-5]\d{2}$/.test(record.code ?? '') ? Number(record.code) : null,
-      serviceStatus: record.status === 'success' || record.status === 'ok' || record.status === 'error' ? record.status : null,
+      serviceCode: diagnosticServiceCode(record.code),
+      serviceStatus: diagnosticServiceStatus(record.status),
       refusal: boardingRefusals.get(record.message?.trim().toLowerCase() ?? '') ?? null,
+      envelope: record.boardingEnvelope ?? null,
     }))
     const description = JSON.stringify({
       method: 'POST', endpoint: '/drive/get/:order',
